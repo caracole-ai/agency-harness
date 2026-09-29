@@ -1,0 +1,95 @@
+{
+  "skill_name": "entretien-metier",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "je suis chez Azur Gardiennage à Vitrolles (120 agents, gardiennage + un peu d'événementiel), dans 10 min je vois le dirigeant puis la responsable d'exploitation. je leur demande quoi ?",
+      "expected_output": "Une feuille de route courte, lisible d'un coup d'œil : lit la fiche sécurité privée, s'appuie sur ses questions ouvertes, sépare dirigeant et exploitation, questions au passé concret dans les mots du métier, documents à demander à voir, pas de solution vendue, pas de prix.",
+      "files": [],
+      "assertions": [
+        "Cite ou s'appuie sur metiers/securite-privee/fiche.md (questions ouvertes ou faits déjà acquis)",
+        "Sépare les questions pour le dirigeant de celles pour la responsable d'exploitation",
+        "Au moins deux questions demandent un incident passé concret (la dernière fois, racontez)",
+        "Nomme au moins deux documents à demander à voir (planning, main courante, consignes, contrat…)",
+        "Ne propose aucune solution à vendre et n'avance aucun prix",
+        "Tient en moins de 80 lignes (lisible sur place)",
+        "Traite la rencontre comme un atelier (plusieurs rôles, plus que le premier rendez-vous de 15-20 min) ou pose la question du format",
+        "Commence par la demande d'accord pour enregistrer",
+        "Contient des questions sur le bon résultat (pourquoi tel agent sur tel site, ce qu'on lâche en premier)",
+        "Contient des questions sur les données (où sont les dates des titres, qui les met à jour, fiabilité)",
+        "Place la proposition des briques (dont la réaffectation sur désistement) en fin d'entretien, avec des questions de qualification (volume, canal, heures de contact, qui valide)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "voilà mes notes en vrac de la matinée, range-moi tout ça. je repars cet aprèm pour voir le cabinet comptable qui fait leur paie. (notes dans evals/files/notes-sentinelle.md)",
+      "expected_output": "Écrit clients/sentinelle-provence/entretien-<date>.md selon les six rubriques avec statuts et sources, sépare métier et client (Leclerc, 35 sites, WhatsApp = client ; carte pro à jour = métier), transforme les deux incidents en tests Étant donné/Quand/Alors, propose des remontées au métier sans nom ni chiffre, sans modifier la fiche métier sans accord, et prépare les questions pour le cabinet comptable.",
+      "files": [
+        "evals/files/notes-sentinelle.md"
+      ],
+      "assertions": [
+        "Crée un fichier clients/sentinelle-provence/entretien-*.md",
+        "Le fichier contient les neuf rubriques de la grille, dont le bon résultat, les données et les briques",
+        "Chaque ligne de rubrique porte un statut parmi texte/déclaré/constaté/confirmé/hypothèse",
+        "Ce que les notes rapportent sans document vu ni date (planning Excel, groupe WhatsApp, Silae) est classé `déclaré`, pas `constaté`",
+        "L'incident carte pro expirée devient un test Étant donné/Quand/Alors",
+        "L'incident SSIAP 1 au lieu de SSIAP 2 devient un test Étant donné/Quand/Alors",
+        "Classe l'exigence du client Leclerc (rapport mensuel) en couche client, pas métier",
+        "Propose des remontées au métier sans nom d'entreprise, de client ni chiffre du client, le client y étant cité par une lettre (client A)",
+        "Ne modifie pas metiers/securite-privee/fiche.md",
+        "Range l'idée d'alerte 60 jours comme une brique ou une idée, pas en interdit ni en test, et signale que 60 jours tombe après la date limite de dépôt (3 mois avant)",
+        "Prépare des questions pour le cabinet comptable (paie, heures de nuit/dimanche, ressaisie)",
+        "Dit que les règles tirées de notes (sans transcription) devront être confirmées une à une par le client"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "demain 9h je vois un transporteur frigorifique à Aubagne, une trentaine de camions. prépare-moi l'entretien stp",
+      "expected_output": "Constate qu'aucune fiche métier transport frigorifique n'existe, le dit en une ligne, prépare depuis la grille seule, présente tout savoir sectoriel comme hypothèse à vérifier, range les questions par rôle, propose les documents à voir.",
+      "files": [],
+      "assertions": [
+        "Dit explicitement qu'aucune fiche métier transport frigorifique n'existe",
+        "Tout fait sectoriel avancé (réglementation, ATP, températures…) est marqué hypothèse ou à vérifier",
+        "Range les questions par rôle, ou, s'il suppose un premier rendez-vous, le dit et renvoie les autres rôles à l'atelier",
+        "Nomme au moins un document à demander à voir (deux ou plus pour un atelier)",
+        "N'avance aucun prix",
+        "Inclut la demande d'accord pour enregistrer et place les propositions en fin d'entretien"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "(pendant l'entretien chez Azur Gardiennage) la resp d'exploit dit que les remplacements de dernière minute c'est l'enfer, ils font ça par téléphone le soir",
+      "expected_output": "Réponse très courte : une ligne rangée (rubrique, statut, métier ou client) et une seule question suivante, au passé concret (la dernière fois), dans ses mots.",
+      "files": [],
+      "assertions": [
+        "Réponse de 8 lignes ou moins",
+        "Range la bribe (rubrique, statut `déclaré`, métier ou client)",
+        "Propose une seule question principale",
+        "La question demande un cas passé concret (la dernière fois / racontez)"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "voilà la transcription de mon rdv de ce matin chez Garde Provence Sécurité. formalise-moi les règles pour que je leur envoie à relire, et que ça devienne l'annexe du devis",
+      "expected_output": "Écrit la note d'entretien et les règles à valider, chaque règle citée mot à mot avec horodatage (script à 0), dans les mots du client ; ne formalise pas la règle des 10 h de repos mais la met dans « à corriger avant de construire » ; signale l'accord écrit et contresigné pour un renfort demandé par le client, et le planning publié à 5 jours ; capte l'ordre de sacrifice et la réaction à la réaffectation par SMS ; aucun prix ; aucune donnée client dans les remontées ; ne touche pas la fiche métier.",
+      "files": [
+        "evals/files/transcription-garde-provence.txt"
+      ],
+      "assertions": [
+        "Crée une note clients/<slug>/entretien-*.md et un fichier clients/<slug>/regles-a-valider-*.md",
+        "verifier_citations.py sort 0 (aucune citation introuvable) sur les deux fichiers",
+        "Chaque règle du fichier regles-a-valider porte une citation au format [hh:mm:ss] « … »",
+        "La règle des 10 h de repos n'est pas une règle de l'outil : elle est dans « à corriger avant de construire », avec le texte qu'elle contredit",
+        "Le renfort demandé par le client pour le lendemain est signalé comme exigeant l'accord écrit et contresigné de l'agent",
+        "Le planning fait le mercredi pour le lundi suivant est signalé comme plus court que le délai d'une semaine",
+        "L'ordre de sacrifice est capté : garder l'agent attitré, sacrifier le trajet, heures supplémentaires en dernier recours",
+        "La réaction à la réaffectation est notée : SMS oui, appel automatique non, pas après 22 h sauf pour le soir même",
+        "L'onglet des dates que personne ne met à jour est signalé comme un risque à lever avant le devis",
+        "Aucun montant ni fourchette de prix dans les fichiers",
+        "Le fichier regles-a-valider est écrit pour le client : ni « harnais » ni identifiants I-xx / T-xx",
+        "Les remontées proposées au métier ne contiennent ni le nom de l'entreprise ni ses volumes (85 agents, 22 sites)",
+        "Ne modifie pas metiers/securite-privee/fiche.md"
+      ]
+    }
+  ]
+}

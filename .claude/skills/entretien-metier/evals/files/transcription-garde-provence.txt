@@ -1,0 +1,46 @@
+Transcription automatique — entretien du 2026-09-29, Garde Provence Sécurité (entreprise fictive, cas de test)
+Participants : Lionel (agence), Dirigeante, Planning (responsable du planning)
+
+[00:00:04] Lionel : Avant de commencer, est-ce que vous êtes d'accord pour que j'enregistre ? C'est seulement pour ne rien perdre de ce que vous me dites, je le transcris sur mon ordinateur et je vous renvoie ce que j'ai compris.
+[00:00:12] Dirigeante : Oui, pas de souci.
+[00:00:14] Planning : Oui, d'accord.
+[00:00:20] Lionel : Merci. Pour commencer, vous êtes combien, et sur combien de sites ?
+[00:00:25] Dirigeante : On a quatre-vingt-cinq agents, à peu près, et vingt-deux sites. Ça fait dans les six cents vacations par mois.
+[00:00:38] Lionel : Et le planning, il se fait comment aujourd'hui ?
+[00:00:41] Planning : Sur Excel. Je le fais le mercredi pour la semaine qui commence le lundi d'après. Un onglet par site.
+[00:00:52] Lionel : Qu'est-ce qui ne doit jamais arriver, pour vous ?
+[00:00:56] Dirigeante : Un poste vide. Si le poste est vide, le client nous applique une pénalité, et au bout de deux fois il ne renouvelle pas.
+[00:01:08] Dirigeante : Et un agent sans carte. On a eu un contrôle du CNAPS l'an dernier, ils ont regardé toutes les cartes du centre commercial.
+[00:01:20] Lionel : Ils ont relevé quelque chose ?
+[00:01:23] Dirigeante : Deux cartes entreprise qui n'avaient pas été remises. Un blâme.
+[00:01:31] Lionel : Et les repos entre deux vacations, vous appliquez quelle règle ?
+[00:01:35] Planning : Chez nous, entre deux vacations, on laisse au minimum dix heures, c'est la règle.
+[00:01:42] Lionel : Dix heures dans tous les cas ?
+[00:01:44] Planning : Oui, dix heures, que ce soit de jour ou de nuit.
+[00:01:52] Lionel : Et les nouveaux ?
+[00:01:54] Planning : Les nouveaux, on ne les met jamais seuls la nuit. Jamais la première semaine.
+[00:02:05] Lionel : L'ERP de la zone commerciale, il demande quoi ?
+[00:02:09] Dirigeante : Le soir il faut un SSIAP 1 et un SSIAP 2, toujours. Le SSIAP 2 c'est le chef d'équipe.
+[00:02:20] Lionel : Entre deux plannings qui respectent tout ça, lequel vous préférez ?
+[00:02:25] Dirigeante : Le centre commercial veut toujours les mêmes têtes. Si on change l'agent toutes les semaines, il appelle.
+[00:02:34] Planning : Et on évite de faire traverser tout le département à un agent. Ceux d'Aubagne, on les garde vers Aubagne.
+[00:02:43] Dirigeante : Les heures sup, ça nous tue. On les évite autant qu'on peut.
+[00:02:50] Lionel : La semaine où il vous manquait du monde, vous avez lâché quoi en premier ?
+[00:02:55] Planning : Le trajet. On garde l'agent attitré, et on envoie quelqu'un de plus loin. Les heures sup c'est en dernier recours.
+[00:03:10] Lionel : Les dates des cartes, du SSIAP, elles sont où ?
+[00:03:14] Planning : Dans un onglet que personne ne met à jour, honnêtement. C'est moi qui le fais quand j'ai le temps.
+[00:03:25] Lionel : Et les désistements ?
+[00:03:28] Planning : Trois, quatre par semaine. Souvent le dimanche soir, par SMS. Là je passe une heure au téléphone.
+[00:03:40] Planning : J'appelle dans l'ordre de ma liste, ceux qui disent oui d'habitude.
+[00:03:48] Lionel : Quand un agent dit oui au téléphone, vous gardez une trace ?
+[00:03:52] Planning : Non. Quand un gars dit oui au téléphone, c'est bon, on note rien.
+[00:04:01] Dirigeante : Et quand c'est le client qui nous demande un renfort pour le lendemain, pareil, on appelle et c'est réglé.
+[00:04:15] Lionel : Qui a le dernier mot sur une affectation ?
+[00:04:18] Dirigeante : Sur les ERP, c'est moi. Le reste, c'est Planning.
+[00:04:30] Lionel : Je vous montre une idée. Quand un agent se désiste, un outil retrouve ceux qui ont la bonne carte, le bon niveau et assez de repos, et les contacte dans l'ordre, par un appel automatique ou par SMS.
+[00:04:48] Planning : Si c'est un robot qui appelle, les gars vont raccrocher. Un SMS avec oui ou non, ça oui.
+[00:04:57] Dirigeante : Et pas après vingt-deux heures. Sauf si c'est pour le soir même.
+[00:05:06] Dirigeante : Ça coûterait combien, un truc comme ça ?
+[00:05:09] Lionel : Le prix se fixe à l'issue de l'atelier, quand on sait exactement ce qu'on construit. Je ne veux pas vous donner un chiffre en l'air.
+[00:05:20] Lionel : Ce que je vous propose : je vous renvoie par écrit les règles que j'ai comprises, vous les corrigez, et elles deviennent l'annexe du devis.
+[00:05:30] Dirigeante : D'accord. Je les relirai avec Planning.

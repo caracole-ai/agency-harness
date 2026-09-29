@@ -1,0 +1,8 @@
+# Ce qu'un client nous dit chez lui ne quitte pas cette machine.
+# Seule la couche métier (metiers/) est versionnée : c'est le capital,
+# et elle ne contient aucune donnée client.
+clients/*
+!clients/README.md
+
+.DS_Store
+*-workspace/
