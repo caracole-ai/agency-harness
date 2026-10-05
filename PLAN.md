@@ -212,14 +212,18 @@ briques restent en prose jusqu'à ce qu'un composant en ait besoin.
   chaque harnais livré, écrit par nous. Il porte : texte changé, veille en
   retard, connecteur en panne, contrôle en échec. Aucune donnée du client
   dans un message (identifiants de règle, codes, comptages seulement), et
-  aucune commande reçue par ce canal.
+  aucune commande reçue par ce canal : il ne sert qu'à recevoir des
+  notifications. Telegram ne chiffre pas de bout en bout et passe par un
+  tiers (G-06, G-07).
 - Une mise à jour du harnais suit le chemin habituel : registre, tests,
   `pnpm check`, livraison.
 
 **Hors plan, volontairement** : le solveur (B-01), le connecteur WhatsApp,
 l'écriture dans un vrai tableur, la génération de `smart-tailor/harness.ts`
-et des vues terrain depuis le registre, les trois autres métiers. Chacun a sa
-place dans REFLEXIONS ; aucun ne bloque les phases 0 à 5.
+et des vues terrain depuis le registre, les trois autres métiers, et **la
+mise à jour d'un harnais livré à distance** (une étape ultérieure du projet,
+à trancher avant la livraison d'un vrai client). Chacun a sa place dans
+REFLEXIONS ; aucun ne bloque les phases 0 à 5.
 
 ---
 

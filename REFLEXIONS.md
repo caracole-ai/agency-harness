@@ -265,7 +265,19 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
   interroge Légifrance (API PISTE) et EUR-Lex une fois par mois, et signale
   ce qui a changé **à l'ingénieur du harnais**, par le canal fabricant
   (décisions du 2026-10-05). L'alerte « veille en retard » existe déjà dans
-  `registre:verifier`.
+  `registre:verifier`. Il faut un compte sur l'API PISTE au nom de Lionel :
+  Légifrance bloque les robots sur ses pages web (vu à la relecture du
+  2026-10-05). La FAQ et les actualités du CNAPS n'ont pas d'API : leur
+  relecture reste manuelle, rappelée par le canal.
+- **Le canal fabricant ne sert qu'à recevoir** (Lionel, 2026-10-05) : le
+  harnais livré y envoie ses notifications, il n'y lit aucun ordre.
+- **Mettre à jour un harnais livré à distance** : un mécanisme que Lionel
+  concevra plus tard, dans une étape de développement **hors du plan
+  actuel**. À trancher avant la livraison d'un vrai client : comment une
+  mise à jour de règle (après une veille) arrive chez lui, qui l'approuve,
+  comment on revient en arrière, et ce que le client en voit. Ce n'est pas
+  le canal Telegram : un canal qui reçoit des ordres serait une porte
+  d'entrée sur le harnais.
 
 **Hygiène**
 - Relire à la source (`texte` ✓) les interdits d'une brique avant de la
@@ -299,7 +311,11 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
   toute sa durée ? (le moteur rend `à vérifier`). Un poste purement SSIAP
   exige-t-il une carte professionnelle ? Le moteur suppose que non, sur le
   référentiel de contrôle du CNAPS (p. 3 : le SSIAP n'est pas une activité
-  de surveillance) : à confirmer. Les quatre
+  de surveillance) : à confirmer. Un agent SSIAP d'un niveau supérieur au
+  poste (SSIAP 2 sur un poste SSIAP 1) : le moteur rend `à vérifier`, faute
+  de texte relu. Un recyclage SSIAP fait après la date limite ne remet pas
+  l'agent en règle : la remise à niveau de l'arrêté de 2005 (art. 7) n'est
+  pas encore modélisée. Les quatre
   questions du remplacement (le « oui » par SMS, contacter un agent au repos,
   l'appel automatique, classer les agents selon leurs refus).
 - Bureaux d'études : la portée de l'opposition d'AFNOR ; un modèle hébergé
