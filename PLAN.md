@@ -201,6 +201,21 @@ briques restent en prose jusqu'à ce qu'un composant en ait besoin.
   traces réelles n'existent qu'après un client, donc d'ici là un jeu de
   messages fictifs, explicitement marqué comme tel.
 
+### Phase 7 — Veille des textes et canal fabricant (avant la première livraison)
+Étage : générique. Destinataire : l'ingénieur du harnais, jamais le client.
+- Chaque règle `texte` ✓ porte l'identifiant de ses articles (LEGIARTI,
+  KALIARTI) et la date de la version relue. Une fois par mois, un script
+  interroge Légifrance par l'API PISTE (compte à créer par Lionel) et
+  compare les versions ; ce qui n'a pas d'API (FAQ du CNAPS) reste une
+  relecture manuelle, rappelée par le même canal.
+- Le canal fabricant : un connecteur sortant (Telegram, par exemple) depuis
+  chaque harnais livré, écrit par nous. Il porte : texte changé, veille en
+  retard, connecteur en panne, contrôle en échec. Aucune donnée du client
+  dans un message (identifiants de règle, codes, comptages seulement), et
+  aucune commande reçue par ce canal.
+- Une mise à jour du harnais suit le chemin habituel : registre, tests,
+  `pnpm check`, livraison.
+
 **Hors plan, volontairement** : le solveur (B-01), le connecteur WhatsApp,
 l'écriture dans un vrai tableur, la génération de `smart-tailor/harness.ts`
 et des vues terrain depuis le registre, les trois autres métiers. Chacun a sa
@@ -230,8 +245,9 @@ place dans REFLEXIONS ; aucun ne bloque les phases 0 à 5.
   format des tables reste le même ; ses évals se relancent après la phase 1.
 - **Les textes bougent** : la fiche a vu trois modifications en 2026, R631-15
   vient de basculer. Le champ `relu` porte une date ; une relecture de plus
-  de N mois (N en config) dégrade le verdict à `à vérifier`. La veille
-  automatique (piste F) reste hors plan, mais la place est prête.
+  d'un mois est une alerte « veille en retard » **pour l'ingénieur du
+  harnais**, jamais un verdict dégradé chez le client (décision du
+  2026-10-05). La veille automatique est la phase 7.
 - **Aucune donnée réelle** : tout ce qu'on construit tourne sur du fictif ;
   le format CSV est jetable, le modèle canonique et les interdits ne le sont
   pas. Premier rendez-vous = première correction du modèle canonique.

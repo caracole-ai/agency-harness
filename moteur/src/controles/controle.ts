@@ -1,5 +1,5 @@
 import type { Interdit, Registre } from '../regles/schema'
-import { type Constat, moinsGrave, type OptionsPlafond, plafond } from '../regles/verdict'
+import { type Constat, moinsGrave, plafond } from '../regles/verdict'
 
 /**
  * Un interdit codé : une fonction pure qui rend ses constats. Elle n'applique
@@ -21,13 +21,12 @@ export function executer<Contexte>(
   controles: Controle<Contexte>[],
   contexte: Contexte,
   registre: Registre,
-  options: OptionsPlafond,
 ): Constat[] {
   return controles.flatMap((c) => {
     const interdit = registre.interdits.find((i) => i.id === c.regle)
     if (!interdit)
       throw new Error(`le contrôle ${c.regle} ne correspond à aucun interdit du registre`)
-    const max = plafond(interdit, options)
+    const max = plafond(interdit)
     try {
       return c.verifier(contexte, interdit).map((constat) => ({
         ...constat,

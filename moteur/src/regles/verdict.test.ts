@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { type Controle, executer } from '../controles/controle'
-import { Temporal } from '../temps/temporal'
 import { Interdit, type Registre } from './schema'
-import { type OptionsPlafond, parametresDe, plafond, selonReference } from './verdict'
-
-const options: OptionsPlafond = {
-  aujourdhui: Temporal.PlainDate.from('2026-10-05'),
-  fraicheurRelecture: { mois: 6 },
-}
+import { parametresDe, plafond, selonReference } from './verdict'
 
 const interdit = (champs: Record<string, unknown> = {}) =>
   Interdit.parse({
@@ -30,27 +24,24 @@ const lectures = [
 
 describe('plafond par statut', () => {
   it('un texte relu récemment peut refuser', () => {
-    expect(plafond(interdit(), options)).toBe('refus')
+    expect(plafond(interdit())).toBe('refus')
   })
   it('un texte non relu rend au plus « à vérifier »', () => {
-    expect(plafond(interdit({ relu: undefined }), options)).toBe('à vérifier')
+    expect(plafond(interdit({ relu: undefined }))).toBe('à vérifier')
   })
-  it('une relecture trop ancienne ne fonde plus un refus', () => {
-    expect(plafond(interdit({ relu: '2026-01-02' }), options)).toBe('à vérifier')
-    expect(plafond(interdit({ relu: '2026-04-05' }), options)).toBe('refus')
+  it('l’âge d’une relecture ne change jamais le verdict du client', () => {
+    expect(plafond(interdit({ relu: '2020-01-02' }))).toBe('refus')
   })
   it('une règle ⚠ sans lectures ne refuse pas ; avec ses lectures, si', () => {
-    expect(plafond(interdit({ avertissement: '12 h ou 11 h' }), options)).toBe('à vérifier')
-    expect(plafond(interdit({ avertissement: '12 h ou 11 h', lectures }), options)).toBe('refus')
+    expect(plafond(interdit({ avertissement: '12 h ou 11 h' }))).toBe('à vérifier')
+    expect(plafond(interdit({ avertissement: '12 h ou 11 h', lectures }))).toBe('refus')
   })
   it('une déclaration du client ne refuse pas, une règle constatée si', () => {
-    expect(plafond(interdit({ statut: 'déclaré', relu: undefined }), options)).toBe('à vérifier')
-    expect(plafond(interdit({ statut: 'constaté', relu: undefined }), options)).toBe('refus')
+    expect(plafond(interdit({ statut: 'déclaré', relu: undefined }))).toBe('à vérifier')
+    expect(plafond(interdit({ statut: 'constaté', relu: undefined }))).toBe('refus')
   })
   it('une hypothèse ne devient pas un contrôle', () => {
-    expect(() => plafond(interdit({ statut: 'hypothèse', relu: undefined }), options)).toThrow(
-      /hypothèse/,
-    )
+    expect(() => plafond(interdit({ statut: 'hypothèse', relu: undefined }))).toThrow(/hypothèse/)
   })
 })
 
@@ -86,10 +77,10 @@ describe('exécution', () => {
     verifier: () => [{ regle: 'I-01', objet: 'V-1', verdict: 'refus', motif: 'carte expirée' }],
   }
   it('plafonne le verdict d’un contrôle par le statut de sa règle', () => {
-    expect(executer([refuse], null, registre(), options)[0]?.verdict).toBe('refus')
-    expect(
-      executer([refuse], null, registre(interdit({ relu: undefined })), options)[0]?.verdict,
-    ).toBe('à vérifier')
+    expect(executer([refuse], null, registre())[0]?.verdict).toBe('refus')
+    expect(executer([refuse], null, registre(interdit({ relu: undefined })))[0]?.verdict).toBe(
+      'à vérifier',
+    )
   })
   it('un contrôle qui lève refuse : le moteur échoue fermé', () => {
     const casse: Controle<null> = {
@@ -98,11 +89,11 @@ describe('exécution', () => {
         throw new Error('donnée corrompue')
       },
     }
-    const [constat] = executer([casse], null, registre(), options)
+    const [constat] = executer([casse], null, registre())
     expect(constat?.verdict).toBe('refus')
     expect(constat?.motif).toMatch(/donnée corrompue/)
   })
   it('un contrôle sans interdit au registre lève', () => {
-    expect(() => executer([{ ...refuse, regle: 'I-99' }], null, registre(), options)).toThrow()
+    expect(() => executer([{ ...refuse, regle: 'I-99' }], null, registre())).toThrow()
   })
 })

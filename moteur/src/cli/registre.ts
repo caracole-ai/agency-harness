@@ -13,6 +13,8 @@ import {
   incoherencesDuCode,
 } from '../regles/registre'
 import type { Registre } from '../regles/schema'
+import { relecturesEnRetard } from '../regles/veille'
+import { FUSEAU, Temporal } from '../temps/temporal'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const METIERS = join(RACINE, 'metiers')
@@ -87,6 +89,12 @@ for (const dossier of dossiers(args)) {
       erreurs.push(
         'fiche.md a dérivé du registre : lancer pnpm registre:generer, ou reporter la modification dans le registre',
       )
+    // Pour l'ingénieur du harnais seulement : ce n'est pas une erreur, c'est la veille à faire.
+    for (const r of relecturesEnRetard(registre, Temporal.Now.plainDateISO(FUSEAU))) {
+      console.log(
+        `${nom} : veille en retard : ${r.id} relu le ${r.relu}, relecture due le ${r.due}`,
+      )
+    }
     for (const e of erreurs) console.error(`${nom} : ${e}`)
     if (erreurs.length === 0) {
       console.log(

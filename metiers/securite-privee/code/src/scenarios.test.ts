@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
-import { chargerRegistre, executer, Temporal } from '@harnais/moteur'
+import { chargerRegistre, executer } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
-import { FRAICHEUR_SCENARIOS, rejouer } from './cas'
+import { rejouer } from './cas'
 import { CONTROLES } from './controles'
 import { Planning } from './modele'
 import { contexte } from './semantique'
@@ -21,13 +21,9 @@ describe('scénarios du registre', () => {
 })
 
 // Cas qui ne sont pas des T-xx de la fiche : ils éprouvent les choix de conception.
-const options = {
-  aujourdhui: Temporal.PlainDate.from('2026-10-05'),
-  fraicheurRelecture: FRAICHEUR_SCENARIOS,
-}
 const verdicts = (brut: unknown, regle: string) =>
   Object.fromEntries(
-    executer(CONTROLES, contexte(Planning.parse(brut)), registre, options)
+    executer(CONTROLES, contexte(Planning.parse(brut)), registre)
       .filter((c) => c.regle === regle)
       .map((c) => [c.objet, c.verdict]),
   )

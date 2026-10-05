@@ -1,5 +1,3 @@
-import type { Duree } from '../temps/delais'
-import { Temporal } from '../temps/temporal'
 import type { Interdit, Lecture } from './schema'
 
 /** Les trois verdicts d'un contrôle (`presentation/`, § 05). Seul le code rend `refus`. */
@@ -57,19 +55,17 @@ export function parametresDe(interdit: Interdit, lecture?: Lecture): Record<stri
   return { ...interdit.parametres, ...lecture?.parametres }
 }
 
-export interface OptionsPlafond {
-  aujourdhui: Temporal.PlainDate
-  /** Au-delà, une relecture à la source est trop ancienne pour fonder un refus. */
-  fraicheurRelecture: Duree
-}
-
 /**
  * Le verdict le plus grave qu'une règle peut rendre, d'après son statut
- * (`GRILLE.md` § Statuts) : seul un texte relu mot à mot, récemment, ou une
- * règle constatée chez le client, peut refuser. Une hypothèse ne devient
- * jamais un contrôle. Une règle ⚠ sans lectures déclarées ne refuse pas.
+ * (`GRILLE.md` § Statuts) : seul un texte relu mot à mot, ou une règle
+ * constatée chez le client, peut refuser. Une hypothèse ne devient jamais un
+ * contrôle. Une règle ⚠ sans lectures déclarées ne refuse pas.
+ *
+ * L'âge d'une relecture n'entre pas ici : la veille des textes est l'affaire
+ * de l'ingénieur du harnais, pas du client (`veille.ts`). Un client ne voit
+ * jamais un doute né d'une relecture en retard.
  */
-export function plafond(interdit: Interdit, options: OptionsPlafond): Verdict {
+export function plafond(interdit: Interdit): Verdict {
   switch (interdit.statut) {
     case 'hypothèse':
       throw new Error(`${interdit.id} est une hypothèse : une question à poser, pas un contrôle`)
@@ -81,14 +77,7 @@ export function plafond(interdit: Interdit, options: OptionsPlafond): Verdict {
     case 'texte': {
       if (!interdit.relu) return 'à vérifier'
       if (interdit.avertissement && !interdit.lectures) return 'à vérifier'
-      const relu = Temporal.PlainDate.from(interdit.relu)
-      const limite =
-        'jours' in options.fraicheurRelecture
-          ? relu.add({ days: options.fraicheurRelecture.jours })
-          : 'mois' in options.fraicheurRelecture
-            ? relu.add({ months: options.fraicheurRelecture.mois })
-            : relu.add({ years: options.fraicheurRelecture.ans })
-      return Temporal.PlainDate.compare(options.aujourdhui, limite) > 0 ? 'à vérifier' : 'refus'
+      return 'refus'
     }
   }
 }

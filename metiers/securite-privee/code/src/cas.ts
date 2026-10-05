@@ -42,9 +42,6 @@ export function lireCas(brut: unknown): CasLu {
   }
 }
 
-/** Fraîcheur de relecture appliquée au rejeu des scénarios : celle d'un client viendra de sa config. */
-export const FRAICHEUR_SCENARIOS = { mois: 12 } as const
-
 /**
  * Rejoue un scénario : chaque verdict attendu est rendu, et aucun autre
  * constat non conforme n'apparaît pour les interdits que le scénario couvre.
@@ -55,10 +52,9 @@ export function rejouer(
   registre: Registre,
 ): { constats: Constat[]; ecarts: string[] } {
   const cas = lireCas(scenario.cas)
-  const constats = executer(CONTROLES, contexte(cas.planning), registre, {
-    aujourdhui: cas.aujourdhui,
-    fraicheurRelecture: FRAICHEUR_SCENARIOS,
-  }).filter((c) => scenario.interdits.includes(c.regle))
+  const constats = executer(CONTROLES, contexte(cas.planning), registre).filter((c) =>
+    scenario.interdits.includes(c.regle),
+  )
   const ecarts: string[] = []
   for (const a of cas.attendu) {
     const c = constats.find((x) => x.regle === a.regle && x.objet === a.objet)
