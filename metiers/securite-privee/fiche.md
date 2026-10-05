@@ -4,8 +4,12 @@ Surveillance humaine et gardiennage, sécurité incendie (SSIAP), rondes,
 télésurveillance, cynophile. NAF **80.10Z** (et 80.20Z pour la télésurveillance).
 Première cible de l'agence, arrêtée le 2026-09-29.
 
-Remplie selon `../../GRILLE.md`. Sa vue pour le terrain, dans l'ordre d'un
-rendez-vous : `guide-entretien.md`. État au **2026-09-29** : les textes et la
+Remplie selon `../../GRILLE.md`. Ses vues pour le terrain : `prospection.md`
+(l'appel et le premier rendez-vous), `entretien.md` (le dirigeant, pour le
+devis) et `observation.md` (la journée sur place). Ses archétypes
+(`../../methode/archetypes.md`) : Planifier au cœur, Veiller, Rapprocher,
+Rédiger ; les règles communes à tous les métiers sont dans
+`../../methode/socle.md`. État au **2026-09-29** : les textes et la
 prospection seulement, **aucun entretien client encore**. Donc rien de
 `déclaré` ni de `constaté` : toute ligne `hypothèse` est une question à poser,
 pas une règle à coder.

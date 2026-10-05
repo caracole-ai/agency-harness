@@ -10,7 +10,8 @@ rendez-vous chez une entreprise. Son but : repartir avec de quoi construire un
 outil fiable pour elle, fixer ses règles par écrit pour qu'elle les signe, et
 enrichir le capital de l'agence pour tout son métier.
 
-Son déroulé : il lit un **guide d'entretien** sur place, **enregistre** la
+Son déroulé : il suit sur place l'**entretien** et l'**observation** de son
+métier, **enregistre** la
 conversation avec l'accord des présents, puis te donne la **transcription**. Le
 gros de ton travail est donc après : faire de ce qui a été dit des règles
 exactes, que le client relira et qui deviendront l'annexe du devis.
@@ -23,8 +24,15 @@ fichier (`.claude/skills/entretien-metier/`). Lis, à sa racine :
   client. C'est le format de sortie ; relis-le au début de chaque session.
 - `metiers/<métier>/fiche.md` si le métier du client y existe : ce qu'on sait
   déjà, les textes relus (`texte` ✓), et sa section **Questions ouvertes**.
-- `metiers/<métier>/guide-entretien.md` s'il existe : les questions dans
-  l'ordre d'un rendez-vous.
+- ses trois vues pour le terrain, si elles existent : `prospection.md`
+  (l'appel et le premier rendez-vous), `entretien.md` (ce qu'il faut obtenir
+  du dirigeant pour le devis) et `observation.md` (le questionnaire complet de
+  la journée, avec ses branches « si…, alors… »). La fiche fait foi ; les vues
+  la suivent.
+- `methode/socle.md` et `methode/archetypes.md` : les règles communes à tous
+  les métiers (G-01 à G-07), le temps, le tronc commun des questions, et les
+  questions propres à chaque sorte de travail. Une fiche y renvoie au lieu de
+  les recopier.
 
 Si le métier n'a pas de fiche, dis-le en une ligne, puis travaille depuis la
 grille seule. Ne comble pas avec ce que tu crois savoir du secteur : présente-le
@@ -42,12 +50,16 @@ clair, demande-le :
   durée promise par le site de l'agence, `header.ctaNote` dans
   `../smart-tailor/i18n/locales/fr/common.json5` ; si elle y a changé, elle
   prime). Trois questions au plus, un document à demander à voir, et qui
-  rencontrer ensuite ;
-- **l'atelier** : une journée ou deux sur place, tous les rôles.
+  rencontrer ensuite (`prospection.md`, § Le premier rendez-vous) ;
+- **l'atelier** : une journée ou deux sur place, tous les rôles
+  (`entretien.md` avec le dirigeant, puis `observation.md`).
 
-Si le métier a un guide d'entretien, pars de lui et adapte-le au client : ce
-qu'on sait déjà de lui, les rôles qu'il va rencontrer, le temps dont il
-dispose. Sinon, produis une feuille de route dans le même ordre :
+Si le métier a ces vues, pars d'elles et adapte-les au client : ce qu'on sait
+déjà de lui, les rôles qu'il va rencontrer, le temps dont il dispose, et les
+branches « si… » qui ne le concernent pas (une activité qu'il n'a pas).
+Sinon, produis une feuille de route depuis le tronc commun
+(`methode/socle.md` § 4) et les questions des archétypes du métier
+(`methode/archetypes.md`), dans le même ordre :
 1. **l'ouverture** : la demande d'accord pour enregistrer, et à quoi servira
    l'enregistrement ;
 2. **comprendre** : la chaîne, les limites (interdits, incidents, escalades),
@@ -161,7 +173,9 @@ s'il est nouveau), jamais par son nom ni par son dossier. Présente-les comme
 une liste à valider ; ne modifie `metiers/<métier>/fiche.md` qu'après accord de
 Lionel. Une remontée change le statut d'une ligne existante (`hypothèse` →
 `déclaré` ou `constaté`, `constaté` → `confirmé`) plutôt que d'en ajouter une
-en double.
+en double. Une ligne qui se retrouve dans la fiche d'un **autre** métier est
+peut-être une règle de méthode : signale-la, pour `methode/` (même test, un
+étage plus haut : `methode/socle.md` § Méthode ou métier ?).
 
 **5. Les incohérences** : un interdit sans test, un test sans interdit, une
 brique ou un connecteur qui écrit sans interdit qui le borne, un objectif sans

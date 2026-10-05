@@ -14,7 +14,8 @@ main.
 
 | Couche | Contenu | Où | Réutilisable |
 |---|---|---|---|
-| **Moteur** | boucle agent, hooks, journaux, escalade | (à venir) — `caracole-ai/agent-guardrails` en est l'amorce | tous métiers |
+| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | (à venir) — forme concrète dans `REFLEXIONS.md` (piste A) et `presentation/` ; `caracole-ai/agent-guardrails` en est l'amorce | tous métiers |
+| **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
 | **Client** | données, exceptions, savoir tacite, seuils | `clients/<client>/` — **jamais versionné** | ce client seul |
 
@@ -26,14 +27,41 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
 - `GRILLE.md` — la grille d'une fiche métier : neuf rubriques (les bornes, le
   bon résultat et les données, les briques à proposer), les statuts d'un fait,
   la règle qui sépare le métier du client.
-- `metiers/<métier>/fiche.md` — la couche métier d'un secteur, remplie selon
-  la grille.
-  - `securite-privee/` — première cible (NAF 80.10Z), 2026-09-29 ; avec
-    deux instantanés datés : `recherche-2026-09-29.md` (la recherche
-    documentaire) et `verification-2026-09-29.md` (sa relecture à la source,
-    qui fait foi en cas d'écart et d'où viennent les lignes `texte` ✓), et
-    `guide-entretien.md`, la vue de la fiche dans l'ordre d'un rendez-vous,
-    à lire sur place.
+- `REFLEXIONS.md` — le fil de la réflexion sur le système : décisions,
+  enseignements, pistes ouvertes, questions à trancher. À relire en début de
+  séance.
+- `methode/` — ce qui vaut dans au moins deux métiers, écrit une fois (établi
+  le 2026-09-30 en croisant les quatre métiers) :
+  - `socle.md` : les règles communes à tous les outils (G-01 à G-07), le
+    temps, les faits communs (facturation électronique, AI Act, CLOUD Act,
+    sous-traitance), le tronc commun des questions d'entretien ;
+  - `archetypes.md` : les cinq sortes de travail, leur présence par métier,
+    leurs interdits et tests types, leurs questions « si…, alors… ». Veiller
+    est le seul présent partout : c'est le premier pilote par défaut.
+- `metiers/<métier>/` — la couche métier d'un secteur :
+  - `fiche.md`, remplie selon la grille : fait foi ;
+  - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
+    instantanés datés, d'où viennent les lignes `texte` ;
+  - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel
+    et le premier rendez-vous), `entretien.md` (le dirigeant, pour le devis),
+    `observation.md` (la journée sur place, avec ses branches).
+
+  Les quatre métiers des pages du site :
+  - `securite-privee/` — première cible (NAF 80.10Z), 2026-09-29 ; la seule
+    fiche dont des lignes sont relues à la source (`texte` ✓,
+    `verification-2026-09-29.md`) ;
+  - `transport-logistique/` — cible : le commissionnaire-affréteur (52.29B),
+    puis le transporteur routier ;
+  - `bureaux-etudes/` — bureaux d'études et laboratoires (71.12B, 71.20B) ;
+    AFNOR s'oppose à ce qu'une IA lise ses normes ;
+  - `avocats-affaires/` — prescripteurs et démonstration d'Attendu, pas une
+    cible d'appels (arbitrage du 2026-09-22).
+- `presentation/` — la page « Schéma du harnais » (2026-10-05) : le
+  fonctionnement complet du moteur tel que décidé dans `REFLEXIONS.md`, pour
+  la mini-conférence et pour validation avant le plan ; `harness-figure.js`
+  est le port autonome de la figure animée du site (`smart-tailor`), à
+  régénérer depuis la fiche quand la piste G sera faite. Publiée sur
+  claude.ai (lien dans la conversation du 2026-10-05).
 - `clients/` — les notes d'entretien, une par client, et `index.md`, la table
   des lettres (client A, client B) sous lesquelles les fiches les citent.
   Ignoré par git (voir `.gitignore`) : ce que dit un client chez lui ne part
@@ -46,9 +74,13 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
 
 ## Le déroulé d'un rendez-vous
 
-1. **La veille** : le skill adapte le guide d'entretien du métier au client.
-2. **Sur place** : le guide se lit dans l'ordre ; l'entretien s'enregistre
-   avec l'accord de chaque présent ; les briques se proposent en dernier.
+0. **L'appel** : `prospection.md` du métier ; son seul but est le premier
+   rendez-vous.
+1. **La veille** : le skill adapte au client `entretien.md` et
+   `observation.md` du métier.
+2. **Sur place** : l'entretien du dirigeant, puis la journée d'observation ;
+   tout s'enregistre avec l'accord de chaque présent ; les briques se
+   proposent en dernier.
 3. **Après** : la transcription donne `clients/<slug>/entretien-….md` (la
    grille remplie) et `clients/<slug>/regles-a-valider-….md` (les règles, dans
    les mots du client, chacune avec sa citation), vérifiés par le script.
@@ -56,7 +88,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
    prix, les conditions et les mentions du devis sont posés par le fondateur,
    jamais par le skill.
 5. **Le métier s'enrichit** : ce qui vaut chez un concurrent remonte dans la
-   fiche, sans nom ni chiffre du client, après accord.
+   fiche, sans nom ni chiffre du client, après accord. Ce qui se retrouve
+   dans deux métiers remonte dans `methode/`.
 
 ## Règles
 

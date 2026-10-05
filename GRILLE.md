@@ -7,10 +7,17 @@ en trois temps :
 2. ce que la prospection a déjà appris (`../reperage`) ;
 3. ce que les clients racontent sur place.
 
-À côté de la fiche, un métier peut avoir un **guide d'entretien**
-(`metiers/<métier>/guide-entretien.md`) : les mêmes questions dans l'ordre d'un
-rendez-vous, à lire sur place. La fiche fait foi ; le guide en est une vue, et
-se reprend quand la fiche change.
+À côté de la fiche, un métier a trois **vues pour le terrain**, à lire sur
+place : `prospection.md` (l'appel et le premier rendez-vous), `entretien.md`
+(ce qu'il faut obtenir du dirigeant pour le devis) et `observation.md` (le
+questionnaire complet de la journée, avec ses branches « si…, alors… »). La
+fiche fait foi ; les vues en dérivent, et se reprennent quand elle change.
+
+Une fiche ne porte que ce qui est propre à son métier. Ce qui vaut dans au
+moins deux métiers vit dans `methode/` : les règles communes à tous les outils
+(G-01 à G-07), le temps, les faits communs et le tronc commun des questions
+(`socle.md`), les sortes de travail et leurs questions (`archetypes.md`). La
+fiche dit en tête quels archétypes elle combine, et y renvoie.
 
 Elle a neuf rubriques, en trois blocs :
 - **les bornes** (0 à 5) : la chaîne, puis ce qui ne doit jamais arriver, les
