@@ -2,9 +2,16 @@
 // Sans argument : tous les métiers qui ont un registre.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { regenererFiche } from '../regles/fiche'
-import { chargerRegistre, codesCites, FICHIER_REGLES, incoherences } from '../regles/registre'
+import {
+  type CodeMetier,
+  chargerRegistre,
+  codesCites,
+  FICHIER_REGLES,
+  incoherences,
+  incoherencesDuCode,
+} from '../regles/registre'
 import type { Registre } from '../regles/schema'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
@@ -64,6 +71,18 @@ for (const dossier of dossiers(args)) {
     console.log(`${nom} : fiche ${regeneree === fiche ? 'déjà à jour' : 'régénérée'}`)
   } else if (commande === 'verifier') {
     const erreurs = [...incoherences(registre), ...codesOrphelins(dossier, registre)]
+    const cheminCode = join(dossier, 'code', 'src', 'index.ts')
+    if (existsSync(cheminCode)) {
+      const code = (await import(pathToFileURL(cheminCode).href)) as CodeMetier
+      erreurs.push(...incoherencesDuCode(registre, code))
+      for (const c of code.CONTROLES) {
+        if (c.nonCouvert?.length)
+          console.log(
+            `${nom} : ${c.regle} codé en partie, non couvert : ${c.nonCouvert.join(' ; ')}`,
+          )
+      }
+      console.log(`${nom} : contrôles codés : ${code.CONTROLES.map((c) => c.regle).join(', ')}`)
+    }
     if (regeneree !== fiche)
       erreurs.push(
         'fiche.md a dérivé du registre : lancer pnpm registre:generer, ou reporter la modification dans le registre',

@@ -54,8 +54,11 @@ la modification du planning une semaine avant. L'article 7 de la convention
 collective, dans sa version du 01/07/2026, rappelle les 11 h de repos légal,
 fixe 7 jours pour modifier le cycle, 48 h pour un ajustement ponctuel, et un
 contingent de 329 h d'heures supplémentaires contre 288 h en 1993. Lequel
-s'applique quand ils divergent est une question de droit : **à un juriste
-avant qu'I-05 ou I-06 ne bloque quoi que ce soit.**
+s'applique quand ils divergent est une question de droit, pour un juriste.
+**En attendant (décision du 2026-10-05), le moteur décide par la loi générale
+et signale les autres textes en note** ; la politique du client, recueillie
+au premier rendez-vous, pourra désigner un autre texte de référence. I-06
+ne bloque rien avant l'avis du juriste.
 
 **R631-15 a changé le 01/10/2026** (décret 2025-1344) : l'employeur déclare
 ses agents dans **Dracar Ultimate**, le téléservice du CNAPS ouvert fin
@@ -135,7 +138,10 @@ confirmés dès les premiers entretiens (la source devient alors « client A, da
 | T-06 | un SSIAP 1 dont la date anniversaire du diplôme est passée sans recyclage | on l'affecte à un poste incendie | refus, avec le motif « recyclage échu, remise à niveau nécessaire » | I-04 | `hypothèse` | conçu depuis l'interdit |
 | T-06b | un SSIAP 1 à jour de son recyclage, qui ne justifie que de 900 h d'activité sur les 36 derniers mois | on l'affecte à un poste incendie | refus : moins de 1 607 h, remise à niveau nécessaire | I-04 | `hypothèse` | conçu depuis l'interdit |
 | T-06c | un SSIAP 2 à jour, jamais affecté à cet établissement | on l'affecte comme chef d'équipe | ses trois premières périodes y sont planifiées en doublure | I-04 | `hypothèse` | conçu depuis l'interdit |
-| T-07 | un agent qui sort d'une vacation de nuit à 7 h | on lui propose une vacation qui commence à 15 h le même jour | refus : 8 h de repos, sous chacun des minimums en vigueur (12 h, 11 h, 10 h). Le cas frontière (11 h 30) attend l'avis juridique | I-05 | `hypothèse` | conçu depuis l'interdit |
+| T-07 | un agent qui sort d'une vacation de nuit à 7 h | on lui propose une vacation qui commence à 15 h le même jour | refus : 8 h de repos, sous chacun des minimums en vigueur (12 h, 11 h, 10 h). Les cas frontière sont T-07b (11 h 30) et T-07d (10 h 30 au passage de nuit à jour) | I-05 | `hypothèse` | conçu depuis l'interdit |
+| T-07b | un agent qui sort d'une vacation de nuit à 7 h | on lui propose une vacation de jour qui commence à 18 h 30 le même jour | accepté : 11 h 30 de repos, au-dessus des 11 h de la loi, qui décide ; une note signale que l'accord du 18/05/1993 prévoit 12 h | I-05 | `hypothèse` | conçu depuis l'interdit |
+| T-07c | un agent qui sort d'une vacation de nuit à 7 h | on lui propose une vacation de jour qui commence à 20 h le même jour | accepté : 13 h de repos, au-dessus de chacun des minimums en vigueur | I-05 | `hypothèse` | conçu depuis l'interdit |
+| T-07d | un agent qui sort d'une vacation de nuit à 7 h | on lui propose une vacation de jour qui commence à 17 h 30 le même jour | refus : 10 h 30 de repos, sous les 11 h de la loi, qui décide ; une note signale que la CCN art. 7.01 admet 10 h au passage de nuit à jour | I-05 | `hypothèse` | conçu depuis l'interdit |
 | T-08 | un remplacement à pourvoir pour le soir même | un agent accepte au téléphone | le planning n'est validé qu'une fois son accord enregistré. Le texte exige un accord exprès ; en garder une trace écrite est un choix de conception | I-06 | `hypothèse` | conçu depuis l'interdit |
 | T-08b | une prestation supplémentaire demandée par le client pour le lendemain | un agent accepte au téléphone | l'affectation attend son accord écrit et contresigné | I-06 | `hypothèse` | conçu depuis l'interdit |
 | T-09 | une chaîne : entrepreneur principal → sous-traitant A (rang 1) → sous-traitant B (rang 2) | B veut confier une partie de la mission à C | refus : un rang 3 est interdit | I-07 | `hypothèse` | conçu depuis l'interdit |
@@ -299,13 +305,15 @@ Le client dira ce qu'il **applique**, pas ce qui est **dû**.
 - **Articulation de l'accord de 1993 et de l'article 7 de la CCN** (version du
   01/07/2026) : repos entre deux services (12 h ou 11 h), délai de
   modification (une semaine, ou 7 jours et 48 h), contingent d'heures
-  supplémentaires (288 h ou 329 h). À un juriste, avant qu'I-05 ou I-06 ne
-  bloque. En attendant (décidé le 2026-10-05, `REFLEXIONS.md`) : chaque
-  texte est une lecture de la règle ; le moteur refuse quand toutes les
-  lectures concluent à la violation, et rend « à vérifier » quand une seule
-  le fait. À verser au dossier : l'accord de 1993 ne vise que les agents
-  d'exploitation et les techniciens ; la CCN 7.07.3 ne protège le refus que
-  « pour raisons justifiées ».
+  supplémentaires (288 h ou 329 h). À un juriste. En attendant (décidé le
+  2026-10-05, `REFLEXIONS.md`) : chaque texte est une lecture de la règle,
+  la loi générale est la lecture de référence et décide seule du verdict
+  (11 h de repos, L3131-1), les autres textes sont signalés en note quand
+  ils concluent autrement. L'accord de 1993 et la CCN sont étendus, donc
+  obligatoires pour toute entreprise de la branche : la politique du
+  dirigeant dit ce qu'il applique, pas ce qui est dû. À verser au dossier :
+  l'accord de 1993 ne vise que les agents d'exploitation et les techniciens ;
+  la CCN 7.07.3 ne protège le refus que « pour raisons justifiées ».
 - Validité de l'accord de 1993 : il se dit conclu pour 3 ans (art. 8), et
   Légifrance le marque en vigueur.
 - Le délai de 10 jours laissé au salarié pour renvoyer son avenant de reprise :
@@ -316,9 +324,18 @@ Le client dira ce qu'il **applique**, pas ce qui est **dû**.
   table poste → activité d'I-02 reste `texte` sans ✓.
 - Soc. 7 janvier 2026 (n° 24-15.367), citée par l'arrêt du 16/09/2026 : non
   lue.
+- Une carte professionnelle (ou un recyclage) qui expire pendant une
+  vacation de nuit : valide « à la date de la vacation » au début, ou sur
+  toute sa durée ? Le moteur rend « à vérifier » (T-02, V-3).
+- Un poste purement SSIAP exige-t-il une carte professionnelle ? Le moteur
+  suppose que non, sur le référentiel de contrôle du CNAPS (p. 3) : à
+  confirmer.
 - Les quatre questions de droit de la brique B-02 (§ 8).
 - Non relus à la source : L612-2, R631-21, R631-23, CCH R143-44, R4512-13,
-  MS 46, et les majorations de nuit, de dimanche et de jours fériés.
+  MS 46, les majorations de nuit, de dimanche et de jours fériés, et le
+  Code du travail sur lequel le moteur s'appuie : L3131-1 (11 h de repos,
+  lecture de référence d'I-05), L3121-18 et L3121-19 (la durée quotidienne
+  portée à 12 h par accord).
 
 ### Dirigeant
 - « Vous avez déjà eu un contrôle CNAPS ? Qu'est-ce qu'ils ont regardé ? Et

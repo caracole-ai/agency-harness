@@ -12,6 +12,7 @@ interdits:
     statut: texte
     relu: 2026-10-05
     source: R631-15 (version du 01/10/2026, al. 1) ; R612-13 ; R612-17
+    moment: pre-tool
   - id: I-02
     interdit: Aucun agent n'est affecté à un poste dont l'**activité** ne figure pas parmi celles au titre desquelles sa carte a été délivrée (surveillance humaine ou gardiennage, télésurveillance, avec chien, détection d'explosifs avec chien, avec arme, surveillance renforcée, vidéoprotection…) ; le SSIAP n'en est pas une, c'est un diplôme (I-04)
     etapes:
@@ -23,6 +24,7 @@ interdits:
     relu: 2026-10-05
     suite: "(règle) ; `texte` (table poste → activité : arrêté du 01/09/2025, art. 4 ; l'arrêté visé par R612-14, 2° n'est pas identifié)"
     source: R631-15, al. 1 et 3 ; R612-16, 3° ; R612-18, 1° ; L612-20 ; Rapport CNAPS 2024, p. 32
+    moment: pre-tool
   - id: I-03
     interdit: Aucun agent en poste sans la **carte professionnelle propre à l'entreprise** remise par l'employeur (photo récente, identité et activités, chiens le cas échéant, employeur et son autorisation, n° de carte CNAPS), présentée à toute réquisition d'un agent de l'autorité publique et restituée à la fin du contrat
     etapes:
@@ -33,6 +35,7 @@ interdits:
     statut: texte
     relu: 2026-10-05
     source: R612-18 ; Rapport CNAPS 2024
+    moment: pre-tool
   - id: I-04
     interdit: "Aucun poste incendie tenu sans : le **diplôme SSIAP du niveau requis** ; le **recyclage triennal** fait au plus tard à la date anniversaire du diplôme ; **1 607 h d'activité sur les 36 derniers mois**, sinon remise à niveau ; le **secourisme** recyclé tous les 2 ans ; l'**habilitation électrique** ; et, dans un nouvel établissement, les périodes en **doublure** (2, ou 3 pour un chef d'équipe)"
     etapes:
@@ -43,6 +46,13 @@ interdits:
     statut: texte
     relu: 2026-10-05
     source: arrêté du 02/05/2005, art. 3 et 7
+    moment: pre-tool
+    parametres:
+      recyclage_ssiap_ans: 3
+      heures_activite_36_mois_min: 1607
+      recyclage_secourisme_ans: 2
+      doublures: 2
+      doublures_chef_equipe: 3
   - id: I-05
     interdit: Aucun planning ne dépasse **12 h de travail par jour**, **13 h d'amplitude**, **48 h par semaine** et **46 h en moyenne sur 12 semaines** ; aucun ne laisse moins que le **repos minimal entre deux services** (12 h selon l'accord de 1993, 11 h de repos légal rappelé par la CCN, 10 h au passage d'un service de nuit à un service de jour) ni moins de **24 h de repos après 48 h** de travail
     etapes:
@@ -54,6 +64,26 @@ interdits:
     relu: 2026-10-05
     avertissement: "repos de 12 h ou 11 h : à trancher par un juriste"
     source: accord du 18/05/1993, art. 1 et 2 ; CCN art. 7.01, 7.08, 7.09, 7.12
+    moment: pre-tool
+    parametres:
+      duree_max_h: 12
+    lectures:
+      - id: loi
+        reference: true
+        source: C. trav. L3131-1 (11 h de repos quotidien), tel que rappelé par la CCN art. 7.12 et l'avenant n° 2, art. 4
+        parametres:
+          repos_min_h: 11
+          repos_passage_nuit_jour_h: 11
+      - id: accord-1993
+        source: accord du 18/05/1993, art. 2 (12 h entre deux services)
+        parametres:
+          repos_min_h: 12
+          repos_passage_nuit_jour_h: 12
+      - id: ccn-7-01
+        source: CCN art. 7.01 (10 h au passage d'un service de nuit à un service de jour, ou inversement)
+        parametres:
+          repos_min_h: 11
+          repos_passage_nuit_jour_h: 10
   - id: I-06
     interdit: Aucune modification de planning notifiée moins de **7 jours** avant (changement du cycle) ou **48 h** avant (ajustement ponctuel en heures supplémentaires) sans l'**accord exprès** du salarié ; pour une prestation supplémentaire demandée par le client, cet accord est **écrit et contresigné** ; un refus n'entraîne aucune sanction
     etapes:
@@ -201,6 +231,7 @@ interdits:
     relu: 2026-10-05
     suite: "(en vigueur depuis le 01/10/2026) ; « au moins une fois par mois, et avant toute affectation sur un grand événement » : doctrine du CNAPS, pas un texte"
     source: R631-15, version du 01/10/2026 (décret 2025-1344) ; R611-2-1 ; FAQ Dracar Ultimate du CNAPS
+    moment: pre-tool
   - id: I-21
     interdit: Une demande du client sur les **références de carte professionnelle** des agents qui lui sont affectés reçoit une réponse **sans délai**
     etapes:

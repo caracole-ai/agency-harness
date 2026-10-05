@@ -36,12 +36,16 @@ ci-dessous (contestable, voir « Décisions »).
    - `texte` ✓ → peut rendre `refus` ;
    - `texte` sans ✓ → au plus `à vérifier` tant qu'il n'est pas relu ;
    - `hypothèse` → pas de contrôle, une question.
-   Et une règle ⚠ (deux textes en vigueur) porte **plusieurs lectures** :
-   `refus` si toutes les lectures concluent à la violation, `à vérifier` si
-   une seule le fait. Repos de 8 h : refus (sous 12, 11 et 10 h). Repos de
-   11 h 30 : à vérifier. Le juriste sort du chemin critique sans qu'on
-   tranche à sa place ; c'est la piste B rendue générique, et la même forme
-   sert au dimanche de L133-3 (transport) ou aux 5/10 ans (avocats).
+   Et une règle ⚠ (deux textes en vigueur) porte **plusieurs lectures**,
+   dont **une de référence** qui décide seule du verdict : par défaut la loi
+   générale. Les autres sont signalées en note quand elles concluent
+   autrement (décision de Lionel, 2026-10-05, qui remplace « refus si toutes
+   les lectures violent »). Repos de 8 h : refus. 11 h 30 : ok, avec la note
+   de l'accord de 1993 (12 h). 10 h 30 au passage de nuit à jour : refus,
+   avec la note de la CCN 7.01 (10 h). La config client pourra désigner une
+   autre référence : sa politique, recueillie au premier rendez-vous. La
+   même forme sert au dimanche de L133-3 (transport) ou aux 5/10 ans
+   (avocats).
 
 3. **Chaque composant dit son étage, et la généricité se prouve par des
    tests d'autres métiers, pas par du code d'autres métiers.** Le calendrier
@@ -144,9 +148,14 @@ briques restent en prose jusqu'à ce qu'un composant en ait besoin.
 - Un interdit = une fonction pure `(contexte) → Verdict`, rattachée à son ID ;
   le moteur plafonne le verdict selon le statut (idée 2), jamais la fonction.
 - Périmètre : les interdits que Veiller et le désistement exigent — I-01,
-  I-02, I-03, I-04, I-05 (⚠, trois lectures), I-17, I-19, I-20 (⚠). I-06
-  attend la phase 4 (il lui faut l'historique des modifications et des
-  accords). Les autres attendent leur brique.
+  I-02, I-03, I-04, I-05 (⚠, lecture de référence et lectures signalées),
+  I-20. **Fait le 2026-10-05**, avec trois écarts : I-17 passe en phase 4
+  (c'est une alerte d'échéance, pas un verdict sur une affectation) ; I-19
+  reste hors périmètre (la paie, B-06) ; I-05 est codé en partie (repos
+  minimal, durée maximale), le reste (amplitude, 48 h par semaine, 46 h sur
+  12 semaines, repos après 48 h) est déclaré `nonCouvert` et affiché par
+  `registre:verifier`. I-06 attend la phase 5 (il lui faut l'historique des
+  modifications et des accords). Les autres attendent leur brique.
 - Connecteur de lecture : un adaptateur CSV « format agence » vers le modèle
   canonique. On n'a vu aucun tableur client : ce format est un échafaudage,
   le vrai adaptateur s'écrira chez le premier client, le modèle canonique ne
@@ -205,7 +214,8 @@ place dans REFLEXIONS ; aucun ne bloque les phases 0 à 5.
 |---|---|
 | Code dans ce dépôt, une couche = un dossier | la fiche et le code qui l'applique se diffent ensemble ; le registre vérifie les deux dans le même `pnpm check` |
 | TypeScript, pnpm, zod, Biome, Vitest | cohérence avec Attendu ; zod et MCP natifs |
-| Règle ⚠ = plusieurs lectures, `refus` seulement si toutes violent | avance sans le juriste, sans trancher à sa place ; générique |
+| ~~Règle ⚠ = plusieurs lectures, `refus` seulement si toutes violent~~ | abandonné le 2026-10-05 par Lionel |
+| Règle ⚠ = une lecture de référence (la loi générale) qui décide, les autres en note | on se fie à la loi générale, on signale les autres textes ; la politique du client tranchera au premier rendez-vous |
 | Statut → verdict maximal, appliqué par le moteur | une hypothèse ne peut pas bloquer, même par erreur de code |
 | Registre limité aux rubriques 1, 2, 4 | ce que le moteur lit ; le reste quand un composant le demande |
 | Identité d'écriture du moteur + jeton par défaut, compte de l'humain en option de config | les deux rendent G-06 visible ; la variante forte se choisit par client |
@@ -239,7 +249,8 @@ G partielle, B posée, décisions ci-dessus datées du 2026-10-05), un
 
 - `pnpm check` vert : Biome, `tsc --noEmit`, Vitest, `verifier-registre`.
 - Chaque T-xx des interdits couverts rejoué depuis son YAML ; I-05 testé sur
-  8 h (refus), 11 h 30 (à vérifier), 13 h (ok).
+  8 h (refus), 11 h 30 (ok + note), 10 h 30 au passage de nuit à jour
+  (refus + note), 13 h (ok).
 - Calendrier : tests L133-3, CMR 30, CPC 640-643, nuit du 25/10/2026
   (passage à l'heure d'hiver), vacation 21 h–7 h.
 - `pnpm veiller` sur `exemples/client-fictif` : rapport relu à l'œil, chaque

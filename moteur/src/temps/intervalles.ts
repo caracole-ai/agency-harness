@@ -51,16 +51,21 @@ function minutesDans(intervalles: Intervalle[], fenetre: Intervalle): number {
 export const heuresDans = (intervalles: Intervalle[], fenetre: Intervalle) =>
   minutesDans(intervalles, fenetre) / 60
 
-/** Une période de validité d'un titre, bornes incluses, en dates civiles. */
+/**
+ * Une période de validité d'un titre, bornes incluses, en dates civiles.
+ * Sans `au`, elle court jusqu'à nouvel ordre (un récépissé vaut jusqu'à la
+ * décision, R612-17).
+ */
 export interface Validite {
   du: Temporal.PlainDate
-  au: Temporal.PlainDate
+  au?: Temporal.PlainDate
 }
 
 export function valideLe(validites: Validite[], date: Temporal.PlainDate): boolean {
   return validites.some(
     (v) =>
-      Temporal.PlainDate.compare(v.du, date) <= 0 && Temporal.PlainDate.compare(date, v.au) <= 0,
+      Temporal.PlainDate.compare(v.du, date) <= 0 &&
+      (v.au === undefined || Temporal.PlainDate.compare(date, v.au) <= 0),
   )
 }
 
@@ -73,10 +78,14 @@ export type Couverture = 'entière' | 'partielle' | 'aucune'
  */
 export function couverture(validites: Validite[], i: Intervalle): Couverture {
   const enInstants = validites
-    .map((v) => ({
-      debut: v.du.toZonedDateTime({ timeZone: FUSEAU }),
-      fin: v.au.add({ days: 1 }).toZonedDateTime({ timeZone: FUSEAU }),
-    }))
+    .map((v) => {
+      const debut = v.du.toZonedDateTime({ timeZone: FUSEAU })
+      // une validité ouverte couvre au moins jusqu'au-delà de l'intervalle examiné
+      const fin = v.au
+        ? v.au.add({ days: 1 }).toZonedDateTime({ timeZone: FUSEAU })
+        : max(debut, i.fin).add({ days: 1 })
+      return { debut, fin }
+    })
     .sort((a, b) => Temporal.ZonedDateTime.compare(a.debut, b.debut))
   // fusion des validités qui se touchent ou se chevauchent (un renouvellement qui prend la suite)
   const fusion: Intervalle[] = []

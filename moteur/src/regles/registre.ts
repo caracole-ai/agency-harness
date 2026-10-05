@@ -73,3 +73,40 @@ export function incoherences(registre: Registre): string[] {
   }
   return erreurs
 }
+
+/** Ce que le code d'un métier expose au registre (`metiers/<métier>/code/src/index.ts`). */
+export interface CodeMetier {
+  CONTROLES: { regle: string; nonCouvert?: string[] }[]
+  rejouer(scenario: Registre['scenarios'][number], registre: Registre): { ecarts: string[] }
+}
+
+/**
+ * Les incohérences entre le registre et le code qui l'applique : un contrôle
+ * sans interdit, un interdit codé que le registre dit vérifiable par un humain
+ * ou tenu pour hypothèse, un scénario d'interdit codé qui ne se rejoue pas
+ * (sans `cas` ni `cas_absent`), un scénario rejoué qui échoue.
+ */
+export function incoherencesDuCode(registre: Registre, code: CodeMetier): string[] {
+  const erreurs: string[] = []
+  const codes = new Set(code.CONTROLES.map((c) => c.regle))
+  for (const regle of codes) {
+    const interdit = registre.interdits.find((i) => i.id === regle)
+    if (!interdit) erreurs.push(`le contrôle ${regle} n'a pas d'interdit au registre`)
+    else if (!interdit.verifiable_par.startsWith('code')) {
+      erreurs.push(
+        `${regle} est codé, mais le registre le dit vérifiable par « ${interdit.verifiable_par} »`,
+      )
+    } else if (interdit.statut === 'hypothèse') {
+      erreurs.push(`${regle} est codé, mais c'est une hypothèse`)
+    }
+  }
+  for (const s of registre.scenarios) {
+    if (!s.interdits.some((i) => codes.has(i))) continue
+    if (s.cas === undefined && s.cas_absent === undefined) {
+      erreurs.push(`${s.id} couvre un interdit codé, sans cas rejouable ni cas_absent`)
+    } else if (s.cas !== undefined) {
+      for (const e of code.rejouer(s, registre).ecarts) erreurs.push(`${s.id} : ${e}`)
+    }
+  }
+  return erreurs
+}

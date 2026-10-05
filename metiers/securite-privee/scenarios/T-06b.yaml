@@ -6,3 +6,22 @@ interdits:
   - I-04
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-05"
+  agents:
+    - id: A-1
+      nom: Agent A-1
+      ssiap:
+        niveau: 1
+        diplome: "2020-03-10"
+        recyclages: ["2026-02-01"]
+        heuresActivite36Mois: 900
+        etablissementsTenus: [S-1]
+      secourisme: { qualification: "2025-06-01" }
+      habilitationElectrique: { du: "2025-01-01", au: "2028-01-01" }
+  postes:
+    - { id: P-1, site: S-1, ssiap: 1 }
+  vacations:
+    - { id: V-1, agent: A-1, poste: P-1, debut: "2026-10-07T08:00", fin: "2026-10-07T16:00" }
+  attendu:
+    - { regle: I-04, objet: V-1, verdict: refus }

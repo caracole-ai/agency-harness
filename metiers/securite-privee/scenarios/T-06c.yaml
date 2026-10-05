@@ -6,3 +6,41 @@ interdits:
   - I-04
 statut: hypothèse
 source: conçu depuis l'interdit
+# La partie contrôle : une vacation seule après trois doublures passe,
+# après deux seulement elle est refusée. Planifier les doublures relève de la phase 5.
+cas:
+  aujourdhui: "2026-10-05"
+  agents:
+    - id: A-1
+      nom: Agent A-1
+      ssiap:
+        niveau: 2
+        diplome: "2024-01-15"
+        recyclages: []
+        heuresActivite36Mois: 2000
+        etablissementsTenus: []
+      secourisme: { qualification: "2025-06-01" }
+      habilitationElectrique: { du: "2025-01-01", au: "2028-01-01" }
+    - id: A-2
+      nom: Agent A-2
+      ssiap:
+        niveau: 2
+        diplome: "2024-01-15"
+        recyclages: []
+        heuresActivite36Mois: 2000
+        etablissementsTenus: []
+      secourisme: { qualification: "2025-06-01" }
+      habilitationElectrique: { du: "2025-01-01", au: "2028-01-01" }
+  postes:
+    - { id: P-1, site: S-9, ssiap: 2 }
+  vacations:
+    - { id: V-1, agent: A-1, poste: P-1, debut: "2026-10-06T08:00", fin: "2026-10-06T16:00", doublure: true }
+    - { id: V-2, agent: A-1, poste: P-1, debut: "2026-10-07T08:00", fin: "2026-10-07T16:00", doublure: true }
+    - { id: V-3, agent: A-1, poste: P-1, debut: "2026-10-08T08:00", fin: "2026-10-08T16:00", doublure: true }
+    - { id: V-4, agent: A-1, poste: P-1, debut: "2026-10-09T08:00", fin: "2026-10-09T16:00" }
+    - { id: V-5, agent: A-2, poste: P-1, debut: "2026-10-06T08:00", fin: "2026-10-06T16:00", doublure: true }
+    - { id: V-6, agent: A-2, poste: P-1, debut: "2026-10-07T08:00", fin: "2026-10-07T16:00", doublure: true }
+    - { id: V-7, agent: A-2, poste: P-1, debut: "2026-10-08T08:00", fin: "2026-10-08T16:00" }
+  attendu:
+    - { regle: I-04, objet: V-4, verdict: ok }
+    - { regle: I-04, objet: V-7, verdict: refus }

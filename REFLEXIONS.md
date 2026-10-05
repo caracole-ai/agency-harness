@@ -30,7 +30,8 @@ spécifique.
 | 2026-10-04 | **Le coût d'inférence du client est une contrainte produit de premier rang.** On vend à des TPE/PME : la facture mensuelle de modèle ne doit pas gonfler feature après feature. Conséquences : (1) chaque feature annonce son coût d'inférence par unité (par message, par document, par jour) et son plafond mensuel avant d'être construite ; (2) le code d'abord — le modèle ne touche que ce que le code ne sait pas faire, jamais un agent en boucle, jamais une relecture du tout à chaque tour ; (3) en cascade : filtre déterministe → classifieur bon marché → LLM seulement sur ce qui reste ; (4) le moteur journalise chaque appel avec ses tokens et son coût, et le compteur par client est une alerte Veiller comme une autre. | piste A, [E] (annexe du devis) |
 | 2026-10-03 | **Le schéma du site se génère depuis la fiche** (piste G) : une seule liste de règles par métier, dont découlent les vues terrain, la figure de `smart-tailor` et le code du moteur. Jusque-là, la copie actuelle reste à la main et se relit à chaque changement de fiche. | piste G |
 | 2026-10-05 | **On construit le moteur, la sécurité privée comme premier cas**, dans l'ordre de `presentation/` § 10 : Veiller sans modèle, puis le désistement (machine à états, délégation, jeton), puis le modèle aux bords. Code dans ce dépôt, une couche par dossier ; TypeScript, pnpm, zod, Biome, Vitest (cohérence avec Attendu). | `PLAN.md` |
-| 2026-10-05 | **Le statut d'une règle borne son verdict, appliqué par le moteur** : `texte` ✓ peut refuser ; `texte` sans ✓ rend au plus `à vérifier` ; `hypothèse` ne devient pas un contrôle. Une règle ⚠ porte plusieurs **lectures** : `refus` si toutes concluent à la violation, `à vérifier` si une seule. Le juriste sort du chemin critique sans qu'on tranche à sa place (repos de 8 h : refus ; de 11 h 30 : à vérifier). C'est la piste B rendue générique. | `PLAN.md`, piste A |
+| 2026-10-05 | **Le statut d'une règle borne son verdict, appliqué par le moteur** : `texte` ✓ peut refuser ; `texte` sans ✓ rend au plus `à vérifier` ; `hypothèse` ne devient pas un contrôle. ~~Une règle ⚠ porte plusieurs **lectures** : `refus` si toutes concluent à la violation, `à vérifier` si une seule (repos de 8 h : refus ; de 11 h 30 : à vérifier).~~ Abandonné le même jour par Lionel : on se fie à la loi générale, on signale les autres textes, et la politique du client tranchera au premier rendez-vous (ligne suivante). | `PLAN.md`, piste A |
+| 2026-10-05 | **Une règle ⚠ a une lecture de référence, qui décide seule du verdict** : par défaut la loi générale (Code du travail). Les autres textes sont des lectures signalées : quand l'une conclut autrement, le constat porte une note (« l'accord du 18/05/1993 prévoit 12 h ») et le verdict ne change pas. Plus tard, la config client pourra désigner une autre référence : c'est sa politique, recueillie au premier rendez-vous. I-05, repos : référence = 11 h (L3131-1) ; 8 h → refus ; 11 h 30 → ok, avec note de l'accord de 1993 ; 10 h 30 au passage de nuit à jour → refus, avec note de la CCN 7.01. | `moteur/src/regles/verdict.ts`, `regles.yaml` (I-05) |
 | 2026-10-05 | **Piste G réduite au registre** : on ne génère pas le corps d'une fonction depuis de la prose. Les rubriques 1, 2, 4 vivent dans `regles.yaml` et `scenarios/`, la fiche en est régénérée, et une vérification relie interdit ↔ test ↔ (bientôt) implémentation. Le reste de G (vues terrain, `harness.ts`) attend. | `moteur/src/regles/`, `GRILLE.md` |
 | 2026-10-05 | Écriture : **identité d'écriture du moteur + jeton par défaut**, le compte de l'humain qui approuve en option de config client. Pas de solveur avant B-01 : le désistement se résout par filtre puis classement. | `PLAN.md` |
 | 2026-10-03 | **Le moteur ne dépend d'aucun framework d'agent** : il s'expose en outils (MCP/API) avec ses tests ; la coque autour (agent, messagerie) est interchangeable. ~~Hermes Agent (Nous Research) comme base~~ : refusé — sa thèse (skills auto-réécrites, mémoire curée par l'agent, accès terminal central) est l'inverse d'un interdit auditable, et il n'a ni moteur de règles ni tests d'acceptation. Si un client a besoin d'un lien vers une messagerie, **on écrit le connecteur nous-mêmes** : moins de surface, pas de dépendance à un projet de labo. | piste A |
@@ -67,6 +68,15 @@ spécifique.
   31/10 contre le 02/11) ; la fiche sécurité écrit J-90 dans T-16, T-16b et
   `methode/archetypes.md`. Jours fériés (C. trav. L3133-1, L3134-13) codés
   sans relecture mot à mot : à la prochaine vérification.
+- Phase 3 : le paquet `metiers/securite-privee/code` (modèle canonique,
+  notions, contrôles I-01, I-02, I-03, I-04, I-05 en partie, I-20) ; le
+  moteur plafonne chaque verdict par le statut de sa règle, échoue fermé si
+  un contrôle lève, et décide une règle ⚠ par sa lecture de référence. Les
+  scénarios T-xx portent leurs données (`cas`) et se rejouent dans les tests
+  et dans `registre:verifier`. I-17 passe en phase 4 (Veiller), I-19 reste
+  hors périmètre (paie). I-05 ne couvre pas encore l'amplitude, les 48 h par
+  semaine, les 46 h sur 12 semaines ni le repos après 48 h : c'est affiché à
+  chaque vérification.
 - Relecture à la source du 2026-10-05
   (`metiers/securite-privee/verification-2026-10-05.md`), reportée dans le
   registre et la fiche : R631-15 en vigueur depuis le 01/10/2026, téléservice
@@ -275,7 +285,16 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
   « recherche dans les normes » : à corriger dans ce dépôt-là.
 
 **Par un juriste**
-- Sécurité : 12 h ou 11 h de repos, une semaine ou 7 jours et 48 h ; les quatre
+- Sécurité : 12 h ou 11 h de repos, une semaine ou 7 jours et 48 h. L'accord
+  de 1993 et la CCN sont **étendus**, donc obligatoires pour toute entreprise
+  de la branche : la politique du dirigeant dit ce qu'il applique, pas ce
+  qui est dû ; le moteur décide aujourd'hui par la loi générale et signale
+  les autres textes. Une carte (ou un recyclage) qui expire pendant une
+  vacation de nuit : valide « à la date de la vacation » au début, ou sur
+  toute sa durée ? (le moteur rend `à vérifier`). Un poste purement SSIAP
+  exige-t-il une carte professionnelle ? Le moteur suppose que non, sur le
+  référentiel de contrôle du CNAPS (p. 3 : le SSIAP n'est pas une activité
+  de surveillance) : à confirmer. Les quatre
   questions du remplacement (le « oui » par SMS, contacter un agent au repos,
   l'appel automatique, classer les agents selon leurs refus).
 - Bureaux d'études : la portée de l'opposition d'AFNOR ; un modèle hébergé

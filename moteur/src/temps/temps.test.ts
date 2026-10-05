@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { auPlusTardAvant, echeance, type RegleDeDecompte } from './delais'
+import { auPlusTardAvant, echeance, limitePeriodique, type RegleDeDecompte } from './delais'
 import { estFerie, joursFeries, paques } from './feries'
 import {
   couverture,
@@ -136,5 +136,32 @@ describe('validité à une date', () => {
     expect(couverture(avecRecepisse, intervalle('2026-10-11T21:00', '2026-10-12T07:00'))).toBe(
       'entière',
     )
+  })
+})
+
+describe('obligation périodique (recyclage)', () => {
+  const diplome = Temporal.PlainDate.from('2020-03-10')
+  const trois = { ans: 3 }
+  it('sans recyclage : valide jusqu’au premier anniversaire triennal inclus', () => {
+    expect(limitePeriodique(diplome, trois, []).toString()).toBe('2023-03-10')
+  })
+  it('un recyclage avant l’échéance couvre jusqu’à la suivante', () => {
+    expect(
+      limitePeriodique(diplome, trois, [Temporal.PlainDate.from('2023-01-15')]).toString(),
+    ).toBe('2026-03-10')
+  })
+  it('le jour même de l’échéance compte encore', () => {
+    expect(
+      limitePeriodique(diplome, trois, [Temporal.PlainDate.from('2023-03-10')]).toString(),
+    ).toBe('2026-03-10')
+  })
+  it('un recyclage fait après une échéance dépassée ne rattrape rien', () => {
+    expect(
+      limitePeriodique(diplome, trois, [Temporal.PlainDate.from('2023-06-01')]).toString(),
+    ).toBe('2023-03-10')
+  })
+  it('deux recyclages dans la même période ne prolongent pas deux fois', () => {
+    const r = ['2022-05-01', '2022-11-01'].map((x) => Temporal.PlainDate.from(x))
+    expect(limitePeriodique(diplome, trois, r).toString()).toBe('2026-03-10')
   })
 })

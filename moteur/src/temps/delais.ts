@@ -1,5 +1,5 @@
 import { estFerie, type OptionsFeries } from './feries'
-import type { Temporal } from './temporal'
+import { Temporal } from './temporal'
 
 // Le calcul d'un délai (`methode/socle.md` § 2). Chaque métier ne fournit que
 // sa règle de décompte ; les cas limites se codent une fois, ici.
@@ -70,4 +70,36 @@ export function echeance(
 export function auPlusTardAvant(echeance: Temporal.PlainDate, duree: Duree): Temporal.PlainDate {
   if ('jours' in duree) return echeance.subtract({ days: duree.jours })
   return echeance.subtract('mois' in duree ? { months: duree.mois } : { years: duree.ans })
+}
+
+const multiple = (date: Temporal.PlainDate, duree: Duree, k: number) =>
+  'jours' in duree
+    ? date.add({ days: duree.jours * k })
+    : 'mois' in duree
+      ? date.add({ months: duree.mois * k })
+      : date.add({ years: duree.ans * k })
+
+/**
+ * Le dernier jour valide d'une obligation périodique due au plus tard à
+ * chaque date anniversaire de `base` (recyclage SSIAP : tous les 3 ans depuis
+ * le diplôme ; secourisme : tous les 2 ans depuis sa qualification ; arrêté du
+ * 02/05/2005, art. 7). Le jour de l'échéance est encore valide. Une réalisation
+ * faite au plus tard à l'échéance k couvre jusqu'à l'échéance k + 1 ; une
+ * réalisation faite après une échéance dépassée ne rattrape rien (le texte
+ * exige alors une remise à niveau, qui n'est pas modélisée ici).
+ */
+export function limitePeriodique(
+  base: Temporal.PlainDate,
+  periode: Duree,
+  realisations: Temporal.PlainDate[],
+): Temporal.PlainDate {
+  let limite = multiple(base, periode, 1)
+  for (const r of [...realisations].sort(Temporal.PlainDate.compare)) {
+    if (Temporal.PlainDate.compare(r, limite) > 0) break
+    let k = 1
+    while (Temporal.PlainDate.compare(multiple(base, periode, k), r) < 0) k++
+    const couvreJusqua = multiple(base, periode, k + 1)
+    if (Temporal.PlainDate.compare(couvreJusqua, limite) > 0) limite = couvreJusqua
+  }
+  return limite
 }

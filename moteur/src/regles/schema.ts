@@ -28,10 +28,17 @@ const reluSeulementSurTexte = (q: { statut: string; relu?: string | undefined })
   q.relu === undefined || q.statut === 'texte'
 const MESSAGE_RELU = 'seule une ligne `texte` peut être relue à la source (✓)'
 
-/** Une lecture d'une règle ⚠ : un texte en vigueur et les paramètres qu'il fixe. */
+/**
+ * Une lecture d'une règle ⚠ : un texte en vigueur et les paramètres qu'il
+ * fixe. Une seule est la référence, qui décide du verdict (par défaut la loi
+ * générale) ; les autres sont signalées en note quand elles concluent
+ * autrement. La config client pourra désigner une autre référence : c'est sa
+ * politique, recueillie au premier rendez-vous (décision du 2026-10-05).
+ */
 export const Lecture = z.object({
   id: z.string(),
   source: z.string(),
+  reference: z.boolean().optional(),
   parametres: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])),
 })
 
@@ -46,9 +53,14 @@ export const Interdit = z
     source: z.string(),
     moment: z.enum(MOMENTS).optional(),
     levee: z.string().default(LEVEE_PAR_DEFAUT),
+    /** Paramètres communs à toutes les lectures ; une lecture les surcharge. */
+    parametres: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).optional(),
     lectures: z.array(Lecture).min(2).optional(),
   })
   .refine(reluSeulementSurTexte, MESSAGE_RELU)
+  .refine((i) => !i.lectures || i.lectures.filter((l) => l.reference).length === 1, {
+    message: 'des lectures déclarées en portent exactement une de référence (`reference: true`)',
+  })
 
 export const Escalade = z
   .object({
@@ -71,6 +83,10 @@ export const Scenario = z
     interdits: z.array(z.string().regex(/^I-\d{2}$/)).min(1),
     ...qualification,
     source: z.string(),
+    /** Les données du cas, rejouables ; leur forme est celle du métier, qui les valide. */
+    cas: z.unknown().optional(),
+    /** Pourquoi ce scénario ne se rejoue pas encore, quand il couvre un interdit codé. */
+    cas_absent: z.string().optional(),
   })
   .refine(reluSeulementSurTexte, MESSAGE_RELU)
 

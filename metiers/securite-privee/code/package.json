@@ -1,0 +1,16 @@
+{
+  "name": "@harnais/securite-privee",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@harnais/moteur": "workspace:*",
+    "zod": "4.6.3"
+  }
+}

@@ -6,3 +6,17 @@ interdits:
   - I-01
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-05"
+  agents:
+    - id: A-1
+      nom: Agent A
+      cartePro:
+        activites: [surveillance-humaine]
+        validites: [{ du: "2021-10-09", au: "2026-10-08" }]
+  postes:
+    - { id: P-1, site: S-1, activite: surveillance-humaine }
+  vacations:
+    - { id: V-1, agent: A-1, poste: P-1, debut: "2026-10-10T08:00", fin: "2026-10-10T16:00" }
+  attendu:
+    - { regle: I-01, objet: V-1, verdict: refus }

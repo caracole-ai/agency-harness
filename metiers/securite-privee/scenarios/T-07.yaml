@@ -1,8 +1,19 @@
 id: T-07
 etant_donne: un agent qui sort d'une vacation de nuit à 7 h
 quand: on lui propose une vacation qui commence à 15 h le même jour
-alors: "refus : 8 h de repos, sous chacun des minimums en vigueur (12 h, 11 h, 10 h). Le cas frontière (11 h 30) attend l'avis juridique"
+alors: "refus : 8 h de repos, sous chacun des minimums en vigueur (12 h, 11 h, 10 h). Les cas frontière sont T-07b (11 h 30) et T-07d (10 h 30 au passage de nuit à jour)"
 interdits:
   - I-05
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-05"
+  agents:
+    - { id: A-1, nom: Agent A }
+  postes:
+    - { id: P-1, site: S-1, activite: surveillance-humaine }
+  vacations:
+    - { id: V-1, agent: A-1, poste: P-1, debut: "2026-10-05T21:00", fin: "2026-10-06T07:00", nature: nuit }
+    - { id: V-2, agent: A-1, poste: P-1, debut: "2026-10-06T15:00", fin: "2026-10-06T19:00", nature: jour }
+  attendu:
+    - { regle: I-05, objet: V-2, verdict: refus }

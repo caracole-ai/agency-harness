@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { regenererFiche, rendreStatut, rendreTable } from './fiche'
-import { codesCites, incoherences } from './registre'
+import { codesCites, incoherences, incoherencesDuCode } from './registre'
 import { Interdit, type Registre, Scenario } from './schema'
 
 const interdit = Interdit.parse({
@@ -94,5 +94,31 @@ describe('fiche', () => {
   })
   it('extrait les codes cités', () => {
     expect(codesCites('voir I-01, T-06b et G-03 ; pas AI-Act')).toEqual(['I-01', 'T-06b', 'G-03'])
+  })
+})
+
+describe('cohérence du code', () => {
+  const code = (regle = 'I-01', ecarts: string[] = []) => ({
+    CONTROLES: [{ regle }],
+    rejouer: () => ({ ecarts }),
+  })
+  it('un scénario d’interdit codé sans cas ni cas_absent', () => {
+    expect(incoherencesDuCode(registre(), code())).toContain(
+      'T-01 couvre un interdit codé, sans cas rejouable ni cas_absent',
+    )
+  })
+  it('cas_absent suffit, et un cas rejoué qui échoue est une erreur', () => {
+    expect(
+      incoherencesDuCode(registre({ scenarios: [{ ...scenario, cas_absent: 'phase 4' }] }), code()),
+    ).toEqual([])
+    const r = registre({ scenarios: [{ ...scenario, cas: {} }] })
+    expect(incoherencesDuCode(r, code('I-01', ['écart']))).toEqual(['T-01 : écart'])
+  })
+  it('un contrôle sans interdit, ou d’un interdit humain', () => {
+    expect(incoherencesDuCode(registre(), code('I-99'))).toContain(
+      "le contrôle I-99 n'a pas d'interdit au registre",
+    )
+    const humain = registre({ interdits: [{ ...interdit, verifiable_par: 'humain' }] })
+    expect(incoherencesDuCode(humain, code())[0]).toMatch(/vérifiable par « humain »/)
   })
 })

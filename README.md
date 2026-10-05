@@ -14,7 +14,7 @@ main.
 
 | Couche | Contenu | Où | Réutilisable |
 |---|---|---|---|
-| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles et le calendrier juridique (2026-10-05). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
+| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, et les premiers interdits codés de la sécurité privée (2026-10-05). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
 | **Client** | données, exceptions, savoir tacite, seuils | `clients/<client>/` — **jamais versionné** | ce client seul |
@@ -42,17 +42,25 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   premier cas (2026-10-05) : phases, décisions, vérifications.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
-  rendu des tables de la fiche), `src/cli/registre.ts`, et `src/temps/`
-  (jours fériés, décompte et report des délais, intervalles en heures
-  réelles, validité d'un titre à une date ; testé avec la sécurité, le
-  transport et les avocats).
+  rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
+  statut de la règle, lecture de référence et notes), `src/controles/`
+  (exécution des contrôles, fermée en cas d'erreur), `src/cli/registre.ts`,
+  et `src/temps/` (jours fériés, décompte et report des délais, obligations
+  périodiques, intervalles en heures réelles, validité d'un titre à une
+  date ; testé avec la sécurité, le transport et les avocats).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
     **générées** : on les modifie dans le registre, jamais dans la fiche ;
-  - `regles.yaml` (interdits, escalades) et `scenarios/T-xx.yaml` (un test
-    par fichier) : le registre, source de ces trois tables et demain des
+  - `regles.yaml` (interdits, escalades, avec leurs paramètres et leurs
+    lectures) et `scenarios/T-xx.yaml` (un test par fichier, avec ses
+    données rejouables) : le registre, source de ces trois tables et des
     contrôles du moteur. Seule la sécurité privée en a un ;
+  - `code/` : le paquet du métier (`@harnais/securite-privee`) — le modèle
+    canonique (`modele.ts`), les notions (`semantique.ts`), un contrôle par
+    interdit codé (`controles.ts` : I-01 à I-05, I-20 ; I-05 en partie) et le
+    rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et vérifie
+    que code, registre et scénarios concordent ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
   - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel

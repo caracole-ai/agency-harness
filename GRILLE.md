@@ -36,9 +36,14 @@ quittent la prose : elles vivent dans `regles.yaml` (interdits, escalades) et
 `fiche.md` sont régénérées entre des marqueurs (`pnpm registre:generer`).
 Le statut s'y découpe en champs que le moteur lit : `statut`, `relu` (la
 date de la relecture mot à mot : le ✓), `avertissement` (le ⚠) et `suite`
-(la précision libre). Trois champs n'apparaissent pas dans la fiche :
+(la précision libre). Quatre champs n'apparaissent pas dans la fiche :
 `moment` (où le contrôle s'attache), `lectures` (une règle ⚠ et les
-paramètres de chaque texte en vigueur) et `levee` (`jamais` sans mention).
+paramètres de chaque texte en vigueur, dont exactement un de référence, qui
+décide du verdict ; les autres deviennent des notes), `parametres` (les
+seuils communs à toutes les lectures) et `levee` (`jamais` sans mention).
+Un scénario porte ses données (`cas`), rejouées par les tests et par
+`registre:verifier`, ou dit pourquoi il ne se rejoue pas encore
+(`cas_absent`).
 `pnpm registre:verifier` échoue si un interdit n'a pas de test, si un code
 cité n'existe pas ou si la fiche a été modifiée à la main.
 

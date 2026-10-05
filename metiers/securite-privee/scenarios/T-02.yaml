@@ -6,3 +6,27 @@ interdits:
   - I-01
 statut: hypothèse
 source: conçu depuis l'interdit
+# V-3 commence le dernier jour de validité et finit le lendemain : le cas
+# limite d'une vacation de nuit, qui attend l'avis du juriste.
+cas:
+  aujourdhui: "2026-10-05"
+  agents:
+    - id: A-1
+      nom: Agent A
+      cartePro:
+        activites: [surveillance-humaine]
+        validites: [{ du: "2021-10-21", au: "2026-10-20" }]
+  postes:
+    - { id: P-1, site: S-1, activite: surveillance-humaine }
+  vacations:
+    - { id: V-1, agent: A-1, poste: P-1, debut: "2026-10-12T08:00", fin: "2026-10-12T16:00" }
+    - { id: V-2, agent: A-1, poste: P-1, debut: "2026-10-19T08:00", fin: "2026-10-19T16:00" }
+    - { id: V-3, agent: A-1, poste: P-1, debut: "2026-10-20T21:00", fin: "2026-10-21T07:00" }
+    - { id: V-4, agent: A-1, poste: P-1, debut: "2026-10-26T08:00", fin: "2026-10-26T16:00" }
+    - { id: V-5, agent: A-1, poste: P-1, debut: "2026-11-02T08:00", fin: "2026-11-02T16:00" }
+  attendu:
+    - { regle: I-01, objet: V-1, verdict: ok }
+    - { regle: I-01, objet: V-2, verdict: ok }
+    - { regle: I-01, objet: V-3, verdict: à vérifier }
+    - { regle: I-01, objet: V-4, verdict: refus }
+    - { regle: I-01, objet: V-5, verdict: refus }
