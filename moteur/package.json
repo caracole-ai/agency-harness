@@ -1,0 +1,17 @@
+{
+  "name": "@harnais/moteur",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@js-temporal/polyfill": "0.5.1",
+    "yaml": "2.9.1",
+    "zod": "4.6.3"
+  }
+}

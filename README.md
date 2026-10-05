@@ -14,7 +14,7 @@ main.
 
 | Couche | Contenu | Où | Réutilisable |
 |---|---|---|---|
-| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | (à venir) — forme concrète dans `REFLEXIONS.md` (piste A) et `presentation/` ; `caracole-ai/agent-guardrails` en est l'amorce | tous métiers |
+| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles et le calendrier juridique (2026-10-05). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
 | **Client** | données, exceptions, savoir tacite, seuils | `clients/<client>/` — **jamais versionné** | ce client seul |
@@ -38,8 +38,21 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   - `archetypes.md` : les cinq sortes de travail, leur présence par métier,
     leurs interdits et tests types, leurs questions « si…, alors… ». Veiller
     est le seul présent partout : c'est le premier pilote par défaut.
+- `PLAN.md` — le plan de construction du moteur, sécurité privée comme
+  premier cas (2026-10-05) : phases, décisions, vérifications.
+- `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
+  l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
+  rendu des tables de la fiche), `src/cli/registre.ts`, et `src/temps/`
+  (jours fériés, décompte et report des délais, intervalles en heures
+  réelles, validité d'un titre à une date ; testé avec la sécurité, le
+  transport et les avocats).
 - `metiers/<métier>/` — la couche métier d'un secteur :
-  - `fiche.md`, remplie selon la grille : fait foi ;
+  - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
+    registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
+    **générées** : on les modifie dans le registre, jamais dans la fiche ;
+  - `regles.yaml` (interdits, escalades) et `scenarios/T-xx.yaml` (un test
+    par fichier) : le registre, source de ces trois tables et demain des
+    contrôles du moteur. Seule la sécurité privée en a un ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
   - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel
@@ -71,6 +84,17 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   citée mot à mot ; `scripts/verifier_citations.py` contrôle que chaque
   citation existe dans la transcription. Actif quand Claude Code est lancé
   depuis ce dossier.
+
+## Commandes
+
+Node 22.12 ou plus, pnpm 10.32.1 (épinglé dans `package.json`).
+
+```sh
+pnpm install
+pnpm check               # Biome, types, tests, cohérence des registres
+pnpm registre:generer    # réécrit les tables 1, 2, 4 des fiches depuis leur registre
+pnpm registre:verifier   # identifiants, couverture interdit ↔ test, codes cités par les vues, fiche à jour
+```
 
 ## Le déroulé d'un rendez-vous
 

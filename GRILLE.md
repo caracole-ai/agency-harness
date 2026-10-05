@@ -30,6 +30,18 @@ Elle a neuf rubriques, en trois blocs :
 - **l'offre** (8) : les briques que l'agence peut construire dans ce métier, et
   les questions qui disent si l'une d'elles vaut le coup chez ce client.
 
+**Le registre.** Quand un métier passe au moteur, ses rubriques 1, 2 et 4
+quittent la prose : elles vivent dans `regles.yaml` (interdits, escalades) et
+`scenarios/T-xx.yaml` (un test par fichier), et leurs tables dans
+`fiche.md` sont régénérées entre des marqueurs (`pnpm registre:generer`).
+Le statut s'y découpe en champs que le moteur lit : `statut`, `relu` (la
+date de la relecture mot à mot : le ✓), `avertissement` (le ⚠) et `suite`
+(la précision libre). Trois champs n'apparaissent pas dans la fiche :
+`moment` (où le contrôle s'attache), `lectures` (une règle ⚠ et les
+paramètres de chaque texte en vigueur) et `levee` (`jamais` sans mention).
+`pnpm registre:verifier` échoue si un interdit n'a pas de test, si un code
+cité n'existe pas ou si la fiche a été modifiée à la main.
+
 ## Statuts d'un fait
 
 Chaque ligne porte un statut. C'est ce qui empêche une hypothèse de se

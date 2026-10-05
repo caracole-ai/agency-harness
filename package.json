@@ -1,0 +1,25 @@
+{
+  "name": "agency-harness",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "registre:generer": "tsx moteur/src/cli/registre.ts generer",
+    "registre:verifier": "tsx moteur/src/cli/registre.ts verifier",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm registre:verifier"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "@types/node": "22.20.2",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  }
+}
