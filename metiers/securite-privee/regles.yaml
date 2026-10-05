@@ -1,0 +1,306 @@
+# Rubriques 1 (interdits) et 4 (escalades) de la fiche : cette source fait foi.
+# Les tables de fiche.md en sont générées (pnpm registre:generer).
+
+interdits:
+  - id: I-01
+    interdit: Aucun agent n'est affecté à une vacation sans **carte professionnelle valide à la date de cette vacation**, ou couverte par le **récépissé** d'une demande de renouvellement complète
+    etapes:
+      - "5"
+      - "7"
+    consequence: employer sans titre valide est interdit « même pour une courte durée » ; pénalité CNAPS jusqu'à 150 000 € pour une personne morale ; sans carte valide ni récépissé, le licenciement de l'agent est fondé « par l'effet de la loi » (Cass. soc. 16/09/2026, n° 25-12.634)
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    source: R631-15 (version du 01/10/2026, al. 1) ; R612-13 ; R612-17
+  - id: I-02
+    interdit: Aucun agent n'est affecté à un poste dont l'**activité** ne figure pas parmi celles au titre desquelles sa carte a été délivrée (surveillance humaine ou gardiennage, télésurveillance, avec chien, détection d'explosifs avec chien, avec arme, surveillance renforcée, vidéoprotection…) ; le SSIAP n'en est pas une, c'est un diplôme (I-04)
+    etapes:
+      - "5"
+      - "7"
+    consequence: 2ᵉ manquement le plus relevé aux JO 2024
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    suite: "(règle) ; `texte` (table poste → activité : arrêté du 01/09/2025, art. 4 ; l'arrêté visé par R612-14, 2° n'est pas identifié)"
+    source: R631-15, al. 1 et 3 ; R612-16, 3° ; R612-18, 1° ; L612-20 ; Rapport CNAPS 2024, p. 32
+  - id: I-03
+    interdit: Aucun agent en poste sans la **carte professionnelle propre à l'entreprise** remise par l'employeur (photo récente, identité et activités, chiens le cas échéant, employeur et son autorisation, n° de carte CNAPS), présentée à toute réquisition d'un agent de l'autorité publique et restituée à la fin du contrat
+    etapes:
+      - "5"
+      - "6"
+    consequence: plus de 80 % des manquements relevés aux JO 2024
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    source: R612-18 ; Rapport CNAPS 2024
+  - id: I-04
+    interdit: "Aucun poste incendie tenu sans : le **diplôme SSIAP du niveau requis** ; le **recyclage triennal** fait au plus tard à la date anniversaire du diplôme ; **1 607 h d'activité sur les 36 derniers mois**, sinon remise à niveau ; le **secourisme** recyclé tous les 2 ans ; l'**habilitation électrique** ; et, dans un nouvel établissement, les périodes en **doublure** (2, ou 3 pour un chef d'équipe)"
+    etapes:
+      - "5"
+      - "7"
+    consequence: ERP ou IGH non conforme, responsabilité en cas de sinistre
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    source: arrêté du 02/05/2005, art. 3 et 7
+  - id: I-05
+    interdit: Aucun planning ne dépasse **12 h de travail par jour**, **13 h d'amplitude**, **48 h par semaine** et **46 h en moyenne sur 12 semaines** ; aucun ne laisse moins que le **repos minimal entre deux services** (12 h selon l'accord de 1993, 11 h de repos légal rappelé par la CCN, 10 h au passage d'un service de nuit à un service de jour) ni moins de **24 h de repos après 48 h** de travail
+    etapes:
+      - "5"
+      - "7"
+    consequence: contentieux prud'homal, contrôle
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    avertissement: "repos de 12 h ou 11 h : à trancher par un juriste"
+    source: accord du 18/05/1993, art. 1 et 2 ; CCN art. 7.01, 7.08, 7.09, 7.12
+  - id: I-06
+    interdit: Aucune modification de planning notifiée moins de **7 jours** avant (changement du cycle) ou **48 h** avant (ajustement ponctuel en heures supplémentaires) sans l'**accord exprès** du salarié ; pour une prestation supplémentaire demandée par le client, cet accord est **écrit et contresigné** ; un refus n'entraîne aucune sanction
+    etapes:
+      - "7"
+    consequence: litige salarié
+    verifiable_par: code (accord enregistré)
+    statut: texte
+    relu: 2026-10-05
+    avertissement: "l'accord de 1993 dit une semaine : à trancher avec I-05"
+    source: CCN art. 7.07.3 ; accord du 18/05/1993, art. 3
+  - id: I-07
+    interdit: "Surveillance humaine et gardiennage : sous-traitance d'**une partie seulement**, jamais de toute la prestation. Toute activité privée de sécurité : **deux rangs au plus**, le rang 2 seulement sur une justification validée par l'entrepreneur principal, et vérifiée par le donneur d'ordre ; l'identité de toute la chaîne sur chaque sous-traité ; autorisations et cartes du sous-traitant vérifiées. Les contrats antérieurs au 26/05/2022 n'y sont pas soumis"
+    etapes:
+      - "1"
+      - "2"
+      - "5"
+    consequence: les manquements du sous-traitant sont imputés à l'entreprise principale
+    verifiable_par: code (rangs, mentions, cartes) + humain (justification du rang 2)
+    statut: texte
+    relu: 2026-09-29
+    suite: (L612-5-1) ; `texte` (R631-23)
+    source: L612-5-1 ; R631-23 ; Rapport CNAPS 2024, p. 57
+  - id: I-08
+    interdit: "Tout document de l'entreprise — informatif, contractuel ou publicitaire, annonce ou correspondance : devis, contrat, courrier, site web — reproduit le **n° d'autorisation** et la phrase de L612-14 : « L'autorisation d'exercice ne confère aucune prérogative de puissance publique à l'entreprise ou aux personnes qui en bénéficient. »"
+    etapes:
+      - "1"
+      - "2"
+      - "10"
+    consequence: manquement relevé au contrôle
+    verifiable_par: code
+    statut: texte
+    relu: 2026-09-29
+    source: L612-14 ; L612-15
+  - id: I-09
+    interdit: Aucun document ne fait état de la qualité d'**ancien fonctionnaire de police ou d'ancien militaire** d'un dirigeant ou d'un salarié
+    etapes:
+      - "1"
+    consequence: manquement relevé au contrôle
+    verifiable_par: code (lexical) + humain
+    statut: texte
+    relu: 2026-09-29
+    source: L612-15
+  - id: I-10
+    interdit: Aucune offre à un **prix anormalement bas**, qui ne couvre pas les obligations sociales
+    etapes:
+      - "1"
+    consequence: sanction CNAPS (manquement ciblé en 2024)
+    verifiable_par: humain, avec une alerte calculée
+    statut: texte
+    source: R631-21 ; Rapport CNAPS 2024
+  - id: I-11
+    interdit: Aucune prestation **étrangère à la sécurité** dans une offre de surveillance ou de gardiennage (exclusivité)
+    etapes:
+      - "1"
+      - "2"
+    consequence: manquement relevé au contrôle
+    verifiable_par: humain
+    statut: texte
+    source: L612-2
+  - id: I-12
+    interdit: Aucun agent n'est employé sans avoir émargé la **version en vigueur du mémento** de l'entreprise ; chaque modification du mémento appelle un nouvel émargement de tous les agents. Le mémento est en français, tenu dans les locaux professionnels, et ne contient rien de propre à un client ou à une mission
+    etapes:
+      - "4"
+      - "6"
+    consequence: manquement relevé au contrôle
+    verifiable_par: code (émargement de la version en vigueur présent)
+    statut: texte
+    relu: 2026-10-05
+    source: R631-16
+  - id: I-13
+    interdit: "Télésurveillance : aucun appel à la police ou à la gendarmerie **sans levée de doute** documentée"
+    etapes:
+      - "6"
+    consequence: sanction jusqu'à 450 € par appel injustifié
+    verifiable_par: humain (le code peut exiger la trace de la levée de doute)
+    statut: texte
+    relu: 2026-09-29
+    source: L613-6
+  - id: I-14
+    interdit: Aucune **palpation** sans consentement exprès, hors périmètre de protection ou arrêté préfectoral, ou par un agent d'un autre sexe
+    etapes:
+      - "2"
+      - "4"
+    consequence: infraction
+    verifiable_par: humain
+    statut: texte
+    relu: 2026-09-29
+    suite: "(version du 20/08/2026 : la palpation n'a pas changé)"
+    source: L613-2
+  - id: I-15
+    interdit: "Aucun agent seul de nuit, ou en site isolé, sans **procédure de secours** : qui reçoit l'alarme, comment on écarte une fausse alerte, par où on accède au site"
+    etapes:
+      - "4"
+      - "6"
+    consequence: accident sans secours
+    verifiable_par: code (procédure rattachée au poste)
+    statut: hypothèse
+    suite: (R4512-13 non relu ; pratique de l'INRS)
+    source: R4512-13 ; INRS
+  - id: I-16
+    interdit: "Marché gagné sur un concurrent : l'entreprise entrante reprend **100 %** des transférables ayant au moins 4 ans d'ancienneté contractuelle et **85 %** des autres, arrondi à l'unité inférieure (100 % en sûreté aérienne) ; la liste des repris part sous **8 jours ouvrables** à compter des dossiers complets, avec les avenants"
+    etapes:
+      - "3"
+    consequence: contentieux
+    verifiable_par: code (critères, quotas, délai) + humain (choix parmi les autres)
+    statut: texte
+    relu: 2026-09-29
+    source: accord du 28/01/2011, art. 2.2 et 2.3.2 (l'accord du 05/03/2002 n'est plus en vigueur)
+  - id: I-17
+    interdit: Aucune **échéance réglementaire** — carte pro, MAC, recyclage SSIAP, secourisme, agrément du dirigeant — n'atteint sa date limite sans une alerte donnée assez tôt pour suivre la formation qui la conditionne (MAC, recyclage)
+    etapes:
+      - ↻
+    consequence: agent inemployable du jour au lendemain, dirigeant sans agrément ; le licenciement de l'agent reste fondé, mais l'employeur qui n'a pas organisé le MAC doit des dommages et intérêts, qui peuvent couvrir la perte de l'emploi (Cass. soc. 16/09/2026, n° 25-12.634)
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    suite: "(sauf agrément du dirigeant : `texte`)"
+    source: R612-13 ; R612-17 ; arrêté du 27/02/2017, art. 4 II et 6 II ; arrêté du 02/05/2005, art. 7 ; accord du 27/11/2017, art. 3 et 4 (le MAC relève de la formation continue de l'entreprise, sur le temps de travail, à ses frais)
+  - id: I-18
+    interdit: "Le **registre de sécurité de l'ERP** n'est jamais écrit par le harnais : il appartient à l'exploitant"
+    etapes:
+      - "6"
+      - "8"
+    consequence: responsabilité de l'exploitant engagée
+    verifiable_par: code (aucun connecteur en écriture)
+    statut: texte
+    source: CCH R143-44
+  - id: I-19
+    interdit: Aucune vacation n'est payée **moins de 6 h** (4 h jusqu'au 30/06/2026)
+    etapes:
+      - "9"
+    consequence: rappel de salaire, litige
+    verifiable_par: code
+    statut: texte
+    relu: 2026-10-05
+    source: CCN art. 7.12 (avenant n° 2 du 03/09/2025)
+  - id: I-20
+    interdit: Tout agent employé ou affecté est **déclaré dans Dracar Ultimate** (téléservice du CNAPS) ; ces informations sont tenues à jour ; la validité des titres est vérifiée régulièrement, à une fréquence adaptée aux entrées, aux sorties et à l'évolution des responsabilités
+    etapes:
+      - "5"
+      - ↻
+    consequence: manquement à R631-15
+    verifiable_par: code (écart entre le planning et les déclarations)
+    statut: texte
+    relu: 2026-10-05
+    suite: "(en vigueur depuis le 01/10/2026) ; « au moins une fois par mois, et avant toute affectation sur un grand événement » : doctrine du CNAPS, pas un texte"
+    source: R631-15, version du 01/10/2026 (décret 2025-1344) ; R611-2-1 ; FAQ Dracar Ultimate du CNAPS
+  - id: I-21
+    interdit: Une demande du client sur les **références de carte professionnelle** des agents qui lui sont affectés reçoit une réponse **sans délai**
+    etapes:
+      - "6"
+    consequence: manquement à L612-15
+    verifiable_par: code
+    statut: texte
+    relu: 2026-09-29
+    source: L612-15
+escalades:
+  - id: E-01
+    declencheur: un agent signale une suspension ou un retrait de carte, ou une condamnation (R631-26)
+    etapes:
+      - ↻
+      - "5"
+    qui: dirigeant
+    delai: immédiat
+    presentation: vacations futures de l'agent, remplaçants qualifiés
+    statut: texte
+  - id: E-02
+    declencheur: aucun remplaçant **qualifié** n'est disponible pour une vacation
+    etapes:
+      - "7"
+    qui: responsable d'exploitation, ou astreinte la nuit
+    delai: avant la prise de poste
+    presentation: le poste, les qualifications requises, les candidats les plus proches et ce qui leur manque
+    statut: hypothèse
+  - id: E-03
+    declencheur: signature d'un contrat, acceptation d'un sous-traitant, validation de la justification d'un rang 2
+    etapes:
+      - "2"
+    qui: dirigeant (entrepreneur principal)
+    delai: avant tout engagement
+    presentation: le contrat, les pièces du sous-traitant, la justification
+    statut: texte
+    relu: 2026-09-29
+    suite: (validation du rang 2, L612-5-1) ; `hypothèse` (qui signe)
+  - id: E-04
+    declencheur: le prix d'une offre passe sous le coût conventionnel calculé
+    etapes:
+      - "1"
+    qui: dirigeant
+    delai: avant l'envoi
+    presentation: la décomposition du prix horaire et l'écart
+    statut: texte
+    suite: (R631-21)
+  - id: E-05
+    declencheur: une alarme de télésurveillance arrive
+    etapes:
+      - "6"
+    qui: opérateur
+    delai: selon la procédure de la station
+    presentation: les éléments de levée de doute recueillis
+    statut: texte
+    relu: 2026-09-29
+    suite: (L613-6)
+  - id: E-06
+    declencheur: une alarme PTI / DATI se déclenche
+    etapes:
+      - "6"
+    qui: la personne désignée par la procédure de secours
+    delai: immédiat
+    presentation: la position de l'agent, l'accès au site, l'historique de l'alarme
+    statut: hypothèse
+    suite: (pratique de l'INRS)
+  - id: E-07
+    declencheur: un contrôle CNAPS est en cours
+    etapes:
+      - toutes
+    qui: dirigeant
+    delai: immédiat ; y faire obstacle est un délit (L617-14)
+    presentation: les registres, les cartes, les contrats demandés
+    statut: texte
+    suite: (délit d'obstacle) ; `hypothèse` (qui reprend)
+  - id: E-08
+    declencheur: "une demande hors cadre : palpation, armement, prestation étrangère à la sécurité, inspection visuelle de véhicules hors des lieux prévus par L613-2-1 (créé par la loi du 18/08/2026)"
+    etapes:
+      - "1"
+      - "2"
+    qui: dirigeant
+    delai: avant la réponse
+    presentation: la demande et le texte qui la borne
+    statut: texte
+    relu: 2026-09-29
+    suite: "(L613-2, L613-2-1) ; `texte` (armement : décret 2017-1844 ; exclusivité : L612-2)"
+  - id: E-09
+    declencheur: une modification de planning sous le délai (7 jours pour le cycle, 48 h pour un ajustement ponctuel)
+    etapes:
+      - "7"
+    qui: l'agent concerné, dont l'accord exprès est requis (écrit et contresigné pour une prestation supplémentaire du client)
+    delai: avant validation
+    presentation: l'ancienne et la nouvelle vacation
+    statut: texte
+    relu: 2026-09-29
+  - id: E-10
+    declencheur: "un incident grave sur site : violence, intrusion"
+    etapes:
+      - "6"
+    qui: chef de poste ou astreinte ; police ou gendarmerie (R631-10)
+    delai: immédiat
+    presentation: la main courante et la localisation
+    statut: texte
+    suite: (R631-10) ; `hypothèse` (circuit interne)

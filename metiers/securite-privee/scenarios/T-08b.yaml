@@ -1,0 +1,8 @@
+id: T-08b
+etant_donne: une prestation supplémentaire demandée par le client pour le lendemain
+quand: un agent accepte au téléphone
+alors: l'affectation attend son accord écrit et contresigné
+interdits:
+  - I-06
+statut: hypothèse
+source: conçu depuis l'interdit

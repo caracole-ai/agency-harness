@@ -1,0 +1,8 @@
+id: T-23
+etant_donne: un agent au planning de la semaine qui n'est pas déclaré sur le téléservice du CNAPS
+quand: contrôle quotidien
+alors: "alerte : déclaration manquante"
+interdits:
+  - I-20
+statut: hypothèse
+source: conçu depuis l'interdit

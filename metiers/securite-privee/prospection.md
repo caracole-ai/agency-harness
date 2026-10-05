@@ -65,11 +65,12 @@ leçon.
 
 ## Les accroches datées
 
-- **1er octobre 2026 : chaque agent employé ou affecté doit être déclaré sur
-  le téléservice du CNAPS**, les informations tenues à jour, et les titres
-  vérifiés régulièrement (R631-15, décret 2025-1344). ✓ (I-20) C'est la
-  meilleure accroche du trimestre : « Vous êtes déjà sur le téléservice de
-  déclaration des agents ? Qui s'en occupe chez vous ? »
+- **Depuis le 1er octobre 2026, chaque agent employé ou affecté doit être
+  déclaré dans Dracar Ultimate**, le téléservice du CNAPS, les informations
+  tenues à jour, et les titres vérifiés régulièrement (R631-15, décret
+  2025-1344). ✓ (I-20) Les listes de l'ancien Dracar NG n'ont pas été
+  reprises. C'est la meilleure accroche du trimestre : « Vos agents sont
+  tous rattachés dans Dracar Ultimate ? Qui s'en occupe chez vous ? »
 - **1er juillet 2026 : le minimum payé d'une vacation passe à 6 h.** ✓ (I-19)
   « Ça a changé quelque chose dans vos plannings, les vacations courtes ? »
 

@@ -1,0 +1,8 @@
+id: T-07
+etant_donne: un agent qui sort d'une vacation de nuit à 7 h
+quand: on lui propose une vacation qui commence à 15 h le même jour
+alors: "refus : 8 h de repos, sous chacun des minimums en vigueur (12 h, 11 h, 10 h). Le cas frontière (11 h 30) attend l'avis juridique"
+interdits:
+  - I-05
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,8 @@
+id: T-14
+etant_donne: une alarme reçue en télésurveillance
+quand: aucune levée de doute n'est enregistrée
+alors: "le harnais ne propose pas l'appel aux forces de l'ordre : il escalade à l'opérateur (E-05)"
+interdits:
+  - I-13
+statut: hypothèse
+source: conçu depuis l'interdit

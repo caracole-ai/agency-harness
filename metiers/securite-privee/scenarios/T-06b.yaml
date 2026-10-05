@@ -1,0 +1,8 @@
+id: T-06b
+etant_donne: un SSIAP 1 à jour de son recyclage, qui ne justifie que de 900 h d'activité sur les 36 derniers mois
+quand: on l'affecte à un poste incendie
+alors: "refus : moins de 1 607 h, remise à niveau nécessaire"
+interdits:
+  - I-04
+statut: hypothèse
+source: conçu depuis l'interdit

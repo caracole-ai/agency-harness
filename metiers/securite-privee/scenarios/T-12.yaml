@@ -1,0 +1,8 @@
+id: T-12
+etant_donne: un mémoire technique rédigé avec l'aide du modèle
+quand: le brouillon écrit « encadrement assuré par d'anciens gendarmes »
+alors: la phrase est signalée et retirée avant l'envoi
+interdits:
+  - I-09
+statut: hypothèse
+source: conçu depuis l'interdit

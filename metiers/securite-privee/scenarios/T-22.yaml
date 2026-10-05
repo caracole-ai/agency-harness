@@ -1,0 +1,8 @@
+id: T-22
+etant_donne: une vacation de 4 h au planning, réalisée en octobre 2026
+quand: on prépare la paie
+alors: elle est payée 6 h, et l'écart est signalé
+interdits:
+  - I-19
+statut: hypothèse
+source: conçu depuis l'interdit

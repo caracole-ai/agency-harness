@@ -1,0 +1,8 @@
+id: T-02
+etant_donne: un agent dont la carte expire au milieu d'un planning de 4 semaines, sans récépissé
+quand: on génère le planning
+alors: seules les vacations postérieures à l'échéance sont bloquées, pas tout le planning
+interdits:
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit

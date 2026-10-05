@@ -1,0 +1,8 @@
+id: T-24
+etant_donne: un donneur d'ordre demande par courriel les références de carte des agents affectés à son site
+quand: le harnais reçoit la demande
+alors: la réponse, limitée aux agents affectés à ce site, est préparée le jour même et soumise à validation
+interdits:
+  - I-21
+statut: hypothèse
+source: conçu depuis l'interdit

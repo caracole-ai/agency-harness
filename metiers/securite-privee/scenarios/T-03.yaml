@@ -1,0 +1,8 @@
+id: T-03
+etant_donne: un poste de maître-chien
+quand: on propose un agent dont la carte ne porte que la surveillance humaine
+alors: "refus : spécialité non conforme"
+interdits:
+  - I-02
+statut: hypothèse
+source: conçu depuis l'interdit

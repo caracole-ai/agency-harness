@@ -46,7 +46,8 @@ se marque « à vérifier » tant qu'un humain ne l'a pas confirmée (G-02).
 - Aucune échéance n'atteint sa limite sans une alerte donnée **assez tôt pour
   faire ce qu'elle exige** : suivre la formation, écrire les conclusions,
   envoyer la protestation. L'alerte se cale sur ce délai de préparation,
-  pas sur l'échéance (sécurité I-17 : le MAC avant J-90).
+  pas sur l'échéance (sécurité I-17 : le MAC avant le dépôt du renouvellement,
+  au plus tard 3 mois avant l'échéance — trois mois, pas 90 jours).
 - **Une date inconnue n'est pas une date lointaine** : une donnée absente
   déclenche sa propre alerte, jamais un silence.
 - Là où une alarme existe déjà (logiciel de gestion des avocats), l'outil est

@@ -1,0 +1,8 @@
+id: T-09b
+etant_donne: l'entrepreneur principal et son sous-traitant A (rang 1)
+quand: A veut confier une partie de la mission à B
+alors: "accepté seulement si la justification de A (savoir-faire absent, moyens insuffisants, manque ponctuel d'effectifs) est validée par l'entrepreneur principal : escalade (E-03)"
+interdits:
+  - I-07
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,8 @@
+id: T-15b
+etant_donne: 15 transférables, dont 5 avec au moins 4 ans d'ancienneté contractuelle
+quand: on prépare la liste des repris
+alors: "au moins 13 repris : les 5, plus 85 % des 10 autres arrondi à l'unité inférieure (8) ; en dessous, la liste est bloquée"
+interdits:
+  - I-16
+statut: hypothèse
+source: conçu depuis l'interdit

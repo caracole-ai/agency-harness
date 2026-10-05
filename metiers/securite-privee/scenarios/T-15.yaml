@@ -1,0 +1,8 @@
+id: T-15
+etant_donne: un marché gagné et la liste des transférables reçue
+quand: un salarié à temps plein compte 600 h de vacation sur le site dans les 9 derniers mois
+alors: il est marqué non transférable, avec le critère cité (moins de 900 h ; au prorata pour un temps partiel)
+interdits:
+  - I-16
+statut: hypothèse
+source: conçu depuis l'interdit

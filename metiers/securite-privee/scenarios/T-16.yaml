@@ -1,0 +1,8 @@
+id: T-16
+etant_donne: un agent dont la carte expire dans 150 jours et qui n'a suivi aucun MAC
+quand: contrôle quotidien des échéances
+alors: "alerte : MAC à organiser par l'employeur, et renouvellement à déposer au plus tard 3 mois avant l'échéance (date calculée et affichée)"
+interdits:
+  - I-17
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,8 @@
+id: T-04
+etant_donne: un agent qui a une carte pro valide mais pas de carte entreprise enregistrée
+quand: on valide sa prise de poste
+alors: "alerte bloquante : carte entreprise non remise"
+interdits:
+  - I-03
+statut: hypothèse
+source: conçu depuis l'interdit

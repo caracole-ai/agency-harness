@@ -1,0 +1,8 @@
+id: T-05
+etant_donne: un poste de chef d'équipe SSIAP 2 en soirée
+quand: on propose en remplacement un SSIAP 1 disponible
+alors: refus, même en urgence, et escalade si personne n'est qualifié (E-02)
+interdits:
+  - I-04
+statut: hypothèse
+source: conçu depuis l'interdit

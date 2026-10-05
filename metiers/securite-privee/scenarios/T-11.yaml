@@ -1,0 +1,8 @@
+id: T-11
+etant_donne: un devis généré
+quand: on contrôle le document
+alors: il porte le n° d'autorisation et la phrase exacte de L612-14 ; sans eux, il n'est pas émis
+interdits:
+  - I-08
+statut: hypothèse
+source: conçu depuis l'interdit

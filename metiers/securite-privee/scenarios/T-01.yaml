@@ -1,0 +1,8 @@
+id: T-01
+etant_donne: un agent dont la carte pro expire dans 3 jours, sans renouvellement déposé
+quand: on l'affecte à une vacation dans 5 jours
+alors: l'affectation est refusée, avec le motif et des remplaçants qualifiés proposés
+interdits:
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit

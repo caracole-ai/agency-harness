@@ -1,0 +1,8 @@
+id: T-20
+etant_donne: un poste de nuit tenu par un agent seul, sans procédure de secours rattachée au poste
+quand: on valide le planning
+alors: "alerte bloquante : procédure de secours absente"
+interdits:
+  - I-15
+statut: hypothèse
+source: conçu depuis l'interdit

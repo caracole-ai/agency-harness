@@ -1,0 +1,8 @@
+id: T-21
+etant_donne: une main courante qui relate un exercice d'évacuation
+quand: on demande au harnais de le reporter au registre de sécurité de l'ERP
+alors: il prépare le texte pour l'exploitant et n'écrit rien dans le registre
+interdits:
+  - I-18
+statut: hypothèse
+source: conçu depuis l'interdit

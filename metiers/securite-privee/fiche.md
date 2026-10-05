@@ -9,14 +9,16 @@ Remplie selon `../../GRILLE.md`. Ses vues pour le terrain : `prospection.md`
 devis) et `observation.md` (la journée sur place). Ses archétypes
 (`../../methode/archetypes.md`) : Planifier au cœur, Veiller, Rapprocher,
 Rédiger ; les règles communes à tous les métiers sont dans
-`../../methode/socle.md`. État au **2026-09-29** : les textes et la
+`../../methode/socle.md`. État au **2026-10-05** : les textes et la
 prospection seulement, **aucun entretien client encore**. Donc rien de
 `déclaré` ni de `constaté` : toute ligne `hypothèse` est une question à poser,
 pas une règle à coder.
 
 **Deux sortes de `texte`** :
-- **`texte` ✓** : relu mot à mot sur Légifrance le 2026-09-29, dans sa version
-  en vigueur (`verification-2026-09-29.md`). Peut servir à coder un garde-fou.
+- **`texte` ✓** : relu mot à mot sur Légifrance, dans sa version en vigueur,
+  le 2026-09-29 ou le 2026-10-05 (`verification-…` de la même date ; le
+  registre, `regles.yaml`, porte la date de chaque ligne). Peut servir à
+  coder un garde-fou.
 - **`texte`** sans ✓ : lu par la recherche, parfois à travers un résumé
   automatique. À relire avant d'en coder quoi que ce soit (`GRILLE.md`
   § Statuts).
@@ -25,8 +27,10 @@ Sources :
 - `recherche-2026-09-29.md`, dans ce dossier : instantané daté, avec les URL
   et un degré de certitude pour chaque fait. Ce qui n'y était étayé que par une
   source secondaire est resté en `hypothèse`.
-- `verification-2026-09-29.md`, dans ce dossier : relecture à la source des
-  faits appelés à devenir des garde-fous, citations exactes et URL.
+- `verification-2026-09-29.md` et `verification-2026-10-05.md`, dans ce
+  dossier : relectures à la source des faits appelés à devenir des
+  garde-fous, citations exactes et URL. La seconde corrige I-02, I-03, I-12
+  et I-20, et relit à nouveau les textes d'I-01, I-04 à I-06, I-17 et I-19.
 - le dépôt voisin `reperage` (`../reperage` depuis la racine de ce dépôt) :
   `server/scoring/cibles.ts` (80.10Z : « vacations, mains
   courantes, habilitations à échéance » ; verticale « propreté et sécurité » :
@@ -53,10 +57,12 @@ contingent de 329 h d'heures supplémentaires contre 288 h en 1993. Lequel
 s'applique quand ils divergent est une question de droit : **à un juriste
 avant qu'I-05 ou I-06 ne bloque quoi que ce soit.**
 
-⚠ **R631-15 change au plus tard le 01/10/2026** (décret 2025-1344) :
-l'employeur déclare ses agents sur un téléservice du CNAPS et vérifie
-régulièrement leurs titres (I-20). C'est une bonne question d'entrée chez tout
-client ce mois-ci.
+**R631-15 a changé le 01/10/2026** (décret 2025-1344) : l'employeur déclare
+ses agents dans **Dracar Ultimate**, le téléservice du CNAPS ouvert fin
+février 2026, les tient à jour et vérifie régulièrement leurs titres (I-20).
+Les listes de salariés de l'ancien Dracar NG n'ont pas été reprises. Bonne
+question d'entrée chez tout client : « Vos salariés sont-ils tous rattachés
+dans Dracar Ultimate ? »
 
 ---
 
@@ -67,14 +73,14 @@ client ce mois-ci.
 | 1 | Réponse à l'appel d'offres, devis | cahier des charges du donneur d'ordre | offre : mémoire technique, décomposition du prix horaire | dirigeant, commercial | ? | `hypothèse` (décomposition demandée par le guide d'achat du CNAPS, 2012) |
 | 2 | Contrat | offre retenue | contrat qui fixe les conditions et les moyens d'exécution (R631-24), avec les mentions obligatoires (L612-15) et la sous-traitance déclarée (R631-19) | dirigeant | ? | `texte` |
 | 3 | Reprise du personnel (marché gagné sur un concurrent) | dossiers des transférables transmis par l'entreprise sortante | liste des repris communiquée sous 8 jours ouvrables à compter des dossiers complets, avenants envoyés en même temps | dirigeant, RH | ? | `texte` ✓ (accord du 28/01/2011, art. 2.3.2) |
-| 4 | Consignes de poste | contrat, visite de site | mémento des consignes en français, **émargé par chaque agent** (R631-16) | exploitation | ? | `texte` |
+| 4 | Mémento et consignes de poste | instructions générales de l'entreprise ; contrat, visite de site | le **mémento** de l'entreprise, en français, sans rien de propre à un client ou à une mission, **émargé par chaque agent à chaque modification** (R631-16) ; les **consignes de poste**, propres au site, issues du contrat | exploitation | ? | `texte` ✓ (mémento) ; `hypothèse` (consignes de poste : aucun texte lu n'en impose l'émargement) |
 | 5 | Planning des vacations | besoins par site, agents disponibles et qualifiés | planning remis aux agents au moins une semaine avant | exploitation, planning | tableur | `texte` ✓ (délai : accord de 1993, art. 2) ; `hypothèse` (outil, reperage) |
 | 6 | Prise de poste et exécution | planning, consignes | main courante, rondes, rapports d'incident | agent, chef de poste | papier ou main courante électronique, pointage de rondes, PTI | `hypothèse` |
 | 7 | Remplacements, modifications | absence, prestation supplémentaire | planning modifié ; sous le délai, avec l'accord exprès du salarié (écrit et contresigné pour une prestation supplémentaire demandée par le client) | exploitation | téléphone, messagerie | `texte` ✓ (accord) ; `hypothèse` (outil) |
-| 8 | Contrôle interne, rapports au donneur d'ordre | mains courantes, visites de site | registre des contrôles internes (R631-16), rapport au donneur d'ordre | exploitation, dirigeant | ? | `texte` (registre) ; `hypothèse` (rapport) |
+| 8 | Contrôle interne, rapports au donneur d'ordre | mains courantes, visites de site | registre des contrôles internes, tenu à jour, et contrôles réguliers sur place (R631-16) ; rapport au donneur d'ordre | exploitation, dirigeant | ? | `texte` ✓ (registre) ; `hypothèse` (rapport) |
 | 9 | Paie | heures réalisées | bulletins : majorations de nuit, de dimanche et de jours fériés ; toute vacation payée 6 h au minimum | paie, cabinet comptable | ? | `texte` ✓ (6 h : CCN art. 7.12) ; `hypothèse` (majorations, outil) |
 | 10 | Facturation, encaissement | heures réalisées, contrat | factures, relances | administratif | ? | `hypothèse` |
-| ↻ | Échéances réglementaires | dates des titres | carte pro (5 ans ; renouvellement déposé au moins 3 mois avant, avec l'attestation MAC), MAC (dans les 24 mois avant l'échéance, 36 en télésurveillance), recyclage SSIAP (triennal, au plus tard à la date anniversaire du diplôme), secourisme (tous les 2 ans), agrément du dirigeant (5 ans) ; déclaration des agents au téléservice du CNAPS (au plus tard le 01/10/2026) | RH, exploitation | tableur ? | `texte` ✓ (sauf agrément du dirigeant : `texte`) ; `hypothèse` (outil) |
+| ↻ | Échéances réglementaires | dates des titres | carte pro (5 ans ; renouvellement déposé au moins 3 mois avant, avec l'attestation MAC), MAC (dans les 24 mois avant l'échéance, 36 en télésurveillance), recyclage SSIAP (triennal, au plus tard à la date anniversaire du diplôme), secourisme (tous les 2 ans, à la date anniversaire de **sa** qualification), agrément du dirigeant (5 ans) ; déclaration et mise à jour des agents dans Dracar Ultimate (R631-15, en vigueur) ; vérification régulière des titres | RH, exploitation | tableur ? | `texte` ✓ (sauf agrément du dirigeant : `texte`) ; `hypothèse` (outil) |
 
 Passages de main à surveiller : 1→2 (ce que l'offre a promis n'arrive pas dans
 les consignes), 5→7 (le planning modifié ne revient pas dans le planning de
@@ -82,11 +88,13 @@ référence), 6→9 (les heures réellement faites sont ressaisies pour la paie)
 
 ## 1. Interdits
 
+<!-- registre:interdits — généré depuis le registre (pnpm registre:generer), ne pas éditer à la main -->
+
 | ID | Interdit | Étape | Conséquence | Vérifiable par | Statut | Source |
 |---|---|---|---|---|---|---|
-| I-01 | Aucun agent n'est affecté à une vacation sans **carte professionnelle valide à la date de cette vacation**, ou couverte par le **récépissé** d'une demande de renouvellement complète | 5, 7 | employer sans titre valide est interdit « même pour une courte durée » ; pénalité CNAPS jusqu'à 150 000 € pour une personne morale | code | `texte` ✓ | R631-15 ; R612-13 ; R612-17 |
-| I-02 | La **spécialité** portée par la carte correspond aux fonctions du poste (surveillance, cynophile, SSIAP…) | 5, 7 | 2ᵉ manquement le plus relevé aux JO 2024 | code | `texte` | Rapport CNAPS 2024, p. 32 ; article du code non identifié |
-| I-03 | Aucun agent en poste sans **carte entreprise** remise par l'employeur | 5, 6 | plus de 80 % des manquements relevés aux JO 2024 | code | `texte` | R612-12 et suivants ; Rapport CNAPS 2024 |
+| I-01 | Aucun agent n'est affecté à une vacation sans **carte professionnelle valide à la date de cette vacation**, ou couverte par le **récépissé** d'une demande de renouvellement complète | 5, 7 | employer sans titre valide est interdit « même pour une courte durée » ; pénalité CNAPS jusqu'à 150 000 € pour une personne morale ; sans carte valide ni récépissé, le licenciement de l'agent est fondé « par l'effet de la loi » (Cass. soc. 16/09/2026, n° 25-12.634) | code | `texte` ✓ | R631-15 (version du 01/10/2026, al. 1) ; R612-13 ; R612-17 |
+| I-02 | Aucun agent n'est affecté à un poste dont l'**activité** ne figure pas parmi celles au titre desquelles sa carte a été délivrée (surveillance humaine ou gardiennage, télésurveillance, avec chien, détection d'explosifs avec chien, avec arme, surveillance renforcée, vidéoprotection…) ; le SSIAP n'en est pas une, c'est un diplôme (I-04) | 5, 7 | 2ᵉ manquement le plus relevé aux JO 2024 | code | `texte` ✓ (règle) ; `texte` (table poste → activité : arrêté du 01/09/2025, art. 4 ; l'arrêté visé par R612-14, 2° n'est pas identifié) | R631-15, al. 1 et 3 ; R612-16, 3° ; R612-18, 1° ; L612-20 ; Rapport CNAPS 2024, p. 32 |
+| I-03 | Aucun agent en poste sans la **carte professionnelle propre à l'entreprise** remise par l'employeur (photo récente, identité et activités, chiens le cas échéant, employeur et son autorisation, n° de carte CNAPS), présentée à toute réquisition d'un agent de l'autorité publique et restituée à la fin du contrat | 5, 6 | plus de 80 % des manquements relevés aux JO 2024 | code | `texte` ✓ | R612-18 ; Rapport CNAPS 2024 |
 | I-04 | Aucun poste incendie tenu sans : le **diplôme SSIAP du niveau requis** ; le **recyclage triennal** fait au plus tard à la date anniversaire du diplôme ; **1 607 h d'activité sur les 36 derniers mois**, sinon remise à niveau ; le **secourisme** recyclé tous les 2 ans ; l'**habilitation électrique** ; et, dans un nouvel établissement, les périodes en **doublure** (2, ou 3 pour un chef d'équipe) | 5, 7 | ERP ou IGH non conforme, responsabilité en cas de sinistre | code | `texte` ✓ | arrêté du 02/05/2005, art. 3 et 7 |
 | I-05 | Aucun planning ne dépasse **12 h de travail par jour**, **13 h d'amplitude**, **48 h par semaine** et **46 h en moyenne sur 12 semaines** ; aucun ne laisse moins que le **repos minimal entre deux services** (12 h selon l'accord de 1993, 11 h de repos légal rappelé par la CCN, 10 h au passage d'un service de nuit à un service de jour) ni moins de **24 h de repos après 48 h** de travail | 5, 7 | contentieux prud'homal, contrôle | code | `texte` ✓ ⚠ repos de 12 h ou 11 h : à trancher par un juriste | accord du 18/05/1993, art. 1 et 2 ; CCN art. 7.01, 7.08, 7.09, 7.12 |
 | I-06 | Aucune modification de planning notifiée moins de **7 jours** avant (changement du cycle) ou **48 h** avant (ajustement ponctuel en heures supplémentaires) sans l'**accord exprès** du salarié ; pour une prestation supplémentaire demandée par le client, cet accord est **écrit et contresigné** ; un refus n'entraîne aucune sanction | 7 | litige salarié | code (accord enregistré) | `texte` ✓ ⚠ l'accord de 1993 dit une semaine : à trancher avec I-05 | CCN art. 7.07.3 ; accord du 18/05/1993, art. 3 |
@@ -95,22 +103,26 @@ référence), 6→9 (les heures réellement faites sont ressaisies pour la paie)
 | I-09 | Aucun document ne fait état de la qualité d'**ancien fonctionnaire de police ou d'ancien militaire** d'un dirigeant ou d'un salarié | 1 | manquement relevé au contrôle | code (lexical) + humain | `texte` ✓ | L612-15 |
 | I-10 | Aucune offre à un **prix anormalement bas**, qui ne couvre pas les obligations sociales | 1 | sanction CNAPS (manquement ciblé en 2024) | humain, avec une alerte calculée | `texte` | R631-21 ; Rapport CNAPS 2024 |
 | I-11 | Aucune prestation **étrangère à la sécurité** dans une offre de surveillance ou de gardiennage (exclusivité) | 1, 2 | manquement relevé au contrôle | humain | `texte` | L612-2 |
-| I-12 | Aucune prise de poste sans **mémento des consignes émargé** par l'agent | 4, 6 | manquement relevé au contrôle | code (émargement présent) | `texte` | R631-16 |
+| I-12 | Aucun agent n'est employé sans avoir émargé la **version en vigueur du mémento** de l'entreprise ; chaque modification du mémento appelle un nouvel émargement de tous les agents. Le mémento est en français, tenu dans les locaux professionnels, et ne contient rien de propre à un client ou à une mission | 4, 6 | manquement relevé au contrôle | code (émargement de la version en vigueur présent) | `texte` ✓ | R631-16 |
 | I-13 | Télésurveillance : aucun appel à la police ou à la gendarmerie **sans levée de doute** documentée | 6 | sanction jusqu'à 450 € par appel injustifié | humain (le code peut exiger la trace de la levée de doute) | `texte` ✓ | L613-6 |
 | I-14 | Aucune **palpation** sans consentement exprès, hors périmètre de protection ou arrêté préfectoral, ou par un agent d'un autre sexe | 2, 4 | infraction | humain | `texte` ✓ (version du 20/08/2026 : la palpation n'a pas changé) | L613-2 |
 | I-15 | Aucun agent seul de nuit, ou en site isolé, sans **procédure de secours** : qui reçoit l'alarme, comment on écarte une fausse alerte, par où on accède au site | 4, 6 | accident sans secours | code (procédure rattachée au poste) | `hypothèse` (R4512-13 non relu ; pratique de l'INRS) | R4512-13 ; INRS |
 | I-16 | Marché gagné sur un concurrent : l'entreprise entrante reprend **100 %** des transférables ayant au moins 4 ans d'ancienneté contractuelle et **85 %** des autres, arrondi à l'unité inférieure (100 % en sûreté aérienne) ; la liste des repris part sous **8 jours ouvrables** à compter des dossiers complets, avec les avenants | 3 | contentieux | code (critères, quotas, délai) + humain (choix parmi les autres) | `texte` ✓ | accord du 28/01/2011, art. 2.2 et 2.3.2 (l'accord du 05/03/2002 n'est plus en vigueur) |
-| I-17 | Aucune **échéance réglementaire** — carte pro, MAC, recyclage SSIAP, secourisme, agrément du dirigeant — n'atteint sa date limite sans une alerte donnée assez tôt pour suivre la formation qui la conditionne (MAC, recyclage) | ↻ | agent inemployable du jour au lendemain, dirigeant sans agrément | code | `texte` ✓ (sauf agrément du dirigeant : `texte`) | R612-13 ; R612-17 ; arrêté du 27/02/2017, art. 4 II et 6 II ; arrêté du 02/05/2005, art. 7 |
+| I-17 | Aucune **échéance réglementaire** — carte pro, MAC, recyclage SSIAP, secourisme, agrément du dirigeant — n'atteint sa date limite sans une alerte donnée assez tôt pour suivre la formation qui la conditionne (MAC, recyclage) | ↻ | agent inemployable du jour au lendemain, dirigeant sans agrément ; le licenciement de l'agent reste fondé, mais l'employeur qui n'a pas organisé le MAC doit des dommages et intérêts, qui peuvent couvrir la perte de l'emploi (Cass. soc. 16/09/2026, n° 25-12.634) | code | `texte` ✓ (sauf agrément du dirigeant : `texte`) | R612-13 ; R612-17 ; arrêté du 27/02/2017, art. 4 II et 6 II ; arrêté du 02/05/2005, art. 7 ; accord du 27/11/2017, art. 3 et 4 (le MAC relève de la formation continue de l'entreprise, sur le temps de travail, à ses frais) |
 | I-18 | Le **registre de sécurité de l'ERP** n'est jamais écrit par le harnais : il appartient à l'exploitant | 6, 8 | responsabilité de l'exploitant engagée | code (aucun connecteur en écriture) | `texte` | CCH R143-44 |
 | I-19 | Aucune vacation n'est payée **moins de 6 h** (4 h jusqu'au 30/06/2026) | 9 | rappel de salaire, litige | code | `texte` ✓ | CCN art. 7.12 (avenant n° 2 du 03/09/2025) |
-| I-20 | Au plus tard à partir du 01/10/2026, tout agent employé ou affecté est **déclaré sur le téléservice du CNAPS**, ces informations sont tenues à jour, et la validité des titres est vérifiée régulièrement | 5, ↻ | manquement à R631-15 | code (écart entre le planning et les déclarations) | `texte` ✓ ⚠ en vigueur à la mise en service du téléservice | R631-15, version du décret 2025-1344 |
+| I-20 | Tout agent employé ou affecté est **déclaré dans Dracar Ultimate** (téléservice du CNAPS) ; ces informations sont tenues à jour ; la validité des titres est vérifiée régulièrement, à une fréquence adaptée aux entrées, aux sorties et à l'évolution des responsabilités | 5, ↻ | manquement à R631-15 | code (écart entre le planning et les déclarations) | `texte` ✓ (en vigueur depuis le 01/10/2026) ; « au moins une fois par mois, et avant toute affectation sur un grand événement » : doctrine du CNAPS, pas un texte | R631-15, version du 01/10/2026 (décret 2025-1344) ; R611-2-1 ; FAQ Dracar Ultimate du CNAPS |
 | I-21 | Une demande du client sur les **références de carte professionnelle** des agents qui lui sont affectés reçoit une réponse **sans délai** | 6 | manquement à L612-15 | code | `texte` ✓ | L612-15 |
+
+<!-- /registre:interdits -->
 
 ## 2. Tests types
 
 Données fictives et génériques. Aucun test n'est encore issu d'un incident
 raconté : tous sont conçus depuis leur interdit, et seront réécrits ou
 confirmés dès les premiers entretiens (la source devient alors « client A, date »).
+
+<!-- registre:tests — généré depuis le registre (pnpm registre:generer), ne pas éditer à la main -->
 
 | ID | Étant donné | Quand | Alors | Interdit | Statut | Source |
 |---|---|---|---|---|---|---|
@@ -131,12 +143,12 @@ confirmés dès les premiers entretiens (la source devient alors « client A, da
 | T-10 | une mission de surveillance humaine entièrement confiée à un sous-traitant, contrat signé après le 26/05/2022 | on génère le contrat | refus : la sous-traitance ne peut porter que sur une partie de la prestation | I-07 | `hypothèse` | conçu depuis l'interdit |
 | T-11 | un devis généré | on contrôle le document | il porte le n° d'autorisation et la phrase exacte de L612-14 ; sans eux, il n'est pas émis | I-08 | `hypothèse` | conçu depuis l'interdit |
 | T-12 | un mémoire technique rédigé avec l'aide du modèle | le brouillon écrit « encadrement assuré par d'anciens gendarmes » | la phrase est signalée et retirée avant l'envoi | I-09 | `hypothèse` | conçu depuis l'interdit |
-| T-13 | un agent nouveau sur un site | il prend son premier poste | alerte bloquante si le mémento des consignes du site n'est pas émargé | I-12 | `hypothèse` | conçu depuis l'interdit |
+| T-13 | un agent qui a émargé la version 3 du mémento de l'entreprise, devenue la version 4 depuis | on l'affecte à une vacation | alerte bloquante : mémento modifié depuis son dernier émargement ; un mémento qui porte une consigne propre à un client ou à un site est signalé | I-12 | `hypothèse` | conçu depuis l'interdit |
 | T-14 | une alarme reçue en télésurveillance | aucune levée de doute n'est enregistrée | le harnais ne propose pas l'appel aux forces de l'ordre : il escalade à l'opérateur (E-05) | I-13 | `hypothèse` | conçu depuis l'interdit |
 | T-15 | un marché gagné et la liste des transférables reçue | un salarié à temps plein compte 600 h de vacation sur le site dans les 9 derniers mois | il est marqué non transférable, avec le critère cité (moins de 900 h ; au prorata pour un temps partiel) | I-16 | `hypothèse` | conçu depuis l'interdit |
 | T-15b | 15 transférables, dont 5 avec au moins 4 ans d'ancienneté contractuelle | on prépare la liste des repris | au moins 13 repris : les 5, plus 85 % des 10 autres arrondi à l'unité inférieure (8) ; en dessous, la liste est bloquée | I-16 | `hypothèse` | conçu depuis l'interdit |
-| T-16 | un agent dont la carte expire dans 150 jours et qui n'a suivi aucun MAC | contrôle quotidien des échéances | alerte : MAC à suivre, et renouvellement à déposer avant J-90 (date calculée et affichée) | I-17 | `hypothèse` | conçu depuis l'interdit |
-| T-16b | un agent dont la carte expire dans 80 jours, sans renouvellement déposé | contrôle quotidien des échéances | alerte escaladée au dirigeant : la date limite de dépôt (J-90) est dépassée ; sans récépissé à l'échéance, ses vacations suivantes sont bloquées (I-01) | I-17, I-01 | `hypothèse` | conçu depuis l'interdit |
+| T-16 | un agent dont la carte expire dans 150 jours et qui n'a suivi aucun MAC | contrôle quotidien des échéances | alerte : MAC à organiser par l'employeur, et renouvellement à déposer au plus tard 3 mois avant l'échéance (date calculée et affichée) | I-17 | `hypothèse` | conçu depuis l'interdit |
+| T-16b | un agent dont la carte expire dans 80 jours, sans renouvellement déposé | contrôle quotidien des échéances | alerte escaladée au dirigeant : la date limite de dépôt (3 mois avant l'échéance) est dépassée ; sans récépissé à l'échéance, ses vacations suivantes sont bloquées (I-01) | I-17, I-01 | `hypothèse` | conçu depuis l'interdit |
 | T-17 | une demande d'un donneur d'ordre qui inclut l'accueil et le nettoyage du hall | on prépare l'offre | la prestation étrangère à la sécurité est signalée et escaladée au dirigeant | I-11 | `hypothèse` | conçu depuis l'interdit |
 | T-18 | une offre dont le prix horaire est inférieur au coût horaire conventionnel calculé (salaire du coefficient, charges, majorations) | on prépare l'envoi | l'envoi est bloqué et escaladé au dirigeant avec la décomposition et l'écart (E-04) | I-10 | `hypothèse` | conçu depuis l'interdit |
 | T-19 | un cahier des charges d'événement qui prévoit des palpations à l'entrée, sans arrêté préfectoral ni périmètre de protection mentionné | on prépare les consignes | la palpation n'est pas inscrite dans les consignes ; la demande est escaladée au dirigeant (E-08) | I-14 | `hypothèse` | conçu depuis l'interdit |
@@ -146,12 +158,13 @@ confirmés dès les premiers entretiens (la source devient alors « client A, da
 | T-23 | un agent au planning de la semaine qui n'est pas déclaré sur le téléservice du CNAPS | contrôle quotidien | alerte : déclaration manquante | I-20 | `hypothèse` | conçu depuis l'interdit |
 | T-24 | un donneur d'ordre demande par courriel les références de carte des agents affectés à son site | le harnais reçoit la demande | la réponse, limitée aux agents affectés à ce site, est préparée le jour même et soumise à validation | I-21 | `hypothèse` | conçu depuis l'interdit |
 
+<!-- /registre:tests -->
+
 ## 3. Connecteurs
 
 | Outil ou catégorie | Usage | Étape | Accès | Lecture / écriture | Qui le tient | Statut |
 |---|---|---|---|---|---|---|
-| **DRACAR Ultimate** (téléservice CNAPS) | vérifier la validité d'une carte, déposer les demandes | 5, ↻ | portail web ; aucune API connue | lecture (vérification) ; **aucune écriture par le harnais** | dirigeant, RH | `texte` (existence) ; `hypothèse` (pas d'API). ⚠ Un accès automatisé, avec les identifiants de l'employeur, n'est pas vérifié au regard des conditions d'utilisation du téléservice : à lire avant d'en faire un connecteur |
-| Téléservice de déclaration des agents (CNAPS, R631-15 à partir du 01/10/2026 au plus tard) | déclarer les agents employés ou affectés, vérifier leurs titres | 5, ↻ | inconnu : nom, accès, et s'il se confond avec DRACAR | lecture pour le rapprochement avec le planning ; la déclaration reste humaine tant que l'accès automatisé n'est pas vérifié | dirigeant, RH | `texte` ✓ (obligation) ; `hypothèse` (outil) |
+| **Dracar Ultimate** (téléservice du CNAPS, a remplacé Dracar NG fin février 2026) | déclarer les agents employés ou affectés et les tenir à jour (R631-15) ; vérifier la validité des cartes (statut visible dans l'espace entreprise, alerte d'expiration) ; déposer les demandes de titre | 5, ↻ | portail web ; **pas d'API** (« cette interconnexion n'est pas envisagée », FAQ du CNAPS) ; import CSV des salariés, activité par activité ; les listes de Dracar NG n'ont pas été reprises | lecture pour le rapprochement avec le planning ; **aucune écriture par le harnais** : la déclaration reste humaine | dirigeant, RH | `texte` ✓ (obligation) ; `texte` (existence, absence d'API : FAQ du CNAPS). ⚠ Un accès automatisé, avec les identifiants de l'employeur, n'est pas vérifié au regard des conditions d'utilisation du téléservice : à lire avant d'en faire un connecteur |
 | Tableur de planning | vacations, affectations | 5, 7 | fichier | lecture, écriture (bornée par I-01 à I-06) | exploitation | `hypothèse` (reperage) |
 | Logiciel d'exploitation du secteur (planning, main courante, rondes, facturation) — éditeurs relevés : SEKUR, Hector Solution, Comète, Nowgua, BanetteOne | tout ou partie de la chaîne | 5 à 10 | inconnu : API, export ? | à déterminer | exploitation | `hypothèse` (éditeurs vus sur leur site ; aucun vu chez un client) |
 | Main courante papier ou électronique | journal des postes | 6, 8 | papier, tablette, parfois l'outil **imposé par le donneur d'ordre** | lecture | agents | `hypothèse` |
@@ -164,6 +177,8 @@ confirmés dès les premiers entretiens (la source devient alors « client A, da
 | Registre de sécurité de l'ERP | tenu par l'exploitant | 6, 8 | papier ou outil de l'exploitant | **jamais en écriture** (I-18) | exploitant | `texte` |
 
 ## 4. Moments d'escalade
+
+<!-- registre:escalades — généré depuis le registre (pnpm registre:generer), ne pas éditer à la main -->
 
 | ID | Déclencheur | Étape | Qui reprend | Délai | Ce qu'on lui présente | Statut |
 |---|---|---|---|---|---|---|
@@ -178,21 +193,23 @@ confirmés dès les premiers entretiens (la source devient alors « client A, da
 | E-09 | une modification de planning sous le délai (7 jours pour le cycle, 48 h pour un ajustement ponctuel) | 7 | l'agent concerné, dont l'accord exprès est requis (écrit et contresigné pour une prestation supplémentaire du client) | avant validation | l'ancienne et la nouvelle vacation | `texte` ✓ |
 | E-10 | un incident grave sur site : violence, intrusion | 6 | chef de poste ou astreinte ; police ou gendarmerie (R631-10) | immédiat | la main courante et la localisation | `texte` (R631-10) ; `hypothèse` (circuit interne) |
 
+<!-- /registre:escalades -->
+
 ## 5. Vocabulaire
 
 | Terme | Définition | Synonymes, abréviations | Piège | Statut |
 |---|---|---|---|---|
 | Vacation | un service d'un agent sur un poste, avec un début et une fin ; payée 6 h au minimum depuis le 01/07/2026 | vac | ≠ « vacataire », mot qu'on peut entendre pour un statut d'emploi | `texte` ✓ (CCN 7.12) ; `hypothèse` (« vac », piège) |
 | Main courante | journal chronologique des événements d'un poste | MC | **aucune définition réglementaire** ; ≠ la main courante déposée au commissariat, que le client peut aussi évoquer | `hypothèse` |
-| Mémento des consignes | consignes réunies en français, émargées par l'agent | consignes de poste, manuel des consignes | obligatoire et écrit (R631-16) : des consignes seulement orales ne le remplacent pas | `texte` |
-| Registre des contrôles internes | trace des contrôles faits par l'entreprise sur ses postes | — | ≠ registre de sécurité | `texte` |
+| Mémento des consignes | instructions et consignes générales de l'entreprise, réunies en français, émargées par chaque agent à chaque modification | manuel des consignes | obligatoire et écrit (R631-16) ; **≠ consignes de poste** : le mémento ne contient rien de propre à un client ou à une mission | `texte` ✓ |
+| Registre des contrôles internes | trace des contrôles réguliers faits sur place par l'entreprise, tenue à jour | — | ≠ registre de sécurité | `texte` ✓ (R631-16) |
 | Registre de sécurité | registre de l'ERP : personnel incendie, vérifications, travaux | — | tenu par l'**exploitant**, pas par le prestataire | `texte` |
 | Carte professionnelle | titre CNAPS dématérialisé, valable 5 ans à compter de sa délivrance, qui porte une ou plusieurs spécialités | carte pro | ≠ carte entreprise | `texte` ✓ (R612-13) |
 | Récépissé | délivré par le CNAPS sur une demande de renouvellement complète ; permet de poursuivre l'activité jusqu'à la décision | — | une carte expirée n'interdit donc pas toujours l'affectation | `texte` ✓ (R612-17) |
-| Carte entreprise | badge remis par l'employeur (photo, activités, n° CNAPS de l'agent) | — | ≠ carte professionnelle ; plus de 80 % des manquements relevés aux JO 2024 la concernaient (non remise ou non présentée) | `texte` |
+| Carte entreprise | « carte professionnelle propre à l'entreprise » (R612-18) : remise par l'employeur, photo récente, identité et activités, chiens le cas échéant, employeur et son autorisation, n° de carte CNAPS ; présentée sur réquisition, restituée en fin de contrat | carte professionnelle propre à l'entreprise | ≠ carte professionnelle du CNAPS ; plus de 80 % des manquements relevés aux JO 2024 la concernaient (non remise ou non présentée) | `texte` ✓ |
 | NUB | numéro unique de bénéficiaire ; ses 7 derniers chiffres figurent sur la tenue | — | — | `texte` |
 | Autorisation d'exercice / agrément / autorisation préalable | entreprise, **par établissement** / dirigeant, 5 ans / entrée en formation, 6 mois | — | trois « autorisations » différentes | `texte` |
-| DRACAR Ultimate | téléservice du CNAPS | DRACAR | — | `texte` |
+| Dracar Ultimate | système d'information du CNAPS depuis fin février 2026 : déclaration des agents, demandes de titre | DRACAR | « DRACAR » seul est ambigu : l'ancien téléservice s'appelait Dracar NG | `texte` |
 | MAC | stage de maintien et d'actualisation des compétences ; son attestation accompagne la demande de renouvellement de la carte | — | se suit dans les 24 mois avant l'échéance (36 en télésurveillance) | `texte` ✓ (arrêté du 27/02/2017, art. 4 II et 6 II ; R612-17) |
 | TFP APS / CQP APS | titre de qualification de l'agent de prévention et de sécurité | — | CQP renommé TFP en 2021, formation refondue le 01/10/2025 : les anciens titres restent valables | `texte` |
 | SSIAP 1 / 2 / 3 | agent / chef d'équipe / chef de service de sécurité incendie | — | le niveau désigne un **poste**, pas une ancienneté | `texte` ✓ (arrêté du 02/05/2005, art. 3) |
@@ -230,7 +247,7 @@ vacations par mois, désistements par semaine.
 
 | ID | Donnée | Sert à | Où elle vit | Fraîcheur, fiabilité | Qui la tient | Statut |
 |---|---|---|---|---|---|---|
-| D-01 | titres de chaque agent : carte pro (spécialités, échéance, récépissé), carte entreprise remise, MAC, SSIAP (niveau, date du diplôme, dernier recyclage, heures d'activité sur 36 mois), secourisme, habilitation électrique | I-01 à I-04, I-17, I-20 | tableur (onglet d'échéances ?), DRACAR, téléservice CNAPS | **inconnue, et tout en dépend** : c'est le premier risque à lever | RH, exploitation | `hypothèse` |
+| D-01 | titres de chaque agent : carte pro (spécialités, échéance, récépissé), carte entreprise remise, MAC, SSIAP (niveau, date du diplôme, dernier recyclage, heures d'activité sur 36 mois), secourisme, habilitation électrique | I-01 à I-04, I-17, I-20 | tableur (onglet d'échéances ?), Dracar Ultimate | **inconnue, et tout en dépend** : c'est le premier risque à lever | RH, exploitation | `hypothèse` |
 | D-02 | postes de chaque site : horaires, qualification requise (spécialité, niveau SSIAP), effectif minimal, consignes | I-02, I-04, I-12, O-01 | contrats, consignes, mémoire du planning | ? | exploitation | `hypothèse` |
 | D-03 | disponibilités et absences des agents | 5, 7, B-02 | téléphone, messagerie, tableur | au fil de l'eau, souvent hors de tout outil | exploitation | `hypothèse` |
 | D-04 | planning publié et heures réellement faites | I-05, I-06, I-19, O-06, paie | tableur, logiciel | ? | exploitation, paie | `hypothèse` |
@@ -254,7 +271,7 @@ l'exception.
 |---|---|---|---|---|---|
 | B-01 | **Affectation assistée** : l'outil propose le planning de la semaine dans les limites, en cherchant le bon résultat (O-01 à O-07) ; l'exploitation corrige et publie | planning refait chaque semaine à la main ; erreurs de carte, de niveau ou de repos | I-01 à I-06, I-15, I-19, I-20 | temps passé chaque semaine sur le planning, et par qui ; nombre d'agents, de sites, de postes ; les données D-01 à D-07 existent-elles, et sont-elles justes ; qui valide avant publication | `hypothèse` |
 | B-02 | **Réaffectation sur désistement** : à l'annonce d'une absence, l'outil retrouve les remplaçants qualifiés, disponibles et reposés, les contacte dans l'ordre (SMS avec réponse oui ou non, ou appel automatique), enregistre l'accord, met le planning à jour, et passe la main si personne n'accepte à temps (E-02) | des heures au téléphone le soir et le week-end ; un remplaçant envoyé sans vérifier sa carte, son niveau ou son repos | I-01 à I-06, I-15, I-20 ; E-02 | nombre de désistements par semaine, à quelle heure ils arrivent, temps passé à remplacer ; canal accepté par les agents ; heures où l'on peut les contacter ; ce que l'agent doit pouvoir répondre ; qui valide l'affectation finale ; que faire si personne n'accepte | `hypothèse` |
-| B-03 | **Veille des titres et des déclarations** : échéances, récépissés, déclarations au téléservice du CNAPS | agent inemployable du jour au lendemain ; contrôle CNAPS | I-17, I-20 | combien de titres suivis, où, par qui ; le dernier titre expiré sans qu'on le voie | `hypothèse` |
+| B-03 | **Veille des titres et des déclarations** : échéances, récépissés, déclarations dans Dracar Ultimate | agent inemployable du jour au lendemain ; contrôle CNAPS | I-17, I-20 | combien de titres suivis, où, par qui ; le dernier titre expiré sans qu'on le voie | `hypothèse` |
 | B-04 | **Contrôle des documents sortants** : devis, contrats, mémoires techniques vérifiés avant l'envoi | manquement relevé au contrôle ; appel d'offres | I-08, I-09, I-11 | documents par mois ; qui les écrit ; générés ou tapés | `hypothèse` |
 | B-05 | **Rapport au donneur d'ordre** compilé depuis les mains courantes | des heures de compilation chaque mois | I-18 | quel rapport, pour quels clients, en combien de temps ; main courante papier ou électronique | `hypothèse` |
 | B-06 | **Heures réalisées vers la paie**, sans ressaisie, avec les minimums et les majorations | ressaisie, erreurs, réclamations des agents | I-19 ; majorations (non relues) | qui ressaisit ; combien d'erreurs par mois ; quel logiciel de paie, et quel import il accepte | `hypothèse` |
@@ -283,28 +300,31 @@ Le client dira ce qu'il **applique**, pas ce qui est **dû**.
   01/07/2026) : repos entre deux services (12 h ou 11 h), délai de
   modification (une semaine, ou 7 jours et 48 h), contingent d'heures
   supplémentaires (288 h ou 329 h). À un juriste, avant qu'I-05 ou I-06 ne
-  bloque. En attendant, une proposition à valider : alerter sur la valeur la
-  plus stricte, sans bloquer, et laisser décider l'exploitation.
+  bloque. En attendant (décidé le 2026-10-05, `REFLEXIONS.md`) : chaque
+  texte est une lecture de la règle ; le moteur refuse quand toutes les
+  lectures concluent à la violation, et rend « à vérifier » quand une seule
+  le fait. À verser au dossier : l'accord de 1993 ne vise que les agents
+  d'exploitation et les techniciens ; la CCN 7.07.3 ne protège le refus que
+  « pour raisons justifiées ».
 - Validité de l'accord de 1993 : il se dit conclu pour 3 ans (art. 8), et
   Légifrance le marque en vigueur.
 - Le délai de 10 jours laissé au salarié pour renvoyer son avenant de reprise :
   sûreté aérienne seulement, ou tous les secteurs ?
-- Le décret 2025-1344 en entier : quels autres articles du CSI change-t-il, et
-  quel est le téléservice de déclaration (I-20) ?
-- Cass. soc. du 16/09/2026 (licenciement d'un agent sans carte, MAC non
-  organisé par l'employeur), repéré mais pas lu : il pourrait mettre à la charge
-  de l'employeur l'organisation du MAC (I-17).
+- Les autres articles modifiés par le décret 2025-1344, listés mais non lus
+  (`verification-2026-10-05.md`, point 1).
+- L'arrêté qui définit les spécialités au sens de R612-14, 2° : sans lui, la
+  table poste → activité d'I-02 reste `texte` sans ✓.
+- Soc. 7 janvier 2026 (n° 24-15.367), citée par l'arrêt du 16/09/2026 : non
+  lue.
 - Les quatre questions de droit de la brique B-02 (§ 8).
-- Non relus à la source : L612-2, R612-12 et suivants, R631-16, R631-21,
-  R631-23, CCH R143-44, R4512-13, MS 46, l'article qui porte l'obligation de
-  spécialité (I-02), et les majorations de nuit, de dimanche et de jours
-  fériés.
+- Non relus à la source : L612-2, R631-21, R631-23, CCH R143-44, R4512-13,
+  MS 46, et les majorations de nuit, de dimanche et de jours fériés.
 
 ### Dirigeant
 - « Vous avez déjà eu un contrôle CNAPS ? Qu'est-ce qu'ils ont regardé ? Et
   relevé ? »
-- « Le téléservice du CNAPS où il faut déclarer vos agents à partir du
-  1er octobre : vous y êtes déjà ? Qui s'en occupe ? » (I-20)
+- « Dracar Ultimate, où il faut déclarer vos agents depuis le 1er octobre :
+  ils y sont tous ? Qui s'en occupe ? » (I-20)
 - « Vous sous-traitez, ou vous êtes sous-traitant ? Comment vous vérifiez les
   cartes de l'autre ? »
 - « Votre dernier marché gagné sur un concurrent, ou perdu : comment s'est
@@ -323,8 +343,9 @@ Le client dira ce qu'il **applique**, pas ce qui est **dû**.
   de son accord ? » (I-06, E-02)
 - « Quelles règles de repos vous appliquez, concrètement ? » (la pratique,
   à comparer aux deux textes)
-- « Les consignes d'un site : où elles sont, et comment l'agent les signe ? »
-  (I-12)
+- « Le mémento : modifié quand, la dernière fois, et émargé par qui
+  depuis ? » (I-12) Puis les consignes d'un site : où elles sont, et si
+  l'agent les signe (pratique, aucun texte lu ne l'impose).
 - « Vous tenez un registre des contrôles internes ? Montrez-moi. »
 - « Le planning de la semaine dernière : pourquoi cet agent sur ce site ? »
   (O-02, O-03 : chaque « parce que » est une préférence)

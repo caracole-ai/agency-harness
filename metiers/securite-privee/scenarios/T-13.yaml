@@ -1,0 +1,8 @@
+id: T-13
+etant_donne: un agent qui a émargé la version 3 du mémento de l'entreprise, devenue la version 4 depuis
+quand: on l'affecte à une vacation
+alors: "alerte bloquante : mémento modifié depuis son dernier émargement ; un mémento qui porte une consigne propre à un client ou à un site est signalé"
+interdits:
+  - I-12
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,8 @@
+id: T-09
+etant_donne: "une chaîne : entrepreneur principal → sous-traitant A (rang 1) → sous-traitant B (rang 2)"
+quand: B veut confier une partie de la mission à C
+alors: "refus : un rang 3 est interdit"
+interdits:
+  - I-07
+statut: hypothèse
+source: conçu depuis l'interdit

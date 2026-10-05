@@ -1,0 +1,8 @@
+id: T-01b
+etant_donne: un agent dont la carte a expiré hier, mais dont la demande de renouvellement complète a été déposée à temps et le récépissé enregistré
+quand: on l'affecte à une vacation
+alors: "accepté : le récépissé permet de poursuivre l'activité jusqu'à la décision"
+interdits:
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit

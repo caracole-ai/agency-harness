@@ -1,0 +1,8 @@
+id: T-08
+etant_donne: un remplacement à pourvoir pour le soir même
+quand: un agent accepte au téléphone
+alors: le planning n'est validé qu'une fois son accord enregistré. Le texte exige un accord exprès ; en garder une trace écrite est un choix de conception
+interdits:
+  - I-06
+statut: hypothèse
+source: conçu depuis l'interdit

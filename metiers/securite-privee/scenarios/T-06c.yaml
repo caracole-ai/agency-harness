@@ -1,0 +1,8 @@
+id: T-06c
+etant_donne: un SSIAP 2 à jour, jamais affecté à cet établissement
+quand: on l'affecte comme chef d'équipe
+alors: ses trois premières périodes y sont planifiées en doublure
+interdits:
+  - I-04
+statut: hypothèse
+source: conçu depuis l'interdit

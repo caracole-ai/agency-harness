@@ -1,0 +1,8 @@
+id: T-06
+etant_donne: un SSIAP 1 dont la date anniversaire du diplôme est passée sans recyclage
+quand: on l'affecte à un poste incendie
+alors: refus, avec le motif « recyclage échu, remise à niveau nécessaire »
+interdits:
+  - I-04
+statut: hypothèse
+source: conçu depuis l'interdit

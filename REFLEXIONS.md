@@ -6,7 +6,7 @@ une règle : c'est le fil d'une discussion entre Lionel et Claude, à reprendre 
 chaque séance. Une piste réalisée passe dans « Fait », avec le fichier qui la
 porte. Une idée abandonnée se barre et dit pourquoi, elle ne s'efface pas.
 
-Dernière mise à jour : 2026-10-04.
+Dernière mise à jour : 2026-10-05.
 
 ---
 
@@ -29,6 +29,10 @@ spécifique.
 | 2026-10-04 | **Jev (TypeSafe AI, « System One ») : possible, pas souhaitable aujourd'hui.** Un modèle de décision typée (Choice, Score, Noul avec probabilité calibrée, pas de texte, pas d'extraction libre) ne remplace ni extraire ni rédiger. Sa place : le tri à l'entrée et les vérifications subjectives, toujours comme `à vérifier`, jamais comme verdict — un interdit reste du code. Réserves : accès anticipé (sept. 2026), hébergement et rétention non publiés (CLOUD Act), français non documenté, calibration garantie en moyenne seulement. Décision : le moteur expose `classer(etat, choix)` et `douter(etat, question)`, implémentés avec le LLM ; Jev se branche derrière le jour où un client a du volume, où TypeSafe publie hébergement et rétention, et où sa calibration est mesurée sur nos traces en français. | piste A |
 | 2026-10-04 | **Le coût d'inférence du client est une contrainte produit de premier rang.** On vend à des TPE/PME : la facture mensuelle de modèle ne doit pas gonfler feature après feature. Conséquences : (1) chaque feature annonce son coût d'inférence par unité (par message, par document, par jour) et son plafond mensuel avant d'être construite ; (2) le code d'abord — le modèle ne touche que ce que le code ne sait pas faire, jamais un agent en boucle, jamais une relecture du tout à chaque tour ; (3) en cascade : filtre déterministe → classifieur bon marché → LLM seulement sur ce qui reste ; (4) le moteur journalise chaque appel avec ses tokens et son coût, et le compteur par client est une alerte Veiller comme une autre. | piste A, [E] (annexe du devis) |
 | 2026-10-03 | **Le schéma du site se génère depuis la fiche** (piste G) : une seule liste de règles par métier, dont découlent les vues terrain, la figure de `smart-tailor` et le code du moteur. Jusque-là, la copie actuelle reste à la main et se relit à chaque changement de fiche. | piste G |
+| 2026-10-05 | **On construit le moteur, la sécurité privée comme premier cas**, dans l'ordre de `presentation/` § 10 : Veiller sans modèle, puis le désistement (machine à états, délégation, jeton), puis le modèle aux bords. Code dans ce dépôt, une couche par dossier ; TypeScript, pnpm, zod, Biome, Vitest (cohérence avec Attendu). | `PLAN.md` |
+| 2026-10-05 | **Le statut d'une règle borne son verdict, appliqué par le moteur** : `texte` ✓ peut refuser ; `texte` sans ✓ rend au plus `à vérifier` ; `hypothèse` ne devient pas un contrôle. Une règle ⚠ porte plusieurs **lectures** : `refus` si toutes concluent à la violation, `à vérifier` si une seule. Le juriste sort du chemin critique sans qu'on tranche à sa place (repos de 8 h : refus ; de 11 h 30 : à vérifier). C'est la piste B rendue générique. | `PLAN.md`, piste A |
+| 2026-10-05 | **Piste G réduite au registre** : on ne génère pas le corps d'une fonction depuis de la prose. Les rubriques 1, 2, 4 vivent dans `regles.yaml` et `scenarios/`, la fiche en est régénérée, et une vérification relie interdit ↔ test ↔ (bientôt) implémentation. Le reste de G (vues terrain, `harness.ts`) attend. | `moteur/src/regles/`, `GRILLE.md` |
+| 2026-10-05 | Écriture : **identité d'écriture du moteur + jeton par défaut**, le compte de l'humain qui approuve en option de config client. Pas de solveur avant B-01 : le désistement se résout par filtre puis classement. | `PLAN.md` |
 | 2026-10-03 | **Le moteur ne dépend d'aucun framework d'agent** : il s'expose en outils (MCP/API) avec ses tests ; la coque autour (agent, messagerie) est interchangeable. ~~Hermes Agent (Nous Research) comme base~~ : refusé — sa thèse (skills auto-réécrites, mémoire curée par l'agent, accès terminal central) est l'inverse d'un interdit auditable, et il n'a ni moteur de règles ni tests d'acceptation. Si un client a besoin d'un lien vers une messagerie, **on écrit le connecteur nous-mêmes** : moins de surface, pas de dépendance à un projet de labo. | piste A |
 
 ## Fait (2026-09-29 et 30)
@@ -42,6 +46,40 @@ spécifique.
   observation. Chaque interdit a au moins un test (vérifié par script le
   2026-09-30).
 - Le skill, la grille et le README suivent la nouvelle structure.
+
+## Fait (2026-10-05)
+
+- `PLAN.md` : le plan de construction, phases 0 à 6.
+- Phase 0 : workspace pnpm (10.32.1 épinglé), TypeScript strict, Biome,
+  Vitest, `pnpm check`.
+- Phase 1 : le registre de la sécurité privée (`regles.yaml`, 31
+  `scenarios/T-xx.yaml`), migré des tables de la fiche sans rien changer au
+  fond (aller-retour identique au caractère près) ; `pnpm registre:generer`
+  et `registre:verifier` (rend permanent le script du 30/09 sur les codes
+  cités).
+- Phase 2 : le calendrier juridique (`moteur/src/temps/`) : jours fériés
+  (Alsace-Moselle en option), délais en jours, mois, années avec jours non
+  comptés et report, heures réelles au changement d'heure, validité d'un
+  titre sur une vacation (`partielle` quand il expire pendant la nuit : le
+  moteur ne tranche pas, la règle le fait par ses lectures). Tests tirés de
+  CPC 640-642, CMR 30 et L133-3 (le dimanche sous ses deux lectures).
+  **Appris** : « trois mois avant » n'est pas « J-90 » (le 31/01 donne le
+  31/10 contre le 02/11) ; la fiche sécurité écrit J-90 dans T-16, T-16b et
+  `methode/archetypes.md`. Jours fériés (C. trav. L3133-1, L3134-13) codés
+  sans relecture mot à mot : à la prochaine vérification.
+- Relecture à la source du 2026-10-05
+  (`metiers/securite-privee/verification-2026-10-05.md`), reportée dans le
+  registre et la fiche : R631-15 en vigueur depuis le 01/10/2026, téléservice
+  = **Dracar Ultimate** (sans API) ; I-02 relu (chaîne R631-15, R612-16,
+  R612-18, L612-20 ; le SSIAP n'est pas une activité de carte) ; I-03 =
+  R612-18 ; **I-12 réécrit** : le mémento est général et s'émarge à chaque
+  modification, les consignes de site ne s'émargent par aucun texte lu ;
+  Cass. soc. 16/09/2026 (n° 25-12.634) : sans carte ni récépissé, licenciement
+  fondé, mais le MAC est à la charge de l'employeur (dommages et intérêts).
+  T-13, T-16, T-16b et `archetypes.md` corrigés (« 3 mois », pas « J-90 »).
+  **Appris** : la relecture a trouvé une règle fausse (I-12) dans une ligne
+  qui n'était pas marquée ✓ — c'est exactement ce que le plafond de verdict
+  par statut protège.
 
 ---
 
@@ -230,8 +268,8 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
 ## À trancher
 
 **Par Lionel**
-- Dans quel ordre attaquer : le moteur (A), ou les appels et le premier
-  rendez-vous d'abord ?
+- ~~Dans quel ordre attaquer : le moteur (A), ou les appels et le premier
+  rendez-vous d'abord ?~~ Tranché le 2026-10-05 : le moteur (`PLAN.md`).
 - Le transport frigorifique : un sous-métier du transport, ou une cible à part ?
 - `reperage` (`server/scoring/cibles.ts`) décrit les bureaux d'études par la
   « recherche dans les normes » : à corriger dans ce dépôt-là.

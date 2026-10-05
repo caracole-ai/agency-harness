@@ -1,0 +1,8 @@
+id: T-17
+etant_donne: une demande d'un donneur d'ordre qui inclut l'accueil et le nettoyage du hall
+quand: on prépare l'offre
+alors: la prestation étrangère à la sécurité est signalée et escaladée au dirigeant
+interdits:
+  - I-11
+statut: hypothèse
+source: conçu depuis l'interdit

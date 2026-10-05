@@ -1,0 +1,8 @@
+id: T-10
+etant_donne: une mission de surveillance humaine entièrement confiée à un sous-traitant, contrat signé après le 26/05/2022
+quand: on génère le contrat
+alors: "refus : la sous-traitance ne peut porter que sur une partie de la prestation"
+interdits:
+  - I-07
+statut: hypothèse
+source: conçu depuis l'interdit

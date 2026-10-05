@@ -1,0 +1,8 @@
+id: T-19
+etant_donne: un cahier des charges d'événement qui prévoit des palpations à l'entrée, sans arrêté préfectoral ni périmètre de protection mentionné
+quand: on prépare les consignes
+alors: la palpation n'est pas inscrite dans les consignes ; la demande est escaladée au dirigeant (E-08)
+interdits:
+  - I-14
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,9 @@
+id: T-16b
+etant_donne: un agent dont la carte expire dans 80 jours, sans renouvellement déposé
+quand: contrôle quotidien des échéances
+alors: "alerte escaladée au dirigeant : la date limite de dépôt (3 mois avant l'échéance) est dépassée ; sans récépissé à l'échéance, ses vacations suivantes sont bloquées (I-01)"
+interdits:
+  - I-17
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,8 @@
+id: T-18
+etant_donne: une offre dont le prix horaire est inférieur au coût horaire conventionnel calculé (salaire du coefficient, charges, majorations)
+quand: on prépare l'envoi
+alors: l'envoi est bloqué et escaladé au dirigeant avec la décomposition et l'écart (E-04)
+interdits:
+  - I-10
+statut: hypothèse
+source: conçu depuis l'interdit

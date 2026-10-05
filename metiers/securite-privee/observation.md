@@ -23,7 +23,8 @@ lignes pour le devis sont dans `entretien.md`.
 
 - [ ] le planning de la semaine prochaine, et celui d'une semaine difficile ;
 - [ ] le fichier ou l'écran où vivent les dates des titres ;
-- [ ] un contrat client et le mémento des consignes d'un site ;
+- [ ] un contrat client, les consignes de poste d'un site, et le mémento de
+      l'entreprise avec ses émargements ;
 - [ ] une main courante (papier ou écran) ;
 - [ ] le dernier rapport envoyé à un client, s'il y en a ;
 - [ ] l'accès à l'outil de paie ou à l'export des heures.
@@ -156,8 +157,10 @@ planning.
       concrètement ? »** (I-05) ⚠ Noter la réponse telle quelle. Deux textes
       sont en vigueur : ne pas trancher.
 - [ ] « Les heures supplémentaires : combien, et qui les autorise ? » (O-04)
-- [ ] « Les consignes d'un site : où sont-elles, et comment l'agent les
-      signe ? » (I-12) 👁 Un mémento émargé.
+- [ ] « Le mémento de l'entreprise : sa dernière modification, et qui l'a
+      émargée depuis ? » (I-12) 👁 Un mémento émargé, sans rien de propre à
+      un client. Puis : « Et les consignes d'un site, où sont-elles, l'agent
+      les signe ? » (une pratique à noter, aucun texte lu ne l'impose)
 - [ ] « Le registre des contrôles internes : vous le tenez ? » 👁 Le
       montrer.
 
