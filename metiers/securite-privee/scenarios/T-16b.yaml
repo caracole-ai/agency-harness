@@ -7,4 +7,18 @@ interdits:
   - I-01
 statut: hypothèse
 source: conçu depuis l'interdit
-cas_absent: "phase 4 : la date limite de dépôt et l'escalade relèvent de Veiller ; le blocage des vacations sans récépissé est rejoué par T-02"
+cas:
+  aujourdhui: "2026-10-06"
+  agents:
+    - { id: A-1, nom: Agent A, mac: "2026-03-01", cartePro: { activites: [surveillance-humaine], validites: [{ du: "2021-12-26", au: "2026-12-25" }] } }
+  postes:
+    - { id: P-1, site: S-1, activite: surveillance-humaine }
+  vacations:
+    - { id: V-1, agent: A-1, poste: P-1, debut: "2026-12-20T08:00", fin: "2026-12-20T20:00", nature: jour }
+    - { id: V-2, agent: A-1, poste: P-1, debut: "2027-01-05T08:00", fin: "2027-01-05T20:00", nature: jour }
+  attendu:
+    # sans récépissé, la vacation postérieure à l'expiration est refusée, pas celle d'avant
+    - { regle: I-01, objet: V-2, verdict: refus }
+  alertes:
+    # dépôt dû le 25/09/2026 : dépassé
+    - { regle: I-17, objet: A-1/carte, niveau: escalade }

@@ -6,3 +6,12 @@ interdits:
   - I-17
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-06"
+  agents:
+    - { id: A-1, nom: Agent A, cartePro: { activites: [surveillance-humaine], validites: [{ du: "2022-03-06", au: "2027-03-05" }] } }
+  postes: []
+  vacations: []
+  alertes:
+    # dépôt au plus tard le 05/12/2026 ; MAC à organiser avant, alerte dès le 05/10 (2 mois)
+    - { regle: I-17, objet: A-1/mac, niveau: alerte }

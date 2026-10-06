@@ -1,0 +1,28 @@
+# Client fictif de la sécurité privée : sert aux démonstrations et aux tests.
+# Aucune donnée réelle. La config d'un vrai client vit dans clients/<slug>/,
+# jamais versionnée.
+client: client fictif (sécurité privée)
+metier: securite-privee
+
+# Sans politique, la loi générale décide (I-05 : 11 h de repos). Un client
+# qui applique l'accord de 1993 l'écrirait ainsi :
+#   politique:
+#     lectures_reference:
+#       I-05: accord-1993
+
+donnees:
+  agents: agents.csv
+  postes: postes.csv
+  planning: planning.csv
+
+journal: journal.sqlite
+
+veiller:
+  # Valeurs d'exemple, à demander au client : quand prévenir, et combien de
+  # temps il faut pour agir (en dessous, l'alerte est escaladée).
+  echeances:
+    depot_renouvellement: { alerter: { mois: 1 }, preparation: { jours: 7 } }
+    mac: { alerter: { mois: 2 }, preparation: { mois: 1 } }
+    recyclage_ssiap: { alerter: { mois: 2 }, preparation: { mois: 1 } }
+    secourisme: { alerter: { mois: 2 }, preparation: { mois: 1 } }
+    habilitation_electrique: { alerter: { mois: 2 }, preparation: { mois: 1 } }

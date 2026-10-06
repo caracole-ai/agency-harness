@@ -77,6 +77,8 @@ export function incoherences(registre: Registre): string[] {
 /** Ce que le code d'un métier expose au registre (`metiers/<métier>/code/src/index.ts`). */
 export interface CodeMetier {
   CONTROLES: { regle: string; nonCouvert?: string[] }[]
+  /** Les règles tenues par des échéances (archétype Veiller) plutôt que par des contrôles. */
+  VEILLES?: { regle: string; nonCouvert?: string[] }[]
   rejouer(scenario: Registre['scenarios'][number], registre: Registre): { ecarts: string[] }
 }
 
@@ -88,7 +90,7 @@ export interface CodeMetier {
  */
 export function incoherencesDuCode(registre: Registre, code: CodeMetier): string[] {
   const erreurs: string[] = []
-  const codes = new Set(code.CONTROLES.map((c) => c.regle))
+  const codes = new Set([...code.CONTROLES, ...(code.VEILLES ?? [])].map((c) => c.regle))
   for (const regle of codes) {
     const interdit = registre.interdits.find((i) => i.id === regle)
     if (!interdit) erreurs.push(`le contrôle ${regle} n'a pas d'interdit au registre`)

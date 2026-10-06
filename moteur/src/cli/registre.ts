@@ -77,13 +77,14 @@ for (const dossier of dossiers(args)) {
     if (existsSync(cheminCode)) {
       const code = (await import(pathToFileURL(cheminCode).href)) as CodeMetier
       erreurs.push(...incoherencesDuCode(registre, code))
-      for (const c of code.CONTROLES) {
+      const codees = [...code.CONTROLES, ...(code.VEILLES ?? [])]
+      for (const c of codees) {
         if (c.nonCouvert?.length)
           console.log(
             `${nom} : ${c.regle} codé en partie, non couvert : ${c.nonCouvert.join(' ; ')}`,
           )
       }
-      console.log(`${nom} : contrôles codés : ${code.CONTROLES.map((c) => c.regle).join(', ')}`)
+      console.log(`${nom} : règles codées : ${codees.map((c) => c.regle).join(', ')}`)
     }
     if (regeneree !== fiche)
       erreurs.push(

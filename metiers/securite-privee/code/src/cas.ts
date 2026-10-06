@@ -1,18 +1,23 @@
 import {
+  type Alerte,
   type Constat,
   executer,
+  NIVEAUX,
   type Registre,
   type Scenario,
   Temporal,
   VERDICTS,
+  veiller,
 } from '@harnais/moteur'
 import { z } from 'zod'
 import { CONTROLES } from './controles'
+import { echeancesSecurite, type Fenetres, VEILLES } from './echeances'
 import { Planning } from './modele'
 import { contexte } from './semantique'
 
-// Les `cas` des scénarios T-xx : un planning fictif, la date du jour, et les
-// verdicts attendus. Le même rejeu sert aux tests et à `registre:verifier`.
+// Les `cas` des scénarios T-xx : un planning fictif, la date du jour, et ce
+// qui est attendu (des verdicts, des alertes d'échéance, ou les deux). Le même
+// rejeu sert aux tests et à `registre:verifier`.
 
 const Attendu = z.object({
   regle: z.string().regex(/^I-\d{2}$/),
@@ -22,40 +27,74 @@ const Attendu = z.object({
   notes: z.array(z.string()).optional(),
 })
 
-const Cas = z.looseObject({
-  aujourdhui: z.iso.date(),
-  attendu: z.array(Attendu).min(1),
+const AlerteAttendue = z.object({
+  regle: z.string().regex(/^I-\d{2}$/),
+  objet: z.string(),
+  niveau: z.enum(NIVEAUX),
 })
+
+const Cas = z
+  .looseObject({
+    aujourdhui: z.iso.date(),
+    attendu: z.array(Attendu).default([]),
+    alertes: z.array(AlerteAttendue).default([]),
+  })
+  .refine((c) => c.attendu.length + c.alertes.length > 0, {
+    message: 'un cas attend au moins un verdict ou une alerte',
+  })
 
 export interface CasLu {
   aujourdhui: Temporal.PlainDate
   attendu: z.infer<typeof Attendu>[]
+  alertes: z.infer<typeof AlerteAttendue>[]
   planning: Planning
 }
 
 export function lireCas(brut: unknown): CasLu {
-  const { aujourdhui, attendu, ...reste } = Cas.parse(brut)
+  const { aujourdhui, attendu, alertes, ...reste } = Cas.parse(brut)
   return {
     aujourdhui: Temporal.PlainDate.from(aujourdhui),
     attendu,
+    alertes,
     planning: Planning.parse(reste),
   }
 }
 
 /**
- * Rejoue un scénario : chaque verdict attendu est rendu, et aucun autre
- * constat non conforme n'apparaît pour les interdits que le scénario couvre.
+ * Les fenêtres d'alerte des scénarios : celles du client fictif
+ * (`exemples/client-fictif/config.yaml`). Chez un client, elles viennent de
+ * sa config.
+ */
+export const FENETRES_SCENARIOS: Fenetres = {
+  depot_renouvellement: { alerter: { mois: 1 }, preparation: { jours: 7 } },
+  mac: { alerter: { mois: 2 }, preparation: { mois: 1 } },
+  recyclage_ssiap: { alerter: { mois: 2 }, preparation: { mois: 1 } },
+  secourisme: { alerter: { mois: 2 }, preparation: { mois: 1 } },
+  habilitation_electrique: { alerter: { mois: 2 }, preparation: { mois: 1 } },
+}
+
+/**
+ * Rejoue un scénario : chaque verdict et chaque alerte attendus sont rendus,
+ * et rien d'autre de non conforme n'apparaît pour les interdits du scénario.
  * Rend la liste des écarts, vide si le scénario passe.
  */
 export function rejouer(
   scenario: Scenario,
   registre: Registre,
-): { constats: Constat[]; ecarts: string[] } {
+): { constats: Constat[]; alertes: Alerte[]; ecarts: string[] } {
   const cas = lireCas(scenario.cas)
-  const constats = executer(CONTROLES, contexte(cas.planning), registre).filter((c) =>
+  const ctx = contexte(cas.planning)
+  const constats = executer(CONTROLES, ctx, registre).filter((c) =>
     scenario.interdits.includes(c.regle),
   )
+  const i17 = registre.interdits.find((i) => i.id === 'I-17')
+  const veilleEnJeu = VEILLES.some((v) => scenario.interdits.includes(v.regle))
+  const alertes =
+    veilleEnJeu && i17
+      ? veiller(echeancesSecurite(ctx, FENETRES_SCENARIOS, i17, cas.aujourdhui), cas.aujourdhui)
+      : []
   const ecarts: string[] = []
+
   for (const a of cas.attendu) {
     const c = constats.find((x) => x.regle === a.regle && x.objet === a.objet)
     if (!c) ecarts.push(`${a.regle} ${a.objet} : aucun constat, ${a.verdict} attendu`)
@@ -72,5 +111,17 @@ export function rejouer(
     if (!prevu && c.verdict !== 'ok')
       ecarts.push(`${c.regle} ${c.objet} : ${c.verdict} inattendu (${c.motif})`)
   }
-  return { constats, ecarts }
+
+  for (const a of cas.alertes) {
+    const x = alertes.find((y) => y.regle === a.regle && y.objet === a.objet)
+    if (!x) ecarts.push(`${a.regle} ${a.objet} : aucune alerte, ${a.niveau} attendue`)
+    else if (x.niveau !== a.niveau) {
+      ecarts.push(`${a.regle} ${a.objet} : ${x.niveau} (${x.motif}), ${a.niveau} attendue`)
+    }
+  }
+  for (const x of alertes) {
+    if (!cas.alertes.some((a) => a.regle === x.regle && a.objet === x.objet))
+      ecarts.push(`${x.regle} ${x.objet} : ${x.niveau} inattendue (${x.motif})`)
+  }
+  return { constats, alertes, ecarts }
 }

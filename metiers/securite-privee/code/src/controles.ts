@@ -3,6 +3,7 @@ import {
   type Controle,
   type Couverture,
   couverture,
+  dateFr,
   dureeHeures,
   FUSEAU,
   heuresDans,
@@ -68,13 +69,17 @@ const heures = (h: number) => {
   return minutes === 0 ? `${entieres} h` : `${entieres} h ${String(minutes).padStart(2, '0')}`
 }
 
-/** Le verdict d'une couverture : un titre qui couvre une partie seulement de la vacation ne se tranche pas ici. */
+/**
+ * Le verdict d'une couverture : un titre qui couvre une partie seulement de la vacation ne se tranche pas ici
+ * (« à la date de la vacation » : au début, ou sur toute sa durée ? question au juriste, `REFLEXIONS.md`).
+ * Le motif s'adresse à l'exploitation : rien sur la fabrication du harnais.
+ */
 function selonCouverture(c: Couverture, motifAucune: string, quoi: string): Resultat {
   if (c === 'entière') return ok
   if (c === 'partielle') {
     return {
       verdict: 'à vérifier',
-      motif: `${quoi} cesse d'être valide pendant la vacation : « à la date de la vacation » se lit au début ou sur toute sa durée (question pour le juriste)`,
+      motif: `${quoi} cesse d'être valide pendant la vacation : à décider par l'exploitation`,
     }
   }
   return { verdict: 'refus', motif: motifAucune }
@@ -82,7 +87,7 @@ function selonCouverture(c: Couverture, motifAucune: string, quoi: string): Resu
 
 const inconnu = (quoi: string): Resultat => ({
   verdict: 'à vérifier',
-  motif: `donnée absente : ${quoi} (G-02, rien n'est supposé)`,
+  motif: `donnée absente : ${quoi} ; rien n'est supposé, à renseigner`,
 })
 
 export const I01: Controle<Contexte> = {
@@ -98,7 +103,7 @@ export const I01: Controle<Contexte> = {
         .at(-1)
       const r = selonCouverture(
         couverture(titresDeCarte(agent), intervalleDe(v)),
-        `aucune carte valide ni récépissé à la date de la vacation${derniere ? ` (carte valide jusqu'au ${derniere})` : ''}`,
+        `aucune carte valide ni récépissé à la date de la vacation${derniere ? ` (carte valide jusqu'au ${dateFr(date(derniere))})` : ''}`,
         'la carte professionnelle',
       )
       return constat('I-01', v.id, [r])
@@ -185,7 +190,7 @@ export const I04: Controle<Contexte> = {
           } else if (s.niveau > requis) {
             r.push({
               verdict: 'à vérifier',
-              motif: `agent SSIAP ${s.niveau} sur un poste SSIAP ${requis} : couvert par un diplôme supérieur ? (non relu)`,
+              motif: `agent SSIAP ${s.niveau} sur un poste SSIAP ${requis} : à confirmer par l'exploitation`,
             })
           }
           const limite = limitePeriodique(
@@ -196,7 +201,7 @@ export const I04: Controle<Contexte> = {
           r.push(
             selonCouverture(
               couverture([jusquau(date(s.diplome), limite)], i),
-              `recyclage SSIAP échu le ${limite} : remise à niveau nécessaire`,
+              `recyclage SSIAP échu le ${dateFr(limite)} : remise à niveau nécessaire`,
               'le recyclage SSIAP',
             ),
           )
@@ -223,7 +228,7 @@ export const I04: Controle<Contexte> = {
           r.push(
             selonCouverture(
               couverture([jusquau(base, limite)], i),
-              `secourisme échu le ${limite}`,
+              `secourisme échu le ${dateFr(limite)}`,
               'le secourisme',
             ),
           )
@@ -354,7 +359,7 @@ export const I05: Controle<Contexte> = {
             motif:
               parService && parJour
                 ? `plus de ${max} h de travail, par service comme par jour civil`
-                : `plus de ${max} h ${parService ? "d'affilée, mais pas sur un jour civil" : 'sur un jour civil, mais pas sur un service'} : « par jour » se lit par service ou par jour civil`,
+                : `plus de ${max} h ${parService ? "d'affilée, mais pas sur un jour civil" : 'sur un jour civil, mais pas sur un service'} : à décider par l'exploitation`,
           })
         }
         return constat('I-05', v.id, r.length > 0 ? r : [ok], lectures, notes)

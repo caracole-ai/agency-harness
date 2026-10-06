@@ -1,4 +1,7 @@
 export * from './cas'
+export * from './connecteurs/csv-agence'
 export * from './controles'
+export * from './echeances'
 export * from './modele'
 export * from './semantique'
+export * from './veille'

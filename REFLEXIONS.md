@@ -93,6 +93,27 @@ spécifique.
   qui n'était pas marquée ✓ — c'est exactement ce que le plafond de verdict
   par statut protège.
 
+## Fait (2026-10-06)
+
+- **Phase 4, premier jalon** : `pnpm veiller --client exemples/client-fictif`
+  lit trois CSV, contrôle le planning (I-01 à I-05, I-20), calcule les
+  échéances d'I-17 (dépôt du renouvellement 3 mois avant, MAC à organiser
+  avant, recyclages SSIAP et secourisme, habilitation électrique, date
+  inconnue = alerte), écrit son journal (SQLite, ajout seul tenu par des
+  déclencheurs) et rend un rapport en cinq parties. Sur l'entreprise
+  fictive, il trouve exactement les 12 constats et 7 échéances posés exprès
+  (`attendu.yaml`, écrit à la main ; le test échoue si on en retire un).
+  **Appris** : (1) un constat conforme qui porte une note ne doit pas
+  disparaître du rapport, sinon la décision « on signale les autres textes »
+  reste lettre morte ; (2) les motifs des contrôles parlaient au fabricant
+  (« question pour le juriste », « non relu », « G-02 ») : un rapport client
+  ne dit que ce que l'exploitation peut faire, les questions juridiques
+  restent ici et dans la fiche ; (3) Veiller n'a pas besoin de machine à
+  états tant qu'il n'y a pas de cycle de vie d'alerte.
+- À demander au premier client : les fenêtres d'alerte et de préparation de
+  chaque échéance (exemple : MAC prévenu 2 mois avant le dépôt, escaladé à
+  moins d'un mois), et son vrai tableur.
+
 ---
 
 ## Ce que le croisement des quatre métiers a appris

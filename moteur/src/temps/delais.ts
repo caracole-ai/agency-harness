@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import { estFerie, type OptionsFeries } from './feries'
 import { Temporal } from './temporal'
 
@@ -17,6 +18,14 @@ export interface RegleDeDecompte {
 }
 
 export type Duree = { jours: number } | { mois: number } | { ans: number }
+
+const entier = z.number().int().nonnegative()
+/** Une durée telle qu'une config ou un registre l'écrit : `{ mois: 2 }`. */
+export const DureeSchema: z.ZodType<Duree> = z.union([
+  z.strictObject({ jours: entier }),
+  z.strictObject({ mois: entier }),
+  z.strictObject({ ans: entier }),
+])
 
 const SAMEDI = 6
 const DIMANCHE = 7

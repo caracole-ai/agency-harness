@@ -202,6 +202,12 @@ interdits:
     relu: 2026-10-05
     suite: "(sauf agrément du dirigeant : `texte`)"
     source: R612-13 ; R612-17 ; arrêté du 27/02/2017, art. 4 II et 6 II ; arrêté du 02/05/2005, art. 7 ; accord du 27/11/2017, art. 3 et 4 (le MAC relève de la formation continue de l'entreprise, sur le temps de travail, à ses frais)
+    parametres:
+      depot_renouvellement_avant_mois: 3
+      mac_fenetre_mois: 24
+      mac_fenetre_telesurveillance_mois: 36
+      recyclage_ssiap_ans: 3
+      recyclage_secourisme_ans: 2
   - id: I-18
     interdit: "Le **registre de sécurité de l'ERP** n'est jamais écrit par le harnais : il appartient à l'exploitant"
     etapes:

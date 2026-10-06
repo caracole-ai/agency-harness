@@ -14,7 +14,7 @@ main.
 
 | Couche | Contenu | Où | Réutilisable |
 |---|---|---|---|
-| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, et les premiers interdits codés de la sécurité privée (2026-10-05). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
+| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, les premiers interdits codés de la sécurité privée (2026-10-05), et Veiller : `pnpm veiller`, la config client, le journal et le rapport (2026-10-06). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
 | **Client** | données, exceptions, savoir tacite, seuils | `clients/<client>/` — **jamais versionné** | ce client seul |
@@ -45,9 +45,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
   statut de la règle, lecture de référence et notes), `src/controles/`
   (exécution des contrôles, fermée en cas d'erreur), `src/cli/registre.ts`,
-  et `src/temps/` (jours fériés, décompte et report des délais, obligations
+  `src/temps/` (jours fériés, décompte et report des délais, obligations
   périodiques, intervalles en heures réelles, validité d'un titre à une
-  date ; testé avec la sécurité, le transport et les avocats).
+  date ; testé avec la sécurité, le transport et les avocats),
+  `src/archetypes/` (Veiller : échéances, fenêtres d'alerte et de
+  préparation, niveaux ; le déroulé d'une veille, `passe.ts` ; le rapport ;
+  ce qu'un métier fournit, `metier.ts`), `src/config.ts` (config client
+  validée au démarrage, politique du client), `src/journal/` (SQLite en
+  ajout seul, tenu par la base) et `src/cli/veiller.ts`.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -58,9 +63,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     contrôles du moteur. Seule la sécurité privée en a un ;
   - `code/` : le paquet du métier (`@harnais/securite-privee`) — le modèle
     canonique (`modele.ts`), les notions (`semantique.ts`), un contrôle par
-    interdit codé (`controles.ts` : I-01 à I-05, I-20 ; I-05 en partie) et le
-    rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et vérifie
-    que code, registre et scénarios concordent ;
+    interdit codé (`controles.ts` : I-01 à I-05, I-20 ; I-05 en partie), les
+    échéances d'I-17 (`echeances.ts`), le connecteur CSV « format agence »
+    (`connecteurs/`), la config et la description pour Veiller (`veille.ts`)
+    et le rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et
+    vérifie que code, registre et scénarios concordent ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
   - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel
@@ -83,6 +90,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   est le port autonome de la figure animée du site (`smart-tailor`), à
   régénérer depuis la fiche quand la piste G sera faite. Publiée sur
   claude.ai (lien dans la conversation du 2026-10-05).
+- `exemples/client-fictif/` — une entreprise de sécurité fictive (13 agents,
+  19 vacations, des erreurs posées exprès), sa config et `attendu.yaml`, la
+  liste écrite à la main de ce que la veille doit trouver ; un test la
+  compare au résultat. Sert aux démonstrations : jamais de données réelles
+  ici.
 - `clients/` — les notes d'entretien, une par client, et `index.md`, la table
   des lettres (client A, client B) sous lesquelles les fiches les citent.
   Ignoré par git (voir `.gitignore`) : ce que dit un client chez lui ne part
@@ -102,6 +114,8 @@ pnpm install
 pnpm check               # Biome, types, tests, cohérence des registres
 pnpm registre:generer    # réécrit les tables 1, 2, 4 des fiches depuis leur registre
 pnpm registre:verifier   # identifiants, couverture interdit ↔ test, codes cités par les vues, fiche à jour
+pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
+                         # la veille d'un client : planning contrôlé, échéances, rapport ; écrit dans son journal
 ```
 
 ## Le déroulé d'un rendez-vous

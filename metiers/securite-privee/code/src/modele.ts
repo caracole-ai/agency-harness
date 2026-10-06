@@ -44,6 +44,11 @@ export const Agent = z.object({
     .optional(),
   /** Le récépissé d'une demande de renouvellement complète, ouvert jusqu'à la décision (R612-17). */
   recepisse: ValiditeIso.optional(),
+  /**
+   * Le dernier stage MAC suivi (maintien et actualisation des compétences) :
+   * son attestation accompagne la demande de renouvellement (R612-17).
+   */
+  mac: DateIso.optional(),
   /** La carte professionnelle propre à l'entreprise (R612-18). */
   carteEntrepriseRemise: z.boolean().optional(),
   ssiap: z

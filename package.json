@@ -10,10 +10,11 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
-    "registre:generer": "tsx moteur/src/cli/registre.ts generer",
-    "registre:verifier": "tsx moteur/src/cli/registre.ts verifier",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm registre:verifier"
+    "test": "NODE_OPTIONS=--disable-warning=ExperimentalWarning pnpm -r run test",
+    "registre:generer": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/registre.ts generer",
+    "registre:verifier": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/registre.ts verifier",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm registre:verifier",
+    "veiller": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/veiller.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",

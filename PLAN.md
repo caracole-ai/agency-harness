@@ -161,8 +161,16 @@ briques restent en prose jusqu'à ce qu'un composant en ait besoin.
   le vrai adaptateur s'écrira chez le premier client, le modèle canonique ne
   bouge pas.
 
-### Phase 4 — Veiller, livrable sans modèle ← **premier jalon**
+### Phase 4 — Veiller, livrable sans modèle ← **premier jalon** (fait le 2026-10-06)
 Étage : archétype générique, paramétré par le métier.
+
+**Écarts à ce qui suit** : pas de machine à états pour Veiller (un rapport
+calculé en une passe n'en a pas besoin ; le cycle de vie d'une alerte —
+envoyée, acquittée, relancée — viendra avec le moteur d'états de la phase 5).
+Une fenêtre par échéance a deux durées : `alerter` (quand prévenir) et
+`preparation` (en dessous, escalade). I-19 reste hors périmètre (paie).
+Le rapport a une section « Conforme, à noter » : ce que la loi accepte et
+qu'un autre texte refuserait (décision de Lionel : on signale).
 - Machine Veiller (5 à 6 états) en table : `source lue → échéances calculées
   → alertes → notifiées | escaladées`. L'avance d'une alerte = délai de
   préparation (MAC avant J-90), une date absente déclenche sa propre alerte.
