@@ -1,6 +1,8 @@
+import { fileURLToPath } from 'node:url'
 import {
   type Alerte,
   type Constat,
+  chargerConfig,
   executer,
   NIVEAUX,
   type Registre,
@@ -14,6 +16,7 @@ import { CONTROLES } from './controles'
 import { echeancesSecurite, type Fenetres, VEILLES } from './echeances'
 import { Planning } from './modele'
 import { contexte } from './semantique'
+import { ConfigSecurite } from './veille'
 
 // Les `cas` des scénarios T-xx : un planning fictif, la date du jour, et ce
 // qui est attendu (des verdicts, des alertes d'échéance, ou les deux). Le même
@@ -61,17 +64,13 @@ export function lireCas(brut: unknown): CasLu {
 }
 
 /**
- * Les fenêtres d'alerte des scénarios : celles du client fictif
- * (`exemples/client-fictif/config.yaml`). Chez un client, elles viennent de
- * sa config.
+ * Les fenêtres d'alerte des scénarios : celles du client fictif, lues dans sa
+ * config (une seule source). Chez un vrai client, elles viennent de la sienne.
  */
-export const FENETRES_SCENARIOS: Fenetres = {
-  depot_renouvellement: { alerter: { mois: 1 }, preparation: { jours: 7 } },
-  mac: { alerter: { mois: 2 }, preparation: { mois: 1 } },
-  recyclage_ssiap: { alerter: { mois: 2 }, preparation: { mois: 1 } },
-  secourisme: { alerter: { mois: 2 }, preparation: { mois: 1 } },
-  habilitation_electrique: { alerter: { mois: 2 }, preparation: { mois: 1 } },
-}
+export const FENETRES_SCENARIOS: Fenetres = chargerConfig(
+  fileURLToPath(new URL('../../../../exemples/client-fictif/config.yaml', import.meta.url)),
+  ConfigSecurite,
+).veiller.echeances
 
 /**
  * Rejoue un scénario : chaque verdict et chaque alerte attendus sont rendus,

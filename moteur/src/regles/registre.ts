@@ -79,14 +79,13 @@ export interface CodeMetier {
   CONTROLES: { regle: string; nonCouvert?: string[] }[]
   /** Les règles tenues par des échéances (archétype Veiller) plutôt que par des contrôles. */
   VEILLES?: { regle: string; nonCouvert?: string[] }[]
-  rejouer(scenario: Registre['scenarios'][number], registre: Registre): { ecarts: string[] }
 }
 
 /**
  * Les incohérences entre le registre et le code qui l'applique : un contrôle
  * sans interdit, un interdit codé que le registre dit vérifiable par un humain
- * ou tenu pour hypothèse, un scénario d'interdit codé qui ne se rejoue pas
- * (sans `cas` ni `cas_absent`), un scénario rejoué qui échoue.
+ * ou tenu pour hypothèse, un scénario d'interdit codé sans `cas` ni
+ * `cas_absent`. Le rejeu des `cas` est l'affaire des tests du métier.
  */
 export function incoherencesDuCode(registre: Registre, code: CodeMetier): string[] {
   const erreurs: string[] = []
@@ -106,8 +105,6 @@ export function incoherencesDuCode(registre: Registre, code: CodeMetier): string
     if (!s.interdits.some((i) => codes.has(i))) continue
     if (s.cas === undefined && s.cas_absent === undefined) {
       erreurs.push(`${s.id} couvre un interdit codé, sans cas rejouable ni cas_absent`)
-    } else if (s.cas !== undefined) {
-      for (const e of code.rejouer(s, registre).ecarts) erreurs.push(`${s.id} : ${e}`)
     }
   }
   return erreurs

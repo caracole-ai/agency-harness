@@ -42,9 +42,6 @@ describe('schéma', () => {
   it('refuse un ✓ sur une hypothèse', () => {
     expect(Scenario.safeParse({ ...scenario, relu: '2026-09-29' }).success).toBe(false)
   })
-  it('un interdit sans levée déclarée ne se lève jamais', () => {
-    expect(interdit.levee).toBe('jamais')
-  })
 })
 
 describe('incohérences', () => {
@@ -98,21 +95,19 @@ describe('fiche', () => {
 })
 
 describe('cohérence du code', () => {
-  const code = (regle = 'I-01', ecarts: string[] = []) => ({
-    CONTROLES: [{ regle }],
-    rejouer: () => ({ ecarts }),
-  })
+  const code = (regle = 'I-01') => ({ CONTROLES: [{ regle }] })
   it('un scénario d’interdit codé sans cas ni cas_absent', () => {
     expect(incoherencesDuCode(registre(), code())).toContain(
       'T-01 couvre un interdit codé, sans cas rejouable ni cas_absent',
     )
   })
-  it('cas_absent suffit, et un cas rejoué qui échoue est une erreur', () => {
+  it('un cas ou un cas_absent suffit (le rejeu est l’affaire des tests du métier)', () => {
     expect(
       incoherencesDuCode(registre({ scenarios: [{ ...scenario, cas_absent: 'phase 4' }] }), code()),
     ).toEqual([])
-    const r = registre({ scenarios: [{ ...scenario, cas: {} }] })
-    expect(incoherencesDuCode(r, code('I-01', ['écart']))).toEqual(['T-01 : écart'])
+    expect(incoherencesDuCode(registre({ scenarios: [{ ...scenario, cas: {} }] }), code())).toEqual(
+      [],
+    )
   })
   it('un contrôle sans interdit, ou d’un interdit humain', () => {
     expect(incoherencesDuCode(registre(), code('I-99'))).toContain(

@@ -42,7 +42,6 @@ function constat(
   regle: string,
   objet: string,
   resultats: Resultat[],
-  lectures?: Record<string, Verdict>,
   notes: string[] = [],
 ): Constat {
   const nonOk = resultats.filter((r) => r.verdict !== 'ok')
@@ -51,7 +50,6 @@ function constat(
     objet,
     verdict: resultats.reduce<Verdict>((v, r) => plusGrave(v, r.verdict), 'ok'),
     motif: nonOk.length > 0 ? nonOk.map((r) => r.motif).join(' ; ') : 'conforme',
-    ...(lectures ? { lectures } : {}),
     ...(notes.length > 0 ? { notes } : {}),
   }
 }
@@ -266,7 +264,6 @@ function joursCivils(i: Intervalle): Intervalle[] {
 
 interface Repos {
   resultat: Resultat
-  lectures: Record<string, Verdict>
   notes: string[]
 }
 
@@ -280,7 +277,6 @@ function repos(avant: Vacation, apres: Vacation, interdit: Interdit): Repos {
   if (h < 0) {
     return {
       resultat: { verdict: 'refus', motif: `chevauche la vacation ${avant.id}` },
-      lectures: {},
       notes: [],
     }
   }
@@ -321,7 +317,6 @@ function repos(avant: Vacation, apres: Vacation, interdit: Interdit): Repos {
             verdict,
             motif: `${heures(h)} de repos depuis la vacation ${avant.id}, sous le minimum de ${reference ? minimum[reference.id] : '?'} (${reference?.source})`,
           },
-    lectures,
     notes,
   }
 }
@@ -341,13 +336,11 @@ export const I05: Controle<Contexte> = {
       const intervalles = vacations.map(intervalleDe)
       return vacations.map((v, k) => {
         const r: Resultat[] = []
-        let lectures: Record<string, Verdict> | undefined
         let notes: string[] = []
         const precedente = vacations[k - 1]
         if (precedente) {
           const rep = repos(precedente, v, interdit)
           r.push(rep.resultat)
-          lectures = rep.lectures
           notes = rep.notes
         }
         const i = intervalleDe(v)
@@ -362,7 +355,7 @@ export const I05: Controle<Contexte> = {
                 : `plus de ${max} h ${parService ? "d'affilée, mais pas sur un jour civil" : 'sur un jour civil, mais pas sur un service'} : à décider par l'exploitation`,
           })
         }
-        return constat('I-05', v.id, r.length > 0 ? r : [ok], lectures, notes)
+        return constat('I-05', v.id, r.length > 0 ? r : [ok], notes)
       })
     })
   },

@@ -14,8 +14,6 @@ export interface Constat {
   objet: string
   verdict: Verdict
   motif: string
-  /** Le verdict sous chaque lecture, quand la règle en a plusieurs. */
-  lectures?: Record<string, Verdict>
   /** Ce que disent les autres textes quand ils concluent autrement que la référence. */
   notes?: string[]
 }

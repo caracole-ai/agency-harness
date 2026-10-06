@@ -108,8 +108,8 @@ moments. Le README sera corrigé sur ce point.
 `metiers/securite-privee/`.
 - Schéma zod d'une règle : `id`, `texte`, `etapes`, `moment`
   (pre-tool | post-tool | pre-response | stop), `verifiable_par`, `statut`,
-  `relu` (bool + date), `lectures[]` (pour ⚠), `levee` (`jamais` par défaut ;
-  colonne B posée, pas encore exploitée), `source`, et les champs que la
+  `relu` (bool + date), `lectures[]` (pour ⚠), ~~`levee`~~ (retiré le
+  2026-10-06 : rien ne s'en servait, il reviendra avec la piste B), `source`, et les champs que la
   figure du site demandera (nom court, place dans le tour) laissés optionnels.
 - Schéma d'un scénario T-xx : `etant_donne` (prose + données), `quand`,
   `alors` (verdict attendu + motif), `interdits`, `statut`, `source`.
@@ -269,7 +269,7 @@ REFLEXIONS ; aucun ne bloque les phases 0 à 5.
 ## Documentation à tenir
 
 README (couche Moteur : où, comment lancer), `GRILLE.md` (tables générées,
-colonnes `moment`, `lectures`, `levee`), `REFLEXIONS.md` (piste A en cours,
+colonnes `moment`, `lectures`, `parametres`), `REFLEXIONS.md` (piste A en cours,
 G partielle, B posée, décisions ci-dessus datées du 2026-10-05), un
 `moteur/README.md` court.
 

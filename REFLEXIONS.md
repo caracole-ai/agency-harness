@@ -110,6 +110,13 @@ spécifique.
   ne dit que ce que l'exploitation peut faire, les questions juridiques
   restent ici et dans la fiche ; (3) Veiller n'a pas besoin de machine à
   états tant qu'il n'y a pas de cycle de vie d'alerte.
+- **Principe KISS** (Lionel, 2026-10-06) : éviter l'over-engineering tant
+  qu'on peut, sans jamais sacrifier la qualité finale. Ménage du jour : le
+  champ `levee` (piste B) et le détail des verdicts par lecture dans un
+  constat, écrits mais jamais lus, sont retirés ; les scénarios ne se
+  rejouent plus qu'à un endroit (les tests du métier) ; les fenêtres
+  d'alerte des scénarios sont lues dans la config du client fictif, plus
+  recopiées.
 - À demander au premier client : les fenêtres d'alerte et de préparation de
   chaque échéance (exemple : MAC prévenu 2 mois avant le dépôt, escaladé à
   moins d'un mois), et son vrai tableur.

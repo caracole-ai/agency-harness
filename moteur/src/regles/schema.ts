@@ -6,9 +6,6 @@ export const STATUTS = ['texte', 'déclaré', 'constaté', 'confirmé', 'hypoth�
 /** Moments du harnais où un contrôle s'attache (`REFLEXIONS.md`, piste A). */
 export const MOMENTS = ['pre-tool', 'post-tool', 'pre-response', 'stop'] as const
 
-/** Levée d'un interdit (`REFLEXIONS.md`, piste B). Sans mention : jamais. */
-export const LEVEE_PAR_DEFAUT = 'jamais'
-
 const DateIso = z.iso.date()
 
 /**
@@ -52,7 +49,6 @@ export const Interdit = z
     ...qualification,
     source: z.string(),
     moment: z.enum(MOMENTS).optional(),
-    levee: z.string().default(LEVEE_PAR_DEFAUT),
     /** Paramètres communs à toutes les lectures ; une lecture les surcharge. */
     parametres: z.record(z.string(), z.union([z.number(), z.string(), z.boolean()])).optional(),
     lectures: z.array(Lecture).min(2).optional(),
