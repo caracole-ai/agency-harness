@@ -88,15 +88,41 @@ function afficher(e: Etape | null, demande: string): string[] {
   if (!e) return [`${demande} : rien de nouveau.`]
   switch (e.statut) {
     case STATUT.proposee:
-      return proposition(e.proposition)
+      return [
+        ...(e.horsCadre.length > 0
+          ? [
+              `Hors du cadre délégué (${e.horsCadre.join(', ')}) : la décision revient au patron.`,
+              '',
+            ]
+          : []),
+        ...proposition(e.proposition),
+      ]
     case STATUT.demandee:
       return [
+        ...(e.par === 'patron' ? [] : [`Validé par ${e.par}.`]),
         `Message envoyé à l'agent : « ${e.message} »`,
         '',
         `Sa réponse : pnpm remplacer reponse --client ${values.client} --demande ${demande} --oui | --non`,
       ]
     case STATUT.ecrite:
-      return ['Planning mis à jour.', ...e.messages.map((m) => `Message : « ${m} »`)]
+      return [
+        'Planning mis à jour.',
+        ...e.messages.map((m) => `Message : « ${m} »`),
+        ...(e.delegationProposee
+          ? [
+              '',
+              'Ce remplacement a réussi. Pour rendre automatique ce type de décision, dans ces conditions,',
+              'ajouter à config.yaml (révocable en retirant le bloc) :',
+              'delegations:',
+              '  - action: remplacement',
+              `    conditions: { ${Object.entries(e.delegationProposee)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ')} }`,
+              `    accordee_le: ${maintenant.toPlainDate().toString()}`,
+              '    par: <le nom du patron>',
+            ]
+          : []),
+      ]
     default:
       return [`${demande} : ${e.statut}. ${e.motif}`]
   }

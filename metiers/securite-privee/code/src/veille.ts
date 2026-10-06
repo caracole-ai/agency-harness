@@ -1,4 +1,10 @@
-import { FenetreSchema, type MetierVeiller, PolitiqueSchema, type Temporal } from '@harnais/moteur'
+import {
+  DelegationSchema,
+  FenetreSchema,
+  type MetierVeiller,
+  PolitiqueSchema,
+  type Temporal,
+} from '@harnais/moteur'
 import { z } from 'zod'
 import { lireAgence } from './connecteurs/csv-agence'
 import { CONTROLES } from './controles'
@@ -10,6 +16,18 @@ import { type Contexte, contexte, intervalleDe } from './semantique'
 
 /** Les critères de classement d'un remplaçant que le patron peut ordonner (catalogue fermé). */
 export const PREFERENCES = ['connait_site', 'moins_d_heures_semaine'] as const
+
+/**
+ * Une délégation de remplacement et ses conditions possibles : le remplaçant
+ * proposé connaît le site ; l'absence est signalée au moins N heures avant.
+ */
+const DelegationRemplacement = DelegationSchema.extend({
+  action: z.literal('remplacement'),
+  conditions: z.strictObject({
+    connait_site: z.literal(true).optional(),
+    prevenu_avant_heures: z.number().positive().optional(),
+  }),
+})
 
 export const ConfigSecurite = z.strictObject({
   client: z.string().min(1),
@@ -23,6 +41,8 @@ export const ConfigSecurite = z.strictObject({
       attente_reponse_minutes: z.number().int().positive(),
     })
     .optional(),
+  /** Les décisions que le patron a confiées au harnais (G-01) ; absentes, tout passe par lui. */
+  delegations: z.array(DelegationRemplacement).optional(),
   veiller: z.strictObject({
     echeances: z.strictObject({
       depot_renouvellement: FenetreSchema,

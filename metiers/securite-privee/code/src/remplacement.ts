@@ -6,6 +6,7 @@ import {
   chargerConfig,
   chargerRegistre,
   classer,
+  conditionsManquantes,
   type Evaluation,
   empreinte,
   evaluerCandidats,
@@ -35,6 +36,7 @@ import { ConfigSecurite, decrire, type PREFERENCES, VEILLER } from './veille'
 
 const METIER = fileURLToPath(new URL('../..', import.meta.url))
 const TYPE = 'remplacement'
+const PAR_PATRON = 'patron'
 
 export const STATUT = {
   recue: 'reçue',
@@ -157,24 +159,29 @@ export const contenuDe = (demande: string, v: Vacation, agent: string): Contenu 
   fin: v.fin,
 })
 
+/** L'agent a déjà tenu une vacation sur ce site avant celle-ci. */
+function connaitSite(s: Session, v: Vacation, agent: string): boolean {
+  const debut = intervalleDe(v).debut
+  const site = s.ctx.poste(v.poste).site
+  return s.ctx
+    .vacationsDe(agent)
+    .some(
+      (x) =>
+        x.id !== v.id &&
+        s.ctx.poste(x.poste).site === site &&
+        Temporal.ZonedDateTime.compare(intervalleDe(x).fin, debut) <= 0,
+    )
+}
+
 /** Les critères du patron, dans son ordre, et ce qu'ils disent de chaque agent. */
 function criteres(s: Session, v: Vacation) {
   const debut = intervalleDe(v).debut
-  const site = s.ctx.poste(v.poste).site
   const lundi = debut.toPlainDate().subtract({ days: debut.dayOfWeek - 1 })
   const semaine: Intervalle = {
     debut: lundi.toZonedDateTime({ timeZone: FUSEAU }),
     fin: lundi.add({ days: 7 }).toZonedDateTime({ timeZone: FUSEAU }),
   }
-  const connait = (agent: string) =>
-    s.ctx
-      .vacationsDe(agent)
-      .some(
-        (x) =>
-          x.id !== v.id &&
-          s.ctx.poste(x.poste).site === site &&
-          Temporal.ZonedDateTime.compare(intervalleDe(x).fin, debut) <= 0,
-      )
+  const connait = (agent: string) => connaitSite(s, v, agent)
   const heures = (agent: string) =>
     heuresDans(
       s.ctx
@@ -261,9 +268,20 @@ const dejaSollicites = (s: Session, demande: string) =>
     .filter((a): a is string => a !== undefined)
 
 export type Etape =
-  | { statut: typeof STATUT.proposee; proposition: Proposition }
-  | { statut: typeof STATUT.demandee; agent: string; message: string }
-  | { statut: typeof STATUT.ecrite; agent: string; messages: string[] }
+  | {
+      statut: typeof STATUT.proposee
+      proposition: Proposition
+      /** Les conditions de délégation qui n'ont pas tenu : la décision revient au patron. */
+      horsCadre: string[]
+    }
+  | { statut: typeof STATUT.demandee; agent: string; message: string; par: string }
+  | {
+      statut: typeof STATUT.ecrite
+      agent: string
+      messages: string[]
+      /** Après un succès validé par le patron : les conditions à lui proposer de déléguer. */
+      delegationProposee?: Record<string, boolean | number>
+    }
   | { statut: typeof STATUT.escaladee | typeof STATUT.tropTard; motif: string }
 
 function proposer(s: Session, demande: string, maintenant: Temporal.ZonedDateTime): Etape {
@@ -284,7 +302,72 @@ function proposer(s: Session, demande: string, maintenant: Temporal.ZonedDateTim
       ecartes: p.ecartes.map((c) => c.agent),
     },
   })
-  return { statut: STATUT.proposee, proposition: p }
+  const cadres = (s.config.delegations ?? [])
+    .filter((d) => d.action === TYPE)
+    .map((d) => ({
+      d,
+      manquantes: conditionsManquantes(d, (c, valeur) =>
+        tient(s, demande, v, premier.agent, c, valeur),
+      ),
+    }))
+  const applicable = cadres.find((x) => x.manquantes.length === 0)
+  if (applicable) {
+    const par = `délégation du ${applicable.d.accordee_le}, accordée par ${applicable.d.par}`
+    return solliciter(s, demande, v, premier.agent, par, maintenant)
+  }
+  return {
+    statut: STATUT.proposee,
+    proposition: p,
+    horsCadre: [...new Set(cadres.flatMap((x) => x.manquantes))],
+  }
+}
+
+/** Les heures entre l'absence signalée et le début de la vacation. */
+function heuresDePrevenance(s: Session, demande: string, v: Vacation): number {
+  const recue = dernier(historique(s, demande), STATUT.recue)
+  const depuis = Temporal.Instant.from(recue?.horodatage ?? '').toZonedDateTimeISO(FUSEAU)
+  return depuis.until(intervalleDe(v).debut, { largestUnit: 'hours' }).total({ unit: 'hours' })
+}
+
+/** Une condition de délégation, sur ce cas. Le schéma de la config n'en laisse passer aucune inconnue. */
+function tient(
+  s: Session,
+  demande: string,
+  v: Vacation,
+  agent: string,
+  condition: string,
+  valeur: boolean | number,
+): boolean {
+  if (condition === 'connait_site') return connaitSite(s, v, agent) === valeur
+  if (condition === 'prevenu_avant_heures')
+    return heuresDePrevenance(s, demande, v) >= Number(valeur)
+  throw new Error(`condition de délégation inconnue : ${condition}`)
+}
+
+/** Inscrit la validation (la clé) puis sollicite l'agent : son accord reste exigé, délégation ou non. */
+function solliciter(
+  s: Session,
+  demande: string,
+  v: Vacation,
+  agent: string,
+  par: string,
+  maintenant: Temporal.ZonedDateTime,
+  propose?: string,
+): Etape {
+  const nom = s.ctx.agent(agent).nom
+  passer(s, demande, STATUT.validee, maintenant, {
+    motif: `${nom} : choix validé (${par})`,
+    donnees: {
+      agent,
+      par,
+      jeton: empreinte(contenuDe(demande, v, agent)),
+      ...(propose && agent !== propose ? { propose } : {}),
+    },
+  })
+  const poste = s.ctx.poste(v.poste)
+  const message = `${prenom(nom)}, peux-tu remplacer ${quand(s, v)}, ${poste.id} (${poste.site}) ? Réponds OUI ou NON.`
+  passer(s, demande, STATUT.demandee, maintenant, { motif: message, donnees: { agent } })
+  return { statut: STATUT.demandee, agent, message, par }
 }
 
 /** Passé le début de la vacation, il est trop tard : la demande s'arrête et l'exploitation reprend la main. */
@@ -355,20 +438,7 @@ export function valider(
         : `${agent ?? 'personne'} n'est pas parmi les remplaçants possibles`,
     )
   }
-  passer(s, demande, STATUT.validee, maintenant, {
-    motif: `${s.ctx.agent(agent).nom} validé par le patron`,
-    donnees: {
-      agent,
-      par: 'patron',
-      jeton: empreinte(contenuDe(demande, v, agent)),
-      ...(agent !== propose ? { propose } : {}),
-    },
-  })
-  const nom = s.ctx.agent(agent).nom
-  const poste = s.ctx.poste(v.poste)
-  const message = `${prenom(nom)}, peux-tu remplacer ${quand(s, v)}, ${poste.id} (${poste.site}) ? Réponds OUI ou NON.`
-  passer(s, demande, STATUT.demandee, maintenant, { motif: message, donnees: { agent } })
-  return { statut: STATUT.demandee, agent, message }
+  return solliciter(s, demande, v, agent, PAR_PATRON, maintenant, propose)
 }
 
 /** La réponse de l'agent sollicité. Oui : on écrit. Non : on propose le suivant au patron. */
@@ -384,7 +454,7 @@ export function repondre(
   if (!agent) throw new Error(`${demande} : aucun agent n'a été sollicité`)
   if (!oui) {
     passer(s, demande, STATUT.refusee, maintenant, {
-      motif: `${s.ctx.agent(agent).nom} a dit non (aucune conséquence pour lui)`,
+      motif: `${s.ctx.agent(agent).nom} a dit non (sans aucune conséquence)`,
       donnees: { agent },
     })
     return proposer(s, demande, maintenant)
@@ -441,7 +511,47 @@ export function ecrire(
     ],
     maintenant.toInstant().toString(),
   )
-  return { statut: STATUT.ecrite, agent, messages }
+  return {
+    statut: STATUT.ecrite,
+    agent,
+    messages,
+    ...proposerDelegation(s, demande, v, agent, maintenant),
+  }
+}
+
+/**
+ * Après un premier remplacement réussi et validé par le patron, sans
+ * délégation en place : lui proposer de rendre automatique ce type de
+ * décision, dans les conditions qui ont tenu ici (décision du 2026-10-06).
+ * On ne réécrit pas la config : c'est au patron de l'accorder.
+ */
+function proposerDelegation(
+  s: Session,
+  demande: string,
+  v: Vacation,
+  agent: string,
+  maintenant: Temporal.ZonedDateTime,
+): { delegationProposee?: Record<string, boolean | number> } {
+  const validee = donnees<{ par: string }>(dernier(historique(s, demande), STATUT.validee))
+  if (validee?.par !== PAR_PATRON) return {}
+  if ((s.config.delegations ?? []).some((d) => d.action === TYPE)) return {}
+  const conditions = {
+    ...(connaitSite(s, v, agent) ? { connait_site: true } : {}),
+    prevenu_avant_heures: Math.floor(heuresDePrevenance(s, demande, v)),
+  }
+  s.journal.ecrire(
+    [
+      {
+        type: 'délégation proposée',
+        client: s.config.client,
+        objet: demande,
+        motif: 'remplacement réussi : le rendre automatique dans ces conditions ?',
+        donnees: { action: TYPE, conditions },
+      },
+    ],
+    maintenant.toInstant().toString(),
+  )
+  return { delegationProposee: conditions }
 }
 
 /** Fait avancer une demande dans le temps : sans réponse après l'attente, ou trop tard. */

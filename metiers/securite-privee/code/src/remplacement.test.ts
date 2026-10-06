@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync } from 'node:fs'
+import { appendFileSync, cpSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -31,15 +31,18 @@ const attendu = parse(readFileSync(`${exemple}/attendu-remplacement.yaml`, 'utf8
   ecartes: Record<string, string[]>
 }
 
-/** Une copie neuve du client fictif, sans journal ni sorties. */
-function session(): Session {
+/** Une copie neuve du client fictif, sans journal ni sorties ; `config` s'ajoute à sa config. */
+function session(config = ''): Session {
   const dossier = mkdtempSync(join(tmpdir(), 'remplacement-'))
   cpSync(exemple, dossier, {
     recursive: true,
     filter: (f) => !/\.sqlite$|rapport-demo/.test(f),
   })
+  appendFileSync(join(dossier, 'config.yaml'), config)
   return ouvrir(dossier)
 }
+const delegation = (conditions: string) =>
+  `\ndelegations:\n  - action: remplacement\n    conditions: ${conditions}\n    accordee_le: "2026-10-09"\n    par: le patron\n`
 
 const jour = Temporal.PlainDate.from(attendu.absence.jour)
 const t0 = aParis(attendu.absence.maintenant)
@@ -156,5 +159,38 @@ describe('les sorties', () => {
     const s = session()
     absence(s)
     expect(() => absence(s)).toThrow(/déjà en cours/)
+  })
+})
+
+describe('la délégation (G-01)', () => {
+  it('après un premier succès validé par le patron, le harnais propose de déléguer', () => {
+    const s = session()
+    absence(s)
+    valider(s, 'D-V-17', plus(1))
+    const e = repondre(s, 'D-V-17', true, plus(5))
+    if (e.statut !== STATUT.ecrite) throw new Error(e.statut)
+    // signalée à 21 h 40 pour 8 h : 10 h 20 de prévenance ; Julien connaît le site
+    expect(e.delegationProposee).toEqual({ connait_site: true, prevenu_avant_heures: 10 })
+    expect(s.journal.historique('D-V-17').some((l) => l.type === 'délégation proposée')).toBe(true)
+  })
+  it('dans son cadre, la décision est validée par délégation, et l’agent reste sollicité', () => {
+    const s = session(delegation('{ connait_site: true }'))
+    const r = absence(s)
+    if (r.statut !== STATUT.demandee) throw new Error(r.statut)
+    expect(r.agent).toBe('A-2')
+    expect(r.par).toMatch(/délégation du 2026-10-09/)
+    const e = repondre(s, 'D-V-17', true, plus(5))
+    if (e.statut !== STATUT.ecrite) throw new Error(e.statut)
+    expect(e.delegationProposee).toBeUndefined()
+    expect(agentDe(s, 'V-17')).toBe('A-2')
+  })
+  it('hors de son cadre, la décision revient au patron', () => {
+    const s = session(delegation('{ connait_site: true, prevenu_avant_heures: 48 }'))
+    const r = absence(s)
+    if (r.statut !== STATUT.proposee) throw new Error(r.statut)
+    expect(r.horsCadre).toEqual(['prevenu_avant_heures'])
+  })
+  it('une condition inconnue arrête le démarrage', () => {
+    expect(() => session(delegation('{ toujours: true }'))).toThrow(/démarrage refusé/)
   })
 })

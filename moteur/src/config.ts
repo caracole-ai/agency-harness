@@ -14,6 +14,30 @@ export const PolitiqueSchema = z.strictObject({
 })
 export type Politique = z.infer<typeof PolitiqueSchema>
 
+/**
+ * Une délégation (G-01) : le patron confie au harnais une action précise, dans
+ * des conditions écrites ; toutes doivent tenir, sinon la décision revient en
+ * validation. Révocable en la retirant de la config. Le métier fixe le
+ * catalogue des conditions ; une condition inconnue arrête le démarrage.
+ */
+export const DelegationSchema = z.strictObject({
+  action: z.string().min(1),
+  conditions: z.record(z.string(), z.union([z.boolean(), z.number()])),
+  accordee_le: z.iso.date(),
+  par: z.string().min(1),
+})
+export type Delegation = z.infer<typeof DelegationSchema>
+
+/** Les conditions d'une délégation qui ne tiennent pas dans ce cas (vide : elle s'applique). */
+export function conditionsManquantes(
+  delegation: Delegation,
+  tient: (condition: string, valeur: boolean | number) => boolean,
+): string[] {
+  return Object.entries(delegation.conditions)
+    .filter(([condition, valeur]) => !tient(condition, valeur))
+    .map(([condition]) => condition)
+}
+
 /** Ce que toute config porte, quel que soit le métier. Le métier valide le reste. */
 export const ConfigBase = z.looseObject({
   client: z.string().min(1),
