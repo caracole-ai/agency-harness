@@ -92,6 +92,10 @@ const inconnu = (quoi: string): Resultat => ({
   motif: `donnée absente : ${quoi} ; rien n'est supposé, à renseigner`,
 })
 
+/** La donnée qu'un motif « donnée absente » réclame, pour les regrouper ; sinon `undefined`. */
+export const donneeAbsente = (motif: string) =>
+  /^donnée absente : (.+?) ; rien n'est supposé/.exec(motif)?.[1]
+
 export const I01: Controle<Contexte> = {
   regle: 'I-01',
   verifier: (ctx) =>

@@ -20,6 +20,14 @@ donnees:
 
 journal: journal.sqlite
 
+remplacement:
+  # Comment classer les remplaçants possibles, dans l'ordre de préférence du
+  # patron (valeurs d'exemple, à demander au client). Catalogue :
+  # connait_site, moins_d_heures_semaine.
+  preferences: [connait_site, moins_d_heures_semaine]
+  # Sans réponse de l'agent sollicité après ce délai, on passe au suivant.
+  attente_reponse_minutes: 30
+
 veiller:
   # Valeurs d'exemple, à demander au client : quand prévenir, et combien de
   # temps il faut pour agir (en dessous, l'alerte est escaladée).

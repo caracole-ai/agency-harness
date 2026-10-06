@@ -83,6 +83,13 @@ export class Journal {
     return this.db.prepare('SELECT * FROM journal ORDER BY id').all() as unknown as Ligne[]
   }
 
+  /** Ce que le journal sait d'un objet (une vacation, une demande), dans l'ordre. */
+  historique(objet: string): Ligne[] {
+    return this.db
+      .prepare('SELECT * FROM journal WHERE objet = ? ORDER BY id')
+      .all(objet) as unknown as Ligne[]
+  }
+
   /** Pour les tests et les outils : exécute une requête brute (une modification y échouera). */
   executer(sql: string): void {
     this.db.exec(sql)

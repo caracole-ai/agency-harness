@@ -1,0 +1,29 @@
+# Ce que le remplacement doit proposer quand Aïcha Traoré (A-11) se déclare
+# absente le samedi 10/10/2026 à 21 h 40 pour sa vacation du dimanche 11/10
+# (V-17 : Accueil, Galerie des Tilleuls, 8 h-20 h). Écrit à la main depuis les
+# CSV, avant le code : jamais recopié de sa sortie.
+absence: { agent: A-11, jour: "2026-10-11", maintenant: "2026-10-10T21:40" }
+vacation: V-17
+
+# Préférences de config.yaml : qui connaît le site (une vacation passée sur la
+# Galerie), puis le moins d'heures dans la semaine du lundi 05/10 au
+# dimanche 11/10 ; à égalité, le nom.
+possibles: [A-2, A-1, A-9, A-5]
+# Julien : connaît le site (V-05), 16 h (V-04 12 h + V-05 4 h)
+# Karim : connaît le site (V-01, V-02), 24 h
+# Mehdi : jamais venu avant le 11/10 (V-15 est le 17/10), 0 h
+# Thomas : jamais venu (Entrepôt Nord), 0 h (V-09 commence le 12/10)
+
+# Un interdit s'y oppose : les règles en cause.
+exclus:
+  A-3: [I-01]          # Sophie : carte expirée le 01/10, sans récépissé
+  A-4: [I-01, I-05]    # Moussa : carte expirée le 10/10 ; sort de V-08 à 8 h, 0 h de repos
+  A-6: [I-03]          # Nadia : carte d'entreprise non remise
+  A-10: [I-20]         # Nicolas : non déclaré dans Dracar Ultimate
+
+# Une donnée manque : rien n'est supposé (G-02), l'agent n'est pas proposé.
+ecartes:
+  A-7: [I-01, I-02, I-03, I-20]    # Kevin : agent SSIAP, carte, carte d'entreprise et Dracar non renseignés
+  A-8: [I-01, I-02, I-03, I-20]    # Isabelle : idem
+  A-12: [I-01, I-02, I-03, I-20]   # Pierre : idem
+  A-13: [I-01, I-02]               # Laura : carte non renseignée

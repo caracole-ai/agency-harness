@@ -1,3 +1,5 @@
+export * from './approbation/jeton'
+export * from './archetypes/candidats'
 export * from './archetypes/metier'
 export * from './archetypes/passe'
 export * from './archetypes/rapport'

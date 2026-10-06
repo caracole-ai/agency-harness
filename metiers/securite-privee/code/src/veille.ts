@@ -8,12 +8,21 @@ import { type Contexte, contexte, intervalleDe } from './semantique'
 // Veiller chez un client de la sécurité privée : sa config, la lecture de ses
 // données, et la façon de nommer ce dont parle le rapport.
 
+/** Les critères de classement d'un remplaçant que le patron peut ordonner (catalogue fermé). */
+export const PREFERENCES = ['connait_site', 'moins_d_heures_semaine'] as const
+
 export const ConfigSecurite = z.strictObject({
   client: z.string().min(1),
   metier: z.literal('securite-privee'),
   politique: PolitiqueSchema.optional(),
   donnees: z.strictObject({ agents: z.string(), postes: z.string(), planning: z.string() }),
   journal: z.string(),
+  remplacement: z
+    .strictObject({
+      preferences: z.array(z.enum(PREFERENCES)).min(1),
+      attente_reponse_minutes: z.number().int().positive(),
+    })
+    .optional(),
   veiller: z.strictObject({
     echeances: z.strictObject({
       depot_renouvellement: FenetreSchema,
