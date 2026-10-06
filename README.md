@@ -38,6 +38,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   - `archetypes.md` : les cinq sortes de travail, leur présence par métier,
     leurs interdits et tests types, leurs questions « si…, alors… ». Veiller
     est le seul présent partout : c'est le premier pilote par défaut.
+- `HANDOFF.md` — l'état à la dernière passation entre deux sessions : où on
+  en est, la suite, les pièges. À lire en premier.
 - `PLAN.md` — le plan de construction du moteur, sécurité privée comme
   premier cas (2026-10-05) : phases, décisions, vérifications.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
