@@ -6,8 +6,9 @@ La réflexion (`REFLEXIONS.md`, piste A), la méthode (`methode/`) et la page
 `presentation/schema-harnais.html` décrivent un moteur qui n'existe pas encore
 (README : « Moteur — à venir »). On le construit maintenant, la PME de sécurité
 privée servant de premier cas, en suivant l'ordre de la section 10 de la page :
-**Veiller d'abord, sans aucun modèle**, puis la machine à états et l'approbation
-sur le désistement, puis le modèle aux bords.
+**Veiller d'abord, sans aucun modèle**, puis le remplacement validé par le
+patron, puis l'interface du patron (web, puis conversation) : ordre révisé
+le 2026-10-06, voir phases 5 et 6.
 
 **Critère de succès du premier jalon** : sur un planning et un fichier de
 titres fictifs, `pnpm veiller --date 2026-10-05` sort la liste des alertes
@@ -182,32 +183,69 @@ qu'un autre texte refuserait (décision de Lionel : on signale).
 - Config client validée au démarrage (`exemples/client-fictif/config.yaml`) :
   un seuil manquant arrête le boot.
 
-### Phase 5 — Le désistement : machine à états, délégation, approbation
-Étage : générique (machine, échecs, jeton) + métier (table de délégation type).
-- Moteur d'états : table en donnée, trois sorties d'échec écrites une fois,
-  transition « trop tard » sur l'échéance de la demande, état persisté et
-  reprenable. Format compatible statechart, XState seulement si la hiérarchie
-  l'exige.
-- Contrôles montés aux quatre moments, fermés en cas d'erreur ou de délai.
-- Candidats : filtre par les interdits, classement par les poids de la config
-  (pas de solveur : il ne sert qu'au planning hebdomadaire B-01, hors plan).
-- Délégation `action × condition → rôle`, rôle suivant si absent ; jeton lié
-  au contenu exact de l'affectation ; écriture refusée sans jeton.
-- I-06 et E-09 (accord de l'agent sous le délai) entrent ici.
-- Entrée structurée à la main (CLI) : pas encore de message libre.
-- Exposition MCP du moteur pour le piloter depuis Claude Code.
+### Phase 5 — Le remplacement, validé par le patron (révisée le 2026-10-06)
+Étage : générique (demande, clé, délégation) + métier (vérifications,
+préférences de classement). Version simple, décidée le 2026-10-06 : la
+précédente (moteur d'états générique, compatible statechart, exposition MCP)
+est reportée tant qu'aucun client ne la demande.
+- **Une demande** = une absence (agent, vacation) avec un statut écrit en
+  clair dans le journal : `reçue → proposée → validée → acceptée par
+  l'agent → écrite`, ou `refusée` (on passe au suivant), `escaladée` (aucun
+  remplaçant, E-02), `trop tard`. Pas de moteur d'états générique : ces
+  statuts suffisent.
+- **Candidats** : les vérifications existantes (I-01 à I-05, I-20) passées
+  sur chaque agent, puis un classement par les **préférences du patron**
+  (config : « connaît le site », « le moins d'heures dans la semaine »…).
+  Pas de solveur.
+- **La clé** : la validation du patron produit un jeton lié au contenu exact
+  de l'affectation ; l'écriture est refusée sans jeton, ou si le contenu a
+  changé. L'accord de l'agent sous 48 h (I-06, E-09) est exigé en plus,
+  jamais remplacé par la clé.
+- **Une validation réelle** (RGPD art. 22, `methode/verification-2026-10-06.md`) :
+  le patron voit tous les candidats, avec les exclus et leur motif, et peut en
+  choisir un autre ; son choix, et l'écart avec la proposition, vont au
+  journal.
+- **La délégation (niveau 3)** : après au moins un succès d'un type de
+  décision, le harnais propose de l'automatiser ; acceptée, elle s'écrit dans
+  la config (action, conditions, date, qui), révocable, chaque exécution
+  journalisée. Un cas hors des conditions revient en validation. Le
+  mécanisme se code ; **la proposer pour le remplacement** (une décision qui
+  choisit entre des personnes) attend l'avis du juriste. En démo, elle se
+  montre sur l'entreprise fictive, comme une possibilité.
+- **Écriture** dans les outils : en démo, un planning fictif ; chez un client,
+  ses connecteurs (hors plan tant qu'on ne connaît pas ses outils).
+- Entrée en ligne de commande (CLI) d'abord. Le SMS d'absence est simulé.
 
-### Phase 6 — Le modèle aux bords
-- Interface à nous : `extraire`, `rediger`, `classer`, `douter` ; un premier
-  adaptateur fournisseur choisi à ce moment (Mistral par cohérence avec
-  Attendu et G-06, pas exclusif).
-- Sorties validées par schéma, deux échecs → `à vérifier` avec le message
-  brut. Journal des tokens et du coût par appel, plafond mensuel dans la
-  config, alerte Veiller à l'approche.
-- Coût par unité annoncé avant de coder (décision du 04/10).
-- Évals : skill `eval-audit` avant de déclarer le pipeline testé ; les
-  traces réelles n'existent qu'après un client, donc d'ici là un jeu de
-  messages fictifs, explicitement marqué comme tel.
+### Phase 6 — L'interface du patron (révisée le 2026-10-06)
+Remplace « le modèle aux bords, peut-être jamais ». Étage : générique ; seule
+la liste des actions possibles change d'un métier à l'autre.
+- **Une interface web**, qui ne fait qu'afficher et modifier la config, le
+  registre et le journal, sans logique à elle :
+  1. ce qui attend le patron : propositions à valider, cas à décider ;
+  2. les règles en vigueur : les interdits (lecture seule, avec leur texte)
+     et sa politique (modifiable) ;
+  3. les délégations : accordées (cadre, nombre d'exécutions, révoquer) et
+     proposées ;
+  4. le journal : qui a décidé quoi, quand.
+  Sur l'entreprise fictive, cette interface **est** la démo du remplacement :
+  pas d'écran de démo à part, jetable.
+- **La conversation**, ensuite : le patron écrit une consigne ; un modèle la
+  traduit en une demande de la liste d'actions, reformulée au patron ; le
+  code vérifie et exécute (ou refuse avec un motif et des alternatives). Le
+  modèle n'a aucun accès direct aux outils du client. Un ordre ponctuel n'est
+  pas une règle : « désormais, 12 h de repos » modifie la politique, donc
+  s'affiche, se confirme et se journalise. Hors de la liste d'actions : « je
+  ne sais pas encore faire ça ».
+- Canal du patron séparé de celui des agents, identité forte : un SMS
+  d'agent ne peut jamais passer pour une consigne du patron.
+- Le modèle : interface à nous (`traduire`, `rediger`), un adaptateur
+  fournisseur choisi à ce moment, coût par message annoncé avant de coder,
+  journal des tokens, plafond mensuel dans la config. Évals (`eval-audit`)
+  avant de déclarer la conversation testée.
+- Le réglage du patron est **borné** : il choisit parmi les réglages prévus
+  (une lecture de référence plus stricte, ses fenêtres d'alerte, ses
+  préférences, ses délégations) ; il ne crée ni ne lève un interdit. Un
+  nouveau réglage s'ajoute quand un client le demande.
 
 ### Phase 7 — Veille des textes et canal fabricant (avant la première livraison)
 Étage : générique. Destinataire : l'ingénieur du harnais, jamais le client.
@@ -247,6 +285,7 @@ REFLEXIONS ; aucun ne bloque les phases 0 à 5.
 | Registre limité aux rubriques 1, 2, 4 | ce que le moteur lit ; le reste quand un composant le demande |
 | Identité d'écriture du moteur + jeton par défaut, compte de l'humain en option de config | les deux rendent G-06 visible ; la variante forte se choisit par client |
 | Pas de solveur avant B-01 | le désistement se résout par filtre + classement |
+| Le patron règle, les interdits ne se règlent pas (2026-10-06) | rigide là où une erreur coûte, souple ailleurs ; une seule source par chose : registre (interdits), config client (politique, préférences, délégations), journal (ce qui s'est passé) ; la conversation et l'interface web n'en sont que des vues |
 
 ## Effets de bord anticipés
 
@@ -283,8 +322,11 @@ G partielle, B posée, décisions ci-dessus datées du 2026-10-05), un
   (passage à l'heure d'hiver), vacation 21 h–7 h.
 - `pnpm veiller` sur `exemples/client-fictif` : rapport relu à l'œil, chaque
   alerte attendue présente, aucune en trop.
-- Phase 5 : scénario du désistement de la page (Karim, 17 h, vacation 21 h)
-  rejoué de bout en bout en CLI, y compris non, absence de réponse et
-  « trop tard » ; écriture sans jeton → refus.
+- Phase 5 : le scénario de la démo (Aïcha absente dimanche, sur l'entreprise
+  fictive) rejoué de bout en bout en CLI, candidats et exclusions écrits à
+  la main dans un `attendu`, y compris non de l'agent, absence de réponse,
+  « trop tard », aucun remplaçant ; écriture sans jeton → refus ; contenu
+  changé après validation → refus ; délégation hors de ses conditions →
+  retour en validation.
 - `generer-fiche` puis `git diff metiers/securite-privee/fiche.md` : vide
   après la phase 1 (le registre reproduit la fiche telle quelle).

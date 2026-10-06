@@ -59,14 +59,19 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
    démonstration ».
 2. **Juriste**, en parallèle : `REFLEXIONS.md`, « À trancher par un juriste »
    (les quatre questions du remplacement B-02, la carte qui expire pendant une
-   nuit, le poste purement SSIAP sans carte).
-3. **Phase 5** (le désistement) seulement après, en version simple : une
-   demande avec un statut dans le journal, les candidats triés par les
-   contrôles existants, le « oui » humain qui débloque l'écriture. Pas de
-   moteur de statecharts générique ni de MCP tant qu'un client ne le demande.
-4. **Phase 7** (veille des textes par l'API PISTE, compte au nom de Lionel ;
-   canal Telegram) **avant toute livraison**. Phase 6 (modèle de langage) :
-   peut-être jamais, si l'entrée peut être un bouton ou un formulaire.
+   nuit, le poste purement SSIAP sans carte, et depuis le 2026-10-06 la
+   délégation qui choisit entre des personnes : RGPD art. 22, AI Act,
+   `methode/verification-2026-10-06.md`).
+3. **Phase 5** (révisée le 2026-10-06, `PLAN.md`) : le remplacement validé
+   par le patron, sur l'entreprise fictive, en ligne de commande. Peut
+   commencer sans attendre le terrain (tout est fictif) ; la délégation
+   (niveau 3) en fait partie. Pas de moteur d'états générique ni de MCP.
+4. **Phase 6** (révisée le 2026-10-06) : l'interface du patron, web d'abord
+   (à valider, règles en vigueur, délégations, journal ; elle sert aussi de
+   démo), puis la conversation. À concevoir **après** le premier rendez-vous :
+   ce que le dirigeant veut voir en dépend.
+5. **Phase 7** (veille des textes par l'API PISTE, compte au nom de Lionel ;
+   canal Telegram) **avant toute livraison**.
 
 ## Non vérifié, risques ouverts
 
