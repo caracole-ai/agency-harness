@@ -14,7 +14,7 @@ main.
 
 | Couche | Contenu | Où | Réutilisable |
 |---|---|---|---|
-| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, les premiers interdits codés de la sécurité privée (2026-10-05), et Veiller : `pnpm veiller`, la config client, le journal et le rapport (2026-10-06). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
+| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, les premiers interdits codés de la sécurité privée (2026-10-05), et Veiller : `pnpm veiller`, la config client, le journal et le rapport (2026-10-06) ; le remplacement validé par le patron et la délégation (étape 5, 2026-10-06). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
 | **Client** | données, exceptions, savoir tacite, seuils | `clients/<client>/` — **jamais versionné** | ce client seul |
@@ -54,7 +54,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   préparation, niveaux ; le déroulé d'une veille, `passe.ts` ; le rapport ;
   ce qu'un métier fournit, `metier.ts`), `src/config.ts` (config client
   validée au démarrage, politique du client), `src/journal/` (SQLite en
-  ajout seul, tenu par la base) et `src/cli/veiller.ts`.
+  ajout seul, tenu par la base), `src/archetypes/candidats.ts` (évaluer des
+  candidats par les contrôles, les classer), `src/approbation/jeton.ts` (la
+  clé d'accord : pas d'écriture sans validation de ce contenu exact au
+  journal) et `src/cli/veiller.ts`.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -67,8 +70,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     canonique (`modele.ts`), les notions (`semantique.ts`), un contrôle par
     interdit codé (`controles.ts` : I-01 à I-05, I-20 ; I-05 en partie), les
     échéances d'I-17 (`echeances.ts`), le connecteur CSV « format agence »
-    (`connecteurs/`), la config et la description pour Veiller (`veille.ts`)
-    et le rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et
+    (`connecteurs/`, lecture et écriture du planning), la config et la
+    description pour Veiller (`veille.ts`), le remplacement validé par le
+    patron et la délégation (`remplacement.ts`, `cli/remplacer.ts`) et le
+    rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et
     vérifie que code, registre et scénarios concordent ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
@@ -120,6 +125,12 @@ pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport
                          # la veille d'un client : planning contrôlé, échéances, rapport ; écrit dans son journal
 pnpm rapport:html rapport.md rapport.html [--bandeau "texte"]
                          # le rapport mis en page (A4), à imprimer en PDF depuis un navigateur
+pnpm remplacer absence --client <copie> --agent A-11 --jour 2026-10-11 --maintenant 2026-10-10T21:40
+pnpm remplacer valider --client <copie> --demande D-V-17 [--agent A-1]
+pnpm remplacer reponse --client <copie> --demande D-V-17 --oui | --non
+pnpm remplacer suivre  --client <copie> --demande D-V-17
+                         # un remplacement : proposition, validation du patron, accord de
+                         # l'agent, écriture du planning ; sur une COPIE du client fictif
 ```
 
 ## Le déroulé d'un rendez-vous

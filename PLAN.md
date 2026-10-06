@@ -183,7 +183,7 @@ qu'un autre texte refuserait (décision de Lionel : on signale).
 - Config client validée au démarrage (`exemples/client-fictif/config.yaml`) :
   un seuil manquant arrête le boot.
 
-### Phase 5 — Le remplacement, validé par le patron (révisée le 2026-10-06)
+### Phase 5 — Le remplacement, validé par le patron (révisée, puis faite le 2026-10-06)
 Étage : générique (demande, clé, délégation) + métier (vérifications,
 préférences de classement). Version simple, décidée le 2026-10-06 : la
 précédente (moteur d'états générique, compatible statechart, exposition MCP)
@@ -215,6 +215,16 @@ est reportée tant qu'aucun client ne la demande.
 - **Écriture** dans les outils : en démo, un planning fictif ; chez un client,
   ses connecteurs (hors plan tant qu'on ne connaît pas ses outils).
 - Entrée en ligne de commande (CLI) d'abord. Le SMS d'absence est simulé.
+
+**Fait le 2026-10-06**, avec trois écarts : (1) le déroulé d'une demande et
+la commande `pnpm remplacer` vivent dans le métier (`remplacement.ts`,
+`cli/remplacer.ts`) et non dans le moteur : un seul métier s'en sert, le
+moteur ne garde que ce qui est générique (candidats, classement, clé,
+délégation) ; (2) l'accord de l'agent est toujours demandé, plus strict
+qu'I-06, dont le contrôle sur l'historique des modifications reste à coder ;
+(3) un agent dont une donnée manque (carte non renseignée) est **écarté**,
+pas exclu (G-02) : les agents incendie du client fictif le sont, faute de
+carte renseignée.
 
 ### Phase 6 — L'interface du patron (révisée le 2026-10-06)
 Remplace « le modèle aux bords, peut-être jamais ». Étage : générique ; seule

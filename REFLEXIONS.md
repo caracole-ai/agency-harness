@@ -141,6 +141,18 @@ spécifique.
   nommée ; plancher de 9 h, D3131-6). Les 10 h de la CCN 7.01 au passage de
   nuit à jour sont peut-être une dérogation valide, pas une lecture
   concurrente : question au juriste, le moteur ne change pas avant.
+- **Étape 5, le remplacement** : `pnpm remplacer` retrouve la vacation de
+  l'absent, passe chaque agent aux contrôles de la veille sur un planning
+  hypothétique, classe les possibles selon les préférences du patron, montre
+  les exclus et les écartés avec leurs motifs, prend la validation (ou un
+  autre choix, gardé au journal), demande l'accord de l'agent, puis écrit le
+  planning avec la clé. La délégation valide seule dans son cadre, rend la
+  main hors cadre, et se propose après un premier succès. Sur le client
+  fictif : 4 possibles, 4 exclus, 4 écartés, exactement comme
+  `attendu-remplacement.yaml` écrit à la main. **Appris** : le tableau du
+  minisite disait « agents incendie exclus, sans carte » ; le moteur les dit
+  « écartés, carte non renseignée ». Une cellule vide n'est pas une absence
+  de carte (G-02) : le code a corrigé la page.
 - À demander au premier client : les fenêtres d'alerte et de préparation de
   chaque échéance (exemple : MAC prévenu 2 mois avant le dépôt, escaladé à
   moins d'un mois), et son vrai tableur.

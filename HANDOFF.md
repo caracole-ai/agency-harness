@@ -6,14 +6,15 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
 
 ## Où on en est
 
-- Branche `main` à `917f497`, poussée. `moteur-securite` pointe au même
-  endroit (à supprimer ou garder : décision de Lionel).
+- Branche `main` à jour de l'étape 5 (2026-10-06), pas encore poussée au
+  moment où ces lignes sont écrites. `moteur-securite` est restée à
+  `049dd50` (à supprimer ou garder : décision de Lionel).
 - `presentation/schema-harnais.html` est modifié et **pas commité** : c'est un
   travail de Lionel d'avant le 2026-10-05, ne pas y toucher sans lui.
-- `pnpm check` passe : Biome, types, 64 tests du moteur, 26 du métier, registre
+- `pnpm check` passe : Biome, types, 70 tests du moteur, 42 du métier, registre
   cohérent (21 interdits, 34 tests, 10 escalades).
 
-**Phases de `PLAN.md` faites (0 à 4), sécurité privée comme premier cas :**
+**Phases de `PLAN.md` faites (0 à 5), sécurité privée comme premier cas :**
 0. Workspace pnpm (10.32.1 épinglé), TypeScript strict, zod, Biome, Vitest.
 1. Registre : `metiers/securite-privee/regles.yaml` + `scenarios/T-xx.yaml`
    font foi ; les tables 1, 2, 4 de `fiche.md` en sont **générées**.
@@ -25,6 +26,9 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
    échéances), journal SQLite en ajout seul, config client validée au
    démarrage. Sur l'entreprise fictive, il trouve exactement les 19 erreurs
    posées (`exemples/client-fictif/attendu.yaml`, écrit à la main).
+5. **Le remplacement, validé par le patron**, et la délégation : `pnpm
+   remplacer` (voir README), sur une copie du client fictif ; proposition
+   conforme à `attendu-remplacement.yaml`, écrit à la main.
 
 ## Décisions à respecter (détail et dates : `REFLEXIONS.md`, « Décidé »)
 
@@ -62,10 +66,10 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
    nuit, le poste purement SSIAP sans carte, et depuis le 2026-10-06 la
    délégation qui choisit entre des personnes : RGPD art. 22, AI Act,
    `methode/verification-2026-10-06.md`).
-3. **Phase 5** (révisée le 2026-10-06, `PLAN.md`) : le remplacement validé
-   par le patron, sur l'entreprise fictive, en ligne de commande. Peut
-   commencer sans attendre le terrain (tout est fictif) ; la délégation
-   (niveau 3) en fait partie. Pas de moteur d'états générique ni de MCP.
+3. **Phase 5 faite le 2026-10-06** : `pnpm remplacer` (absence, valider,
+   reponse, suivre) sur une copie du client fictif ; délégation comprise.
+   Proposer la délégation à un vrai client pour un remplacement attend
+   l'avis du juriste.
 4. **Phase 6** (révisée le 2026-10-06) : l'interface du patron, web d'abord
    (à valider, règles en vigueur, délégations, journal ; elle sert aussi de
    démo), puis la conversation. À concevoir **après** le premier rendez-vous :
