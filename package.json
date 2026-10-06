@@ -14,7 +14,8 @@
     "registre:generer": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/registre.ts generer",
     "registre:verifier": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/registre.ts verifier",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm registre:verifier",
-    "veiller": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/veiller.ts"
+    "veiller": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/veiller.ts",
+    "rapport:html": "tsx moteur/src/cli/rapport-html.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",

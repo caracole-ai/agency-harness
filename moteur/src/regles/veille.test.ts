@@ -6,6 +6,7 @@ import { relecturesEnRetard } from './veille'
 const interdit = (id: string, relu?: string) =>
   Interdit.parse({
     id,
+    nom: 'X',
     interdit: 'jamais X',
     etapes: ['5'],
     consequence: 'sanction',

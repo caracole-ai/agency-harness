@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@js-temporal/polyfill": "0.5.1",
+    "marked": "18.1.0",
     "yaml": "2.9.1",
     "zod": "4.6.3"
   }

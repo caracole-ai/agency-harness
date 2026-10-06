@@ -6,6 +6,7 @@ import { parametresDe, plafond, selonReference } from './verdict'
 const interdit = (champs: Record<string, unknown> = {}) =>
   Interdit.parse({
     id: 'I-01',
+    nom: 'X',
     interdit: 'jamais X',
     etapes: ['5'],
     consequence: 'sanction',

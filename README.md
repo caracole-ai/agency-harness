@@ -118,6 +118,8 @@ pnpm registre:generer    # réécrit les tables 1, 2, 4 des fiches depuis leur r
 pnpm registre:verifier   # identifiants, couverture interdit ↔ test, codes cités par les vues, fiche à jour
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
                          # la veille d'un client : planning contrôlé, échéances, rapport ; écrit dans son journal
+pnpm rapport:html rapport.md rapport.html [--bandeau "texte"]
+                         # le rapport mis en page (A4), à imprimer en PDF depuis un navigateur
 ```
 
 ## Le déroulé d'un rendez-vous

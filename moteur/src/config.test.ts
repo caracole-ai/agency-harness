@@ -29,6 +29,7 @@ describe('politique du client', () => {
     interdits: [
       Interdit.parse({
         id: 'I-05',
+        nom: 'repos',
         interdit: 'repos',
         etapes: ['5'],
         consequence: 'litige',

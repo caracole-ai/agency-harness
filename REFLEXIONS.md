@@ -6,7 +6,7 @@ une règle : c'est le fil d'une discussion entre Lionel et Claude, à reprendre 
 chaque séance. Une piste réalisée passe dans « Fait », avec le fichier qui la
 porte. Une idée abandonnée se barre et dit pourquoi, elle ne s'efface pas.
 
-Dernière mise à jour : 2026-10-05.
+Dernière mise à jour : 2026-10-06.
 
 ---
 
@@ -117,6 +117,27 @@ spécifique.
   rejouent plus qu'à un endroit (les tests du métier) ; les fenêtres
   d'alerte des scénarios sont lues dans la config du client fictif, plus
   recopiées.
+- **La démo du premier rendez-vous** : le rapport mis en page en A4
+  (`pnpm rapport:html`, imprimé en PDF depuis un navigateur), et son déroulé
+  dans `prospection.md`. Principe : la démonstration vient après les trois
+  questions, et chaque partie du rapport amène une question dont la config a
+  besoin (politique de repos, fenêtres d'alerte, qui décide, format du
+  tableur, format de livraison). Vaut pour tout métier : le rapport Veiller
+  sur données fictives sert de questionnaire. Le format de livraison chez un
+  client reste à choisir avec lui : rien de plus n'est construit d'ici là.
+- **Rapport lisible par un dirigeant** (préparation de la démo) : chaque
+  interdit porte un nom court (`nom` dans `regles.yaml`) que le rapport
+  affiche à la place du code, rejeté en fin de ligne ; le repos conforme dit
+  ce qu'il a mesuré, et la note dit « minimum de 12 h, que ce repos n'atteint
+  pas » au lieu de « non respecté » à côté de « conforme ». Le client fictif a
+  des noms d'agents, de postes et de sites : noms inventés, d'origines et de
+  genres mêlés, erreurs réparties sans lien avec l'origine
+  (`exemples/client-fictif/config.yaml`).
+- **L3131-1 relu** (`verification-2026-10-06.md`). **Appris** : la loi
+  renvoie elle-même à la branche (L3131-2, D3131-4, 2° : la surveillance est
+  nommée ; plancher de 9 h, D3131-6). Les 10 h de la CCN 7.01 au passage de
+  nuit à jour sont peut-être une dérogation valide, pas une lecture
+  concurrente : question au juriste, le moteur ne change pas avant.
 - À demander au premier client : les fenêtres d'alerte et de préparation de
   chaque échéance (exemple : MAC prévenu 2 mois avant le dépôt, escaladé à
   moins d'un mois), et son vrai tableur.
@@ -334,7 +355,10 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
   de 1993 et la CCN sont **étendus**, donc obligatoires pour toute entreprise
   de la branche : la politique du dirigeant dit ce qu'il applique, pas ce
   qui est dû ; le moteur décide aujourd'hui par la loi générale et signale
-  les autres textes. Une carte (ou un recyclage) qui expire pendant une
+  les autres textes. Les 10 h de la CCN 7.01 au passage de nuit à jour
+  sont-elles une dérogation valide au sens de L3131-2 et D3131-4, 2°
+  (plancher de 9 h, repos équivalent en contrepartie) ? Si oui, T-07d refuse
+  à tort. Une carte (ou un recyclage) qui expire pendant une
   vacation de nuit : valide « à la date de la vacation » au début, ou sur
   toute sa durée ? (le moteur rend `à vérifier`). Un poste purement SSIAP
   exige-t-il une carte professionnelle ? Le moteur suppose que non, sur le

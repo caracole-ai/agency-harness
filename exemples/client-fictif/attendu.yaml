@@ -3,17 +3,17 @@
 # Tout constat non conforme ou alerte absent de cette liste est une erreur.
 aujourdhui: "2026-10-06"
 constats:
-  - { regle: I-05, objet: V-05, verdict: refus }        # Agent B : 8 h de repos après une nuit
-  - { regle: I-01, objet: V-06, verdict: refus }        # Agent C : carte expirée le 01/10, sans récépissé
+  - { regle: I-05, objet: V-05, verdict: refus }        # Julien Lefèvre : 8 h de repos après une nuit
+  - { regle: I-01, objet: V-06, verdict: refus }        # Sophie Marchand : carte expirée le 01/10, sans récépissé
   - { regle: I-01, objet: V-07, verdict: refus }
-  - { regle: I-01, objet: V-08, verdict: à vérifier }   # Agent D : carte qui expire pendant la nuit
-  - { regle: I-02, objet: V-09, verdict: refus }        # Agent E : poste cynophile, carte sans cette activité
-  - { regle: I-03, objet: V-10, verdict: refus }        # Agent F : carte d'entreprise non remise
-  - { regle: I-04, objet: V-11, verdict: refus }        # Agent G : SSIAP 1 sur un poste SSIAP 2
-  - { regle: I-04, objet: V-13, verdict: refus }        # Agent H : recyclage SSIAP échu le 01/09
-  - { regle: I-05, objet: V-15, verdict: ok, notes: [accord du 18/05/1993] }  # Agent I : 11 h 30, l'accord de 1993 en veut 12
-  - { regle: I-20, objet: V-16, verdict: refus }        # Agent J : non déclaré dans Dracar Ultimate
-  - { regle: I-01, objet: V-19, verdict: à vérifier }   # Agent M : aucune donnée de carte
+  - { regle: I-01, objet: V-08, verdict: à vérifier }   # Moussa Diallo : carte qui expire pendant la nuit
+  - { regle: I-02, objet: V-09, verdict: refus }        # Thomas Girard : poste cynophile, carte sans cette activité
+  - { regle: I-03, objet: V-10, verdict: refus }        # Nadia Belkacem : carte d'entreprise non remise
+  - { regle: I-04, objet: V-11, verdict: refus }        # Kevin Nguyen : SSIAP 1 sur un poste SSIAP 2
+  - { regle: I-04, objet: V-13, verdict: refus }        # Isabelle Fontaine : recyclage SSIAP échu le 01/09
+  - { regle: I-05, objet: V-15, verdict: ok, notes: [accord du 18/05/1993] }  # Mehdi Saïdi : 11 h 30, l'accord de 1993 en veut 12
+  - { regle: I-20, objet: V-16, verdict: refus }        # Nicolas Robert : non déclaré dans Dracar Ultimate
+  - { regle: I-01, objet: V-19, verdict: à vérifier }   # Laura Petit : aucune donnée de carte
   - { regle: I-02, objet: V-19, verdict: à vérifier }
 alertes:
   - { regle: I-17, objet: A-3/carte, niveau: escalade }          # dépôt dû le 01/07, carte expirée

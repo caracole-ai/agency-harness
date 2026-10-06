@@ -17,7 +17,7 @@ import {
   Temporal,
   type Verdict,
 } from '@harnais/moteur'
-import type { Vacation } from './modele'
+import { NOMS_ACTIVITES, type Vacation } from './modele'
 import {
   type Contexte,
   date,
@@ -49,7 +49,11 @@ function constat(
     regle,
     objet,
     verdict: resultats.reduce<Verdict>((v, r) => plusGrave(v, r.verdict), 'ok'),
-    motif: nonOk.length > 0 ? nonOk.map((r) => r.motif).join(' ; ') : 'conforme',
+    motif:
+      nonOk.length > 0
+        ? nonOk.map((r) => r.motif).join(' ; ')
+        : // un « ok » qui dit ce qu'il a mesuré (le repos) garde son motif
+          (resultats.find((r) => r.motif !== ok.motif)?.motif ?? ok.motif),
     ...(notes.length > 0 ? { notes } : {}),
   }
 }
@@ -119,7 +123,7 @@ export const I02: Controle<Contexte> = {
       return constat('I-02', v.id, [
         {
           verdict: 'refus',
-          motif: `le poste demande l'activité « ${activite} », la carte porte : ${carte.activites.join(', ')}`,
+          motif: `le poste demande l'activité « ${activite ? NOMS_ACTIVITES[activite] : 'inconnue'} », la carte porte : ${carte.activites.map((a) => NOMS_ACTIVITES[a]).join(' ; ')}`,
         },
       ])
     }),
@@ -307,16 +311,15 @@ function repos(avant: Vacation, apres: Vacation, interdit: Interdit): Repos {
   const reference = interdit.lectures.find((l) => l.reference)
   const notes = divergentes.map(
     ({ lecture, verdict: v }) =>
-      `${lecture.source} : minimum de ${minimum[lecture.id]}, ${v === 'refus' ? 'non respecté' : v === 'ok' ? 'respecté' : 'selon la nature du service'}`,
+      `${lecture.source} : minimum de ${minimum[lecture.id]}, ${v === 'refus' ? "que ce repos n'atteint pas" : v === 'ok' ? 'que ce repos atteint' : 'selon la nature du service'}`,
   )
+  const repos = `${heures(h)} de repos depuis la vacation ${avant.id}`
+  const regle = `minimum de ${reference ? minimum[reference.id] : '?'} (${reference?.source})`
   return {
     resultat:
       verdict === 'ok'
-        ? ok
-        : {
-            verdict,
-            motif: `${heures(h)} de repos depuis la vacation ${avant.id}, sous le minimum de ${reference ? minimum[reference.id] : '?'} (${reference?.source})`,
-          },
+        ? { verdict, motif: `${repos} : conforme au ${regle}` }
+        : { verdict, motif: `${repos}, sous le ${regle}` },
     notes,
   }
 }

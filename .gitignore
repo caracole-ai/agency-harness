@@ -10,3 +10,6 @@ clients/*
 node_modules/
 dist/
 *.sqlite
+
+# Le rapport de démonstration se régénère (metiers/securite-privee/prospection.md).
+exemples/*/rapport-demo.*

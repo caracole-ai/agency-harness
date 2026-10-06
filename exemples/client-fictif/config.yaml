@@ -1,6 +1,9 @@
 # Client fictif de la sécurité privée : sert aux démonstrations et aux tests.
 # Aucune donnée réelle. La config d'un vrai client vit dans clients/<slug>/,
 # jamais versionnée.
+# Les noms des agents sont inventés, d'origines et de genres mêlés, et les
+# erreurs posées sont réparties sans lien avec l'origine des noms : la démo ne
+# doit associer aucun groupe à une faute.
 client: client fictif (sécurité privée)
 metier: securite-privee
 

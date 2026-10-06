@@ -54,8 +54,9 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
    les données réelles d'un prospect avant contrat (RGPD). En rapporter : son
    vrai tableur, sa politique de repos, ses fenêtres d'alerte (exemple actuel :
    MAC prévenu 2 mois avant le dépôt), la réalité de ses remplacements.
-   Proposition en attente : préparer la démo (rapport mis en page, quoi dire,
-   quoi taire).
+   Démo prête le 2026-10-06 : `exemples/client-fictif/rapport-demo.pdf`
+   (régénéré, non versionné) et le déroulé dans `prospection.md`, « La
+   démonstration ».
 2. **Juriste**, en parallèle : `REFLEXIONS.md`, « À trancher par un juriste »
    (les quatre questions du remplacement B-02, la carte qui expire pendant une
    nuit, le poste purement SSIAP sans carte).
@@ -69,8 +70,9 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
 
 ## Non vérifié, risques ouverts
 
-- Non relus mot à mot : C. trav. L3131-1, L3121-18, L3121-19 (la loi qui décide
-  d'I-05) ; la liste des activités de la carte (arrêté du 01/09/2025) ; les
+- Non relus mot à mot : C. trav. L3121-18, L3121-19 (L3131-1 relu le
+  2026-10-06, avec une question nouvelle pour le juriste sur la dérogation de
+  branche : `verification-2026-10-06.md`) ; la liste des activités de la carte (arrêté du 01/09/2025) ; les
   jours fériés (L3133-1, L3134-13) ; l'agrément du dirigeant.
 - Hypothèse codée à confirmer : un poste purement SSIAP n'exige pas de carte
   professionnelle (référentiel CNAPS p. 3).

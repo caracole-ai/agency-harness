@@ -163,6 +163,64 @@ document, une suite.
       relevé ? »** (I-01 à I-03)
 - [ ] **« Les dates des cartes et du SSIAP, elles sont où ? Qui les met à
       jour ? »** (D-01)
+- [ ] **La démonstration** (5 minutes, ci-dessous), seulement après les
+      trois questions.
 - [ ] Document à demander à voir : **le planning de la semaine prochaine.**
+      On le regarde avec lui ; on repart avec une copie **vide** (les
+      colonnes), jamais avec ses données : rien de réel avant le contrat
+      (RGPD).
 - [ ] La suite : qui fait le planning, et une journée sur place pour le voir
       travailler.
+
+### La démonstration : le rapport sert à poser nos questions
+
+Le rendez-vous sert à écouter : la démonstration vient **après** les trois
+questions, dure 5 minutes, et chaque partie du rapport amène une question
+dont la configuration a besoin. Si le temps manque, on la saute.
+
+**Support** : `exemples/client-fictif/rapport-demo.pdf`, deux pages, imprimé
+en deux exemplaires (un lui reste) et ouvert à l'écran. Le régénérer après
+tout changement du registre ou du code :
+
+```sh
+pnpm veiller --client exemples/client-fictif --date 2026-10-06 --sortie exemples/client-fictif/rapport-demo.md
+pnpm rapport:html exemples/client-fictif/rapport-demo.md exemples/client-fictif/rapport-demo.html \
+  --bandeau "Démonstration · entreprise, agents et sites fictifs"
+# puis imprimer rapport-demo.html en PDF depuis un navigateur (A4, sans en-têtes)
+```
+
+**Ouverture** : « Voici ce que ça donne sur une entreprise inventée :
+13 agents, 3 sites, deux semaines de planning. Aucune de vos données. »
+
+| On montre | On dit | On demande | La réponse règle |
+|---|---|---|---|
+| **À corriger** : Sophie Marchand, carte expirée le 01/10, au planning le samedi | « Le tableur ne le voit pas ; ici, c'est la première ligne. » | « Chez vous, qui l'aurait vu, et quand ? » | la réalité de la vérification aujourd'hui |
+| **À corriger** : Nicolas Robert, non déclaré dans Dracar Ultimate | l'accroche du 1er octobre (I-20) | « Vos agents y sont tous ? Qui s'en occupe ? » | qui tient la déclaration |
+| **À décider** : Moussa Diallo, carte qui expire pendant sa nuit | « L'outil ne tranche pas à votre place : il vous le dit. » | « Chez vous, qui décide de ça ? » | les escalades |
+| **À décider** : Laura Petit, donnée absente | « Rien n'est supposé. » | « Ces dates, elles sont où aujourd'hui ? » | le format de son tableur |
+| **Conforme, à noter** : Mehdi Saïdi, 11 h 30 de repos | « La loi dit 11 h, l'accord de 1993 dit 12 h : l'outil vous le signale. » | « Vous appliquez lequel ? » | sa politique de repos (`politique.lectures_reference`) |
+| **Échéances** : MAC, carte, recyclage SSIAP | « Chaque échéance arrive assez tôt pour suivre la formation. » | « Prévenu combien de temps avant ? Et il vous faut combien de temps pour organiser un MAC ? » | les fenêtres d'alerte et de préparation (`veiller.echeances`) |
+| **Le document lui-même** | — | « Vous le voudriez comment : un mail le lundi, du papier, sur le téléphone ? » | le format de livraison |
+
+**À dire, si ça vient** :
+- « L'outil lit et alerte. Il ne modifie rien, et ne déclare rien au CNAPS à
+  votre place. »
+- « Chaque ligne cite son texte » (la partie Sources), et « ce qu'il ne
+  vérifie pas encore est écrit en haut ».
+- « C'est de l'IA ? » → « Les vérifications sont du code qui applique les
+  textes, ligne à ligne. L'IA ne décide rien. »
+
+**À taire** :
+- **Le remplacement** : il n'est pas construit, et quatre questions de droit
+  restent ouvertes. S'il en parle : « C'est la suite, on la construirait avec
+  vous », sans date.
+- Comment l'outil est fabriqué : les phases, le nombre de tests, les textes
+  pas encore relus, le juriste.
+- Quel repos est dû : on demande ce qu'il applique, on ne tranche pas.
+- « Conforme » ne veut pas dire « vous êtes en conformité » : l'outil juge
+  les données qu'on lui donne.
+- Aucun montant (voir « Ne pas dire »).
+
+**À rapporter** : le format de son tableur, sa politique de repos, ses
+fenêtres d'alerte, qui décide en cas de doute, le format de livraison
+souhaité, et le récit du dernier remplacement.

@@ -25,6 +25,20 @@ export const ACTIVITES = [
 ] as const
 export const Activite = z.enum(ACTIVITES)
 
+/** Le nom d'une activité tel que le lit le client, dans les mots d'I-02. */
+export const NOMS_ACTIVITES: Record<(typeof ACTIVITES)[number], string> = {
+  'surveillance-humaine': 'surveillance humaine ou gardiennage',
+  telesurveillance: 'télésurveillance',
+  'avec-arme': 'surveillance avec arme',
+  cynophile: 'surveillance avec chien',
+  'detection-explosifs-cynophile': "détection d'explosifs avec chien",
+  videoprotection: 'vidéoprotection',
+  'surveillance-renforcee': 'surveillance renforcée',
+  'transport-de-fonds': 'transport de fonds',
+  'protection-physique': 'protection physique des personnes',
+  'protection-physique-armee': 'protection physique des personnes, armée',
+}
+
 const DateIso = z.iso.date()
 /** Une heure murale de Paris : `2026-10-05T21:00`. */
 const HeureMurale = z.iso.datetime({ local: true })

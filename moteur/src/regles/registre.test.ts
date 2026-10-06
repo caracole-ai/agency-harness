@@ -5,6 +5,7 @@ import { Interdit, type Registre, Scenario } from './schema'
 
 const interdit = Interdit.parse({
   id: 'I-01',
+  nom: 'carte',
   interdit: 'Aucun agent sans carte valide à la date de la vacation',
   etapes: ['5', '7'],
   consequence: 'sanction',

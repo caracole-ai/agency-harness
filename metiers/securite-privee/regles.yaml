@@ -3,6 +3,7 @@
 
 interdits:
   - id: I-01
+    nom: carte professionnelle valide
     interdit: Aucun agent n'est affecté à une vacation sans **carte professionnelle valide à la date de cette vacation**, ou couverte par le **récépissé** d'une demande de renouvellement complète
     etapes:
       - "5"
@@ -14,6 +15,7 @@ interdits:
     source: R631-15 (version du 01/10/2026, al. 1) ; R612-13 ; R612-17
     moment: pre-tool
   - id: I-02
+    nom: activités de la carte
     interdit: Aucun agent n'est affecté à un poste dont l'**activité** ne figure pas parmi celles au titre desquelles sa carte a été délivrée (surveillance humaine ou gardiennage, télésurveillance, avec chien, détection d'explosifs avec chien, avec arme, surveillance renforcée, vidéoprotection…) ; le SSIAP n'en est pas une, c'est un diplôme (I-04)
     etapes:
       - "5"
@@ -26,6 +28,7 @@ interdits:
     source: R631-15, al. 1 et 3 ; R612-16, 3° ; R612-18, 1° ; L612-20 ; Rapport CNAPS 2024, p. 32
     moment: pre-tool
   - id: I-03
+    nom: carte d'entreprise
     interdit: Aucun agent en poste sans la **carte professionnelle propre à l'entreprise** remise par l'employeur (photo récente, identité et activités, chiens le cas échéant, employeur et son autorisation, n° de carte CNAPS), présentée à toute réquisition d'un agent de l'autorité publique et restituée à la fin du contrat
     etapes:
       - "5"
@@ -37,6 +40,7 @@ interdits:
     source: R612-18 ; Rapport CNAPS 2024
     moment: pre-tool
   - id: I-04
+    nom: qualification SSIAP
     interdit: "Aucun poste incendie tenu sans : le **diplôme SSIAP du niveau requis** ; le **recyclage triennal** fait au plus tard à la date anniversaire du diplôme ; **1 607 h d'activité sur les 36 derniers mois**, sinon remise à niveau ; le **secourisme** recyclé tous les 2 ans ; l'**habilitation électrique** ; et, dans un nouvel établissement, les périodes en **doublure** (2, ou 3 pour un chef d'équipe)"
     etapes:
       - "5"
@@ -54,6 +58,7 @@ interdits:
       doublures: 2
       doublures_chef_equipe: 3
   - id: I-05
+    nom: durée du travail et repos
     interdit: Aucun planning ne dépasse **12 h de travail par jour**, **13 h d'amplitude**, **48 h par semaine** et **46 h en moyenne sur 12 semaines** ; aucun ne laisse moins que le **repos minimal entre deux services** (12 h selon l'accord de 1993, 11 h de repos légal rappelé par la CCN, 10 h au passage d'un service de nuit à un service de jour) ni moins de **24 h de repos après 48 h** de travail
     etapes:
       - "5"
@@ -85,6 +90,7 @@ interdits:
           repos_min_h: 11
           repos_passage_nuit_jour_h: 10
   - id: I-06
+    nom: délai de prévenance
     interdit: Aucune modification de planning notifiée moins de **7 jours** avant (changement du cycle) ou **48 h** avant (ajustement ponctuel en heures supplémentaires) sans l'**accord exprès** du salarié ; pour une prestation supplémentaire demandée par le client, cet accord est **écrit et contresigné** ; un refus n'entraîne aucune sanction
     etapes:
       - "7"
@@ -95,6 +101,7 @@ interdits:
     avertissement: "l'accord de 1993 dit une semaine : à trancher avec I-05"
     source: CCN art. 7.07.3 ; accord du 18/05/1993, art. 3
   - id: I-07
+    nom: sous-traitance
     interdit: "Surveillance humaine et gardiennage : sous-traitance d'**une partie seulement**, jamais de toute la prestation. Toute activité privée de sécurité : **deux rangs au plus**, le rang 2 seulement sur une justification validée par l'entrepreneur principal, et vérifiée par le donneur d'ordre ; l'identité de toute la chaîne sur chaque sous-traité ; autorisations et cartes du sous-traitant vérifiées. Les contrats antérieurs au 26/05/2022 n'y sont pas soumis"
     etapes:
       - "1"
@@ -107,6 +114,7 @@ interdits:
     suite: (L612-5-1) ; `texte` (R631-23)
     source: L612-5-1 ; R631-23 ; Rapport CNAPS 2024, p. 57
   - id: I-08
+    nom: mentions obligatoires des documents
     interdit: "Tout document de l'entreprise — informatif, contractuel ou publicitaire, annonce ou correspondance : devis, contrat, courrier, site web — reproduit le **n° d'autorisation** et la phrase de L612-14 : « L'autorisation d'exercice ne confère aucune prérogative de puissance publique à l'entreprise ou aux personnes qui en bénéficient. »"
     etapes:
       - "1"
@@ -118,6 +126,7 @@ interdits:
     relu: 2026-09-29
     source: L612-14 ; L612-15
   - id: I-09
+    nom: anciens policiers ou militaires
     interdit: Aucun document ne fait état de la qualité d'**ancien fonctionnaire de police ou d'ancien militaire** d'un dirigeant ou d'un salarié
     etapes:
       - "1"
@@ -127,6 +136,7 @@ interdits:
     relu: 2026-09-29
     source: L612-15
   - id: I-10
+    nom: prix anormalement bas
     interdit: Aucune offre à un **prix anormalement bas**, qui ne couvre pas les obligations sociales
     etapes:
       - "1"
@@ -135,6 +145,7 @@ interdits:
     statut: texte
     source: R631-21 ; Rapport CNAPS 2024
   - id: I-11
+    nom: exclusivité de l'activité
     interdit: Aucune prestation **étrangère à la sécurité** dans une offre de surveillance ou de gardiennage (exclusivité)
     etapes:
       - "1"
@@ -144,6 +155,7 @@ interdits:
     statut: texte
     source: L612-2
   - id: I-12
+    nom: émargement du mémento
     interdit: Aucun agent n'est employé sans avoir émargé la **version en vigueur du mémento** de l'entreprise ; chaque modification du mémento appelle un nouvel émargement de tous les agents. Le mémento est en français, tenu dans les locaux professionnels, et ne contient rien de propre à un client ou à une mission
     etapes:
       - "4"
@@ -154,6 +166,7 @@ interdits:
     relu: 2026-10-05
     source: R631-16
   - id: I-13
+    nom: levée de doute
     interdit: "Télésurveillance : aucun appel à la police ou à la gendarmerie **sans levée de doute** documentée"
     etapes:
       - "6"
@@ -163,6 +176,7 @@ interdits:
     relu: 2026-09-29
     source: L613-6
   - id: I-14
+    nom: palpation
     interdit: Aucune **palpation** sans consentement exprès, hors périmètre de protection ou arrêté préfectoral, ou par un agent d'un autre sexe
     etapes:
       - "2"
@@ -174,6 +188,7 @@ interdits:
     suite: "(version du 20/08/2026 : la palpation n'a pas changé)"
     source: L613-2
   - id: I-15
+    nom: agent isolé
     interdit: "Aucun agent seul de nuit, ou en site isolé, sans **procédure de secours** : qui reçoit l'alarme, comment on écarte une fausse alerte, par où on accède au site"
     etapes:
       - "4"
@@ -184,6 +199,7 @@ interdits:
     suite: (R4512-13 non relu ; pratique de l'INRS)
     source: R4512-13 ; INRS
   - id: I-16
+    nom: reprise du personnel
     interdit: "Marché gagné sur un concurrent : l'entreprise entrante reprend **100 %** des transférables ayant au moins 4 ans d'ancienneté contractuelle et **85 %** des autres, arrondi à l'unité inférieure (100 % en sûreté aérienne) ; la liste des repris part sous **8 jours ouvrables** à compter des dossiers complets, avec les avenants"
     etapes:
       - "3"
@@ -193,6 +209,7 @@ interdits:
     relu: 2026-09-29
     source: accord du 28/01/2011, art. 2.2 et 2.3.2 (l'accord du 05/03/2002 n'est plus en vigueur)
   - id: I-17
+    nom: échéances des titres
     interdit: Aucune **échéance réglementaire** — carte pro, MAC, recyclage SSIAP, secourisme, agrément du dirigeant — n'atteint sa date limite sans une alerte donnée assez tôt pour suivre la formation qui la conditionne (MAC, recyclage)
     etapes:
       - ↻
@@ -209,6 +226,7 @@ interdits:
       recyclage_ssiap_ans: 3
       recyclage_secourisme_ans: 2
   - id: I-18
+    nom: registre de sécurité de l'ERP
     interdit: "Le **registre de sécurité de l'ERP** n'est jamais écrit par le harnais : il appartient à l'exploitant"
     etapes:
       - "6"
@@ -218,6 +236,7 @@ interdits:
     statut: texte
     source: CCH R143-44
   - id: I-19
+    nom: minimum payé d'une vacation
     interdit: Aucune vacation n'est payée **moins de 6 h** (4 h jusqu'au 30/06/2026)
     etapes:
       - "9"
@@ -227,6 +246,7 @@ interdits:
     relu: 2026-10-05
     source: CCN art. 7.12 (avenant n° 2 du 03/09/2025)
   - id: I-20
+    nom: déclaration dans Dracar Ultimate
     interdit: Tout agent employé ou affecté est **déclaré dans Dracar Ultimate** (téléservice du CNAPS) ; ces informations sont tenues à jour ; la validité des titres est vérifiée régulièrement, à une fréquence adaptée aux entrées, aux sorties et à l'évolution des responsabilités
     etapes:
       - "5"
@@ -239,6 +259,7 @@ interdits:
     source: R631-15, version du 01/10/2026 (décret 2025-1344) ; R611-2-1 ; FAQ Dracar Ultimate du CNAPS
     moment: pre-tool
   - id: I-21
+    nom: références de carte demandées par le client
     interdit: Une demande du client sur les **références de carte professionnelle** des agents qui lui sont affectés reçoit une réponse **sans délai**
     etapes:
       - "6"

@@ -333,9 +333,14 @@ Le client dira ce qu'il **applique**, pas ce qui est **dû**.
 - Les quatre questions de droit de la brique B-02 (§ 8).
 - Non relus à la source : L612-2, R631-21, R631-23, CCH R143-44, R4512-13,
   MS 46, les majorations de nuit, de dimanche et de jours fériés, et le
-  Code du travail sur lequel le moteur s'appuie : L3131-1 (11 h de repos,
-  lecture de référence d'I-05), L3121-18 et L3121-19 (la durée quotidienne
-  portée à 12 h par accord).
+  Code du travail sur lequel le moteur s'appuie : L3121-18 et L3121-19 (la
+  durée quotidienne portée à 12 h par accord). L3131-1 est relu
+  (`verification-2026-10-06.md`).
+- **Le repos de 10 h de la CCN 7.01 est-il une dérogation valide ?**
+  L3131-2 et D3131-4, 2° permettent à un accord de branche de descendre sous
+  11 h pour la garde et la surveillance, jamais sous 9 h (D3131-6), avec un
+  repos équivalent en contrepartie (D3131-2). Si oui, le refus de T-07d
+  (10 h 30 au passage de nuit à jour) n'est pas fondé.
 
 ### Dirigeant
 - « Vous avez déjà eu un contrôle CNAPS ? Qu'est-ce qu'ils ont regardé ? Et

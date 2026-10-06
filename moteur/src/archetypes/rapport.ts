@@ -23,6 +23,16 @@ export interface EntreeRapport {
 
 const fr = dateFr
 
+/** Les parties du rapport, dans l'ordre ; leur titre porte un compte, sauf les sources. */
+export const PARTIES = {
+  refus: 'À corriger',
+  aDecider: "À décider par l'exploitation",
+  aNoter: 'Conforme, à noter',
+  escalades: 'Échéances à traiter maintenant',
+  alertes: 'Échéances à préparer',
+  sources: 'Sources',
+} as const
+
 function parObjet<T extends { objet: string }>(items: T[]): Map<string, T[]> {
   const groupes = new Map<string, T[]>()
   const tries = [...items].sort((a, b) => a.objet.localeCompare(b.objet, 'fr', { numeric: true }))
@@ -30,11 +40,19 @@ function parObjet<T extends { objet: string }>(items: T[]): Map<string, T[]> {
   return groupes
 }
 
+const majuscule = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
 export function rendreRapport(e: EntreeRapport): string {
+  const interdit = (regle: string) => {
+    const i = e.registre.interdits.find((x) => x.id === regle)
+    if (!i) throw new Error(`${regle} absent du registre`)
+    return i
+  }
+  const nom = (regle: string) => interdit(regle).nom
   const source = (regle: string) => {
-    const interdit = e.registre.interdits.find((i) => i.id === regle)
-    const reference = interdit?.lectures?.find((l) => l.reference)
-    return `${interdit?.source ?? ''}${reference ? ` ; décide : ${reference.source}` : ''}`
+    const i = interdit(regle)
+    const reference = i.lectures?.find((l) => l.reference)
+    return `${i.source}${reference ? ` ; décide : ${reference.source}` : ''}`
   }
   const refus = e.constats.filter((c) => c.verdict === 'refus')
   const aDecider = e.constats.filter((c) => c.verdict === 'à vérifier')
@@ -47,7 +65,7 @@ export function rendreRapport(e: EntreeRapport): string {
     [...parObjet(liste)].flatMap(([objet, cs]) => [
       `- **${e.decrire(objet)}**`,
       ...cs.flatMap((c) => [
-        `  - ${c.regle} — ${c.motif}.`,
+        `  - ${majuscule(nom(c.regle))} — ${c.motif}. *${c.regle}*`,
         ...(c.notes ?? []).map((n) => `    - À noter : ${n}.`),
       ]),
     ])
@@ -66,37 +84,25 @@ export function rendreRapport(e: EntreeRapport): string {
   return [
     `# Veille du ${fr(e.aujourdhui)} — ${e.client}`,
     '',
-    `Lu : ${e.lu}. Règles vérifiées : ${e.perimetre.map((p) => p.regle).join(', ')}.`,
-    ...nonCouverts.map((p) => `Pas encore vérifié pour ${p.regle} : ${p.nonCouvert?.join(' ; ')}.`),
+    `Lu : ${e.lu}. Vérifié : ${e.perimetre.map((p) => nom(p.regle)).join(', ')}.`,
+    ...nonCouverts.map(
+      (p) => `Pas encore vérifié (${nom(p.regle)}) : ${p.nonCouvert?.join(' ; ')}.`,
+    ),
     '',
     ...section(
-      `À corriger (${refus.length})`,
+      `${PARTIES.refus} (${refus.length})`,
       constats(refus),
       'Aucune vacation contraire à une règle.',
     ),
+    ...section(`${PARTIES.aDecider} (${aDecider.length})`, constats(aDecider), 'Rien à décider.'),
+    ...section(`${PARTIES.aNoter} (${aNoter.length})`, constats(aNoter), 'Rien à noter.'),
+    ...section(`${PARTIES.escalades} (${escalades.length})`, echeances(escalades), 'Aucune.'),
+    ...section(`${PARTIES.alertes} (${alertes.length})`, echeances(alertes), 'Aucune.'),
     ...section(
-      `À décider par l'exploitation (${aDecider.length})`,
-      constats(aDecider),
-      'Rien à décider.',
-    ),
-    ...section(
-      `Conforme, à noter (${aNoter.length})`,
-      constats(aNoter).map((l) =>
-        l.replace(/^ {2}- (I-\d{2}) — conforme\./, '  - $1 — conforme à la règle de référence.'),
-      ),
-      'Rien à noter.',
-    ),
-    ...section(
-      `Échéances à traiter maintenant (${escalades.length})`,
-      echeances(escalades),
-      'Aucune.',
-    ),
-    ...section(`Échéances à préparer (${alertes.length})`, echeances(alertes), 'Aucune.'),
-    ...section(
-      'Sources',
+      PARTIES.sources,
       [...new Set([...e.constats, ...e.alertes].map((x) => x.regle))]
         .sort()
-        .map((r) => `- ${r} : ${source(r)}`),
+        .map((r) => `- ${r} (${nom(r)}) : ${source(r)}`),
       '—',
     ),
   ].join('\n')
