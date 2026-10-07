@@ -42,6 +42,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   en est, la suite, les pièges. À lire en premier.
 - `PLAN.md` — le plan de construction du moteur, sécurité privée comme
   premier cas (2026-10-05) : phases, décisions, vérifications.
+- `PLAN-ESPACES.md` — le plan des trois espaces (2026-10-07), qui remplace la
+  phase 6 : la conversation (une liste fermée de gestes), l'échappée (le
+  modèle sur une copie des données, résultat passé aux contrôles), la
+  réaffectation groupée, la promotion d'une demande qui revient, les évals,
+  l'interface web. Écrit lot par lot pour être exécuté sans décision à
+  prendre.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -96,7 +102,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   la mini-conférence et pour validation avant le plan ; `harness-figure.js`
   est le port autonome de la figure animée du site (`smart-tailor`), à
   régénérer depuis la fiche quand la piste G sera faite. Publiée sur
-  claude.ai (lien dans la conversation du 2026-10-05).
+  claude.ai (lien dans la conversation du 2026-10-05). Le mini-site « Le
+  harnais en clair » (trois pages pour un lecteur non technique : le projet,
+  la démo, parler à l'outil) est un autre artefact claude.ai, dont les
+  sources ne sont pas versionnées : lien dans `HANDOFF.md`.
 - `exemples/client-fictif/` — une entreprise de sécurité fictive (13 agents,
   19 vacations, des erreurs posées exprès), sa config et `attendu.yaml`, la
   liste écrite à la main de ce que la veille doit trouver ; un test la

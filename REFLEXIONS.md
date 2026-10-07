@@ -6,7 +6,7 @@ une règle : c'est le fil d'une discussion entre Lionel et Claude, à reprendre 
 chaque séance. Une piste réalisée passe dans « Fait », avec le fichier qui la
 porte. Une idée abandonnée se barre et dit pourquoi, elle ne s'efface pas.
 
-Dernière mise à jour : 2026-10-06.
+Dernière mise à jour : 2026-10-07.
 
 ---
 
@@ -40,6 +40,8 @@ spécifique.
 | 2026-10-06 | **Rigide là où une erreur coûte, réglable ailleurs, sans sur-construire** (Lionel). Les interdits ne se règlent pas (code, tests, fabricant seul). Le patron règle sa politique, ses fenêtres d'alerte, ses préférences de classement et ses délégations, parmi des réglages prévus. Une seule source par chose : registre, config client, journal ; les interfaces n'ont pas de logique à elles. | `PLAN.md`, « Décisions » |
 | 2026-10-05 | Écriture : **identité d'écriture du moteur + jeton par défaut**, le compte de l'humain qui approuve en option de config client. Pas de solveur avant B-01 : le désistement se résout par filtre puis classement. | `PLAN.md` |
 | 2026-10-03 | **Le moteur ne dépend d'aucun framework d'agent** : il s'expose en outils (MCP/API) avec ses tests ; la coque autour (agent, messagerie) est interchangeable. ~~Hermes Agent (Nous Research) comme base~~ : refusé — sa thèse (skills auto-réécrites, mémoire curée par l'agent, accès terminal central) est l'inverse d'un interdit auditable, et il n'a ni moteur de règles ni tests d'acceptation. Si un client a besoin d'un lien vers une messagerie, **on écrit le connecteur nous-mêmes** : moins de surface, pas de dépendance à un projet de labo. | piste A |
+| 2026-10-07 | **Les trois espaces** (Lionel : « on va construire tout ça ensemble »). Toute demande au harnais tombe dans l'un de trois espaces : (1) **les gestes du quotidien**, une liste fermée d'actions codées et testées, que le modèle ne fait que choisir (il traduit la consigne en un geste, le code reformule et exécute) ; (2) **les demandes nouvelles**, l'échappée : le modèle travaille librement sur une **copie** des données à l'échelle du rôle, ses calculs sont des requêtes SQL en lecture seule, son résultat passe **tous** les contrôles, le patron voit ce qui change et son oui écrit par la clé ; on ne contrôle pas le chemin, on contrôle ce que l'IA voit, ce qu'elle rend et comment elle finit ; (3) **la promotion** : une demande nouvelle qui revient (3 fois en 30 jours) est proposée pour devenir un geste, codé à l'atelier avec ses tests, jamais par le harnais lui-même. Neuf sécurités qui ne se règlent pas (l'IA n'a pas les clés ; les interdits ne se lèvent pas ; tout résultat passe les règles ; une demande nouvelle ne se délègue jamais ; pas un chiffre ni un nom hors des données ; une demande finit toujours clairement ; un plafond par demande ; les données ne sont jamais des consignes ; tout au journal). Page du mini-site « Parler à l'outil » (artefact « Le harnais en clair »). | `PLAN-ESPACES.md` |
+| 2026-10-07 | **Lionel délègue les choix de conception à Claude**, qui les tranche et dit pourquoi ; le plan doit être exécutable par un modèle moins profond (Opus 5.5) sans décision à prendre. Tranché : l'échappée dès maintenant sur l'entreprise inventée ; la mise à jour à distance reste à Lionel ; seuil de promotion 3 occurrences / 30 jours ; rôles de la démo `patron` et `agent` (quatre gestes pour un agent, jamais les données d'un autre) ; aucun framework d'agent, une boucle maison sur le SDK officiel, un seul modèle (`claude-opus-5-5`, effort par usage), pas de repli automatique ; une modification = une réaffectation ; une proposition s'écrit par une réaffectation groupée avec l'accord de chaque agent ; Hono pour l'interface ; les évals hors de `pnpm check`. | `PLAN-ESPACES.md` § 2 |
 
 ## Fait (2026-09-29 et 30)
 
@@ -156,6 +158,26 @@ spécifique.
 - À demander au premier client : les fenêtres d'alerte et de préparation de
   chaque échéance (exemple : MAC prévenu 2 mois avant le dépôt, escaladé à
   moins d'un mois), et son vrai tableur.
+
+## Fait (2026-10-07)
+
+- **Quatre dépôts examinés comme briques, tous écartés** (EvoOntology,
+  OpenHarness, Reflexio, SoL-Pi) : chez les trois premiers, le modèle apprend
+  puis réécrit ce qu'il a appris sans validation humaine préalable, la raison
+  qui a écarté Hermes ; SoL-Pi est une extension d'agent de code (Pi).
+  **Retenu** de SoL-Pi : la forme de son réducteur de journaux (un fait connu
+  du code contraint la sortie du modèle, une alarme contre l'omission, échec
+  fermé), devenue le contrôle « pas un chiffre hors des données » du plan.
+- **La page « Parler à l'outil »** du mini-site « Le harnais en clair » (trois
+  pages, navigation commune) : l'expérience en cinq demandes, les trois
+  espaces, le mécanisme, les neuf sécurités, ce que ça ouvre par métier, le
+  coût, ce qui existe et ce qui reste, à trancher. Lionel l'a acceptée.
+- `PLAN-ESPACES.md` : huit lots, écrits pour une exécution par Opus 5.5 sans
+  décision à prendre ; remplace la phase 6 de `PLAN.md`.
+- **Appris** : la conversation n'est pas le produit, c'est une porte ; la
+  valeur du premier jalon est que le moteur parle en premier. Et « sur
+  mesure » ne veut pas dire du code écrit pour un client : c'est sa couche
+  (politique, connecteurs, savoir tacite, délégations) sur un moteur commun.
 
 ---
 

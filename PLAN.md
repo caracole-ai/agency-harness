@@ -226,7 +226,13 @@ qu'I-06, dont le contrôle sur l'historique des modifications reste à coder ;
 pas exclu (G-02) : les agents incendie du client fictif le sont, faute de
 carte renseignée.
 
-### Phase 6 — L'interface du patron (révisée le 2026-10-06)
+### Phase 6 — L'interface du patron (révisée le 2026-10-06, remplacée le 2026-10-07)
+**Remplacée par `PLAN-ESPACES.md`** (2026-10-07) : la conversation avec une
+liste fermée de gestes, l'échappée sur une copie des données, la réaffectation
+groupée, la promotion d'une demande qui revient, les évals, puis l'interface
+web. Le texte ci-dessous est gardé pour mémoire ; là où il diffère,
+`PLAN-ESPACES.md` fait foi.
+
 Remplace « le modèle aux bords, peut-être jamais ». Étage : générique ; seule
 la liste des actions possibles change d'un métier à l'autre.
 - **Une interface web**, qui ne fait qu'afficher et modifier la config, le
