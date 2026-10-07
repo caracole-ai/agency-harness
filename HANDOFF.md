@@ -65,7 +65,10 @@ passation ; il ne fait pas foi, les fichiers qu'il cite, si.
    (les quatre questions du remplacement B-02, la carte qui expire pendant une
    nuit, le poste purement SSIAP sans carte, et depuis le 2026-10-06 la
    délégation qui choisit entre des personnes : RGPD art. 22, AI Act,
-   `methode/verification-2026-10-06.md`).
+   `methode/verification-2026-10-06.md`). Note de 12 questions prête à
+   envoyer (2026-10-07) : « Questions pour le juriste »,
+   https://claude.ai/code/artifact/127e1e97-6225-4685-9356-1e854d4fb656 (à
+   partager depuis la page avant de l'envoyer).
 3. **Phase 5 faite le 2026-10-06** : `pnpm remplacer` (absence, valider,
    reponse, suivre) sur une copie du client fictif ; délégation comprise.
    Proposer la délégation à un vrai client pour un remplacement attend
