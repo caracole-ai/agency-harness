@@ -1,34 +1,38 @@
-# Handoff — 2026-10-07
+# Handoff — 2026-10-08
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
-des décisions), `PLAN.md` (les phases 0 à 5, faites) et `PLAN-ESPACES.md` (le
-chantier en cours). Ce fichier se remplace à chaque passation ; il ne fait pas
-foi, les fichiers qu'il cite, si.
+des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
+espaces). Ce fichier se remplace à chaque passation ; il ne fait pas foi, les
+fichiers qu'il cite, si.
 
 ## Où on en est
 
-- Branche `main`, à jour de l'étape 5 (2026-10-06). Le 2026-10-07 n'a ajouté
-  que de la documentation : `PLAN-ESPACES.md`, les mises à jour de `PLAN.md`,
-  `REFLEXIONS.md`, README et ce fichier. **Aucun code n'a changé.**
+- **`PLAN-ESPACES.md` est exécuté en entier (lots 0 à 7) le 2026-10-08**, plus
+  un commit de corrections après une relecture indépendante. Neuf branches
+  en chaîne, une par lot, **ni poussées ni fusionnées** : la dernière,
+  `espaces/lot-7`, contient tout. `main` n'a pas bougé (étape 5).
+  Pour relire : `git log --oneline main..espaces/lot-7`.
+- `pnpm check` passe sur `espaces/lot-7` : Biome, types des trois paquets,
+  184 tests du moteur, 101 du métier, 11 de l'interface, registre cohérent
+  (21 interdits, 34 tests, 10 escalades).
+- **Rien n'a encore parlé au vrai modèle** : pas de clé d'API dans la session
+  du 2026-10-08. Tout est vérifié avec l'adaptateur simulé. Les passes
+  réelles sont la première chose à faire (« Ce qui reste », ci-dessous).
 - `presentation/schema-harnais.html` est modifié et **pas commité** : travail
-  de Lionel d'avant le 2026-10-05, ne pas y toucher sans lui.
-- `pnpm check` passe (2026-10-07) : Biome, types, 70 tests du moteur, 42 du
-  métier, registre cohérent (21 interdits, 34 tests, 10 escalades).
-- Le mini-site « Le harnais en clair » (artefact claude.ai, trois pages avec
-  une navigation commune : le projet, la démo, **parler à l'outil**) :
+  de Lionel, jamais touché (l'interface en a lu la charte).
+- Le mini-site « Le harnais en clair » (artefact claude.ai) :
   https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52 — les pages s'ouvrent
-  depuis la barre du haut, jamais par une adresse `…/espaces.html`. Sources
-  non versionnées (elles se relisent depuis l'artefact).
+  depuis la barre du haut. La section « Honnêtement » de « Parler à l'outil »
+  est à mettre à jour **avec Lionel** (§ 11 du plan) : ce qui est passé
+  d'« à construire » à « existe ».
 
-**Phases de `PLAN.md` faites (0 à 5)**, sécurité privée comme premier cas :
-registre, calendrier juridique, contrôles I-01 à I-05 (I-05 en partie) et
-I-20, Veiller (`pnpm veiller`), le remplacement validé par le patron et la
-délégation (`pnpm remplacer`). Détail dans `PLAN.md`.
+**Phases de `PLAN.md` faites (0 à 5)** : registre, calendrier juridique,
+contrôles I-01 à I-05 (I-05 en partie) et I-20, Veiller (`pnpm veiller`), le
+remplacement validé par le patron et la délégation (`pnpm remplacer`).
 
 ## `PLAN-ESPACES.md` : l'avancement
 
 Un lot = une branche `espaces/lot-N` partie de la précédente = un commit.
-Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
 
 - **Lot 0 (socle)** fait le 2026-10-08, branche `espaces/lot-0` :
   `moteur/src/modele/` (`Modele`, adaptateurs Anthropic et simulé, coût,
@@ -70,6 +74,24 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   `R-…`. Testé en simulé de bout en bout (`conversation.test.ts`) et pas à
   pas (`reaffectation.test.ts`, 12 cas). **Critère « avec la vraie clé »
   non passé** (pas de clé).
+- **Lot 5 (promotion)** fait le 2026-10-08, branche `espaces/lot-5` :
+  `moteur/src/promotion/promotion.ts`, `moteur/src/cli/promotions.ts`
+  (`pnpm promotions`). Acceptation rejouée sans clé : trois conversations
+  simulées de bout en bout (consigne → échappée → proposition → validation)
+  sur une copie, puis `pnpm promotions --date 2026-10-10` : l'intention
+  `liberer_un_jour` (3 demandes) reçoit son dossier, avec les requêtes, les
+  modifications, « Suite donnée : validée » et les cas candidats ; un second
+  lancement ne la repropose pas.
+- **Lot 6 (évals)** fait le 2026-10-08, branche `espaces/lot-6` :
+  `evals/consignes.yaml` (51 cas écrits à la main), `evals/echappees.yaml`
+  (14 cas, dont 2 piégés, calculs à la main en tête du fichier),
+  `moteur/src/evals/evals.ts` (contrôles binaires), `moteur/src/cli/evals.ts`
+  (`pnpm evals`), `evals/traces/` ignoré par git. Câblage vérifié avec
+  `--modele simule` (traces et tableau écrits, code de sortie 1 sous le
+  seuil). Un test métier garde les étiquettes honnêtes (chaque geste a
+  trois formulations ouvertes à son rôle, 8 demandes nouvelles, 4 tentatives
+  d'agent jamais attendues en action, le piège porte sur une vraie cellule).
+  **Aucune passe réelle** : voir « Évals ».
 - **Corrections de relecture** le 2026-10-08, branche `espaces/corrections`
   (après le lot 6) : une relecture indépendante de tout le code du chantier
   a trouvé douze défauts ; corrigés et testés :
@@ -99,25 +121,6 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   - `max_tokens` suit ce qui reste du plafond de sortie ;
   - une échappée qui plante, une proposition refusée à l'ouverture laissent
     leur ligne au journal.
-- **Lot 6 (évals)** fait le 2026-10-08, branche `espaces/lot-6` :
-  `evals/consignes.yaml` (51 cas écrits à la main), `evals/echappees.yaml`
-  (14 cas, dont 2 piégés, calculs à la main en tête du fichier),
-  `moteur/src/evals/evals.ts` (contrôles binaires), `moteur/src/cli/evals.ts`
-  (`pnpm evals`), `evals/traces/` ignoré par git. Câblage vérifié avec
-  `--modele simule` (traces et tableau écrits, code de sortie 1 sous le
-  seuil). Un test métier garde les étiquettes honnêtes (chaque geste a
-  trois formulations ouvertes à son rôle, 8 demandes nouvelles, 4 tentatives
-  d'agent jamais attendues en action, le piège porte sur une vraie cellule).
-  **Aucune passe réelle** : voir « Évals ».
-- **Lot 5 (promotion)** fait le 2026-10-08, branche `espaces/lot-5` :
-  `moteur/src/promotion/promotion.ts`, `moteur/src/cli/promotions.ts`
-  (`pnpm promotions`). Acceptation rejouée sans clé : trois conversations
-  simulées de bout en bout (consigne → échappée → proposition → validation)
-  sur une copie, puis `pnpm promotions --date 2026-10-10` : l'intention
-  `liberer_un_jour` (3 demandes) reçoit son dossier, avec les requêtes, les
-  modifications, « Suite donnée : validée » et les cas candidats ; un second
-  lancement ne la repropose pas.
-
 - **Lot 7 (interface du patron)** fait le 2026-10-08, branche
   `espaces/lot-7` (après les corrections) : paquet `interface/` (Hono,
   HTML/CSS/JS sans framework, charte de `presentation/schema-harnais.html`
@@ -127,21 +130,22 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   sombre, relues et corrigées (scratchpad de la session du 2026-10-08,
   `lot7/captures/`, non versionné).
 
-## La suite : `PLAN-ESPACES.md`, lots suivants
+## Ce qui reste (à Lionel, ou avec lui)
 
-Lionel a accepté le 2026-10-07 les **trois espaces** (gestes du quotidien,
-échappée sur une copie, promotion) et a délégué les choix de conception ; ils
-sont tranchés au § 2 du plan avec leur raison. Le plan est écrit pour être
-exécuté par Opus 5.5, en plusieurs sessions, avec des sous-agents, **sans
-décision à prendre** : commencer par le § 1 (règles de travail), puis le lot 0
-(§ 4). Un lot = une branche `espaces/lot-N` = un commit, `pnpm check` vert.
-
-Chaque lot a ses tests et son critère d'acceptation. Les évals (§ 9) appellent
-le modèle et coûtent (≈ 3 $ la passe) : elles exigent `ANTHROPIC_API_KEY`,
-que Lionel met ; elles ne font pas partie de `pnpm check`.
-
-Quand le plan se tait : choisir la version la plus simple qui ne ferme rien,
-et le noter ici sous « Choix faits faute de consigne ».
+1. **Mettre la clé et lancer les évals** (≈ 3,7 $ les deux passes, section
+   « Évals ») ; puis l'analyse d'erreurs du § 9.3 avec une session.
+2. **Rejouer le critère global avec la clé**, sur une copie, à
+   `--maintenant 2026-10-10T21:40` : `pnpm parler` (absence d'Aïcha,
+   « Qui a le moins d'heures cette semaine ? ») puis `pnpm interface` (le
+   scénario de `prospection.md`, § 10.3). Le n° 3 du critère est à reformuler
+   d'abord (« Choix faits faute de consigne »).
+3. **Relire et fusionner** les branches `espaces/*` (dans l'ordre, ou
+   `espaces/lot-7` seule).
+4. **Relire les étiquettes des évals** (`evals/consignes.yaml`), avec des
+   phrases de vrais patrons dès le premier rendez-vous.
+5. Hors de ce plan, comme prévu (§ 12) : la mise à jour à distance d'un
+   harnais livré, l'identité réelle, créer et supprimer une vacation, la
+   politique réglable à l'écran, le plafond d'IA dans le rapport Veiller.
 
 ## Évals (lot 6) : à lancer, puis l'audit ci-dessous à refaire
 
@@ -292,6 +296,17 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   l'outil Read. Légifrance bloque les robots : relire dans un navigateur
   visible (playwright-cli), pas par curl ni WebFetch.
 - pnpm : passer par la version épinglée (10.32.1).
+- Shell : le hook RTK filtre aussi `git diff` et `git status` (sortie vide ou
+  trompeuse) : `git diff --output=<fichier>`, ou `rtk proxy git status`.
+- **Les worktrees des sous-agents** vivent dans `.claude/worktrees/` (exclu
+  localement par `.git/info/exclude`) : sans cette exclusion, `git add -A` les
+  ajoute comme sous-dépôts. Les rapporter par un diff appliqué en 3 voies.
+- Une requête de l'échappée tourne dans un **processus enfant** (`node -e`),
+  pas dans un fil : un `worker.terminate()` n'interrompt pas une boucle
+  SQLite native, et le processus ne rendait plus la main.
+- Un agent ne doit jamais lire le texte d'une étape destiné au patron
+  (`decrireEtape`) : les gestes de l'agent ont leurs propres phrases
+  (`actions.ts`, `reponseEnregistree`, `vacationPourAgent`).
 
 ## Choix faits faute de consigne
 
@@ -443,7 +458,8 @@ pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm registre:verifier     # couverture, codes cités, veille des textes en retard
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
 pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README
+pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …] [--modele simule] --consigne "…"
+pnpm promotions --client <copie> [--date AAAA-MM-JJ]
+pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
+pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]
 ```
-
-À venir avec `PLAN-ESPACES.md` : `pnpm parler`, `pnpm promotions`,
-`pnpm evals`, `pnpm interface`.

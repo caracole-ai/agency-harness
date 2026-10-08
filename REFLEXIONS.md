@@ -181,6 +181,48 @@ spécifique.
 
 ---
 
+## Fait (2026-10-08)
+
+- **`PLAN-ESPACES.md` exécuté en entier** (lots 0 à 7, Opus 5.5, une
+  session, des sous-agents en parallèle) : la conversation (une consigne →
+  un geste de la liste fermée, ce qui écrit attend un « oui »), l'échappée
+  (le modèle sur une copie SQLite en lecture seule, ses chiffres contrôlés,
+  ses propositions passées aux règles), la réaffectation groupée (clé sur la
+  liste exacte, accord de chaque agent qui reçoit), la promotion (ce qui
+  revient trois fois en 30 jours reçoit un dossier pour l'atelier), les
+  évals (65 cas écrits à la main, contrôles en code, aucun juge), et
+  l'interface du patron. Branches `espaces/*`, non fusionnées. **Rien n'a
+  encore parlé au vrai modèle** (pas de clé) : tout est vérifié en simulé.
+  **Appris** :
+  1. **Le minimum de données vaut pour ce qu'on montre, pas seulement pour
+     ce qu'on lit.** La copie d'un agent ne contenait que ses données, mais
+     le texte rendu après sa déclaration d'absence était celui du patron :
+     les remplaçants, leurs heures, les titres expirés des collègues. D4 doit
+     se vérifier sur chaque texte rendu à un rôle, pas seulement sur ses
+     entrées.
+  2. **La liberté de l'échappée éprouve le moteur plus fort que les gestes.**
+     Un refus déjà présent sur une vacation masquait le même refus chez le
+     nouvel agent (comparaison avant/après par règle et vacation). Le défaut
+     existait depuis la phase 5 dans le remplacement (Moussa, carte expirée,
+     « possible » pour la vacation de Sophie, carte expirée), invisible tant
+     que les candidats venaient d'un classement ; une proposition libre l'a
+     rendu évident.
+  3. **La clé doit porter tout ce que la personne a vu** : poste, horaires,
+     et aussi qui tient la vacation au moment du « oui ». Sinon une vacation
+     qui change de main entre la validation et l'écriture s'écrit quand même.
+  4. **Une borne de temps sur du code natif se tient par un processus, pas
+     par un fil** : `worker.terminate()` n'interrompt pas une boucle SQLite ;
+     seul le système tue une requête sans fin.
+  5. **Le contrôle des chiffres prouve une présence, pas une origine** : il
+     arrête l'invention grossière ; la mauvaise foi (une requête de
+     constantes) et la coïncidence (un « 9 » dans « A-9 ») restent aux évals.
+  6. **Écrire les étiquettes à la main depuis les CSV trouve les
+     incohérences du plan** : la phrase de démo « laisse à Karim son
+     mercredi » ne correspond à aucune vacation à venir.
+  7. **Une relecture indépendante après coup a trouvé douze défauts**, dont
+     trois graves, dans un code dont chaque lot passait ses tests. À garder
+     comme étape de tout chantier, avant la clôture.
+
 ## Ce que le croisement des quatre métiers a appris
 
 1. **Le général vit à deux étages, pas dans une liste de types de règles.**
