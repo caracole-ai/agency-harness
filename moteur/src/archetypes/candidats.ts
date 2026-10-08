@@ -21,6 +21,23 @@ const rang = (v: Verdict) => VERDICTS.indexOf(v)
 const cle = (c: Constat) => `${c.regle} ${c.objet}`
 
 /**
+ * Les constats non conformes qu'un contexte modifié fait apparaître, ou
+ * aggrave, par rapport au contexte de départ. Un contrôle qui échoue refuse
+ * (le moteur échoue fermé).
+ */
+export function constatsApparus<Contexte>(
+  controles: Controle<Contexte>[],
+  registre: Registre,
+  depart: Contexte,
+  apres: Contexte,
+): Constat[] {
+  const avant = new Map(executer(controles, depart, registre).map((c) => [cle(c), c.verdict]))
+  return executer(controles, apres, registre).filter(
+    (c) => c.verdict !== 'ok' && rang(c.verdict) > rang(avant.get(cle(c)) ?? 'ok'),
+  )
+}
+
+/**
  * Évalue chaque candidat : les constats non conformes que son affectation
  * ferait apparaître, ou aggraverait, par rapport au contexte de départ. Un
  * contrôle qui échoue refuse (le moteur échoue fermé) : le candidat est exclu.
@@ -32,11 +49,8 @@ export function evaluerCandidats<Contexte>(
   candidats: string[],
   affecter: (candidat: string) => Contexte,
 ): Evaluation[] {
-  const avant = new Map(executer(controles, depart, registre).map((c) => [cle(c), c.verdict]))
   return candidats.map((candidat) => {
-    const constats = executer(controles, affecter(candidat), registre).filter(
-      (c) => c.verdict !== 'ok' && rang(c.verdict) > rang(avant.get(cle(c)) ?? 'ok'),
-    )
+    const constats = constatsApparus(controles, registre, depart, affecter(candidat))
     const issue: Issue = constats.some((c) => c.verdict === 'refus')
       ? 'exclu'
       : constats.length > 0

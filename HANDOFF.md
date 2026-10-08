@@ -50,6 +50,16 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   une copie). Critère du lot : `pnpm parler … --modele simule --consigne
   "bonjour"` affiche `Réponse (je_ne_sais_pas)`. **Aucune consigne n'a encore
   été traduite par le vrai modèle** (pas de clé dans cette session).
+- **Lot 3 (échappée)** fait le 2026-10-08, branche `espaces/lot-3` :
+  `moteur/src/echappee/{copie,requete,reponse,boucle,echappee}.ts`,
+  `constatsApparus` extrait de `candidats.ts` (les 6 tests de
+  `candidats.test.ts` inchangés et verts),
+  `metiers/securite-privee/code/src/{copie,modifications}.ts`,
+  `CONVERSATION.echappee`. Une demande nouvelle part en échappée ; une
+  proposition est montrée mais pas encore écrite (lot 4). `readOnly` confirmé
+  sur Node 22.22 (la variante `readonly` est ignorée sans message : la base
+  resterait modifiable). **Critère « avec la vraie clé » non passé** : pas de
+  clé dans cette session (voir « Non vérifié »).
 
 ## La suite : `PLAN-ESPACES.md`, lots suivants
 
@@ -104,6 +114,14 @@ et le noter ici sous « Choix faits faute de consigne ».
   Sans effet dans la démo (rien ne change entre les deux) ; à fermer si la
   conversation sert sur un vrai planning (inscrire l'agent dans les paramètres
   confirmés).
+- **Aucune clé d'API dans la session du 2026-10-08** (ni
+  `ANTHROPIC_API_KEY`, ni le CLI `ant`) : les critères « avec la vraie clé »
+  des lots 3 et 4, le critère global, et les passes d'évals (lot 6) sont à
+  lancer par Lionel. Tout le reste est vérifié avec l'adaptateur simulé.
+- **Échappée : une requête lourde qui ne rend aucune ligne** n'est bornée
+  que par la borne `secondes`, vérifiée entre deux tours : une requête
+  SQLite très longue bloquerait le tour en cours. Sur 19 vacations, sans
+  effet ; à revoir avec de vraies volumétries.
 - **L'adaptateur Anthropic n'a jamais appelé le vrai modèle** (lot 0) : seul
   le typage contre le SDK 0.132.0 le vérifie ; le premier appel réel se fera
   au critère du lot 3 ou aux évals, avec la clé de Lionel.
@@ -181,6 +199,37 @@ et le noter ici sous « Choix faits faute de consigne ».
   pourrait alors annuler la confirmation d'un autre.
 - **`MetierConversation.echappee` et la réponse `proposition`** ne sont
   ajoutées qu'aux lots 3 et 4, où elles servent.
+- **Le contrôle d'une réponse d'échappée ne reçoit que les noms des agents**
+  visibles (§ 6.5 disait aussi « ids et sites des postes ») : les noms de
+  postes et de sites sont faits de mots courants (« nuit », « accueil »,
+  « des ») qui auraient fait retirer des réponses justes. Un site cité n'est
+  pas une donnée inventée ; les chiffres, eux, restent tous contrôlés.
+- **Le système de l'échappée demande de recopier nombres, dates et heures
+  tels que les résultats les écrivent** : le contrôle compare des écritures
+  (« 8 h » n'est pas trouvé dans « 08:00 »).
+- **Un agent, en échappée, ne peut que questionner** : ni `verifier` ni
+  `proposer` (sa copie ne contient que ses données, et une réaffectation se
+  valide par le patron seul).
+- **La boucle journalise par un rappel typé** (`EvenementBoucle` : un appel,
+  un outil) plutôt que par `(tour, Evenement)` (§ 6.5) : `echappee.ts` en
+  fait les lignes `appel_modele` et `outil_echappee`, la boucle ignore le
+  client, les prix et la conversation.
+- **`verifierReponse` (§ 6.6) précisé** : un nombre se cherche entier (« 6 »
+  n'est pas trouvé dans « 16 ») ; une date `JJ/MM` absente des sources est
+  un intrus ; un nom connu est cité par son nom complet ou l'un de ses mots
+  de 3 lettres ou plus, sans accents ni casse.
+- **`requete` lit ligne à ligne** (`iterate`, arrêt à 201 lignes) : un
+  commentaire `/*` dans la requête peut neutraliser le `LIMIT` ajouté autour.
+- **`decrireModifications`** écrit les heures comme le reste de l'outil
+  (« mer. 14/10 08:00 → mer. 14/10 20:00 »), pas « 08:00 → 20:00 ».
+- **Une donnée ne peut pas fermer la frontière** : `<donnees>` et
+  `</donnees>` écrits dans une cellule sont remplacés par « [balise
+  retirée] » avant d'être rendus au modèle (`entreDonnees`, `boucle.ts`).
+- **Réaffecter une vacation à l'agent qui la tient déjà lève** (`appliquer`) :
+  sinon la description aurait dit « Sophie Marchand → Sophie Marchand ».
+- **L'adaptateur simulé garde une copie des messages de chaque appel**
+  (il gardait une référence, que la boucle remplissait ensuite : on ne
+  pouvait pas vérifier ce qui avait été envoyé à un tour donné).
 - **`decrireEtape(s, etape, demande)`** prend la demande en plus (§ 5.2 dit
   `(s, etape)`) : une étape « trop tard » ou « escaladée » ne la porte pas,
   et le texte doit la nommer. Le texte n'a pas les commandes à taper : le CLI

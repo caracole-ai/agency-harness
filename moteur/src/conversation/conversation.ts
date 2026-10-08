@@ -1,4 +1,5 @@
 import { empreinte } from '../approbation/jeton'
+import type { Echappee } from '../echappee/echappee'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
@@ -27,6 +28,8 @@ export interface MetierConversation<Session> {
   vocabulaire(s: Session, identite: Identite): Vocabulaire
   /** Lève si l'identité n'existe pas (agent inconnu). */
   verifierIdentite(s: Session, identite: Identite): void
+  /** Absente, toute demande nouvelle finit en « je ne sais pas encore faire ça ». */
+  echappee?: Echappee<Session>
 }
 
 export type Reponse =
@@ -146,9 +149,32 @@ export async function traiterConsigne<S>(
           .map((a) => a.description)
           .join(' ; ')}`,
       }
-    case 'nouvelle':
+    case 'nouvelle': {
       ecrire(m, s, tour, [ligneConsigne(tour, 'nouvelle', { demande })])
-      return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
+      if (!m.echappee) return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
+      let issue: Awaited<ReturnType<Echappee<S>>>
+      try {
+        issue = await m.echappee(
+          s,
+          tour.identite,
+          tour.conversation,
+          tour.consigne,
+          demande.intention,
+          tour.maintenant,
+          modele,
+        )
+      } catch (erreur) {
+        return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${message(erreur)}.` }
+      }
+      if (issue.sorte === 'reponse') return { sorte: 'resultat', texte: issue.texte }
+      if (issue.sorte === 'abandon') {
+        return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${issue.motif}.` }
+      }
+      return {
+        sorte: 'resultat',
+        texte: `${issue.texte}\n(l'écriture d'une proposition arrive au lot 4)`,
+      }
+    }
     case 'action': {
       const action = actions.find((a) => a.id === demande.action)
       if (!action)

@@ -25,7 +25,8 @@ export function modeleSimule(
       const n = appels.length
       const pas = scenario[n]
       if (!pas) throw new Error('script simulé épuisé')
-      appels.push(appel)
+      // Une copie : la boucle continue de remplir ses messages après l'appel.
+      appels.push({ ...appel, messages: structuredClone(appel.messages) })
       const content: Anthropic.ContentBlock[] =
         'outil' in pas
           ? [

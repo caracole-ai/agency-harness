@@ -77,7 +77,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   plafond du mois, traduction, exécution ou confirmation par « oui » à la
   reformulation, tout au journal), `src/cli/parler.ts` et
   `src/archetypes/veille-client.ts` (la veille d'un client
-  journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`).
+  journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`),
+  `src/echappee/` (l'échappée, espace 2 : la copie SQLite jetable en lecture
+  seule, le garde-fou SQL, le contrôle « pas un chiffre, pas un nom hors des
+  données », la boucle bornée à un outil par tour, et `echappee.ts` qui
+  assemble copie, système et journal). `src/archetypes/candidats.ts` expose
+  aussi `constatsApparus` (ce qu'un planning modifié fait apparaître).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
