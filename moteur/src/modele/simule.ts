@@ -8,6 +8,8 @@ import type { AppelModele, Modele, UsageModele } from './modele'
 export type Scripte =
   /** Un `tool_use` (id généré `toolu_simule_<n>`). */
   | { outil: string; entree: unknown }
+  /** Plusieurs `tool_use` dans le même message, comme un fournisseur qui ignore « un seul outil par tour ». */
+  | { plusieurs: { outil: string; entree: unknown }[] }
   /** Un `end_turn` avec un bloc texte. */
   | { texte: string }
   /** Un `stop_reason` forcé, sans bloc. */
@@ -27,22 +29,28 @@ export function modeleSimule(
       if (!pas) throw new Error('script simulé épuisé')
       // Une copie : la boucle continue de remplir ses messages après l'appel.
       appels.push({ ...appel, messages: structuredClone(appel.messages) })
+      const demandes: { outil: string; entree: unknown }[] =
+        'outil' in pas ? [pas] : 'plusieurs' in pas ? pas.plusieurs : []
       const content: Anthropic.ContentBlock[] =
-        'outil' in pas
-          ? [
-              {
-                type: 'tool_use',
-                id: `toolu_simule_${n + 1}`,
-                name: pas.outil,
-                input: pas.entree,
-                caller: { type: 'direct' },
-              },
-            ]
+        demandes.length > 0
+          ? demandes.map((a, k) => ({
+              type: 'tool_use' as const,
+              id: `toolu_simule_${n + 1}${demandes.length > 1 ? `_${k + 1}` : ''}`,
+              name: a.outil,
+              input: a.entree,
+              caller: { type: 'direct' as const },
+            }))
           : 'texte' in pas
             ? [{ type: 'text', text: pas.texte, citations: null }]
             : []
       const stop_reason: Anthropic.StopReason =
-        'outil' in pas ? 'tool_use' : 'texte' in pas ? 'end_turn' : pas.arret
+        demandes.length > 0
+          ? 'tool_use'
+          : 'texte' in pas
+            ? 'end_turn'
+            : 'arret' in pas
+              ? pas.arret
+              : 'end_turn'
       const message: Anthropic.Message = {
         id: `msg_simule_${n + 1}`,
         type: 'message',

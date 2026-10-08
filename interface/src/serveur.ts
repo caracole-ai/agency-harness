@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { type Modele, modeleAnthropic, modeleSimule, type Scripte } from '@harnais/moteur'
+import { type Modele, modeleDepuisConfig, modeleSimule, type Scripte } from '@harnais/moteur'
 import { CONVERSATION } from '@harnais/securite-privee'
 import { serve } from '@hono/node-server'
 import { creerApp } from './app'
@@ -49,15 +49,9 @@ function script(): Scripte[] {
 /** Le modèle : simulé (sans clé), ou celui de la config du client. */
 function modele(): Modele {
   if (values.modele === 'simule') return modeleSimule(script())
-  const cle = process.env.ANTHROPIC_API_KEY
-  if (!cle) {
-    throw new Error(
-      'variable ANTHROPIC_API_KEY absente : exporter la clé, ou passer --modele simule',
-    )
-  }
   const s = CONVERSATION.ouvrir(dossier)
   try {
-    return modeleAnthropic(CONVERSATION.config(s).modele.id, cle)
+    return modeleDepuisConfig(CONVERSATION.config(s), process.env)
   } finally {
     CONVERSATION.fermer(s)
   }

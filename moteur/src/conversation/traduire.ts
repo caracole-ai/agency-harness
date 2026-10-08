@@ -37,6 +37,13 @@ export const entreDonnees = (texte: string) =>
 /** Un nom venu des données, sur une seule ligne : il ne peut pas ouvrir une nouvelle ligne d'instructions. */
 export const surUneLigne = (nom: string) => nom.replace(/[\r\n\u2028\u2029]+/g, ' ')
 
+/**
+ * La sortie d'une traduction : un appel d'outil, mais un modèle qui réfléchit
+ * avant peut dépasser 1 024 tokens (réponse tronquée, vue avec GLM-5.3). Seul
+ * ce qui est produit se paie ; le plafond du mois borne le coût.
+ */
+export const MAX_TOKENS_TRADUIRE = 4096
+
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 
 /** Qui parle, en mots : « le patron », « l'agent Julien Lefèvre (A-2) ». */
@@ -126,7 +133,7 @@ export async function traduire(
     messages: [{ role: 'user', content: messageConsigne(consigne, maintenant) }],
     outils,
     effort,
-    maxTokens: 1024,
+    maxTokens: MAX_TOKENS_TRADUIRE,
     unSeulOutil: true,
   })
   return { demande: lire(reponse.message, schemas), reponse }

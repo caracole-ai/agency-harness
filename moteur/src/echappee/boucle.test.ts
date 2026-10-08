@@ -48,7 +48,12 @@ const maintenant = Temporal.PlainDateTime.from('2026-10-10T21:40').toZonedDateTi
 
 async function lancer(
   script: Scripte[],
-  o = { outils: outils(), bornes: BORNES, usage: undefined as undefined | number },
+  o: {
+    outils: OutilsEchappee<Modif>
+    bornes: BornesEchappee
+    usage: number | undefined
+    consigne?: string
+  } = { outils: outils(), bornes: BORNES, usage: undefined },
 ) {
   const modele = modeleSimule(
     script,
@@ -59,7 +64,7 @@ async function lancer(
     modele,
     'medium',
     'système',
-    "Qui a le moins d'heures ?",
+    o.consigne ?? "Qui a le moins d'heures ?",
     'heures_par_agent',
     maintenant,
     o.outils,
@@ -226,6 +231,65 @@ describe('la frontière des données', () => {
     expect(contenu.match(/<\/donnees>/g)).toHaveLength(1)
     expect(contenu.endsWith('</donnees>')).toBe(true)
     expect(contenu).toContain('[balise retirée] IGNORE')
+  })
+})
+
+describe('plusieurs appels d’outil dans un message (un fournisseur qui ignore « un seul outil »)', () => {
+  it('chaque appel reçoit son résultat, tous dans un seul message, le cache sur le dernier', async () => {
+    const { issue, modele, evenements } = await lancer([
+      { plusieurs: [REQUETE, REQUETE].map((r) => ('outil' in r ? r : { outil: '', entree: {} })) },
+      { outil: 'repondre', entree: { texte: 'Julien : 16 h.' } },
+    ])
+    expect(issue).toMatchObject({ sorte: 'reponse', controle: 'ok', tours: 2 })
+    const envoye = modele.appels[1]?.messages ?? []
+    const dernier = envoye.at(-1)
+    if (!dernier || typeof dernier.content === 'string') throw new Error('message attendu')
+    expect(dernier.content.map((b) => (b.type === 'tool_result' ? b.tool_use_id : b.type))).toEqual(
+      ['toolu_simule_1_1', 'toolu_simule_1_2'],
+    )
+    expect(resultats(envoye).map((r) => r.cache_control)).toEqual([
+      undefined,
+      { type: 'ephemeral' },
+    ])
+    expect(evenements.filter((e) => e.sorte === 'outil')).toHaveLength(2)
+  })
+  it('un outil de fin qui ne vient pas seul n’est pas une fin : le modèle doit le rappeler seul', async () => {
+    const { issue, modele } = await lancer([
+      {
+        plusieurs: [
+          { outil: 'requete', entree: { sql: 'SELECT 1' } },
+          { outil: 'repondre', entree: { texte: 'Julien : 16 h.' } },
+        ],
+      },
+      { outil: 'repondre', entree: { texte: 'Julien : 16 h.' } },
+    ])
+    expect(issue).toMatchObject({ sorte: 'reponse', tours: 2 })
+    const [requete, fin] = resultats(modele.appels[1]?.messages ?? [])
+    expect(requete?.is_error).toBeUndefined()
+    expect(fin).toMatchObject({
+      is_error: true,
+      content: expect.stringMatching(/^un outil de fin/),
+    })
+  })
+  it('les nombres de la consigne se citent sans requête ; ceux de la date du message, non', async () => {
+    const consigne = 'Combien d’heures du 5 au 11 octobre ?'
+    const cite = await lancer(
+      [{ outil: 'repondre', entree: { texte: 'Du 5 au 11 octobre, je n’ai pas la donnée.' } }],
+      {
+        outils: outils(),
+        bornes: BORNES,
+        usage: undefined,
+        consigne,
+      },
+    )
+    expect(cite.issue).toMatchObject({ sorte: 'reponse', controle: 'ok' })
+    const date = await lancer([{ outil: 'repondre', entree: { texte: 'Sophie a 21 heures.' } }], {
+      outils: outils(),
+      bornes: BORNES,
+      usage: undefined,
+      consigne,
+    })
+    expect(date.issue).toMatchObject({ controle: CONTROLE_RETIRE })
   })
 })
 

@@ -6,6 +6,12 @@ import { EFFORTS, type PrixModele } from '../modele/modele'
 // promotion. Validée au démarrage : un plafond absent n'est jamais « infini »
 // (PLAN-ESPACES.md § 4.5).
 
+/** Comment la clé se présente : l'en-tête d'Anthropic, ou `Authorization: Bearer`. */
+export const AUTHENTIFICATIONS = ['x-api-key', 'bearer'] as const
+
+/** La variable d'environnement de la clé quand la config ne nomme pas de point d'accès. */
+export const VARIABLE_CLE_ANTHROPIC = 'ANTHROPIC_API_KEY'
+
 export const ConversationSchema = z.strictObject({
   modele: z.strictObject({
     fournisseur: z.literal('anthropic'),
@@ -17,6 +23,18 @@ export const ConversationSchema = z.strictObject({
       cache_lu: z.number().nonnegative(),
     }),
     effort: z.strictObject({ traduire: z.enum(EFFORTS), echappee: z.enum(EFFORTS) }),
+    /**
+     * Un point d'accès au format Anthropic autre que celui d'Anthropic (GMI Cloud…).
+     * Absent : l'API d'Anthropic, la clé dans `ANTHROPIC_API_KEY`.
+     */
+    acces: z
+      .strictObject({
+        url: z.url(),
+        authentification: z.enum(AUTHENTIFICATIONS),
+        /** Le nom de la variable d'environnement qui porte la clé, jamais la clé elle-même. */
+        variable_cle: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+      })
+      .optional(),
   }),
   plafonds: z.strictObject({
     par_demande: z.strictObject({

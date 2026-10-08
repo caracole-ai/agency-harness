@@ -45,6 +45,11 @@ conversation:
     # Prix API Anthropic relevés le 2026-10-07, en dollars par million de tokens.
     prix_par_million_usd: { entree: 4, sortie: 20, cache_ecrit: 5, cache_lu: 0.2 }
     effort: { traduire: low, echappee: medium }
+    # Un autre point d'accès au format Anthropic (essayé le 2026-10-08 avec
+    # GLM-5.3 chez GMI Cloud) : remplacer `id` et les prix, et ajouter
+    #   acces: { url: "https://api.gmi-serving.com", authentification: bearer, variable_cle: GMI_API_KEY }
+    # La clé reste dans la variable nommée, jamais ici. GMI ignore les outils
+    # stricts et « un seul outil par tour » : le harnais le tient quand même.
   plafonds:
     par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
     par_mois_usd: 30

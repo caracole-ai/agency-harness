@@ -130,9 +130,21 @@ Un lot = une branche `espaces/lot-N` partie de la précédente = un commit.
   sombre, relues et corrigées (scratchpad de la session du 2026-10-08,
   `lot7/captures/`, non versionné).
 
+- **Autre fournisseur (2026-10-08, branche `espaces/fournisseur`)** : la
+  config accepte un point d'accès au format Anthropic (`conversation.modele.acces` :
+  adresse, `bearer`, nom de la variable de la clé). Essayé avec GLM-5.3 chez
+  GMI Cloud : premières passes réelles des évals, analyse dans
+  `evals/erreurs-2026-10-08.md`. Elles ont révélé deux défauts du harnais,
+  corrigés pour tout fournisseur : plusieurs appels d'outil dans un message
+  (la boucle n'en traitait qu'un), et les nombres de la consigne refusés par
+  le contrôle. Traduction ~77 % (seuil 95 %), échappée 11/14 (seuil 80 %).
+  **Aucune passe avec Claude.**
+
 ## Ce qui reste (à Lionel, ou avec lui)
 
-1. **Mettre la clé et lancer les évals** (≈ 3,7 $ les deux passes, section
+1. **Lancer les évals avec Claude** (clé Anthropic, ou Claude par GMI si la clé y donne accès), et comparer à GLM-5.3 (`evals/erreurs-2026-10-08.md`) ;
+   **décider des étiquettes** listées à la fin de ce fichier (intentions, P-VEI-1, N-4, E-14) ; **révoquer la clé GMI** passée en clair dans la conversation du 2026-10-08.
+   Ancien point : **mettre la clé et lancer les évals** (≈ 3,7 $ les deux passes, section
    « Évals ») ; puis l'analyse d'erreurs du § 9.3 avec une session.
 2. **Rejouer le critère global avec la clé**, sur une copie, à
    `--maintenant 2026-10-10T21:40` : `pnpm parler` (absence d'Aïcha,

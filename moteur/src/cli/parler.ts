@@ -19,7 +19,7 @@ import {
   traiterConsigne,
 } from '../conversation/conversation'
 import { idConversation } from '../conversation/id'
-import { modeleAnthropic } from '../modele/anthropic'
+import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -73,15 +73,9 @@ const maintenant = () =>
 function modele(): Modele {
   if (values.modele === 'simule') return modeleSimule([])
   if (values.modele !== undefined) usage()
-  const cle = process.env.ANTHROPIC_API_KEY
-  if (!cle) {
-    throw new Error(
-      'variable ANTHROPIC_API_KEY absente : exporter la clé, ou passer --modele simule',
-    )
-  }
   const s = m.ouvrir(dossier)
   try {
-    return modeleAnthropic(m.config(s).modele.id, cle)
+    return modeleDepuisConfig(m.config(s), process.env)
   } finally {
     m.fermer(s)
   }

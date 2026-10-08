@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { type Action, actionsDe, outilsDe } from './actions'
-import { systemeTraduire, traduire } from './traduire'
+import { MAX_TOKENS_TRADUIRE, systemeTraduire, traduire } from './traduire'
 
 // La traduction d'une consigne, avec l'adaptateur simulé (PLAN-ESPACES.md § 5.7).
 
@@ -126,7 +126,11 @@ describe('traduire', () => {
     expect(appel?.messages[0]?.content).toBe(
       'Maintenant : 2026-10-10T21:40 (samedi).\n<consigne>Aïcha ne vient pas demain</consigne>',
     )
-    expect(appel).toMatchObject({ effort: 'low', maxTokens: 1024, unSeulOutil: true })
+    expect(appel).toMatchObject({
+      effort: 'low',
+      maxTokens: MAX_TOKENS_TRADUIRE,
+      unSeulOutil: true,
+    })
   })
   it('le vocabulaire est une donnée : entre les balises, un nom piégé ne peut ni sauter de ligne ni fermer la frontière', () => {
     const piege = systemeTraduire(

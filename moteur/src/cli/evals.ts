@@ -3,7 +3,7 @@
 // main dans `evals/`, tourne sur une copie fraîche du client ; la sortie est
 // vérifiée en code, la trace complète est gardée dans `evals/traces/` (non
 // versionné) et le tableau dans `evals/resultats/`. Appelle le vrai modèle :
-// exige ANTHROPIC_API_KEY et coûte (≈ 3 $ la passe complète). `--modele
+// exige la clé que nomme la config (ANTHROPIC_API_KEY par défaut) et coûte (≈ 3 $ la passe complète). `--modele
 // simule` ne sert qu'à vérifier le câblage (tous les cas finissent en écart).
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -27,7 +27,7 @@ import {
   type ResultatCas,
   rendreResultats,
 } from '../evals/evals'
-import { modeleAnthropic } from '../modele/anthropic'
+import { modeleDepuisConfig } from '../modele/anthropic'
 import { cout, type Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -65,11 +65,6 @@ const module = (await import(
 if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
 const m = module.CONVERSATION
 
-const cle = process.env.ANTHROPIC_API_KEY
-if (values.modele === undefined && !cle) {
-  throw new Error('variable ANTHROPIC_API_KEY absente : exporter la clé, ou passer --modele simule')
-}
-
 /** Une copie fraîche du client ; `piege` remplace une chaîne dans un de ses fichiers. */
 function copie(piege?: { fichier: string; remplacer: string; par: string }): string {
   const dossier = mkdtempSync(join(tmpdir(), 'eval-'))
@@ -86,6 +81,19 @@ function copie(piege?: { fichier: string; remplacer: string; par: string }): str
     writeFileSync(fichier, texte.replace(piege.remplacer, piege.par))
   }
   return dossier
+}
+
+// La clé se vérifie au démarrage, sur une copie (ouvrir écrit un journal),
+// pas au premier cas : une variable absente arrête tout.
+if (values.modele === undefined) {
+  const essai = copie()
+  const s = m.ouvrir(essai)
+  try {
+    modeleDepuisConfig(m.config(s), process.env)
+  } finally {
+    m.fermer(s)
+    rmSync(essai, { recursive: true, force: true })
+  }
 }
 
 const deux = (n: number) => String(n).padStart(2, '0')
@@ -110,9 +118,7 @@ async function lancer(
   const s = m.ouvrir(dossier)
   const prix = prixDe(m.config(s))
   const modele = modeleTrace(
-    values.modele === 'simule'
-      ? modeleSimule([])
-      : modeleAnthropic(m.config(s).modele.id, cle ?? ''),
+    values.modele === 'simule' ? modeleSimule([]) : modeleDepuisConfig(m.config(s), process.env),
   )
   idModele = modele.id
   let ecarts: string[]

@@ -182,6 +182,9 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 202
                          # parler à l'outil : la consigne devient un geste de la liste, ou « je ne
                          # sais pas » ; ce qui écrit attend un « oui ». Exige ANTHROPIC_API_KEY,
                          # sauf --modele simule (aucun appel). Sur une COPIE du client fictif
+                         # Le modèle et sa clé viennent de la config (`conversation.modele`) :
+                         # sans `acces`, l'API d'Anthropic et ANTHROPIC_API_KEY ; avec `acces`, un
+                         # autre point d'accès au même format (GMI Cloud…) et la variable qu'il nomme
 pnpm promotions --client <copie> [--date 2026-10-08]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
                          # intention ; au seuil, écrit promotions/<intention>-<date>.md chez le

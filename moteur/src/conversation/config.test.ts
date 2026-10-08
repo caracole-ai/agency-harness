@@ -33,4 +33,31 @@ describe('ConversationSchema', () => {
     s.modele.effort.traduire = 'max'
     expect(ConversationSchema.safeParse(s).success).toBe(false)
   })
+  it('un point d’accès : adresse, authentification et nom de variable vérifiés', () => {
+    const avec = (acces: unknown) => {
+      const s = section() as { modele: Record<string, unknown> }
+      s.modele.acces = acces
+      return ConversationSchema.safeParse(s).success
+    }
+    expect(
+      avec({
+        url: 'https://api.gmi-serving.com',
+        authentification: 'bearer',
+        variable_cle: 'GMI_API_KEY',
+      }),
+    ).toBe(true)
+    expect(
+      avec({ url: 'pas une adresse', authentification: 'bearer', variable_cle: 'GMI_API_KEY' }),
+    ).toBe(false)
+    expect(
+      avec({ url: 'https://x.y', authentification: 'jeton', variable_cle: 'GMI_API_KEY' }),
+    ).toBe(false)
+    expect(
+      avec({
+        url: 'https://x.y',
+        authentification: 'bearer',
+        variable_cle: 'eyJhbGciOi.la-cle-elle-meme',
+      }),
+    ).toBe(false)
+  })
 })

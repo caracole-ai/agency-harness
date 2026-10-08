@@ -81,6 +81,10 @@ const OUTIL_VERIFIER = 'verifier'
 const OUTIL_REPONDRE = 'repondre'
 const OUTIL_PROPOSER = 'proposer'
 const OUTIL_ABANDONNER = 'abandonner'
+/** Les outils qui finissent une échappée. */
+const FINS = new Set([OUTIL_REPONDRE, OUTIL_PROPOSER, OUTIL_ABANDONNER])
+const FIN_PAS_SEULE =
+  'un outil de fin (repondre, proposer, abandonner) vient seul, après avoir lu les résultats : rappelle-le seul au tour suivant'
 
 /** Les sorties d'outil plus longues sont tronquées : le journal et le modèle n'en ont pas besoin de plus. */
 export const SORTIE_MAX = 2000
@@ -182,12 +186,11 @@ export async function boucle<Modif>(
   const { Verifier, Proposer } = schemas(outils)
   const definitions = outilsEchappee(outils)
   const permis = new Set(definitions.map((d) => d.name))
-  const messages: Anthropic.MessageParam[] = [
-    {
-      role: 'user',
-      content: `${messageConsigne(consigne, maintenant)}\n(intention : ${intention})`,
-    },
-  ]
+  const demande = `${messageConsigne(consigne, maintenant)}\n(intention : ${intention})`
+  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: demande }]
+  // Ce que le demandeur a écrit n'est pas inventé : ses nombres se citent. Seule la
+  // consigne, pas la date du message (10, 21, 40… deviendraient citables).
+  sources.push(consigne)
   const debut = Date.now()
   let usage = USAGE_NUL
   let appels = 0
@@ -228,140 +231,153 @@ export async function boucle<Modif>(
     }
     if (m.stop_reason === 'max_tokens') return abandon('réponse tronquée')
     if (m.stop_reason === 'pause_turn') return abandon('tour suspendu, non prévu')
-    const bloc = m.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-    if (!bloc) return abandon('le modèle a fini sans répondre par un outil')
+    // Un fournisseur peut ignorer « un seul outil par tour » : chaque appel reçoit
+    // son résultat, tous dans un seul message, sinon la conversation est invalide.
+    const blocs = m.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+    if (blocs.length === 0) return abandon('le modèle a fini sans répondre par un outil')
     // La réponse revient telle quelle : le modèle lie sa réflexion à la conversation.
     messages.push({ role: 'assistant', content: m.content })
+    const resultats: Anthropic.ToolResultBlockParam[] = []
 
-    /** Rend le résultat d'un outil au modèle ; le marqueur de cache ne reste que sur le dernier. */
-    const resultat = (sortie: string, erreur?: string) => {
-      journaliser({
-        sorte: 'outil',
-        tour,
-        nom: bloc.name,
-        entree: bloc.input,
-        sortie: tronquer(sortie, SORTIE_MAX),
-        ...(erreur !== undefined ? { erreur } : {}),
-      })
-      if (dernierResultat) delete dernierResultat.cache_control
-      dernierResultat = {
-        type: 'tool_result',
-        tool_use_id: bloc.id,
-        content: sortie,
-        ...(erreur !== undefined ? { is_error: true } : {}),
-        cache_control: { type: 'ephemeral' },
+    for (const bloc of blocs) {
+      /** Rend le résultat d'un outil au modèle. */
+      const resultat = (sortie: string, erreur?: string) => {
+        journaliser({
+          sorte: 'outil',
+          tour,
+          nom: bloc.name,
+          entree: bloc.input,
+          sortie: tronquer(sortie, SORTIE_MAX),
+          ...(erreur !== undefined ? { erreur } : {}),
+        })
+        resultats.push({
+          type: 'tool_result',
+          tool_use_id: bloc.id,
+          content: sortie,
+          ...(erreur !== undefined ? { is_error: true } : {}),
+        })
       }
-      messages.push({ role: 'user', content: [dernierResultat] })
-    }
-    const invalide = (erreur: z.ZodError) => {
-      const texte = `entrée invalide : ${z.prettifyError(erreur)}`
-      resultat(texte, texte)
+      // Un outil de fin vient seul, après lecture des résultats : sinon il n'est pas une fin.
+      if (FINS.has(bloc.name) && blocs.length > 1) {
+        resultat(FIN_PAS_SEULE, FIN_PAS_SEULE)
+        continue
+      }
+      const invalide = (erreur: z.ZodError) => {
+        const texte = `entrée invalide : ${z.prettifyError(erreur)}`
+        resultat(texte, texte)
+      }
+
+      switch (permis.has(bloc.name) ? bloc.name : undefined) {
+        case OUTIL_REQUETE: {
+          const e = Requete.safeParse(bloc.input)
+          if (!e.success) {
+            invalide(e.error)
+            break
+          }
+          const r = await outils.requete(e.data.sql)
+          const rendu = tronquer(rendreResultat(r), SORTIE_MAX)
+          const sortie = entreDonnees(rendu)
+          if ('erreur' in r) {
+            resultat(sortie, r.erreur)
+          } else {
+            sources.push(sortie)
+            derniereRequete = rendu
+            resultat(sortie)
+          }
+          break
+        }
+        case OUTIL_VERIFIER: {
+          const e = Verifier.safeParse(bloc.input)
+          if (!e.success) {
+            invalide(e.error)
+            break
+          }
+          try {
+            const v = outils.verifier(e.data.modifications)
+            const sortie = entreDonnees(`${v.description}\n${lignesConstats(v.constats)}`)
+            sources.push(sortie)
+            resultat(sortie)
+          } catch (erreur) {
+            resultat(message(erreur), message(erreur))
+          }
+          break
+        }
+        case OUTIL_REPONDRE: {
+          const e = Repondre.safeParse(bloc.input)
+          if (!e.success) {
+            invalide(e.error)
+            break
+          }
+          const controle = verifierReponse(e.data.texte, sources, nomsConnus)
+          return controle.ok
+            ? { sorte: 'reponse', texte: e.data.texte, controle: 'ok', tours: appels, usage }
+            : {
+                sorte: 'reponse',
+                texte: derniereRequete ?? "Je n'ai pas pu vérifier ma réponse.",
+                controle: CONTROLE_RETIRE,
+                tours: appels,
+                usage,
+              }
+        }
+        case OUTIL_PROPOSER: {
+          const e = Proposer.safeParse(bloc.input)
+          if (!e.success) {
+            invalide(e.error)
+            break
+          }
+          let constats: Constat[]
+          try {
+            constats = outils.verifier(e.data.modifications).constats
+          } catch (erreur) {
+            resultat(message(erreur), message(erreur))
+            break
+          }
+          const refus = constats.find((c) => c.verdict === 'refus')
+          if (refus) {
+            const texte = `la proposition enfreint ${outils.nomRegle(refus.regle)} (${refus.regle}) : ${entreDonnees(refus.motif)}. Corrige ou abandonne.`
+            resultat(texte, texte)
+            break
+          }
+          const aVerifier = constats.filter((c) => c.verdict === 'à vérifier')
+          const resumeOk = verifierReponse(e.data.resume, sources, nomsConnus).ok
+          const texte = [
+            outils.decrire(e.data.modifications),
+            ...(aVerifier.length > 0
+              ? [
+                  `À décider par l'exploitation : ${aVerifier.map((c) => `${c.objet} : ${c.motif}`).join(' ; ')}`,
+                ]
+              : []),
+            ...(resumeOk ? [e.data.resume] : []),
+          ].join('\n')
+          return {
+            sorte: 'proposition',
+            modifications: e.data.modifications,
+            resume: e.data.resume,
+            constats,
+            texte,
+            tours: appels,
+            usage,
+          }
+        }
+        case OUTIL_ABANDONNER: {
+          const e = Abandonner.safeParse(bloc.input)
+          if (!e.success) {
+            invalide(e.error)
+            break
+          }
+          // Le motif est du texte libre du modèle : montré seulement s'il ne cite rien hors des données.
+          const sur = verifierReponse(e.data.motif, [...sources, consigne], nomsConnus).ok
+          return abandon(sur ? e.data.motif : MOTIF_RETIRE)
+        }
+        default:
+          resultat(`outil inconnu : ${bloc.name}`, `outil inconnu : ${bloc.name}`)
+      }
     }
 
-    switch (permis.has(bloc.name) ? bloc.name : undefined) {
-      case OUTIL_REQUETE: {
-        const e = Requete.safeParse(bloc.input)
-        if (!e.success) {
-          invalide(e.error)
-          break
-        }
-        const r = await outils.requete(e.data.sql)
-        const rendu = tronquer(rendreResultat(r), SORTIE_MAX)
-        const sortie = entreDonnees(rendu)
-        if ('erreur' in r) {
-          resultat(sortie, r.erreur)
-        } else {
-          sources.push(sortie)
-          derniereRequete = rendu
-          resultat(sortie)
-        }
-        break
-      }
-      case OUTIL_VERIFIER: {
-        const e = Verifier.safeParse(bloc.input)
-        if (!e.success) {
-          invalide(e.error)
-          break
-        }
-        try {
-          const v = outils.verifier(e.data.modifications)
-          const sortie = entreDonnees(`${v.description}\n${lignesConstats(v.constats)}`)
-          sources.push(sortie)
-          resultat(sortie)
-        } catch (erreur) {
-          resultat(message(erreur), message(erreur))
-        }
-        break
-      }
-      case OUTIL_REPONDRE: {
-        const e = Repondre.safeParse(bloc.input)
-        if (!e.success) {
-          invalide(e.error)
-          break
-        }
-        const controle = verifierReponse(e.data.texte, sources, nomsConnus)
-        return controle.ok
-          ? { sorte: 'reponse', texte: e.data.texte, controle: 'ok', tours: appels, usage }
-          : {
-              sorte: 'reponse',
-              texte: derniereRequete ?? "Je n'ai pas pu vérifier ma réponse.",
-              controle: CONTROLE_RETIRE,
-              tours: appels,
-              usage,
-            }
-      }
-      case OUTIL_PROPOSER: {
-        const e = Proposer.safeParse(bloc.input)
-        if (!e.success) {
-          invalide(e.error)
-          break
-        }
-        let constats: Constat[]
-        try {
-          constats = outils.verifier(e.data.modifications).constats
-        } catch (erreur) {
-          resultat(message(erreur), message(erreur))
-          break
-        }
-        const refus = constats.find((c) => c.verdict === 'refus')
-        if (refus) {
-          const texte = `la proposition enfreint ${outils.nomRegle(refus.regle)} (${refus.regle}) : ${entreDonnees(refus.motif)}. Corrige ou abandonne.`
-          resultat(texte, texte)
-          break
-        }
-        const aVerifier = constats.filter((c) => c.verdict === 'à vérifier')
-        const resumeOk = verifierReponse(e.data.resume, sources, nomsConnus).ok
-        const texte = [
-          outils.decrire(e.data.modifications),
-          ...(aVerifier.length > 0
-            ? [
-                `À décider par l'exploitation : ${aVerifier.map((c) => `${c.objet} : ${c.motif}`).join(' ; ')}`,
-              ]
-            : []),
-          ...(resumeOk ? [e.data.resume] : []),
-        ].join('\n')
-        return {
-          sorte: 'proposition',
-          modifications: e.data.modifications,
-          resume: e.data.resume,
-          constats,
-          texte,
-          tours: appels,
-          usage,
-        }
-      }
-      case OUTIL_ABANDONNER: {
-        const e = Abandonner.safeParse(bloc.input)
-        if (!e.success) {
-          invalide(e.error)
-          break
-        }
-        // Le motif est du texte libre du modèle : montré seulement s'il ne cite rien hors des données.
-        const sur = verifierReponse(e.data.motif, [...sources, consigne], nomsConnus).ok
-        return abandon(sur ? e.data.motif : MOTIF_RETIRE)
-      }
-      default:
-        resultat(`outil inconnu : ${bloc.name}`, `outil inconnu : ${bloc.name}`)
-    }
+    // Le marqueur de cache ne reste que sur le dernier résultat envoyé.
+    if (dernierResultat) delete dernierResultat.cache_control
+    dernierResultat = resultats.at(-1)
+    if (dernierResultat) dernierResultat.cache_control = { type: 'ephemeral' }
+    messages.push({ role: 'user', content: resultats })
   }
 }
