@@ -70,6 +70,14 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   `R-…`. Testé en simulé de bout en bout (`conversation.test.ts`) et pas à
   pas (`reaffectation.test.ts`, 12 cas). **Critère « avec la vraie clé »
   non passé** (pas de clé).
+- **Lot 5 (promotion)** fait le 2026-10-08, branche `espaces/lot-5` :
+  `moteur/src/promotion/promotion.ts`, `moteur/src/cli/promotions.ts`
+  (`pnpm promotions`). Acceptation rejouée sans clé : trois conversations
+  simulées de bout en bout (consigne → échappée → proposition → validation)
+  sur une copie, puis `pnpm promotions --date 2026-10-10` : l'intention
+  `liberer_un_jour` (3 demandes) reçoit son dossier, avec les requêtes, les
+  modifications, « Suite donnée : validée » et les cas candidats ; un second
+  lancement ne la repropose pas.
 
 ## La suite : `PLAN-ESPACES.md`, lots suivants
 
@@ -251,6 +259,17 @@ et le noter ici sous « Choix faits faute de consigne ».
   (D10 : le texte libre du modèle n'est montré que dans une réponse).
 - **`PropositionMetier`** (moteur) : le métier fournit `ouvrir` et `valider`
   d'une proposition ; le moteur garde la confirmation, le métier les statuts.
+- **Promotion : le nom du dossier est assaini** (tout caractère hors
+  `[A-Za-z0-9_-]` devient `_`) : l'intention vient du modèle, une intention
+  `../x` aurait écrit hors de `promotions/`.
+- **Promotion : `ecrireDossier` prend le client, l'heure et la fenêtre**
+  (`(dossierClient, client, i, journal, maintenant, fenetreJours)`, § 8.1
+  disait `(dossierClient, i, journal, aujourdhui)`) : la ligne de journal a
+  besoin du client et d'un horodatage comparable aux échappées, le motif de
+  la fenêtre. `pnpm promotions --date J` prend J à 23:59, heure de Paris.
+- **Promotion : la « suite donnée »** se lit sur les objets (`R-…`) dont une
+  ligne porte `donnees.conversation` ; « écrite » l'emporte sur « validée ».
+  Elle n'est dite que pour une proposition.
 - **Une donnée ne peut pas fermer la frontière** : `<donnees>` et
   `</donnees>` écrits dans une cellule sont remplacés par « [balise
   retirée] » avant d'être rendus au modèle (`entreDonnees`, `boucle.ts`).

@@ -86,7 +86,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
   patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
-  coup sous la clé d'accord.
+  coup sous la clé d'accord. `src/promotion/` (espace 3) compte les
+  demandes nouvelles par intention et écrit le dossier de promotion de celle
+  qui revient (`pnpm promotions`).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -170,6 +172,10 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 202
                          # parler à l'outil : la consigne devient un geste de la liste, ou « je ne
                          # sais pas » ; ce qui écrit attend un « oui ». Exige ANTHROPIC_API_KEY,
                          # sauf --modele simule (aucun appel). Sur une COPIE du client fictif
+pnpm promotions --client <copie> [--date 2026-10-08]
+                         # le coût de l'IA du mois et son plafond, les demandes nouvelles par
+                         # intention ; au seuil, écrit promotions/<intention>-<date>.md chez le
+                         # client et l'inscrit au journal. Aucun modèle. Sur une COPIE du client fictif
 ```
 
 ## Le déroulé d'un rendez-vous

@@ -74,7 +74,7 @@ export type EvenementBoucle =
       erreur?: string
     }
 
-const OUTIL_REQUETE = 'requete'
+export const OUTIL_REQUETE = 'requete'
 const OUTIL_VERIFIER = 'verifier'
 const OUTIL_REPONDRE = 'repondre'
 const OUTIL_PROPOSER = 'proposer'
