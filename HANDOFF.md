@@ -9,15 +9,18 @@ fichiers qu'il cite, si.
 
 - **`PLAN-ESPACES.md` est exécuté en entier (lots 0 à 7) le 2026-10-08**, plus
   un commit de corrections après une relecture indépendante. Neuf branches
-  en chaîne, une par lot, **ni poussées ni fusionnées** : la dernière,
-  `espaces/lot-7`, contient tout. `main` n'a pas bougé (étape 5).
-  Pour relire : `git log --oneline main..espaces/lot-7`.
+  en chaîne, une par lot, **ni poussées ni fusionnées**, puis
+  `espaces/fournisseur` (un autre point d'accès, GMI Cloud, et les
+  premières passes réelles des évals) : **`espaces/fournisseur` contient
+  tout**. `main` n'a pas bougé (étape 5).
+  Pour relire : `git log --oneline main..espaces/fournisseur`.
 - `pnpm check` passe sur `espaces/lot-7` : Biome, types des trois paquets,
   184 tests du moteur, 101 du métier, 11 de l'interface, registre cohérent
   (21 interdits, 34 tests, 10 escalades).
-- **Rien n'a encore parlé au vrai modèle** : pas de clé d'API dans la session
-  du 2026-10-08. Tout est vérifié avec l'adaptateur simulé. Les passes
-  réelles sont la première chose à faire (« Ce qui reste », ci-dessous).
+- **Aucune passe avec Claude** : pas de clé Anthropic le 2026-10-08. Deux
+  passes réelles avec **GLM-5.3 chez GMI Cloud** : traduction 39/51 (76 %,
+  seuil 95 %), échappée 11/14 (79 %, seuil 80 %) ; analyse dans
+  `evals/erreurs-2026-10-08.md`.
 - `presentation/schema-harnais.html` est modifié et **pas commité** : travail
   de Lionel, jamais touché (l'interface en a lu la charte).
 - Le mini-site « Le harnais en clair » (artefact claude.ai) :
@@ -139,6 +142,41 @@ Un lot = une branche `espaces/lot-N` partie de la précédente = un commit.
   (la boucle n'en traitait qu'un), et les nombres de la consigne refusés par
   le contrôle. Traduction ~77 % (seuil 95 %), échappée 11/14 (seuil 80 %).
   **Aucune passe avec Claude.**
+
+## À corriger dans la session suivante (issu des passes GLM du 2026-10-08)
+
+Lire d'abord `evals/erreurs-2026-10-08.md`. Dans l'ordre :
+
+1. **Décisions d'étiquettes, à prendre avec Lionel avant toute relance**
+   (jamais pour faire passer un cas en silence) : les mots-clés d'intention
+   N-3, N-7, N-8 (GLM a rendu `reorganiser_semaine_agent` / `refaire_la_semaine`,
+   `compter_vacations_de_nuit`, `remplacants_possibles`) ; P-VEI-1 (la date du
+   jour au lieu de `null`, équivalent) ; N-4 (« libère le mercredi de Sophie »
+   lu comme son absence) ; AMB-1 (« Fais le nécessaire » → `lancer_veille`) ;
+   E-14 (citer le piège entre guillemets en le signalant au patron : écart
+   ou non ?).
+2. **AP-1, AP-4** (cas stricts) : un agent qui « valide Karim » est lu comme
+   acceptant sa propre sollicitation. Piste : préciser la description de
+   `repondre_sollicitation` (« sa propre réponse à une demande qui lui est
+   adressée ; jamais pour valider ou choisir un autre agent »). À mesurer sur
+   Claude **et** GLM, pour ne pas régler le prompt sur un seul modèle.
+3. **Réponses d'échappée trop bavardes, retirées par le contrôle** (E-01,
+   E-03, E-10 : bornes de dates recopiées de la requête, « 1 vacation
+   chacun », « samedi 21:40 ») : piste, demander dans le système une réponse
+   courte (les chiffres demandés et les noms, sans recopier dates ni
+   détails). Et quand le résumé est retiré, le tableau rendu à la place est
+   celui de la **dernière** requête, parfois sans les chiffres (E-03 : les
+   noms seuls) : rendre plutôt le résultat qui porte les nombres de la
+   réponse, ou tous les résultats.
+4. **La clé `oui` des outils de réponse** sort déformée chez GLM par GMI
+   (`ouI`, `oue`, `ouѝ`, `ouo</arg_value>…`, surtout dans
+   `repondre_reaffectation`) : hypothèse à tester, la renommer (`accepte`) ;
+   la revalidation l'arrête de toute façon.
+5. **Passe avec Claude** dès qu'une clé est là, pour séparer le modèle du
+   point d'accès ; puis relancer GLM pour comparer.
+6. Les plafonds par demande de la copie GMI (240 s, 12 000 tokens) ne sont
+   que dans le scratchpad : si GLM est retenu, les mettre dans la config du
+   client.
 
 ## Ce qui reste (à Lionel, ou avec lui)
 
