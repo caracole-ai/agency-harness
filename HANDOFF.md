@@ -60,6 +60,16 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   sur Node 22.22 (la variante `readonly` est ignorée sans message : la base
   resterait modifiable). **Critère « avec la vraie clé » non passé** : pas de
   clé dans cette session (voir « Non vérifié »).
+- **Lot 4 (réaffectation groupée)** fait le 2026-10-08, branche
+  `espaces/lot-4` : `metiers/securite-privee/code/src/reaffectation.ts`
+  (statuts au journal, clé sur la liste exacte, accord de chaque agent qui
+  reçoit, écriture d'un coup), `reaffecterAgents` dans le connecteur
+  (`remplacerAgent` en devient un cas : les tests du remplacement passent
+  inchangés), la réponse `proposition` et `PropositionMetier` dans la
+  conversation, le geste `repondre_reaffectation`, `suivre_demande` sur un
+  `R-…`. Testé en simulé de bout en bout (`conversation.test.ts`) et pas à
+  pas (`reaffectation.test.ts`, 12 cas). **Critère « avec la vraie clé »
+  non passé** (pas de clé).
 
 ## La suite : `PLAN-ESPACES.md`, lots suivants
 
@@ -222,6 +232,25 @@ et le noter ici sous « Choix faits faute de consigne ».
   commentaire `/*` dans la requête peut neutraliser le `LIMIT` ajouté autour.
 - **`decrireModifications`** écrit les heures comme le reste de l'outil
   (« mer. 14/10 08:00 → mer. 14/10 20:00 »), pas « 08:00 → 20:00 ».
+- **Réaffectation : un « oui » qui laisse des agents à attendre** s'inscrit
+  comme une nouvelle ligne « demandée aux agents » (la table des statuts le
+  permet), avec `attendus` réduit ; le dernier « oui » passe à « acceptée »
+  puis « écrite ».
+- **Réaffectation : les règles sont rejouées à la validation et à
+  l'écriture** (`exigerSansRefus`), pas seulement à l'ouverture : le
+  planning a pu changer entre-temps. La clé, elle, ne protège que les
+  vacations modifiées.
+- **Réaffectation : un agent qui reçoit plusieurs vacations** reçoit un seul
+  message qui les cite toutes (« … et … ») ; il répond une fois.
+- **Réaffectation : le « non » du patron** n'inscrit rien sur la
+  réaffectation (elle reste « reçue » ; `suivre_demande` la passera à « trop
+  tard ») ; la ligne `confirmation` en garde la trace.
+- **Le texte d'une proposition** est entièrement rendu par le code
+  (« Proposition R-… », ce qui change, les autres possibles de chaque
+  vacation, ce qui reste à décider) : le résumé du modèle n'y figure pas
+  (D10 : le texte libre du modèle n'est montré que dans une réponse).
+- **`PropositionMetier`** (moteur) : le métier fournit `ouvrir` et `valider`
+  d'une proposition ; le moteur garde la confirmation, le métier les statuts.
 - **Une donnée ne peut pas fermer la frontière** : `<donnees>` et
   `</donnees>` écrits dans une cellule sont remplacés par « [balise
   retirée] » avant d'être rendus au modèle (`entreDonnees`, `boucle.ts`).

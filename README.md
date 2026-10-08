@@ -82,7 +82,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   seule, le garde-fou SQL, le contrôle « pas un chiffre, pas un nom hors des
   données », la boucle bornée à un outil par tour, et `echappee.ts` qui
   assemble copie, système et journal). `src/archetypes/candidats.ts` expose
-  aussi `constatsApparus` (ce qu'un planning modifié fait apparaître).
+  aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
+  proposition de l'échappée s'écrit par une réaffectation groupée
+  (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
+  patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
+  coup sous la clé d'accord.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont

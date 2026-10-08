@@ -12,6 +12,7 @@ import {
 } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { CONVERSATION } from './conversation'
+import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
 import { aParis, type Session } from './remplacement'
 
 // La conversation sur le client fictif, de bout en bout, sur une copie (le
@@ -197,5 +198,81 @@ describe('les gestes de veille', () => {
     expect(sophie.r.texte).toContain('Sophie Marchand — carte professionnelle — escalade')
     expect(sophie.r.texte).toContain('Carte professionnelle : surveillance humaine ou gardiennage')
     expect(sophie.r.texte).not.toContain('Moussa')
+  })
+})
+
+describe('une demande nouvelle jusqu’au planning : proposition, validation, accord, écriture', async () => {
+  const s = session()
+  const V07_A9 = [{ type: 'reaffecter', vacation: 'V-07', agent: 'A-9' }]
+  const { r, conversation } = await tour(
+    s,
+    PATRON,
+    [
+      { outil: 'demande_nouvelle', entree: { intention: 'liberer_un_jour', resume: 'x' } },
+      { outil: 'verifier', entree: { modifications: V07_A9 } },
+      { outil: 'proposer', entree: { modifications: V07_A9, resume: 'Mehdi prend V-07.' } },
+    ],
+    'Libère le mercredi de Sophie',
+  )
+  if (r.sorte !== 'proposition') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
+
+  it('la proposition est rendue par le code, avec les autres possibles', () => {
+    expect(r.texte).toContain('Sophie Marchand → Mehdi Saïdi')
+    expect(r.texte).toContain('18 autres vacations ne bougent pas')
+    expect(r.texte).toMatch(/V-07 — autres possibles : .+/)
+    expect(r.texte).toMatch(/Valider \? \(oui \/ non\)$/)
+  })
+  it('le oui du patron valide et demande son accord à Mehdi', () => {
+    const oui = confirmer(CONVERSATION, s, PATRON, conversation, r.empreinte, true, maintenant)
+    expect(oui.sorte).toBe('resultat')
+    expect(oui.texte).toMatch(/^Validé\. Message envoyé à 1 agent\(s\) : « Mehdi, peux-tu prendre/)
+  })
+  it('le oui de Mehdi, confirmé, écrit le planning', async () => {
+    const id = `R-${conversation.replace(/^C-/, '')}`
+    const mehdi = await tour(
+      s,
+      agent('A-9'),
+      outil('repondre_reaffectation', { reaffectation: id, oui: true }),
+    )
+    if (mehdi.r.sorte !== 'confirmation') throw new Error(`sorte ${mehdi.r.sorte}`)
+    expect(mehdi.r.texte).toMatch(/^Tu confirmes : OUI pour V-07/)
+    const fin = confirmer(
+      CONVERSATION,
+      s,
+      agent('A-9'),
+      mehdi.conversation,
+      mehdi.r.empreinte,
+      true,
+      maintenant,
+    )
+    expect(fin.sorte).toBe('resultat')
+    expect(fin.texte).toMatch(/^Planning mis à jour\./)
+  })
+  it('un autre agent ne peut pas répondre à la place de Mehdi', async () => {
+    const id = `R-${conversation.replace(/^C-/, '')}`
+    const autre = await tour(
+      s,
+      agent('A-2'),
+      outil('repondre_reaffectation', { reaffectation: id, oui: true }),
+    )
+    expect(autre.r).toEqual({
+      sorte: 'refus',
+      texte: 'cette sollicitation ne vous est pas adressée',
+    })
+  })
+})
+
+describe('suivre une réaffectation', () => {
+  it('suivre_demande accepte un R-…', async () => {
+    const s = session()
+    const { id } = ouvrirReaffectation(
+      s,
+      'C-suivi',
+      [{ type: 'reaffecter', vacation: 'V-07', agent: 'A-9' }],
+      maintenant,
+    )
+    validerReaffectation(s, id, maintenant)
+    const { r } = await tour(s, PATRON, outil('suivre_demande', { demande: id }))
+    expect(r).toEqual({ sorte: 'resultat', texte: `${id} : demandée aux agents` })
   })
 })

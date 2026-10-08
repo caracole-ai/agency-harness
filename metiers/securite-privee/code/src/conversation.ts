@@ -10,7 +10,8 @@ import { ACTIONS } from './actions'
 import { CONTROLES } from './controles'
 import { tablesPour } from './copie'
 import { constatsNouveaux, decrireModifications, Modification } from './modifications'
-import { ouvrir, type Session } from './remplacement'
+import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
+import { evaluer, ouvrir, type Session } from './remplacement'
 import type { PREFERENCES } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client, ses
@@ -21,6 +22,29 @@ import type { PREFERENCES } from './veille'
 const PREFERENCES_EN_MOTS: Record<(typeof PREFERENCES)[number], string> = {
   connait_site: 'un agent qui connaît déjà le site',
   moins_d_heures_semaine: "celui qui a le moins d'heures dans la semaine",
+}
+
+/** Le texte d'une proposition, rendu par le code : ce qui change, les autres possibles de chaque vacation, ce qui reste à décider. */
+function decrireProposition(s: Session, id: string, modifications: Modification[]): string {
+  const autres = modifications.map((m) => {
+    const v = s.ctx.planning.vacations.find((x) => x.id === m.vacation)
+    if (!v) throw new Error(`vacation ${m.vacation} inconnue`)
+    const possibles = evaluer(s, id, v, [m.agent]).possibles.map((c) => c.nom)
+    return `${m.vacation} — autres possibles : ${possibles.length > 0 ? possibles.join(', ') : 'aucun'}`
+  })
+  const aVerifier = constatsNouveaux(s, modifications).filter((c) => c.verdict === 'à vérifier')
+  return [
+    `Proposition ${id}`,
+    decrireModifications(s, modifications),
+    '',
+    ...autres,
+    ...(aVerifier.length > 0
+      ? [
+          '',
+          `À décider par l'exploitation : ${aVerifier.map((c) => `${c.objet} : ${c.motif}`).join(' ; ')}`,
+        ]
+      : []),
+  ].join('\n')
 }
 
 const configDe = (s: Session): ConfigConversation => {
@@ -61,6 +85,17 @@ export const CONVERSATION: MetierConversation<Session> = {
     }
     if (identite.agent === undefined) throw new Error('un agent doit dire qui il est (--agent A-…)')
     s.ctx.agent(identite.agent)
+  },
+  proposition: {
+    ouvrir: (s, conversation, modifications, maintenant) => {
+      const modifs = z.array(Modification).parse(modifications)
+      const { id } = ouvrirReaffectation(s, conversation, modifs, maintenant)
+      return { id, texte: decrireProposition(s, id, modifs) }
+    },
+    valider: (s, id, maintenant) => {
+      const { messages } = validerReaffectation(s, id, maintenant)
+      return `Validé. Message envoyé à ${messages.length} agent(s) : ${messages.map((m) => `« ${m} »`).join(' ; ')}`
+    },
   },
   echappee: (s, identite, conversation, consigne, intention, maintenant, modele) => {
     const visibles = s.ctx.planning.agents.filter(

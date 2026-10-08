@@ -9,6 +9,15 @@ import {
 import { z } from 'zod'
 import { NOMS_ACTIVITES } from './modele'
 import {
+  attendus,
+  type Etape2,
+  reaffectation,
+  repondreReaffectation,
+  STATUT_R,
+  statutReaffectation,
+  suivreReaffectation,
+} from './reaffectation'
+import {
   agentSollicite,
   decrireEtape,
   evaluer,
@@ -152,7 +161,7 @@ const RepondreSollicitation = z.strictObject({
 const repondreSollicitation: Action<Session, z.infer<typeof RepondreSollicitation>> = {
   id: 'repondre_sollicitation',
   description:
-    "L'agent répond OUI ou NON à la demande de remplacement qu'on lui a envoyée. Dire non n'a aucune conséquence.",
+    "L'agent répond OUI ou NON à la demande de remplacement (D-…) qu'on lui a envoyée. Dire non n'a aucune conséquence.",
   parametres: RepondreSollicitation,
   roles: ['agent'],
   ecrit: true,
@@ -167,18 +176,74 @@ const repondreSollicitation: Action<Session, z.infer<typeof RepondreSollicitatio
   },
 }
 
+/** Ce qu'une étape de réaffectation dit au demandeur. */
+function decrireEtape2(id: string, e: Etape2): string {
+  if (e.statut === STATUT_R.ecrite) {
+    return ['Planning mis à jour.', ...(e.messages ?? []).map((m) => `Message : « ${m} »`)].join(
+      '\n',
+    )
+  }
+  return `${id} : ${e.statut}. ${e.motif}`
+}
+
+/** Lève si cette réaffectation n'attend pas la réponse de cet agent. */
+function exigerAttendu(s: Session, identite: Identite, id: string): void {
+  if (
+    !identite.agent ||
+    statutReaffectation(s, id) !== STATUT_R.demandee ||
+    !attendus(s, id).includes(identite.agent)
+  ) {
+    throw new Error('cette sollicitation ne vous est pas adressée')
+  }
+}
+
+const RepondreReaffectation = z.strictObject({
+  reaffectation: z.string().describe('la réaffectation reçue, ex. R-20261010T2140-3fa2'),
+  oui: z.boolean().describe("true si l'agent accepte, false s'il refuse"),
+})
+const repondreAReaffectation: Action<Session, z.infer<typeof RepondreReaffectation>> = {
+  id: 'repondre_reaffectation',
+  description:
+    "L'agent répond OUI ou NON à une réaffectation (R-…) qu'on lui a demandée. Dire non n'a aucune conséquence.",
+  parametres: RepondreReaffectation,
+  roles: ['agent'],
+  ecrit: true,
+  reformuler: (s, identite, p) => {
+    exigerAttendu(s, identite, p.reaffectation)
+    const vacations = reaffectation(s, p.reaffectation)
+      .modifications.filter((m) => m.agent === identite.agent)
+      .map((m) => decrire(s.ctx, m.vacation))
+    return `Tu confirmes : ${p.oui ? 'OUI' : 'NON'} pour ${vacations.join(' et ')} ?`
+  },
+  executer: (s, identite, p, maintenant) => {
+    exigerAttendu(s, identite, p.reaffectation)
+    const e = repondreReaffectation(s, p.reaffectation, identite.agent ?? '', p.oui, maintenant)
+    return { texte: decrireEtape2(p.reaffectation, e), donnees: { statut: e.statut } }
+  },
+}
+
 const SuivreDemande = z.strictObject({
-  demande: z.string().describe('la demande à suivre, ex. D-V-17'),
+  demande: z
+    .string()
+    .describe('la demande à suivre : un remplacement (D-V-17) ou une réaffectation (R-…)'),
 })
 const suivreDemande: Action<Session, z.infer<typeof SuivreDemande>> = {
   id: 'suivre_demande',
   description:
-    "Où en est une demande de remplacement : la fait avancer si l'agent n'a pas répondu à temps, ou s'il est trop tard.",
+    "Où en est une demande (remplacement D-…, réaffectation R-…) : la fait avancer sans réponse à temps, ou s'il est trop tard.",
   parametres: SuivreDemande,
   roles: ['patron'],
   ecrit: false,
   reformuler: (_s, _identite, p) => `Je regarde où en est ${p.demande}.`,
   executer: (s, _identite, p, maintenant) => {
+    if (p.demande.startsWith('R-')) {
+      const e = suivreReaffectation(s, p.demande, maintenant)
+      return {
+        texte: e
+          ? decrireEtape2(p.demande, e)
+          : `${p.demande} : ${statutReaffectation(s, p.demande) ?? 'demande inconnue'}`,
+      }
+    }
     const e = suivre(s, p.demande, maintenant)
     return {
       texte: e
@@ -282,6 +347,7 @@ export const ACTIONS: Action<Session, unknown>[] = [
   declarerAbsence,
   validerRemplacement,
   repondreSollicitation,
+  repondreAReaffectation,
   suivreDemande,
   voirPlanning,
   voirEcheances,

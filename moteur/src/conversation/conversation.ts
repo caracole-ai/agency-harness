@@ -30,11 +30,27 @@ export interface MetierConversation<Session> {
   verifierIdentite(s: Session, identite: Identite): void
   /** Absente, toute demande nouvelle finit en « je ne sais pas encore faire ça ». */
   echappee?: Echappee<Session>
+  /** Absente, une proposition de l'échappée est montrée sans pouvoir être écrite. */
+  proposition?: PropositionMetier<Session>
+}
+
+/** Comment le métier écrit une proposition de l'échappée : validée par le patron, acceptée par les agents (PLAN-ESPACES.md § 7.2). */
+export interface PropositionMetier<Session> {
+  /** Ouvre la demande d'écriture ; rend son identifiant et le texte à montrer, rendu par le code. Lève si une règle s'y oppose. */
+  ouvrir(
+    s: Session,
+    conversation: string,
+    modifications: unknown[],
+    maintenant: Temporal.ZonedDateTime,
+  ): { id: string; texte: string }
+  /** Le patron a dit oui : la clé sur le contenu exact, puis la demande d'accord aux agents. Rend le texte. */
+  valider(s: Session, id: string, maintenant: Temporal.ZonedDateTime): string
 }
 
 export type Reponse =
   | { sorte: 'resultat'; texte: string }
   | { sorte: 'confirmation'; texte: string; empreinte: string }
+  | { sorte: 'proposition'; texte: string; empreinte: string }
   | { sorte: 'je_ne_sais_pas'; texte: string }
   | { sorte: 'refus'; texte: string }
 
@@ -48,7 +64,9 @@ export interface Tour {
 /** Ce qu'une confirmation en attente garde : qui, quoi, et l'empreinte de ce quoi. */
 interface Attente {
   identite: Identite
-  demande: { sorte: 'action'; action: string; params: Record<string, unknown> }
+  demande:
+    | { sorte: 'action'; action: string; params: Record<string, unknown> }
+    | { sorte: 'reaffectation'; id: string }
   empreinte: string
 }
 
@@ -170,9 +188,36 @@ export async function traiterConsigne<S>(
       if (issue.sorte === 'abandon') {
         return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${issue.motif}.` }
       }
+      if (!m.proposition) return { sorte: 'resultat', texte: issue.texte }
+      let ouverte: { id: string; texte: string }
+      try {
+        ouverte = m.proposition.ouvrir(s, tour.conversation, issue.modifications, tour.maintenant)
+      } catch (erreur) {
+        return { sorte: 'je_ne_sais_pas', texte: message(erreur) }
+      }
+      const e = empreinte({
+        conversation: tour.conversation,
+        id: ouverte.id,
+        modifications: JSON.stringify(issue.modifications),
+      })
+      const attente: Attente = {
+        identite: tour.identite,
+        demande: { sorte: 'reaffectation', id: ouverte.id },
+        empreinte: e,
+      }
+      ecrire(m, s, tour, [
+        {
+          type: TYPE_CONFIRMATION_ATTENDUE,
+          objet: tour.conversation,
+          issue: ouverte.id,
+          motif: ouverte.texte,
+          donnees: attente,
+        },
+      ])
       return {
-        sorte: 'resultat',
-        texte: `${issue.texte}\n(l'écriture d'une proposition arrive au lot 4)`,
+        sorte: 'proposition',
+        texte: `${ouverte.texte}\nValider ? (oui / non)`,
+        empreinte: e,
       }
     }
     case 'action': {
@@ -256,15 +301,9 @@ export function confirmer<S>(
   ) {
     return { sorte: 'refus', texte: 'aucune confirmation en attente pour ce contenu' }
   }
-  const action = actionsDe(m.actions, identite.role).find((a) => a.id === attente.demande.action)
-  const params = action?.parametres.safeParse(attente.demande.params)
   const r: Reponse = !oui
     ? { sorte: 'resultat', texte: "D'accord, rien n'est fait." }
-    : !action
-      ? { sorte: 'refus', texte: `l'action ${attente.demande.action} n'est pas ouverte à ce rôle` }
-      : !params?.success
-        ? { sorte: 'refus', texte: 'paramètres invalides' }
-        : executer(action, s, identite, params.data, maintenant)
+    : executerAttente(m, s, identite, attente.demande, maintenant)
   ecrire(m, s, tour, [
     {
       type: TYPE_CONFIRMATION,
@@ -274,4 +313,28 @@ export function confirmer<S>(
     },
   ])
   return r
+}
+
+/** Ce qu'un « oui » déclenche : l'action reformulée, ou la validation d'une proposition. */
+function executerAttente<S>(
+  m: MetierConversation<S>,
+  s: S,
+  identite: Identite,
+  demande: Attente['demande'],
+  maintenant: Temporal.ZonedDateTime,
+): Reponse {
+  if (demande.sorte === 'reaffectation') {
+    if (!m.proposition) return { sorte: 'refus', texte: "ce métier n'écrit pas de proposition" }
+    try {
+      return { sorte: 'resultat', texte: m.proposition.valider(s, demande.id, maintenant) }
+    } catch (erreur) {
+      return { sorte: 'refus', texte: message(erreur) }
+    }
+  }
+  const action = actionsDe(m.actions, identite.role).find((a) => a.id === demande.action)
+  if (!action)
+    return { sorte: 'refus', texte: `l'action ${demande.action} n'est pas ouverte à ce rôle` }
+  const params = action.parametres.safeParse(demande.params)
+  if (!params.success) return { sorte: 'refus', texte: 'paramètres invalides' }
+  return executer(action, s, identite, params.data, maintenant)
 }

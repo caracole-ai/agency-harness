@@ -149,15 +149,22 @@ export function lireAgence(dossier: string, fichiers: FichiersAgence): Planning 
 }
 
 /**
- * Le connecteur d'écriture : confie une vacation à un autre agent, dans le
+ * Le connecteur d'écriture : confie des vacations à d'autres agents, dans le
  * planning du client, sans toucher au reste du fichier (mêmes colonnes, même
- * ordre). N'est appelé qu'après la vérification de la clé d'accord.
+ * ordre). Toutes ou aucune : une vacation introuvable arrête avant d'écrire.
+ * N'est appelé qu'après la vérification de la clé d'accord.
  */
-export function remplacerAgent(chemin: string, vacation: string, agent: string): void {
+export function reaffecterAgents(
+  chemin: string,
+  modifications: { vacation: string; agent: string }[],
+): void {
   const lignes = lireCsv(chemin, COLONNES.planning)
-  const ligne = lignes.find((l) => l.id === vacation)
-  if (!ligne) throw new Error(`${chemin} : vacation ${vacation} introuvable`)
-  ligne.agent = agent
+  const cibles = modifications.map((m) => {
+    const ligne = lignes.find((l) => l.id === m.vacation)
+    if (!ligne) throw new Error(`${chemin} : vacation ${m.vacation} introuvable`)
+    return { ligne, agent: m.agent }
+  })
+  for (const { ligne, agent } of cibles) ligne.agent = agent
   const cellule = (v: string | undefined) => {
     if (v && /[;"\n]/.test(v)) throw new Error(`${chemin} : cellule non écrivable « ${v} »`)
     return v ?? ''
@@ -169,4 +176,9 @@ export function remplacerAgent(chemin: string, vacation: string, agent: string):
       ...lignes.map((l) => COLONNES.planning.map((c) => cellule(l[c])).join(';')),
     ].join('\n')}\n`,
   )
+}
+
+/** Confie une vacation à un autre agent : une réaffectation d'une seule ligne. */
+export function remplacerAgent(chemin: string, vacation: string, agent: string): void {
+  reaffecterAgents(chemin, [{ vacation, agent }])
 }

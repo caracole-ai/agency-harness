@@ -99,7 +99,7 @@ async function avecSession<T>(f: (s: unknown) => T | Promise<T>): Promise<T> {
 
 function afficher(r: Reponse, conversation: string): void {
   console.log(`Réponse (${r.sorte}) : ${r.texte}`)
-  if (r.sorte === 'confirmation' && !values.interactif) {
+  if ((r.sorte === 'confirmation' || r.sorte === 'proposition') && !values.interactif) {
     console.log(
       `\nConfirmer : pnpm parler --client ${values.client} --role ${identite.role}${identite.agent ? ` --agent ${identite.agent}` : ''} --confirmer ${r.empreinte} --conversation ${conversation} --oui | --non`,
     )
@@ -163,7 +163,7 @@ try {
               conversation,
             }),
       )
-      enAttente = r.sorte === 'confirmation' ? r.empreinte : undefined
+      enAttente = r.sorte === 'confirmation' || r.sorte === 'proposition' ? r.empreinte : undefined
       afficher(r, conversation)
     }
     lecteur.close()
