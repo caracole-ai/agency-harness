@@ -35,7 +35,7 @@ describe('modeleSimule', () => {
 
   it('rend les scripts dans l’ordre, avec un stop_reason cohérent', async () => {
     const m = modeleSimule([
-      { outil: 'declarer_absence', entree: { agent: 'A-11' } },
+      { outil: 'gerer_absence', entree: { agent: 'A-11' } },
       { texte: 'Bonjour' },
       { arret: 'refusal' },
       { arret: 'max_tokens' },
@@ -45,7 +45,7 @@ describe('modeleSimule', () => {
     expect(r1.message.content[0]).toMatchObject({
       type: 'tool_use',
       id: 'toolu_simule_1',
-      name: 'declarer_absence',
+      name: 'gerer_absence',
       input: { agent: 'A-11' },
     })
     const r2 = await m.appeler(appel('deux'))

@@ -124,17 +124,17 @@ function titres(s: Session, agent: string): string[] {
   ]
 }
 
-const DeclarerAbsence = z.strictObject({
+const GererAbsence = z.strictObject({
   agent: IdAgent.nullable().describe(
     "l'identifiant de l'agent absent (A-11) ; null quand c'est l'agent qui parle de lui-même",
   ),
   jour: Jour.describe('le jour de la vacation manquée, AAAA-MM-JJ'),
 })
-const declarerAbsence: Action<Session, z.infer<typeof DeclarerAbsence>> = {
-  id: 'declarer_absence',
+const gererAbsence: Action<Session, z.infer<typeof GererAbsence>> = {
+  id: 'gerer_absence',
   description:
-    "Déclarer l'absence d'un agent un jour donné : l'outil retrouve sa vacation et propose un remplaçant au patron.",
-  parametres: DeclarerAbsence,
+    "Gérer l'absence d'un agent un jour donné : l'outil retrouve sa vacation, cherche et propose un remplaçant au patron.",
+  parametres: GererAbsence,
   roles: ['patron', 'agent'],
   ecrit: false,
   reformuler: (s, identite, p) => {
@@ -388,7 +388,7 @@ const lancerVeille: Action<Session, z.infer<typeof LancerVeille>> = {
 
 /** Les gestes de la sécurité privée, dans l'ordre où le modèle les lit. */
 export const ACTIONS: Action<Session, unknown>[] = [
-  declarerAbsence,
+  gererAbsence,
   validerRemplacement,
   repondreSollicitation,
   repondreAReaffectation,

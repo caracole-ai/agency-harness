@@ -25,7 +25,7 @@ export interface Resultat {
 }
 
 export interface Action<Session, Params> {
-  /** snake_case ASCII : `declarer_absence`. C'est le nom de l'outil envoyé au modèle. */
+  /** snake_case ASCII : `gerer_absence`. C'est le nom de l'outil envoyé au modèle. */
   id: string
   /** Une phrase pour le modèle, en français, 200 caractères au plus. */
   description: string

@@ -53,7 +53,7 @@ describe('un geste qui lit : déclarer une absence', async () => {
   const { r, conversation } = await tour(
     s,
     PATRON,
-    outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }),
+    outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }),
     'Aïcha ne vient pas demain',
   )
   it('rend la proposition, rendue par le code', () => {
@@ -72,7 +72,7 @@ describe('un geste qui lit : déclarer une absence', async () => {
 
 describe('un geste qui écrit : valider, puis la réponse de l’agent', async () => {
   const s = session()
-  await tour(s, PATRON, outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }))
+  await tour(s, PATRON, outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }))
   const valider = outil('valider_remplacement', { demande: 'D-V-17', agent: null })
   const { r, conversation } = await tour(s, PATRON, valider)
   if (r.sorte !== 'confirmation') throw new Error(`sorte ${r.sorte}`)
@@ -118,7 +118,7 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
   })
   it('« non » ne fait rien', async () => {
     const s2 = session()
-    await tour(s2, PATRON, outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }))
+    await tour(s2, PATRON, outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }))
     const v = await tour(s2, PATRON, valider)
     if (v.r.sorte !== 'confirmation') throw new Error(`sorte ${v.r.sorte}`)
     const non = confirmer(
@@ -289,7 +289,7 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
     const { r } = await tour(
       s,
       agent('A-11'),
-      outil('declarer_absence', { agent: null, jour: '2026-10-11' }),
+      outil('gerer_absence', { agent: null, jour: '2026-10-11' }),
     )
     expect(r.sorte).toBe('resultat')
     expect(r.texte).toMatch(/^Ton absence du 11\/10\/2026 est enregistrée \(demande D-V-17\)/)
@@ -300,13 +300,13 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
     const { r } = await tour(
       s,
       agent('A-2'),
-      outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }),
+      outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }),
     )
     expect(r).toEqual({ sorte: 'refus', texte: 'Tu ne peux déclarer que ta propre absence.' })
   })
   it('son non : enregistré, sans le nom du suivant ; la reformulation du patron écarte celui qui a refusé', async () => {
     const s = session()
-    await tour(s, PATRON, outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }))
+    await tour(s, PATRON, outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }))
     const v = await tour(
       s,
       PATRON,

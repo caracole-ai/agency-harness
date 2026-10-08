@@ -299,10 +299,14 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   un chiffre ni un nom hors des données ; une demande finit toujours
   clairement ; un plafond par demande ; les données ne sont jamais des
   consignes ; tout au journal.
+- **2026-10-08** : le geste `declarer_absence` s'appelle **`gerer_absence`**
+  (Lionel) : « déclarer » cachait qu'il cherche et propose un remplaçant.
+  `PLAN-ESPACES.md` § 5.1 et `evals/erreurs-2026-10-08.md` gardent l'ancien nom
+  (plan et analyse d'époque).
 - **2026-10-08** : le métier fournit le vocabulaire des intentions, montré
   au modèle ; une donnée qui ressemble à une consigne se signale sans être
   recopiée ; « libère le mercredi de Sophie » admet le geste
-  `declarer_absence` comme la demande nouvelle. **GLM-5.3 (GMI) est la
+  `gerer_absence` comme la demande nouvelle. **GLM-5.3 (GMI) est la
   référence** jusqu'à nouvel ordre ; **laboratoire d'abord**, sur données
   fictives, jusqu'à un produit correct et efficient.
 - **KISS** : éviter l'over-engineering, ne jamais sacrifier la qualité.
@@ -543,7 +547,7 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **`valider_remplacement` sans agent** : la reformulation nomme le premier
   possible (« Valider Julien Lefèvre (A-2) pour … ? », comme le test du § 5.7
   l'attend, plutôt que « Valider la proposition pour … »).
-- **`declarer_absence` par le patron sans agent** : refus « Précisez l'agent
+- **`gerer_absence` par le patron sans agent** : refus « Précisez l'agent
   absent. ».
 - **`mes_titres`** : une ligne par titre, « non renseigné » quand la donnée
   manque, la carte avec ses activités et sa dernière période de validité.

@@ -18,15 +18,15 @@ cas:
   - id: P-ABS-1
     role: patron
     consigne: "Aïcha ne vient pas demain"
-    attendu: { sorte: action, action: declarer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
   - id: P-ABS-2
     role: patron
     consigne: "Aïcha Traoré est malade, elle ne pourra pas assurer sa vacation du dimanche 11 octobre."
-    attendu: { sorte: action, action: declarer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
   - id: P-ABS-3
     role: patron
     consigne: "karim m'a appelé, il sera pas là mardi"
-    attendu: { sorte: action, action: declarer_absence, params: { agent: A-1, jour: "2026-10-13" } }
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-1, jour: "2026-10-13" } }
 
   # --- Patron : valider un remplacement ---
   - id: P-VAL-1
@@ -104,17 +104,17 @@ cas:
     role: agent
     agent: A-9
     consigne: "Je serai absent vendredi."
-    attendu: { sorte: action, action: declarer_absence, params: { jour: "2026-10-16" } }
+    attendu: { sorte: action, action: gerer_absence, params: { jour: "2026-10-16" } }
   - id: A-ABS-2
     role: agent
     agent: A-1
     consigne: "je peux pas venir mardi, j'ai un empêchement"
-    attendu: { sorte: action, action: declarer_absence, params: { jour: "2026-10-13" } }
+    attendu: { sorte: action, action: gerer_absence, params: { jour: "2026-10-13" } }
   - id: A-ABS-3
     role: agent
     agent: A-11
     consigne: "Je suis malade, je ne viendrai pas demain."
-    attendu: { sorte: action, action: declarer_absence, params: { jour: "2026-10-11" } }
+    attendu: { sorte: action, action: gerer_absence, params: { jour: "2026-10-11" } }
 
   # --- Agent : répondre à une sollicitation de remplacement ---
   - id: A-SOL-1
@@ -198,13 +198,13 @@ cas:
     consigne: "Refais la semaine de Karim en lui laissant son mercredi."
     attendu: { sorte: nouvelle, intention: [reorganiser_semaine, liberer_un_jour] }
   # Deux lectures acceptées (décidé le 2026-10-08) : la demande nouvelle, ou le
-  # geste declarer_absence, qui libère aussi la journée (V-07 à remplacer,
+  # geste gerer_absence, qui libère aussi la journée (V-07 à remplacer,
   # validée par le patron). « Libérer » vaut-il « absente » : à demander à un
   # vrai patron.
   - id: N-4
     role: patron
     consigne: "Libère le mercredi 14 de Sophie."
-    attendu: { sorte: [nouvelle, action], intention: [liberer_un_jour], action: declarer_absence, params: { agent: A-3, jour: "2026-10-14" } }
+    attendu: { sorte: [nouvelle, action], intention: [liberer_un_jour], action: gerer_absence, params: { agent: A-3, jour: "2026-10-14" } }
   - id: N-5
     role: patron
     consigne: "Et si on mettait Mehdi sur l'Entrepôt Nord, qu'est-ce que ça donnerait ?"

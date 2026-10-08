@@ -147,7 +147,7 @@ describe('POST /api/confirmer', () => {
 
 describe('un parcours simulé : absence, validation, oui', async () => {
   const a = app([
-    { outil: 'declarer_absence', entree: { agent: 'A-11', jour: '2026-10-11' } },
+    { outil: 'gerer_absence', entree: { agent: 'A-11', jour: '2026-10-11' } },
     { outil: 'valider_remplacement', entree: { demande: 'D-V-17', agent: null } },
   ])
   const consigne = async (texte: string, conversation?: string) =>

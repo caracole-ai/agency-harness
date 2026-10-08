@@ -7,7 +7,7 @@ import { entreDonnees, MAX_TOKENS_TRADUIRE, systemeTraduire, traduire } from './
 
 // La traduction d'une consigne, avec l'adaptateur simulé (PLAN-ESPACES.md § 5.7).
 
-const DeclarerAbsence = z.strictObject({
+const GererAbsence = z.strictObject({
   agent: z
     .string()
     .regex(/^A-\d+$/)
@@ -17,9 +17,9 @@ const DeclarerAbsence = z.strictObject({
 })
 const ACTIONS: Action<null, unknown>[] = [
   {
-    id: 'declarer_absence',
+    id: 'gerer_absence',
     description: "Déclarer l'absence d'un agent un jour donné.",
-    parametres: DeclarerAbsence,
+    parametres: GererAbsence,
     roles: ['patron', 'agent'],
     ecrit: false,
     reformuler: () => '',
@@ -66,12 +66,12 @@ async function essai(pas: Scripte) {
 describe('traduire', () => {
   it('un outil de la liste devient une action, ses paramètres validés', async () => {
     const { demande } = await essai({
-      outil: 'declarer_absence',
+      outil: 'gerer_absence',
       entree: { agent: 'A-11', jour: '2026-10-11' },
     })
     expect(demande).toEqual({
       sorte: 'action',
-      action: 'declarer_absence',
+      action: 'gerer_absence',
       params: { agent: 'A-11', jour: '2026-10-11' },
     })
   })
@@ -104,7 +104,7 @@ describe('traduire', () => {
   })
   it('des paramètres invalides : inconnue, avec le détail', async () => {
     const { demande } = await essai({
-      outil: 'declarer_absence',
+      outil: 'gerer_absence',
       entree: { agent: 'A-11', jour: 'demain' },
     })
     expect(demande.sorte).toBe('inconnue')
@@ -117,9 +117,7 @@ describe('traduire', () => {
   it('le système porte les actions et la frontière, pas la date ; le message porte la date et la consigne', async () => {
     const { modele } = await essai({ texte: 'x' })
     const appel = modele.appels[0]
-    expect(appel?.systeme).toContain(
-      "declarer_absence : Déclarer l'absence d'un agent un jour donné.",
-    )
+    expect(appel?.systeme).toContain("gerer_absence : Déclarer l'absence d'un agent un jour donné.")
     expect(appel?.systeme).toContain('valider_remplacement : Le patron valide')
     expect(appel?.systeme).toContain('<donnees>')
     expect(appel?.systeme).toContain('A-11 — Aïcha Traoré')

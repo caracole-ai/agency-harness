@@ -9,7 +9,7 @@ import { bilan, ecartsEchappee, ecartsTraduction, modeleTrace, rendreResultats }
 describe('ecartsTraduction', () => {
   const absence = {
     sorte: 'action' as const,
-    action: 'declarer_absence',
+    action: 'gerer_absence',
     params: { agent: 'A-11', jour: '2026-10-11' },
   }
   it('la bonne action, les bons paramètres : aucun écart', () => {
@@ -18,7 +18,7 @@ describe('ecartsTraduction', () => {
   it('seules les clés écrites sont comparées', () => {
     expect(
       ecartsTraduction(
-        { sorte: 'action', action: 'declarer_absence', params: { jour: '2026-10-11' } },
+        { sorte: 'action', action: 'gerer_absence', params: { jour: '2026-10-11' } },
         absence,
       ),
     ).toEqual([])
@@ -38,7 +38,7 @@ describe('ecartsTraduction', () => {
   })
   it('une autre sorte est un écart ; une liste de sortes en accepte plusieurs', () => {
     expect(ecartsTraduction({ sorte: 'inconnue' }, absence)).toEqual([
-      'sorte action declarer_absence, attendu inconnue',
+      'sorte action gerer_absence, attendu inconnue',
     ])
     expect(
       ecartsTraduction(

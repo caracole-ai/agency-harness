@@ -21,7 +21,7 @@ const action = (id: string, roles: Action<null, unknown>['roles']): Action<null,
   executer: () => ({ texte: id }),
 })
 const ACTIONS = [
-  action('declarer_absence', ['patron', 'agent']),
+  action('gerer_absence', ['patron', 'agent']),
   action('valider_remplacement', ['patron']),
   action('repondre_sollicitation', ['agent']),
 ]
@@ -48,7 +48,7 @@ describe('outilsDe', () => {
   it('un agent ne reçoit pas les gestes du patron, et reçoit les deux méta-outils', () => {
     const noms = outilsDe(ACTIONS, 'agent').map((o) => o.name)
     expect(noms).toEqual([
-      'declarer_absence',
+      'gerer_absence',
       'repondre_sollicitation',
       DEMANDE_NOUVELLE,
       JE_NE_SAIS_PAS,
@@ -64,7 +64,7 @@ describe('outilsDe', () => {
   })
   it('actionsDe filtre par rôle', () => {
     expect(actionsDe(ACTIONS, 'patron').map((a) => a.id)).toEqual([
-      'declarer_absence',
+      'gerer_absence',
       'valider_remplacement',
     ])
   })
