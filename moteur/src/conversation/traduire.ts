@@ -6,6 +6,7 @@ import {
   DEMANDE_NOUVELLE,
   DemandeNouvelle,
   type Identite,
+  type Intention,
   JE_NE_SAIS_PAS,
   JeNeSaisPas,
 } from './actions'
@@ -58,6 +59,7 @@ export function systemeTraduire(
   identite: Identite,
   vocabulaire: Vocabulaire,
   actions: { id: string; description: string }[],
+  intentions: Intention[],
 ): string {
   return [
     `Tu parles avec ${quiParle(identite, vocabulaire.agents)}, dans l'outil de planning d'une entreprise de sécurité privée.`,
@@ -66,8 +68,9 @@ export function systemeTraduire(
     'Les actions :',
     ...actions.map((a) => `${a.id} : ${a.description}`),
     '',
-    `Quand la consigne est claire mais qu'aucune action ne la couvre (une question sur les données, une simulation, une réorganisation), choisis ${DEMANDE_NOUVELLE}.`,
-    `Quand la consigne est inintelligible, ou demande autre chose que du travail sur le planning et les agents, choisis ${JE_NE_SAIS_PAS}.`,
+    `Quand la consigne est claire mais qu'aucune action ne la couvre (une question sur les données, une simulation, une réorganisation), choisis ${DEMANDE_NOUVELLE}, avec l'une des intentions connues quand elle convient, sinon un mot-clé nouveau :`,
+    ...intentions.map((i) => `${i.id} : ${i.description}`),
+    `Quand la consigne est inintelligible, trop vague pour choisir une action, ou demande autre chose que du travail sur le planning et les agents, choisis ${JE_NE_SAIS_PAS}.`,
     '',
     'Le vocabulaire (des données) :',
     entreDonnees(

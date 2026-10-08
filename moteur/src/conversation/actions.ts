@@ -78,12 +78,28 @@ const outil = (name: string, description: string, schema: z.ZodType<unknown>): A
 export const DEMANDE_NOUVELLE = 'demande_nouvelle'
 export const JE_NE_SAIS_PAS = 'je_ne_sais_pas'
 
+/** La forme d'un mot-clé d'intention : snake_case ASCII, 60 caractères au plus. */
+export const FORMAT_INTENTION = /^[a-z0-9_]{1,60}$/
+
+/**
+ * Une sorte de demande nouvelle que le métier connaît déjà : le mot-clé que le
+ * modèle réutilise, et ce qu'il désigne. La promotion compte par mot-clé exact
+ * (§ 8) : sans vocabulaire montré, la même demande reçoit un mot différent
+ * d'une fois sur l'autre.
+ */
+export interface Intention {
+  /** Au format `FORMAT_INTENTION` : `liberer_un_jour`. */
+  id: string
+  /** Une phrase pour le modèle, en français. */
+  description: string
+}
+
 export const DemandeNouvelle = z.strictObject({
   intention: z
     .string()
-    .regex(/^[a-z0-9_]{1,60}$/)
+    .regex(FORMAT_INTENTION)
     .describe(
-      'un mot-clé en snake_case, stable d’une fois sur l’autre pour la même sorte de demande : liberer_un_jour, heures_par_agent, simuler_changement_de_site',
+      'un mot-clé en snake_case : l’une des intentions connues quand elle convient, sinon un mot nouveau, le même d’une fois sur l’autre pour la même sorte de demande',
     ),
   resume: z.string().describe('la demande reformulée en une phrase, sans rien inventer'),
 })
@@ -103,7 +119,7 @@ export const META_OUTILS: Anthropic.Tool[] = [
   ),
   outil(
     JE_NE_SAIS_PAS,
-    'La consigne est inintelligible, ou demande autre chose que du travail sur le planning et les agents.',
+    'La consigne est inintelligible, trop vague pour choisir, ou demande autre chose que du travail sur le planning et les agents.',
     JeNeSaisPas,
   ),
 ]

@@ -194,7 +194,8 @@ export async function boucle<Modif>(
   const debut = Date.now()
   let usage = USAGE_NUL
   let appels = 0
-  let derniereRequete: string | undefined
+  /** Les tableaux des requêtes réussies, dans l'ordre : ce que le demandeur lit si le résumé du modèle est retiré. */
+  const tableaux: string[] = []
   let dernierResultat: Anthropic.ToolResultBlockParam | undefined
   const abandon = (motif: string): IssueEchappee => ({
     sorte: 'abandon',
@@ -281,7 +282,7 @@ export async function boucle<Modif>(
             resultat(sortie, r.erreur)
           } else {
             sources.push(sortie)
-            derniereRequete = rendu
+            tableaux.push(rendu)
             resultat(sortie)
           }
           break
@@ -313,7 +314,10 @@ export async function boucle<Modif>(
             ? { sorte: 'reponse', texte: e.data.texte, controle: 'ok', tours: appels, usage }
             : {
                 sorte: 'reponse',
-                texte: derniereRequete ?? "Je n'ai pas pu vérifier ma réponse.",
+                texte:
+                  tableaux.length > 0
+                    ? tableaux.join('\n\n')
+                    : "Je n'ai pas pu vérifier ma réponse.",
                 controle: CONTROLE_RETIRE,
                 tours: appels,
                 usage,

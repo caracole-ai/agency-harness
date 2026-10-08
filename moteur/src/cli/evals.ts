@@ -168,7 +168,7 @@ if (quoi === 'traduire') {
         const { demande } = await traduire(
           modele,
           m.config(s).modele.effort.traduire,
-          systemeTraduire(identite, m.vocabulaire(s, identite), actions),
+          systemeTraduire(identite, m.vocabulaire(s, identite), actions, m.intentions),
           outilsDe(m.actions, c.role),
           c.consigne,
           aParis(c.maintenant ?? fichier.maintenant),

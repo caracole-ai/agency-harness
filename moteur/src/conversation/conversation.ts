@@ -5,7 +5,7 @@ import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
 import type { Temporal } from '../temps/temporal'
-import { type Action, actionsDe, type Identite, outilsDe } from './actions'
+import { type Action, actionsDe, type Identite, type Intention, outilsDe } from './actions'
 import { type ConfigConversation, prixDe } from './config'
 import { type Demande, systemeTraduire, traduire, type Vocabulaire } from './traduire'
 
@@ -28,6 +28,8 @@ export interface MetierConversation<Session> {
   client(s: Session): string
   journal(s: Session): Journal
   actions: Action<Session, unknown>[]
+  /** Les sortes de demandes nouvelles déjà connues, que le modèle réutilise comme mot-clé d'intention. */
+  intentions: Intention[]
   vocabulaire(s: Session, identite: Identite): Vocabulaire
   /** Lève si l'identité n'existe pas (agent inconnu). */
   verifierIdentite(s: Session, identite: Identite): void
@@ -137,7 +139,7 @@ export async function traiterConsigne<S>(
     traduite = await traduire(
       modele,
       config.modele.effort.traduire,
-      systemeTraduire(tour.identite, m.vocabulaire(s, tour.identite), actions),
+      systemeTraduire(tour.identite, m.vocabulaire(s, tour.identite), actions, m.intentions),
       outilsDe(m.actions, tour.identite.role),
       tour.consigne,
       tour.maintenant,

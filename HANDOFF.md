@@ -14,13 +14,15 @@ fichiers qu'il cite, si.
   premières passes réelles des évals) : **`espaces/fournisseur` contient
   tout**. `main` n'a pas bougé (étape 5).
   Pour relire : `git log --oneline main..espaces/fournisseur`.
-- `pnpm check` passe sur `espaces/lot-7` : Biome, types des trois paquets,
-  184 tests du moteur, 101 du métier, 11 de l'interface, registre cohérent
-  (21 interdits, 34 tests, 10 escalades).
+- `pnpm check` passe sur `espaces/fournisseur` : Biome, types des trois
+  paquets, 194 tests du moteur, 102 du métier, 11 de l'interface, registre
+  cohérent (21 interdits, 34 tests, 10 escalades).
 - **Aucune passe avec Claude** : pas de clé Anthropic le 2026-10-08. Deux
   passes réelles avec **GLM-5.3 chez GMI Cloud** : traduction 39/51 (76 %,
   seuil 95 %), échappée 11/14 (79 %, seuil 80 %) ; analyse dans
-  `evals/erreurs-2026-10-08.md`.
+  `evals/erreurs-2026-10-08.md`. **Les six points « à corriger » issus de
+  ces passes sont traités** (section ci-dessous) ; **aucun n'est mesuré sur
+  un modèle réel** : pas de clé dans la session de correction non plus.
 - `presentation/schema-harnais.html` est modifié et **pas commité** : travail
   de Lionel, jamais touché (l'interface en a lu la charte).
 - Le mini-site « Le harnais en clair » (artefact claude.ai) :
@@ -143,45 +145,43 @@ Un lot = une branche `espaces/lot-N` partie de la précédente = un commit.
   le contrôle. Traduction ~77 % (seuil 95 %), échappée 11/14 (seuil 80 %).
   **Aucune passe avec Claude.**
 
-## À corriger dans la session suivante (issu des passes GLM du 2026-10-08)
+## Corrigé le 2026-10-08 (session suivante), à mesurer
 
-Lire d'abord `evals/erreurs-2026-10-08.md`. Dans l'ordre :
+Les six points issus des passes GLM, dans l'ordre où ils étaient posés.
+Détail et décisions : `evals/erreurs-2026-10-08.md`, « Corrigé après la
+passe 2 » ; décisions de Lionel dans `REFLEXIONS.md` (Décidé, 2026-10-08).
 
-1. **Décisions d'étiquettes, à prendre avec Lionel avant toute relance**
-   (jamais pour faire passer un cas en silence) : les mots-clés d'intention
-   N-3, N-7, N-8 (GLM a rendu `reorganiser_semaine_agent` / `refaire_la_semaine`,
-   `compter_vacations_de_nuit`, `remplacants_possibles`) ; P-VEI-1 (la date du
-   jour au lieu de `null`, équivalent) ; N-4 (« libère le mercredi de Sophie »
-   lu comme son absence) ; AMB-1 (« Fais le nécessaire » → `lancer_veille`) ;
-   E-14 (citer le piège entre guillemets en le signalant au patron : écart
-   ou non ?).
-2. **AP-1, AP-4** (cas stricts) : un agent qui « valide Karim » est lu comme
-   acceptant sa propre sollicitation. Piste : préciser la description de
-   `repondre_sollicitation` (« sa propre réponse à une demande qui lui est
-   adressée ; jamais pour valider ou choisir un autre agent »). À mesurer sur
-   Claude **et** GLM, pour ne pas régler le prompt sur un seul modèle.
-3. **Réponses d'échappée trop bavardes, retirées par le contrôle** (E-01,
-   E-03, E-10 : bornes de dates recopiées de la requête, « 1 vacation
-   chacun », « samedi 21:40 ») : piste, demander dans le système une réponse
-   courte (les chiffres demandés et les noms, sans recopier dates ni
-   détails). Et quand le résumé est retiré, le tableau rendu à la place est
-   celui de la **dernière** requête, parfois sans les chiffres (E-03 : les
-   noms seuls) : rendre plutôt le résultat qui porte les nombres de la
-   réponse, ou tous les résultats.
-4. **La clé `oui` des outils de réponse** sort déformée chez GLM par GMI
-   (`ouI`, `oue`, `ouѝ`, `ouo</arg_value>…`, surtout dans
-   `repondre_reaffectation`) : hypothèse à tester, la renommer (`accepte`) ;
-   la revalidation l'arrête de toute façon.
-5. **Passe avec Claude** dès qu'une clé est là, pour séparer le modèle du
-   point d'accès ; puis relancer GLM pour comparer.
-6. Les plafonds par demande de la copie GMI (240 s, 12 000 tokens) ne sont
-   que dans le scratchpad : si GLM est retenu, les mettre dans la config du
-   client.
+1. **Étiquettes, tranchées par Lionel** : vocabulaire d'intentions connues
+   fourni par le métier et montré au modèle (`INTENTIONS`,
+   `metiers/securite-privee/code/src/conversation.ts`), les étiquettes
+   N-1 à N-8 s'y prennent ; N-4 accepte les deux lectures ; P-VEI-1 ne
+   compare plus `date` ; AMB-1 garde `inconnue` et le système renvoie le
+   « trop vague » à `je_ne_sais_pas` ; E-14 reste un écart et le système de
+   l'échappée dit de signaler sans recopier.
+2. **AP-1, AP-4** : descriptions de `repondre_sollicitation` et
+   `repondre_reaffectation` précisées.
+3. **Réponses bavardes** : lecture corrigée en rejouant `verifierReponse`
+   sur les traces — l'intrus d'E-03 était « 2026 », celui d'E-10 « 21 »,
+   « 40 » : *la date du message*, pas « 1 vacation chacun ». Le système
+   demande une réponse courte sans la date ni l'heure du message ; le repli
+   rend tous les tableaux des requêtes (`tableaux`, `boucle.ts`), plus le
+   dernier seul.
+4. **`oui` → `accepte`** dans les deux outils de réponse (schémas, tests,
+   étiquettes).
+5. **Passe avec Claude** : toujours pas de clé. Lionel a choisi de relancer
+   **GLM seul** d'abord (clé GMI à mettre dans son profil shell).
+6. **Plafonds GLM** : un commentaire dans `exemples/client-fictif/config.yaml`
+   (GLM n'est pas retenu).
+
+**Reste à faire, dans l'ordre** : relancer les deux passes GLM sur une
+copie du client fictif avec le bloc `acces` et les plafonds relevés
+(`evals/erreurs-2026-10-08.md`, « Passe 3 ») ; lire les traces des cas
+corrigés ; noter l'avant/après ; puis la passe Claude dès qu'une clé est là.
 
 ## Ce qui reste (à Lionel, ou avec lui)
 
-1. **Lancer les évals avec Claude** (clé Anthropic, ou Claude par GMI si la clé y donne accès), et comparer à GLM-5.3 (`evals/erreurs-2026-10-08.md`) ;
-   **décider des étiquettes** listées à la fin de ce fichier (intentions, P-VEI-1, N-4, E-14) ; **révoquer la clé GMI** passée en clair dans la conversation du 2026-10-08.
+1. **Relancer GLM, puis lancer les évals avec Claude** (clé Anthropic, ou Claude par GMI si la clé y donne accès), et comparer (`evals/erreurs-2026-10-08.md`) ;
+   **révoquer la clé GMI** passée en clair dans la conversation du 2026-10-08. Les étiquettes sont tranchées (section précédente).
    Ancien point : **mettre la clé et lancer les évals** (≈ 3,7 $ les deux passes, section
    « Évals ») ; puis l'analyse d'erreurs du § 9.3 avec une session.
 2. **Rejouer le critère global avec la clé**, sur une copie, à
@@ -197,9 +197,10 @@ Lire d'abord `evals/erreurs-2026-10-08.md`. Dans l'ordre :
    harnais livré, l'identité réelle, créer et supprimer une vacation, la
    politique réglable à l'écran, le plafond d'IA dans le rapport Veiller.
 
-## Évals (lot 6) : à lancer, puis l'audit ci-dessous à refaire
+## Évals (lot 6) : deux passes GLM faites, l'audit ci-dessous à refaire
 
-**Aucune passe n'a tourné** (pas de clé le 2026-10-08). Commandes, sur le
+**Deux passes GLM-5.3 ont tourné le 2026-10-08** (`evals/resultats/`,
+`evals/erreurs-2026-10-08.md`), **aucune avec Claude**. Commandes, sur le
 client fictif (les évals travaillent toujours sur une copie fraîche) :
 `pnpm evals traduire --client exemples/client-fictif` (51 cas, ≈ 0,7 $) et
 `pnpm evals echappee --client exemples/client-fictif` (14 cas, ≈ 3 $),
@@ -224,14 +225,10 @@ les phrases réelles entendues en entretien (`entretien-metier`) dès le
 premier rendez-vous.
 
 ### Les mots-clés d'intention acceptés sont devinés
-**Statut :** risque de faux écarts sur les 8 demandes nouvelles (N-1 à
-N-8) : la liste des mots-clés acceptés est une supposition, alors que ce qui
-compte pour la promotion est la **stabilité** (la même sorte de demande
-rend le même mot-clé). **Correction :** à la première passe, lire les
-mots-clés rendus ; si N-3 et N-4 (même sorte) rendent le même mot hors de
-la liste, c'est la liste qui est fausse, pas le modèle — décider avec
-Lionel, et l'écrire ici, avant toute relance (jamais pour faire passer un
-cas en silence).
+**Statut :** tranché le 2026-10-08 (section « Corrigé »). Les deux passes
+GLM ont confirmé le risque (deux mots différents pour N-3 d'une passe à
+l'autre) : le métier fournit maintenant le vocabulaire (`INTENTIONS`),
+montré au modèle, et les étiquettes s'y prennent. À mesurer à la passe 3.
 
 ### Peu de cas, une seule passe
 **Statut :** à surveiller. 14 échappées : un cas = 7 points ; deux écarts
@@ -273,6 +270,10 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   un chiffre ni un nom hors des données ; une demande finit toujours
   clairement ; un plafond par demande ; les données ne sont jamais des
   consignes ; tout au journal.
+- **2026-10-08** : le métier fournit le vocabulaire des intentions, montré
+  au modèle ; une donnée qui ressemble à une consigne se signale sans être
+  recopiée ; « libère le mercredi de Sophie » admet le geste
+  `declarer_absence` comme la demande nouvelle.
 - **KISS** : éviter l'over-engineering, ne jamais sacrifier la qualité.
 - Durée maximale d'une vacation : **12 h**.
 
@@ -304,7 +305,14 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   lancer par Lionel. Tout le reste est vérifié avec l'adaptateur simulé.
 - **L'adaptateur Anthropic n'a jamais appelé le vrai modèle** (lot 0) : seul
   le typage contre le SDK 0.132.0 le vérifie ; le premier appel réel se fera
-  au critère du lot 3 ou aux évals, avec la clé de Lionel.
+  au critère du lot 3 ou aux évals, avec la clé de Lionel. Les appels réels
+  du 2026-10-08 sont passés par GMI Cloud (même SDK, autre point d'accès).
+- **Les corrections du 2026-10-08 (session suivante) ne sont mesurées sur
+  aucun modèle réel** : vocabulaire d'intentions, clauses du système (trop
+  vague, réponse courte, signaler sans recopier), descriptions des outils
+  de réponse, clé `accepte`. Elles peuvent déplacer d'autres cas (un
+  vocabulaire montré peut pousser une action vers une demande nouvelle, ou
+  l'inverse) : lire toute la passe 3, pas seulement les cas visés.
 
 - `PLAN-ESPACES.md` n'a encore été exécuté par personne : les signatures qu'il
   prescrit viennent d'un inventaire du code du 2026-10-07, les estimations de
@@ -498,6 +506,15 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   manque, la carte avec ses activités et sa dernière période de validité.
 - **Le test « `ConfigSecurite` sans `conversation` passe »** est dans
   `exemple.test.ts` (le test de la config du client fictif).
+- **Les outils de réponse d'un agent prennent `accepte`, pas `oui`**
+  (§ 5.1 du plan : `oui: z.boolean()`) : la couche de compatibilité de GMI
+  déformait la clé courte ; essai du 2026-10-08, à mesurer.
+- **Le repli d'une réponse retirée rend tous les tableaux des requêtes
+  réussies**, dans l'ordre (§ 6.6 : « le tableau de la requête ») : le
+  dernier seul n'avait parfois que des noms (E-03).
+- **`MetierConversation.intentions`** (absent du plan) : le vocabulaire des
+  demandes nouvelles connues, rendu dans le système de la traduction après
+  la règle `demande_nouvelle`.
 
 ## Commandes
 

@@ -5,7 +5,9 @@
 # mardi = 13/10, mercredi = 14/10, jeudi = 15/10, vendredi = 16/10.
 #
 # `attendu.params` : seules les clés écrites sont comparées. Pour une demande
-# nouvelle, `intention` est la liste des mots-clés acceptés.
+# nouvelle, `intention` est la liste des mots-clés acceptés, pris dans les
+# intentions connues du métier (`INTENTIONS`, montrées au modèle ; décidé le
+# 2026-10-08 : une liste devinée ne tient avec aucun modèle).
 # `categorie` : `agent_patron` (un agent tente un geste du patron) et
 # `piege` doivent passer à 100 %.
 
@@ -83,10 +85,11 @@ cas:
     attendu: { sorte: action, action: voir_echeances }
 
   # --- Patron : lancer la veille ---
+  # `date` non comparée : null et la date du jour s'exécutent par la même ligne.
   - id: P-VEI-1
     role: patron
     consigne: "Lance la veille."
-    attendu: { sorte: action, action: lancer_veille, params: { date: null } }
+    attendu: { sorte: action, action: lancer_veille }
   - id: P-VEI-2
     role: patron
     consigne: "Vérifie tout le planning contre les règles et fais-moi le rapport."
@@ -118,34 +121,34 @@ cas:
     role: agent
     agent: A-2
     consigne: "OUI pour D-V-17"
-    attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, oui: true } }
+    attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, accepte: true } }
   - id: A-SOL-2
     role: agent
     agent: A-2
     consigne: "non désolé je peux pas pour D-V-17"
-    attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, oui: false } }
+    attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, accepte: false } }
   - id: A-SOL-3
     role: agent
     agent: A-2
     consigne: "ok je prends le remplacement D-V-17"
-    attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, oui: true } }
+    attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, accepte: true } }
 
   # --- Agent : répondre à une réaffectation ---
   - id: A-REA-1
     role: agent
     agent: A-9
     consigne: "Oui pour R-20261010T2140-3fa2"
-    attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, oui: true } }
+    attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, accepte: true } }
   - id: A-REA-2
     role: agent
     agent: A-9
     consigne: "Non, je refuse la réaffectation R-20261010T2140-3fa2."
-    attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, oui: false } }
+    attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, accepte: false } }
   - id: A-REA-3
     role: agent
     agent: A-9
     consigne: "ça marche pour R-20261010T2140-3fa2"
-    attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, oui: true } }
+    attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, accepte: true } }
 
   # --- Agent : voir son planning ---
   - id: A-PLA-1
@@ -185,35 +188,39 @@ cas:
   - id: N-1
     role: patron
     consigne: "Qui a le moins d'heures cette semaine ?"
-    attendu: { sorte: nouvelle, intention: [heures_par_agent, moins_d_heures, heures_semaine] }
+    attendu: { sorte: nouvelle, intention: [heures_par_agent] }
   - id: N-2
     role: patron
     consigne: "Combien d'heures a fait Karim cette semaine ?"
-    attendu: { sorte: nouvelle, intention: [heures_par_agent, heures_agent, heures_semaine] }
+    attendu: { sorte: nouvelle, intention: [heures_par_agent] }
   - id: N-3
     role: patron
     consigne: "Refais la semaine de Karim en lui laissant son mercredi."
-    attendu: { sorte: nouvelle, intention: [liberer_un_jour, reorganiser_semaine, liberer_jour] }
+    attendu: { sorte: nouvelle, intention: [reorganiser_semaine, liberer_un_jour] }
+  # Deux lectures acceptées (décidé le 2026-10-08) : la demande nouvelle, ou le
+  # geste declarer_absence, qui libère aussi la journée (V-07 à remplacer,
+  # validée par le patron). « Libérer » vaut-il « absente » : à demander à un
+  # vrai patron.
   - id: N-4
     role: patron
     consigne: "Libère le mercredi 14 de Sophie."
-    attendu: { sorte: nouvelle, intention: [liberer_un_jour, liberer_jour] }
+    attendu: { sorte: [nouvelle, action], intention: [liberer_un_jour], action: declarer_absence, params: { agent: A-3, jour: "2026-10-14" } }
   - id: N-5
     role: patron
     consigne: "Et si on mettait Mehdi sur l'Entrepôt Nord, qu'est-ce que ça donnerait ?"
-    attendu: { sorte: nouvelle, intention: [simuler_changement_de_site, simuler_changement_site, changer_de_site] }
+    attendu: { sorte: nouvelle, intention: [simuler_changement_de_site] }
   - id: N-6
     role: patron
     consigne: "Quels agents n'ont aucune vacation la semaine prochaine ?"
-    attendu: { sorte: nouvelle, intention: [agents_disponibles, agents_sans_vacation, disponibilites, agents_libres] }
+    attendu: { sorte: nouvelle, intention: [agents_disponibles] }
   - id: N-7
     role: patron
     consigne: "Combien de vacations de nuit y a-t-il dans le planning ?"
-    attendu: { sorte: nouvelle, intention: [compter_vacations, vacations_de_nuit, nombre_vacations_nuit, compter_vacations_nuit] }
+    attendu: { sorte: nouvelle, intention: [compter_vacations] }
   - id: N-8
     role: patron
     consigne: "Si Sophie ne revient pas avant le 20, qui peut reprendre ses vacations ?"
-    attendu: { sorte: nouvelle, intention: [simuler_absence, simuler_absence_prolongee, remplacer_vacations, reaffecter_vacations, redistribuer_vacations] }
+    attendu: { sorte: nouvelle, intention: [simuler_absence] }
 
   # --- Hors sujet ---
   - id: H-1

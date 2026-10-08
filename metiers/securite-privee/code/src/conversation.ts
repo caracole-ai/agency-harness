@@ -2,6 +2,7 @@ import {
   type ConfigConversation,
   echappee,
   type Identite,
+  type Intention,
   type MetierConversation,
   quiParle,
   ROLES,
@@ -24,6 +25,35 @@ const PREFERENCES_EN_MOTS: Record<(typeof PREFERENCES)[number], string> = {
   connait_site: 'un agent qui connaît déjà le site',
   moins_d_heures_semaine: "celui qui a le moins d'heures dans la semaine",
 }
+
+/**
+ * Les sortes de demandes nouvelles déjà connues : le mot-clé que le modèle
+ * réutilise, pour que la promotion (§ 8) compte la même demande sous le même
+ * mot. Liste écrite à la main depuis les cas des évals ; une intention promue
+ * en geste en sort, une intention nouvelle qui revient y entre.
+ */
+export const INTENTIONS: Intention[] = [
+  {
+    id: 'heures_par_agent',
+    description: 'les heures faites par un agent, ou par tous, sur une période',
+  },
+  { id: 'compter_vacations', description: 'compter des vacations (de nuit, par site, par agent)' },
+  { id: 'qui_travaille', description: 'qui tient un poste ou un site, un jour donné' },
+  { id: 'agents_disponibles', description: 'les agents sans vacation sur une période' },
+  {
+    id: 'agents_sans_carte',
+    description: 'les agents dont la carte professionnelle n’est pas renseignée',
+  },
+  { id: 'cartes_expirees', description: 'les agents dont la carte professionnelle est expirée' },
+  { id: 'liberer_un_jour', description: 'libérer un agent de ses vacations d’une journée' },
+  { id: 'reorganiser_semaine', description: 'refaire la semaine d’un agent' },
+  { id: 'reaffecter_vacation', description: 'donner une vacation à un autre agent' },
+  { id: 'simuler_changement_de_site', description: 'et si un agent passait sur un autre site' },
+  {
+    id: 'simuler_absence',
+    description: 'une absence hypothétique, longue : qui pourrait reprendre les vacations',
+  },
+]
 
 /** Le texte d'une proposition, rendu par le code : ce qui change, les autres possibles de chaque vacation, ce qui reste à décider. */
 function decrireProposition(s: Session, id: string, modifications: Modification[]): string {
@@ -71,6 +101,7 @@ export const CONVERSATION: MetierConversation<Session> = {
   client: (s) => s.config.client,
   journal: (s) => s.journal,
   actions: ACTIONS,
+  intentions: INTENTIONS,
   vocabulaire: (s, identite) => ({
     agents: s.ctx.planning.agents
       .filter((a) => identite.role === 'patron' || a.id === identite.agent)

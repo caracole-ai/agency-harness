@@ -182,28 +182,30 @@ const validerRemplacement: Action<Session, z.infer<typeof ValiderRemplacement>> 
   },
 }
 
+// La clé s'appelle `accepte`, pas `oui` : la couche de compatibilité de GMI
+// déformait la clé courte (`ouI`, `ouѝ`, `ouo</arg_value>…`), essai du 2026-10-08.
 const RepondreSollicitation = z.strictObject({
   demande: z.string().describe('la demande de remplacement reçue, ex. D-V-17'),
-  oui: z.boolean().describe("true si l'agent accepte la vacation, false s'il refuse"),
+  accepte: z.boolean().describe("true si l'agent accepte la vacation, false s'il refuse"),
 })
 const repondreSollicitation: Action<Session, z.infer<typeof RepondreSollicitation>> = {
   id: 'repondre_sollicitation',
   description:
-    "L'agent répond OUI ou NON à la demande de remplacement (D-…) qu'on lui a envoyée. Dire non n'a aucune conséquence.",
+    "L'agent accepte ou refuse, pour lui-même, la demande de remplacement (D-…) qu'on lui a envoyée ; jamais pour valider ou choisir un autre agent. Dire non n'a aucune conséquence.",
   parametres: RepondreSollicitation,
   roles: ['agent'],
   ecrit: true,
   reformuler: (s, identite, p) => {
     exigerSollicite(s, identite, p.demande)
-    return `Tu confirmes : ${p.oui ? 'OUI' : 'NON'} pour ${vacationPourAgent(s, vacationDe(s, p.demande).id)} ?`
+    return `Tu confirmes : ${p.accepte ? 'OUI' : 'NON'} pour ${vacationPourAgent(s, vacationDe(s, p.demande).id)} ?`
   },
   executer: (s, identite, p, maintenant) => {
     exigerSollicite(s, identite, p.demande)
-    const e = repondre(s, p.demande, p.oui, maintenant)
+    const e = repondre(s, p.demande, p.accepte, maintenant)
     const texte =
-      p.oui && e.statut === STATUT.ecrite
+      p.accepte && e.statut === STATUT.ecrite
         ? `C'est confirmé : ${vacationPourAgent(s, vacationDe(s, p.demande).id)}. Merci.`
-        : reponseEnregistree(p.oui, e.statut, p.demande)
+        : reponseEnregistree(p.accepte, e.statut, p.demande)
     return { texte, donnees: { statut: e.statut } }
   },
 }
@@ -231,12 +233,12 @@ function exigerAttendu(s: Session, identite: Identite, id: string): void {
 
 const RepondreReaffectation = z.strictObject({
   reaffectation: z.string().describe('la réaffectation reçue, ex. R-20261010T2140-3fa2'),
-  oui: z.boolean().describe("true si l'agent accepte, false s'il refuse"),
+  accepte: z.boolean().describe("true si l'agent accepte, false s'il refuse"),
 })
 const repondreAReaffectation: Action<Session, z.infer<typeof RepondreReaffectation>> = {
   id: 'repondre_reaffectation',
   description:
-    "L'agent répond OUI ou NON à une réaffectation (R-…) qu'on lui a demandée. Dire non n'a aucune conséquence.",
+    "L'agent accepte ou refuse, pour lui-même, la réaffectation (R-…) qu'on lui a demandée ; jamais pour valider ou choisir un autre agent. Dire non n'a aucune conséquence.",
   parametres: RepondreReaffectation,
   roles: ['agent'],
   ecrit: true,
@@ -245,21 +247,21 @@ const repondreAReaffectation: Action<Session, z.infer<typeof RepondreReaffectati
     const vacations = reaffectation(s, p.reaffectation)
       .modifications.filter((m) => m.agent === identite.agent)
       .map((m) => vacationPourAgent(s, m.vacation))
-    return `Tu confirmes : ${p.oui ? 'OUI' : 'NON'} pour ${vacations.join(' et ')} ?`
+    return `Tu confirmes : ${p.accepte ? 'OUI' : 'NON'} pour ${vacations.join(' et ')} ?`
   },
   executer: (s, identite, p, maintenant) => {
     exigerAttendu(s, identite, p.reaffectation)
     const agent = identite.agent ?? ''
-    const e = repondreReaffectation(s, p.reaffectation, agent, p.oui, maintenant)
+    const e = repondreReaffectation(s, p.reaffectation, agent, p.accepte, maintenant)
     const siens = reaffectation(s, p.reaffectation)
       .modifications.filter((m) => m.agent === agent)
       .map((m) => vacationPourAgent(s, m.vacation))
     const texte =
-      p.oui && e.statut === STATUT_R.ecrite
+      p.accepte && e.statut === STATUT_R.ecrite
         ? `C'est confirmé : ${siens.join(' et ')}. Merci.`
-        : p.oui && e.statut === STATUT_R.demandee
+        : p.accepte && e.statut === STATUT_R.demandee
           ? "Ta réponse est enregistrée : on attend encore l'accord d'autres agents avant d'écrire le planning."
-          : reponseEnregistree(p.oui, e.statut, p.reaffectation)
+          : reponseEnregistree(p.accepte, e.statut, p.reaffectation)
     return { texte, donnees: { statut: e.statut } }
   },
 }

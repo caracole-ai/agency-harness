@@ -106,7 +106,7 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
     })
   })
   it('l’agent sollicité peut répondre ; un autre agent non', async () => {
-    const repondre = outil('repondre_sollicitation', { demande: 'D-V-17', oui: true })
+    const repondre = outil('repondre_sollicitation', { demande: 'D-V-17', accepte: true })
     const julien = await tour(s, agent('A-2'), repondre)
     expect(julien.r.sorte).toBe('confirmation')
     expect(julien.r.texte).toMatch(/^Tu confirmes : OUI pour V-17/)
@@ -236,7 +236,7 @@ describe('une demande nouvelle jusqu’au planning : proposition, validation, ac
     const mehdi = await tour(
       s,
       agent('A-9'),
-      outil('repondre_reaffectation', { reaffectation: id, oui: true }),
+      outil('repondre_reaffectation', { reaffectation: id, accepte: true }),
     )
     if (mehdi.r.sorte !== 'confirmation') throw new Error(`sorte ${mehdi.r.sorte}`)
     expect(mehdi.r.texte).toMatch(/^Tu confirmes : OUI pour V-07/)
@@ -259,7 +259,7 @@ describe('une demande nouvelle jusqu’au planning : proposition, validation, ac
     const autre = await tour(
       s,
       agent('A-2'),
-      outil('repondre_reaffectation', { reaffectation: id, oui: true }),
+      outil('repondre_reaffectation', { reaffectation: id, accepte: true }),
     )
     expect(autre.r).toEqual({
       sorte: 'refus',
@@ -317,7 +317,7 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
     const julien = await tour(
       s,
       agent('A-2'),
-      outil('repondre_sollicitation', { demande: 'D-V-17', oui: false }),
+      outil('repondre_sollicitation', { demande: 'D-V-17', accepte: false }),
     )
     if (julien.r.sorte !== 'confirmation') throw new Error(julien.r.sorte)
     expect(julien.r.texte).not.toContain('Aïcha')
@@ -334,7 +334,7 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
     const julien2 = await tour(
       s,
       agent('A-2'),
-      outil('repondre_sollicitation', { demande: 'D-V-17', oui: false }),
+      outil('repondre_sollicitation', { demande: 'D-V-17', accepte: false }),
     )
     if (julien2.r.sorte !== 'confirmation') throw new Error(julien2.r.sorte)
     const dit = confirmer(

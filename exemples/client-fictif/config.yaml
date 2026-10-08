@@ -50,6 +50,8 @@ conversation:
     #   acces: { url: "https://api.gmi-serving.com", authentification: bearer, variable_cle: GMI_API_KEY }
     # La clé reste dans la variable nommée, jamais ici. GMI ignore les outils
     # stricts et « un seul outil par tour » : le harnais le tient quand même.
+    # Avec GLM, relever aussi plafonds.par_demande à 240 s et 12 000 tokens
+    # de sortie : il est plus lent (jusqu'à 45 s par appel) et réfléchit plus.
   plafonds:
     par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
     par_mois_usd: 30

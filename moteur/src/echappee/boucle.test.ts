@@ -115,6 +115,26 @@ describe('une question', () => {
       'nom | heures\nJulien Lefèvre | 16\nKarim Haddad | 24',
     )
   })
+  it('plusieurs requêtes : tous leurs tableaux remplacent le résumé, pas seulement le dernier', async () => {
+    // Vu avec GLM (E-03) : la dernière requête ne portait que des noms, les chiffres étaient dans la première.
+    const o = outils()
+    o.requete = (sql) =>
+      sql.includes('noms')
+        ? { colonnes: ['nom'], lignes: [['Mehdi Saïdi']], tronque: false }
+        : { colonnes: ['nom', 'heures'], lignes: [['Julien Lefèvre', 16]], tronque: false }
+    const { issue } = await lancer(
+      [
+        REQUETE,
+        { outil: 'requete', entree: { sql: 'SELECT noms' } },
+        { outil: 'repondre', entree: { texte: 'Julien : 17 h, Mehdi : 0 h.' } },
+      ],
+      { outils: o, bornes: BORNES, usage: undefined },
+    )
+    expect(issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
+    expect(issue.sorte === 'reponse' && issue.texte).toBe(
+      'nom | heures\nJulien Lefèvre | 16\n\nnom\nMehdi Saïdi',
+    )
+  })
   it('sans aucune requête, une réponse chiffrée est retirée', async () => {
     const { issue } = await lancer([{ outil: 'repondre', entree: { texte: 'Julien : 16 h.' } }])
     expect(issue).toMatchObject({

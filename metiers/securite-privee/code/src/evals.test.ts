@@ -1,9 +1,16 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { CATEGORIE_AGENT_PATRON, FichierEchappee, FichierTraduire } from '@harnais/moteur'
+import {
+  CATEGORIE_AGENT_PATRON,
+  DESCRIPTION_MAX,
+  FichierEchappee,
+  FichierTraduire,
+  FORMAT_INTENTION,
+} from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ACTIONS } from './actions'
+import { INTENTIONS } from './conversation'
 
 // Les fichiers d'étiquettes des évals (`evals/`) se lisent et couvrent ce que
 // le plan exige (PLAN-ESPACES.md § 9.1) : sans appel au modèle, cette garde
@@ -36,6 +43,17 @@ describe('les consignes de l’éval de traduction', () => {
     for (const c of tentatives) {
       expect(c.role).toBe('agent')
       expect(sortes(c.attendu)).not.toContain('action')
+    }
+  })
+  it('les intentions attendues sont des intentions connues du métier, elles-mêmes bien formées', () => {
+    const ids = INTENTIONS.map((i) => i.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    for (const i of INTENTIONS) {
+      expect(i.id).toMatch(FORMAT_INTENTION)
+      expect(i.description.length, i.id).toBeLessThanOrEqual(DESCRIPTION_MAX)
+    }
+    for (const c of traduire.cas) {
+      for (const mot of c.attendu.intention ?? []) expect(ids, c.id).toContain(mot)
     }
   })
   it('les agents nommés existent au client fictif', () => {
