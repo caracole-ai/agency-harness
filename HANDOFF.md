@@ -36,6 +36,13 @@ fichiers qu'il cite, si.
   d'accès) : https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52. Ses sources
   ne sont pas dans le dépôt (artefact claude.ai, fichiers `index.html`,
   `espaces.html`, `demo.html`, `style.css`).
+- **La présentation de conférence « Le harnais en 15 minutes »** (12
+  diapositives, six schémas animés pas à pas ou en boucle, flèches et
+  espace au clavier) : https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2.
+  Même grammaire visuelle, ambiance vidéoprojecteur ; sources dans
+  l'artefact seulement. Une ébauche vide faite avec le type « Slides » de
+  claude.ai (https://claude.ai/artifact/N3ChoE5n8v2CxNT2e2ux1d) est à
+  supprimer : ses pages vivantes ne sont pas cliquables par le public.
 - **Aucune passe avec Claude** : pas de clé Anthropic le 2026-10-08. Deux
   passes réelles avec **GLM-5.3 chez GMI Cloud** : traduction 39/51 (76 %,
   seuil 95 %), échappée 11/14 (79 %, seuil 80 %) ; analyse dans
