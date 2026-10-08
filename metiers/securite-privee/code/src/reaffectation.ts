@@ -59,6 +59,9 @@ const SUIVANTS: Record<Statut2, Statut2[]> = {
 }
 const finie = (s: Statut2 | undefined) => s !== undefined && SUIVANTS[s].length === 0
 
+/** Une réaffectation finie (écrite, refusée, sans réponse, trop tard) ne bouge plus. */
+export const reaffectationFinie = (s: Session, id: string) => finie(statutReaffectation(s, id))
+
 export interface Reaffectation {
   id: string
   conversation: string

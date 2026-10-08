@@ -1,5 +1,6 @@
 packages:
   - moteur
+  - interface
   - metiers/*/code
 onlyBuiltDependencies:
   - esbuild

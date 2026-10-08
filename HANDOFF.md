@@ -118,6 +118,15 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   modifications, « Suite donnée : validée » et les cas candidats ; un second
   lancement ne la repropose pas.
 
+- **Lot 7 (interface du patron)** fait le 2026-10-08, branche
+  `espaces/lot-7` (après les corrections) : paquet `interface/` (Hono,
+  HTML/CSS/JS sans framework, charte de `presentation/schema-harnais.html`
+  reprise de la version de travail de Lionel, lue sans y toucher),
+  `pnpm interface`. 11 tests d'interface ; parcours de démo rejoué dans un
+  navigateur en simulé (`--script`), 64 captures à 1280 et 390 px, clair et
+  sombre, relues et corrigées (scratchpad de la session du 2026-10-08,
+  `lot7/captures/`, non versionné).
+
 ## La suite : `PLAN-ESPACES.md`, lots suivants
 
 Lionel a accepté le 2026-10-07 les **trois espaces** (gestes du quotidien,
@@ -220,6 +229,14 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   minuit et 1 h ou 2 h, heure de Paris, le premier jour du mois, un appel
   compte dans le mois précédent. Sans effet sur un plafond mensuel ; à
   changer si un jour le plafond doit être exact à l'heure près.
+- **Interface** : rien avec la vraie clé (le scénario de `prospection.md` à
+  rejouer à l'écran, § 10.3, et une proposition `R-…` jamais affichée) ;
+  navigation au clavier écrite, pas essayée ; contraste jugé à l'œil ; le
+  compteur « À valider » compte deux fois une demande proposée dont la
+  confirmation attend déjà ; deux requêtes simultanées ouvrent deux sessions
+  sur la même base, sans file ; polices chargées depuis Google (hors ligne :
+  polices de secours). Les captures datent d'avant les corrections de
+  relecture (les textes montrés aux agents ont changé depuis).
 - **Le contrôle des chiffres prouve la présence d'une chaîne, pas son
   origine** : un modèle peut faire passer un chiffre par une requête de
   constantes (`SELECT 17.5`), et un petit nombre se retrouve souvent dans un
@@ -361,6 +378,19 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **Promotion : la « suite donnée »** se lit sur les objets (`R-…`) dont une
   ligne porte `donnees.conversation` ; « écrite » l'emporte sur « validée ».
   Elle n'est dite que pour une proposition.
+- **Interface : `--script <fichier.json>` avec `--modele simule`** rejoue une
+  suite de réponses du modèle : démo et captures sans clé.
+- **Interface : champs en plus dans `/api/etat`** (`modele`, `consigneMax`,
+  `regles[].lecture`, `demandes[].attendPatron`, `attendAgents`) ; des
+  exemples de consignes à cliquer ; « Préparer la validation » et « Répondre
+  en tant que Julien » préremplissent le champ sans envoyer ; les boutons
+  Oui / Non n'apparaissent que si « Je suis » est la personne interrogée.
+- **Interface : la conversation est fixe à droite sur grand écran**, en tête
+  de page sous 980 px ; le journal est une liste (le tableau coupait les
+  identifiants).
+- **Interface : `serveur.ts` charge `@harnais/securite-privee` directement**
+  (pas d'import dynamique du métier comme `parler.ts`) : le paquet en dépend
+  déjà (§ 10) ; un dossier d'un autre métier est refusé par le schéma.
 - **Corrections hors du découpage en lots** : un commit à part
   (`espaces/corrections`), plutôt que de réécrire les commits des lots déjà
   faits.

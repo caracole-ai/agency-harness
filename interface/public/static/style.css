@@ -1,0 +1,947 @@
+/* L'interface du patron (démo), PLAN-ESPACES.md § 10.2. Les jetons sont ceux
+   de la page de Lionel (presentation/schema-harnais.html), repris tels quels.
+   Rôles : le trait d'encre = le client (ce qu'il écrit), le bleu = l'outil
+   (ce qu'il répond, ce qu'il propose), l'aplat marine = l'humain qui engage
+   (le bouton Oui). Rayon 3 px, filets d'un pixel, ni ombre ni halo. */
+
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f4f8fe;
+  --line: #ebf1fd;
+  --line-strong: #dfe9fb;
+  --fg: #0c0c0c;
+  --fg-soft: rgba(12, 12, 12, 0.7);
+  --fg-faint: rgba(12, 12, 12, 0.58);
+  --ink: #0c0c0c;
+  --blue: #568eff;
+  --blue-ink: #1e67ef;
+  --accent: var(--blue);
+  --accent-ink: var(--blue-ink);
+  --harness: var(--blue-ink);
+  --harness-soft: #f4f8fe;
+  --human: #041723;
+  --on-human: #ffffff;
+  --human-soft: rgba(255, 255, 255, 0.72);
+  --refus: var(--human);
+  /* L'aplat bleu du site (la section « Suivi ») : fixe dans les deux thèmes, le blanc y tient 4,9:1. */
+  --tone-blue: #1e67ef;
+  --on-tone: #ffffff;
+  --tone-line: rgba(255, 255, 255, 0.35);
+  --card-surface: #ffffff;
+  --card-line: #ebf1fd;
+  --card-hover: #568eff;
+  --card-tint: #f4f8fe;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Martian Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  /* Échelle et cadre du site (fluid() de _tokens.scss, de 24rem à 90rem). */
+  --fs-mega: clamp(2.6rem, 2.018rem + 2.424vw, 4.2rem);
+  --fs-display: clamp(2.05rem, 1.75rem + 1.25vw, 2.875rem);
+  --fs-title: clamp(1.15rem, 1.114rem + 0.152vw, 1.25rem);
+  --fs-lead: clamp(1rem, 0.955rem + 0.189vw, 1.125rem);
+  --fs-label: 0.8125rem;
+  --gutter: clamp(1rem, 0.682rem + 1.326vw, 1.875rem);
+  --frame-pad: clamp(1.25rem, 0.75rem + 2.083vw, 2.625rem);
+  --shell-max: 86.25rem;
+  --toc-reserve: 0rem;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #041723;
+    --surface: #0a2231;
+    --surface-2: #0e2c3e;
+    --line: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --fg: #ffffff;
+    --fg-soft: rgba(255, 255, 255, 0.72);
+    --fg-faint: rgba(255, 255, 255, 0.55);
+    --ink: #ffffff;
+    --blue: #568eff;
+    --blue-ink: #8cb2ff;
+    --harness-soft: rgba(86, 142, 255, 0.1);
+    --human: #ffffff;
+    --on-human: #041723;
+    --human-soft: rgba(4, 23, 35, 0.72);
+    --card-surface: #0a2231;
+    --card-line: rgba(255, 255, 255, 0.14);
+    --card-hover: rgba(255, 255, 255, 0.28);
+    --card-tint: rgba(86, 142, 255, 0.1);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #041723;
+  --surface: #0a2231;
+  --surface-2: #0e2c3e;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --fg: #ffffff;
+  --fg-soft: rgba(255, 255, 255, 0.72);
+  --fg-faint: rgba(255, 255, 255, 0.55);
+  --ink: #ffffff;
+  --blue: #568eff;
+  --blue-ink: #8cb2ff;
+  --harness-soft: rgba(86, 142, 255, 0.1);
+  --human: #ffffff;
+  --on-human: #041723;
+  --human-soft: rgba(4, 23, 35, 0.72);
+  --card-surface: #0a2231;
+  --card-line: rgba(255, 255, 255, 0.14);
+  --card-hover: rgba(255, 255, 255, 0.28);
+  --card-tint: rgba(86, 142, 255, 0.1);
+  color-scheme: dark;
+}
+@media (min-width: 1241px) {
+  :root {
+    --toc-reserve: 17rem;
+  }
+}
+
+/* ---------- base ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.5;
+  font-synthesis-weight: none;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+:focus-visible {
+  outline: 2px solid var(--accent-ink);
+  outline-offset: 2px;
+}
+button,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.shell {
+  width: min(100% - var(--gutter) * 2, var(--shell-max));
+  margin-inline: auto;
+}
+.etiquette {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+/* Le texte rendu par le code ou par l'outil : tel quel, retours à la ligne compris. */
+.texte {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+/* ---------- le bandeau ---------- */
+.bandeau {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem var(--gutter);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--fg-soft);
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+.bandeau__tag {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg);
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  padding: 0.2em 0.45em;
+}
+
+/* ---------- la tête ---------- */
+.tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.9rem 2rem;
+  padding-block: 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+.marque {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+.marque__signe {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 3px;
+  background: var(--tone-blue);
+  color: var(--on-tone);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.marque__nom {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+}
+.marque__tag {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+}
+.tete__infos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.75rem;
+}
+.info {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+.info__valeur {
+  font-size: 0.9rem;
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+.jauge {
+  display: block;
+  width: 9rem;
+  height: 3px;
+  background: var(--line-strong);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+@media (max-width: 560px) {
+  /* Sur un téléphone, l'heure et le coût côte à côte : la conversation remonte. */
+  .tete__infos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    width: 100%;
+  }
+  .jauge {
+    width: 100%;
+  }
+  .tete {
+    padding-block: 0.75rem;
+  }
+  .marque__tag {
+    display: none;
+  }
+  .info--modele {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+}
+.jauge > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 400ms var(--ease-out);
+}
+.info--modele .info__valeur {
+  color: var(--accent-ink);
+}
+
+/* ---------- le plan : les onglets, la conversation ---------- */
+.plan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  padding-block: 1.25rem 2.5rem;
+}
+.panneau {
+  min-width: 0;
+}
+.conversation {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--card-line);
+  border-radius: 3px;
+  background: var(--card-surface);
+  order: -1;
+}
+
+@media (min-width: 980px) {
+  /* Sur grand écran, une application d'un écran : les onglets à gauche, la conversation toujours là, à droite. */
+  body {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+  .plan {
+    flex: 1;
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 30rem);
+    padding-block: 1.25rem;
+  }
+  .panneau {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .vues {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    scrollbar-gutter: stable;
+  }
+  .conversation {
+    order: 0;
+    min-height: 0;
+  }
+}
+
+/* ---------- les onglets ---------- */
+.onglets {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  padding: 3px;
+  gap: 3px;
+  background: var(--card-surface);
+  border: 1px solid var(--card-line);
+  border-radius: 3px;
+  margin-bottom: 1.25rem;
+}
+.onglet {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--fg-soft);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    color 200ms ease,
+    background-color 200ms ease;
+}
+.onglet:hover {
+  color: var(--fg);
+}
+.onglet[aria-selected="true"] {
+  color: var(--accent-ink);
+  background: var(--card-tint);
+  cursor: default;
+}
+.onglet__marque {
+  flex: none;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border: 1px solid currentColor;
+}
+.onglet[aria-selected="true"] .onglet__marque {
+  background: currentColor;
+}
+.compte {
+  margin-left: auto;
+  min-width: 1.4rem;
+  padding: 0.15em 0.4em;
+  border-radius: 3px;
+  background: var(--human);
+  color: var(--on-human);
+  font-size: 0.62rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+/* `hidden` l'emporte sur le `display` du composant (le compteur, le bloc « Modèle » hors démo simulée). */
+.compte[hidden],
+.info[hidden] {
+  display: none;
+}
+@media (max-width: 560px) {
+  .onglets {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---------- les vues ---------- */
+.vue h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 1.3rem + 1vw, 2.1rem);
+  line-height: 1.1;
+  letter-spacing: -0.012em;
+  margin: 0 0 0.5rem;
+  text-wrap: balance;
+}
+.vue h3 {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin: 2rem 0 0.75rem;
+}
+.chapo {
+  color: var(--fg-soft);
+  max-width: 62ch;
+  margin: 0 0 1.25rem;
+  text-wrap: pretty;
+}
+.liste {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.liste--serree {
+  gap: 0;
+}
+.carte {
+  border: 1px solid var(--card-line);
+  background: var(--card-surface);
+  border-radius: 3px;
+  padding: 1rem 1.1rem;
+  min-width: 0;
+  transition: border-color 200ms var(--ease-out);
+}
+.carte:hover {
+  border-color: var(--card-hover);
+}
+.carte--attente {
+  border-color: var(--accent);
+}
+.carte__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.75rem;
+  margin-bottom: 0.6rem;
+  color: var(--fg-faint);
+  font-size: 0.8125rem;
+}
+.carte__titre {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--fg);
+}
+.carte .texte {
+  color: var(--fg);
+}
+.carte__suite {
+  color: var(--fg-soft);
+  font-size: 0.875rem;
+  margin: 0.6rem 0 0;
+}
+.vide {
+  border: 1px dashed var(--line-strong);
+  border-radius: 3px;
+  padding: 1.1rem 1.2rem;
+  color: var(--fg-soft);
+}
+.vide b {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+/* Les pastilles : l'outil au trait bleu, le refus en aplat plein, le doute en pointillé. */
+.pastille {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.35em 0.5em;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  white-space: nowrap;
+  color: var(--fg-soft);
+}
+.pastille--outil {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  background: var(--card-tint);
+}
+.pastille--refus {
+  color: var(--on-human);
+  background: var(--refus);
+  border-color: var(--refus);
+}
+.pastille--doute {
+  border-style: dashed;
+}
+
+/* ---------- les boutons ---------- */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.9rem;
+}
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0 1.1rem;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  line-height: 1.2;
+  cursor: pointer;
+  transition:
+    background-color 200ms var(--ease-out),
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out),
+    opacity 200ms;
+}
+.bouton:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+/* Oui : l'humain engage, en aplat marine. */
+.bouton--oui {
+  background: var(--human);
+  border-color: var(--human);
+  color: var(--on-human);
+  min-width: 6.5rem;
+}
+.bouton--non {
+  border-color: color-mix(in srgb, var(--fg) 35%, transparent);
+  color: var(--fg);
+  min-width: 5rem;
+}
+.bouton--non:hover:not(:disabled) {
+  border-color: var(--fg);
+}
+.bouton--outil {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.bouton--outil:hover:not(:disabled) {
+  background: var(--card-tint);
+}
+.bouton--petit {
+  min-height: 2.25rem;
+  padding: 0 0.8rem;
+  font-size: 0.8125rem;
+}
+.repondu {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--fg-faint);
+  margin-top: 0.75rem;
+}
+
+/* ---------- les règles ---------- */
+.regle {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  gap: 0.25rem 1rem;
+  align-items: start;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+.regle:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.regle__id {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--accent-ink);
+  padding-top: 0.2rem;
+}
+.regle__nom {
+  font-weight: 500;
+  color: var(--fg);
+  margin: 0 0 0.25rem;
+}
+.regle__texte {
+  color: var(--fg-soft);
+  margin: 0;
+}
+.regle__texte b {
+  color: var(--fg);
+  font-weight: 500;
+}
+.regle__lecture {
+  color: var(--fg-faint);
+  font-size: 0.8125rem;
+  margin: 0.4rem 0 0;
+}
+@media (max-width: 560px) {
+  .regle {
+    grid-template-columns: 3rem minmax(0, 1fr);
+  }
+  .regle .pastille {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+/* ---------- le journal ---------- */
+.outils-vue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.outils-vue .chapo {
+  margin: 0;
+}
+/* Une ligne du journal : l'heure à gauche ; à droite, ce qui s'est passé (type, objet, issue), puis le motif. */
+.journal {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+.entree {
+  display: grid;
+  grid-template-columns: 8.5rem minmax(0, 1fr);
+  gap: 0.25rem 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--line);
+}
+.entree:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.entree__heure {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-faint);
+}
+.entree__quoi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  min-width: 0;
+}
+.entree__type {
+  color: var(--fg);
+  font-weight: 500;
+}
+.entree__objet {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--accent-ink);
+  overflow-wrap: anywhere;
+}
+.entree__motif {
+  grid-column: 2;
+  color: var(--fg-soft);
+}
+@media (max-width: 560px) {
+  .entree {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .entree__motif {
+    grid-column: 1;
+  }
+}
+
+/* ---------- la conversation ---------- */
+.conv__tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--card-line);
+}
+.conv__tete h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.3rem;
+  letter-spacing: -0.012em;
+  line-height: 1.1;
+  margin: 0;
+}
+.qui {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.875rem;
+  color: var(--fg-soft);
+}
+.qui select {
+  min-height: 2.5rem;
+  max-width: 13.5rem;
+  min-width: 0;
+  padding: 0 2rem 0 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23568eff' stroke-width='1.4'/%3E%3C/svg%3E")
+    no-repeat right 0.7rem center;
+  color: var(--fg);
+  font-size: 0.875rem;
+  appearance: none;
+  cursor: pointer;
+}
+.fil {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  overflow-y: auto;
+  max-height: 45vh;
+  min-height: 12rem;
+  overscroll-behavior: contain;
+}
+@media (min-width: 980px) {
+  .fil {
+    flex: 1;
+    max-height: none;
+    min-height: 0;
+  }
+}
+.bulle {
+  max-width: 92%;
+  min-width: 0;
+}
+.bulle__qui {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+.bulle__corps {
+  border-radius: 3px;
+  padding: 0.7rem 0.85rem;
+}
+/* Le client écrit : au trait d'encre, à droite. */
+.bulle--client {
+  align-self: flex-end;
+}
+.bulle--client .bulle__qui {
+  justify-content: flex-end;
+}
+.bulle--client .bulle__corps {
+  border: 1px solid color-mix(in srgb, var(--ink) 55%, transparent);
+  background: var(--surface);
+}
+/* L'outil répond : en bleu, à gauche. */
+.bulle--outil {
+  align-self: flex-start;
+}
+.bulle--outil .bulle__qui .etiquette {
+  color: var(--accent-ink);
+}
+.bulle--outil .bulle__corps {
+  background: var(--harness-soft);
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--harness);
+}
+.bulle--attente .bulle__corps {
+  border-color: var(--accent);
+  border-left-width: 2px;
+}
+.bulle--erreur .bulle__corps {
+  background: transparent;
+  border: 1px dashed var(--fg-faint);
+}
+.note {
+  align-self: center;
+  max-width: 100%;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  color: var(--fg-faint);
+  padding: 0.25rem 0.5rem;
+}
+.points {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  height: 1.2rem;
+}
+.points span {
+  width: 0.35rem;
+  height: 0.35rem;
+  background: var(--harness);
+  border-radius: 50%;
+  animation: points 1.2s ease-in-out infinite;
+}
+.points span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.points span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes points {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .points span {
+    animation: none;
+    opacity: 0.6;
+  }
+  .jauge > span {
+    transition: none;
+  }
+}
+/* Les exemples tiennent sur une ligne, qui défile : le fil garde la place. */
+.suggestions {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.6rem 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-top: 1px solid var(--card-line);
+  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
+}
+.suggestions::-webkit-scrollbar {
+  display: none;
+}
+.suggestion {
+  flex: none;
+  white-space: nowrap;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--fg-soft);
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 200ms var(--ease-out),
+    color 200ms var(--ease-out);
+}
+.suggestion:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--fg);
+}
+.saisie {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.15rem 1rem 0.4rem;
+}
+.saisie textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.75rem;
+  max-height: 9rem;
+  resize: none;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--fg);
+  line-height: 1.4;
+}
+.saisie textarea::placeholder {
+  color: var(--fg-faint);
+}
+.saisie textarea:focus-visible {
+  outline-offset: 0;
+}
+.bouton--envoyer {
+  background: var(--tone-blue);
+  border-color: var(--tone-blue);
+  color: var(--on-tone);
+}
+.aide {
+  margin: 0;
+  padding: 0 1rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+}
+
+/* ---------- chargement, erreur ---------- */
+.chargement {
+  color: var(--fg-faint);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 1rem 0;
+}
+.erreur {
+  border: 1px dashed var(--fg-soft);
+  border-radius: 3px;
+  padding: 1rem 1.1rem;
+  color: var(--fg);
+}
+.erreur .texte {
+  color: var(--fg-soft);
+  margin-top: 0.25rem;
+}

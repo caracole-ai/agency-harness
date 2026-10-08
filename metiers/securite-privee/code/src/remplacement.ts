@@ -69,6 +69,12 @@ const SUIVANTS: Record<Statut, Statut[]> = {
 }
 const finie = (s: Statut | undefined) => s !== undefined && SUIVANTS[s].length === 0
 
+/** Une demande de remplacement finie (écrite, trop tard, escaladée) ne bouge plus. */
+export const remplacementFini = (s: Session, demande: string) => finie(statut(s, demande))
+
+/** Le type de la ligne qui propose au patron de déléguer, après un remplacement réussi. */
+export const TYPE_DELEGATION_PROPOSEE = 'délégation proposée'
+
 /** Un client ouvert pour un remplacement : sa config, son registre, son planning, son journal. */
 export interface Session {
   dossier: string
@@ -558,7 +564,7 @@ function proposerDelegation(
   s.journal.ecrire(
     [
       {
-        type: 'délégation proposée',
+        type: TYPE_DELEGATION_PROPOSEE,
         client: s.config.client,
         objet: demande,
         motif: 'remplacement réussi : le rendre automatique dans ces conditions ?',

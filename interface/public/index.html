@@ -1,0 +1,108 @@
+<!doctype html>
+<!-- L'interface du patron (démo), PLAN-ESPACES.md § 10.2 : quatre onglets et, toujours visible, la conversation. -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Votre harnais</title>
+  <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,600;1,400&family=Public+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/app.js"></script>
+</head>
+<body>
+  <div class="bandeau" role="note">
+    <span class="bandeau__tag">Démo</span>
+    <span>Démonstration sur une entreprise inventée. L'identité n'est pas vérifiée.</span>
+  </div>
+
+  <header class="tete shell">
+    <div class="marque">
+      <span class="marque__signe" aria-hidden="true">H</span>
+      <span>
+        <span class="marque__nom" id="client">Chargement…</span>
+        <span class="marque__tag">Votre harnais · l'outil propose, vous décidez</span>
+      </span>
+    </div>
+    <div class="tete__infos">
+      <div class="info">
+        <span class="etiquette">Il est</span>
+        <span class="info__valeur" id="maintenant">—</span>
+      </div>
+      <div class="info">
+        <span class="etiquette" id="ia-appels">IA ce mois</span>
+        <span class="info__valeur" id="ia">—</span>
+        <span class="jauge" aria-hidden="true"><span id="ia-jauge"></span></span>
+      </div>
+      <div class="info info--modele" id="info-modele" hidden>
+        <span class="etiquette">Modèle</span>
+        <span class="info__valeur" id="modele">—</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="plan shell">
+    <section class="panneau" aria-label="Tableau de bord">
+      <div class="onglets" role="tablist" aria-label="Sections">
+        <button class="onglet" type="button" role="tab" id="onglet-valider" aria-controls="vue-valider" aria-selected="true" data-vue="valider">
+          <span class="onglet__marque" aria-hidden="true"></span>À valider<span class="compte" id="compte-valider" hidden></span>
+        </button>
+        <button class="onglet" type="button" role="tab" id="onglet-regles" aria-controls="vue-regles" aria-selected="false" tabindex="-1" data-vue="regles">
+          <span class="onglet__marque" aria-hidden="true"></span>Règles
+        </button>
+        <button class="onglet" type="button" role="tab" id="onglet-delegations" aria-controls="vue-delegations" aria-selected="false" tabindex="-1" data-vue="delegations">
+          <span class="onglet__marque" aria-hidden="true"></span>Délégations
+        </button>
+        <button class="onglet" type="button" role="tab" id="onglet-journal" aria-controls="vue-journal" aria-selected="false" tabindex="-1" data-vue="journal">
+          <span class="onglet__marque" aria-hidden="true"></span>Journal
+        </button>
+      </div>
+
+      <div class="vues">
+        <div class="vue" id="vue-valider" role="tabpanel" aria-labelledby="onglet-valider">
+          <h2>Ce qui attend votre oui</h2>
+          <p class="chapo">Rien ne s'écrit dans le planning sans un oui. Les demandes en cours avancent seules jusqu'à la prochaine décision.</p>
+          <div id="valider"><p class="chargement">Chargement…</p></div>
+        </div>
+        <div class="vue" id="vue-regles" role="tabpanel" aria-labelledby="onglet-regles" hidden>
+          <h2>Les interdits</h2>
+          <p class="chapo">Chaque interdit est vérifié par le code, à chaque proposition : aucune consigne, aucun oui ne le lève. Lecture seule ; la lecture de la loi qui fait foi se règle avec vous.</p>
+          <div id="regles"><p class="chargement">Chargement…</p></div>
+        </div>
+        <div class="vue" id="vue-delegations" role="tabpanel" aria-labelledby="onglet-delegations" hidden>
+          <h2>Ce que vous confiez à l'outil</h2>
+          <p class="chapo">Une délégation laisse l'outil valider seul, dans des conditions écrites ; l'accord de l'agent reste toujours demandé. Révocable à tout moment.</p>
+          <div id="delegations"><p class="chargement">Chargement…</p></div>
+        </div>
+        <div class="vue" id="vue-journal" role="tabpanel" aria-labelledby="onglet-journal" hidden>
+          <h2>Le journal</h2>
+          <div class="outils-vue">
+            <p class="chapo">Tout ce que l'outil a vu, proposé et écrit, dans l'ordre. Rien ne s'y efface. La plus récente d'abord.</p>
+            <button class="bouton bouton--outil bouton--petit" type="button" id="rafraichir-journal">Rafraîchir</button>
+          </div>
+          <div id="journal"><p class="chargement">Chargement…</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="conversation" aria-labelledby="titre-conversation">
+      <div class="conv__tete">
+        <h2 id="titre-conversation">Parler à l'outil</h2>
+        <label class="qui">Je suis
+          <select id="identite" aria-label="Je suis"></select>
+        </label>
+      </div>
+      <ol class="fil" id="fil" aria-live="polite" aria-label="Historique de la conversation"></ol>
+      <div class="suggestions" id="suggestions"></div>
+      <form class="saisie" id="formulaire">
+        <label class="sr" for="consigne">Votre consigne</label>
+        <textarea id="consigne" rows="1" placeholder="Écrivez votre consigne…" autocomplete="off"></textarea>
+        <button class="bouton bouton--envoyer" type="submit" id="envoyer">Envoyer</button>
+      </form>
+      <p class="aide">Entrée pour envoyer, Maj + Entrée pour aller à la ligne.</p>
+    </section>
+  </main>
+</body>
+</html>

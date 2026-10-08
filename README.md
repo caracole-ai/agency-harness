@@ -91,6 +91,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   qui revient (`pnpm promotions`). `src/evals/` : les contrôles binaires des
   évals (aucun juge LLM), lancées par `pnpm evals` sur les cas écrits à la
   main dans `evals/` (racine du dépôt).
+  qui revient (`pnpm promotions`).
+- `interface/` — l'interface du patron, pour la démo (`@harnais/interface`,
+  `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
+  une session par requête), `src/serveur.ts` (`pnpm interface`, sur
+  127.0.0.1 seulement), `public/` (HTML, CSS et JavaScript sans framework,
+  la charte de `presentation/`). Quatre onglets (à valider, règles,
+  délégations, journal) et la conversation toujours visible ; l'identité
+  n'est pas vérifiée, et la page le dit.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -182,6 +190,10 @@ pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]
                          # les évals de la conversation (cas dans evals/, copie fraîche par cas) :
                          # appellent le vrai modèle (ANTHROPIC_API_KEY, ≈ 3 $ la passe complète) ;
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
+pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
+                         # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,
+                         # délégations, journal, et la conversation. Exige ANTHROPIC_API_KEY, sauf
+                         # --modele simule (rejoue --script, un tableau de réponses). Sur une COPIE
 ```
 
 ## Le déroulé d'un rendez-vous

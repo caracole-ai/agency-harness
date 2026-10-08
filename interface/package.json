@@ -1,0 +1,15 @@
+{
+  "name": "@harnais/interface",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@harnais/moteur": "workspace:*",
+    "@harnais/securite-privee": "workspace:*",
+    "@hono/node-server": "2.1.3",
+    "hono": "4.13.13"
+  }
+}
