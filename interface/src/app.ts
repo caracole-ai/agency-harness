@@ -1,23 +1,28 @@
 // L'interface du patron (démo) : la page et ses routes JSON, sur le dossier
-// d'un client. Une session est ouverte par requête et fermée dans un
-// `finally` : rouvrir est la façon simple de relire le planning après une
-// écriture. L'identité n'est pas vérifiée, et la page le dit
+// d'un client. Chaque route passe d'abord la porte (le registre d'accès,
+// REFLEXIONS.md (2026-10-08)) ; ensuite seulement, une session est ouverte et fermée
+// dans un `finally` : rouvrir est la façon simple de relire le planning après
+// une écriture. L'identité est déclarée, pas authentifiée, et la page le dit
 // (PLAN-ESPACES.md § 10, D4, D12).
 import { fileURLToPath } from 'node:url'
 import {
+  accueillir,
+  avecSession,
+  chargerPersonnes,
   confirmer,
   coutDuMois,
   FUSEAU,
   type Identite,
+  type IdentiteVerifiee,
   idConversation,
   type Ligne,
   type Modele,
-  ROLES,
-  type Role,
+  type Personne,
   Temporal,
   TYPE_CONFIRMATION,
   TYPE_CONFIRMATION_ATTENDUE,
   traiterConsigne,
+  verifierRegistre,
 } from '@harnais/moteur'
 import {
   agentSollicite,
@@ -58,6 +63,8 @@ const ID_CONVERSATION = /^C-\d{8}T\d{4}-[0-9a-f]{4}$/
 
 /** Une erreur de la requête elle-même : rendue en 400 avec son message. */
 class ErreurRequete extends Error {}
+/** Un refus à la porte, ou une route que ce rôle n'ouvre pas : rendu en 403 avec son message. */
+class ErreurAcces extends Error {}
 
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
 const donnees = <T>(l: Ligne): T | undefined =>
@@ -70,24 +77,9 @@ interface Attente {
   empreinte: string
 }
 
-/** Une identité reçue du navigateur : sa forme seulement ; son existence se vérifie dans la session. */
-function lireIdentite(valeur: unknown): Identite {
-  if (typeof valeur !== 'object' || valeur === null) throw new ErreurRequete('identité absente')
-  const { role, agent } = valeur as Record<string, unknown>
-  if (!ROLES.includes(role as Role)) throw new ErreurRequete(`rôle inconnu : ${String(role)}`)
-  if (agent !== undefined && typeof agent !== 'string') {
-    throw new ErreurRequete("l'identifiant d'agent doit être un texte")
-  }
-  return { role: role as Role, ...(agent !== undefined ? { agent } : {}) }
-}
-
-/** Lève une erreur de requête si l'identité n'existe pas chez ce client. */
-function verifier(s: Session, identite: Identite): void {
-  try {
-    CONVERSATION.verifierIdentite(s, identite)
-  } catch (erreur) {
-    throw new ErreurRequete(message(erreur))
-  }
+/** Tout le planning et tout le journal : des lectures réservées au patron. */
+function exigerPatron(identite: IdentiteVerifiee): void {
+  if (identite.role !== 'patron') throw new ErreurAcces('réservé au patron')
 }
 
 async function lireCorps(requete: Request): Promise<Record<string, unknown>> {
@@ -200,8 +192,13 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeEnCours[] {
   })
 }
 
-/** L'état de la page : qui peut parler, ce qui attend, les règles, les délégations, le coût de l'IA. */
-function etat(s: Session, maintenant: Temporal.ZonedDateTime, modele: Modele) {
+/** L'état de la page : qui peut parler (le registre d'accès), ce qui attend, les règles, les délégations, le coût de l'IA. */
+function etat(
+  s: Session,
+  personnes: Personne[],
+  maintenant: Temporal.ZonedDateTime,
+  modele: Modele,
+) {
   const lignes = s.journal.lire()
   const config = CONVERSATION.config(s)
   const ia = coutDuMois(s.journal, maintenant.toString().slice(0, 7))
@@ -212,10 +209,9 @@ function etat(s: Session, maintenant: Temporal.ZonedDateTime, modele: Modele) {
     consigneMax: CONSIGNE_MAX,
     /** L'heure murale de Paris, `AAAA-MM-JJTHH:MM`. */
     maintenant: maintenant.toPlainDateTime().toString({ smallestUnit: 'minute' }),
-    identites: [
-      { role: 'patron' },
-      ...s.ctx.planning.agents.map((a) => ({ role: 'agent', agent: a.id, nom: a.nom })),
-    ],
+    identites: personnes.map((p) =>
+      p.role === 'patron' ? p : { ...p, nom: s.ctx.agent(p.agent).nom },
+    ),
     aValider: {
       confirmations: confirmationsEnAttente(s, lignes),
       demandes: demandesEnCours(s, lignes),
@@ -250,23 +246,40 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
   /** L'heure de la démo, figée par `--maintenant`, sinon l'heure réelle. */
   const maintenant = () => fixe ?? Temporal.Now.zonedDateTimeISO(FUSEAU)
 
-  /** Une session par requête : le planning et le journal relus, fermés quoi qu'il arrive. */
-  async function avecSession<T>(f: (s: Session) => T | Promise<T>): Promise<T> {
-    const s = CONVERSATION.ouvrir(dossier)
-    try {
-      return await f(s)
-    } finally {
-      CONVERSATION.fermer(s)
-    }
+  /**
+   * La porte, avant toute ouverture du dossier : un refus est au journal (le
+   * journal seul est ouvert) et rendu en 403. Le registre est relu à chaque
+   * requête : retirer quelqu'un vaut tout de suite, sans redémarrer.
+   */
+  function entrer(demandeur: unknown, conversation?: string): IdentiteVerifiee {
+    const accueil = accueillir(CONVERSATION, dossier, {
+      demandeur,
+      canal: 'web',
+      maintenant: maintenant(),
+      ...(conversation ? { conversation } : {}),
+    })
+    if (accueil.sorte === 'refus') throw new ErreurAcces(accueil.motif)
+    return accueil.identite
   }
 
-  // Au démarrage : un dossier illisible arrête tout de suite, pas à la première requête.
-  CONVERSATION.fermer(CONVERSATION.ouvrir(dossier))
+  /** Une session par requête, pour qui a passé la porte : le planning et le journal relus, fermés quoi qu'il arrive. */
+  const session = <T>(identite: IdentiteVerifiee, f: (s: Session) => T | Promise<T>) =>
+    avecSession(CONVERSATION, dossier, identite, f)
+
+  // Au démarrage : un dossier illisible, un registre d'accès absent ou qui
+  // nomme un agent inconnu arrêtent tout de suite, pas à la première requête.
+  const demarrage = CONVERSATION.ouvrir(dossier)
+  try {
+    verifierRegistre(CONVERSATION, demarrage, chargerPersonnes(dossier))
+  } finally {
+    CONVERSATION.fermer(demarrage)
+  }
 
   const app = new Hono()
 
   app.onError((erreur, c) => {
     if (erreur instanceof ErreurRequete) return c.json({ erreur: erreur.message }, 400)
+    if (erreur instanceof ErreurAcces) return c.json({ erreur: erreur.message }, 403)
     // Un refus d'un intergiciel de Hono (csrf : 403) garde son statut.
     if (erreur instanceof HTTPException) return erreur.getResponse()
     console.error(erreur)
@@ -288,20 +301,32 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
   app.get('/', serveStatic({ root: PUBLIC, path: 'index.html' }))
   app.get('/static/*', serveStatic({ root: PUBLIC }))
 
-  app.get('/api/etat', async (c) => c.json(await avecSession((s) => etat(s, maintenant(), modele))))
+  // Les deux lectures sont des POST : l'identité voyage dans un corps JSON,
+  // comme pour une consigne, qu'une page tierce ne peut pas envoyer sans
+  // pré-vol (un GET avec l'identité dans l'adresse écrirait des refus au
+  // journal depuis n'importe quel site).
+  app.post('/api/etat', async (c) => {
+    const identite = entrer((await lireCorps(c.req.raw)).identite)
+    exigerPatron(identite)
+    return c.json(
+      await session(identite, (s) => etat(s, chargerPersonnes(dossier), maintenant(), modele)),
+    )
+  })
 
-  app.get('/api/journal', async (c) => {
+  app.post('/api/journal', async (c) => {
+    const corps = await lireCorps(c.req.raw)
     const brute = c.req.query('limite')
     const limite = brute === undefined ? LIMITE_JOURNAL.defaut : Number(brute)
     if (!Number.isInteger(limite) || limite < 1 || limite > LIMITE_JOURNAL.max) {
       throw new ErreurRequete(`limite : un entier de 1 à ${LIMITE_JOURNAL.max}`)
     }
-    return c.json(await avecSession((s) => s.journal.lire().slice(-limite).reverse()))
+    const identite = entrer(corps.identite)
+    exigerPatron(identite)
+    return c.json(await session(identite, (s) => s.journal.lire().slice(-limite).reverse()))
   })
 
   app.post('/api/consigne', async (c) => {
     const corps = await lireCorps(c.req.raw)
-    const identite = lireIdentite(corps.identite)
     const consigne = typeof corps.consigne === 'string' ? corps.consigne.trim() : ''
     if (consigne === '') throw new ErreurRequete('consigne vide')
     if (consigne.length > CONSIGNE_MAX) {
@@ -310,32 +335,33 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
     if (corps.conversation !== undefined && !ID_CONVERSATION.test(String(corps.conversation))) {
       throw new ErreurRequete(`conversation inconnue : ${String(corps.conversation)}`)
     }
+    const identite = entrer(corps.identite, corps.conversation as string | undefined)
     const quand = maintenant()
     const conversation = (corps.conversation as string | undefined) ?? idConversation(quand)
-    const reponse = await avecSession((s) => {
-      verifier(s, identite)
-      return traiterConsigne(CONVERSATION, s, modele, {
-        identite,
-        consigne,
-        maintenant: quand,
-        conversation,
-      })
+    // La session s'ouvre dans traiterConsigne, après la traduction : le modèle ne reçoit que la phrase.
+    const reponse = await traiterConsigne(CONVERSATION, dossier, modele, {
+      identite,
+      consigne,
+      maintenant: quand,
+      conversation,
     })
     return c.json({ conversation, reponse })
   })
 
   app.post('/api/confirmer', async (c) => {
     const corps = await lireCorps(c.req.raw)
-    const identite = lireIdentite(corps.identite)
     const { conversation, empreinte, oui } = corps
     if (typeof conversation !== 'string' || typeof empreinte !== 'string') {
       throw new ErreurRequete('conversation et empreinte attendues')
     }
     if (typeof oui !== 'boolean') throw new ErreurRequete('oui attendu : true ou false')
-    const reponse = await avecSession((s) => {
-      verifier(s, identite)
-      return confirmer(CONVERSATION, s, identite, conversation, empreinte, oui, maintenant())
-    })
+    if (!ID_CONVERSATION.test(conversation)) {
+      throw new ErreurRequete(`conversation inconnue : ${conversation}`)
+    }
+    const identite = entrer(corps.identite, conversation)
+    const reponse = await session(identite, (s) =>
+      confirmer(CONVERSATION, s, identite, conversation, empreinte, oui, maintenant()),
+    )
     return c.json({ reponse })
   })
 

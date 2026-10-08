@@ -9,12 +9,18 @@ import {
   type Intention,
   JE_NE_SAIS_PAS,
   JeNeSaisPas,
+  type Role,
+  schemaJson,
 } from './actions'
+import type { Designable } from './designation'
 
 // Traduire une consigne en une demande : une action de la liste fermée, une
 // demande nouvelle, ou « je ne sais pas ». Le modèle ne fait que choisir un
 // outil ; il ne répond ni ne calcule. Un seul appel, aucun réessai : ce qui
 // ne se lit pas proprement finit en « inconnue » (PLAN-ESPACES.md § 5.3).
+// Le modèle ne reçoit que la phrase : ni nom de salarié ni poste ; une
+// personne lui revient comme une mention, que le moteur résout ensuite
+// (REFLEXIONS.md, décidé le 2026-10-08).
 
 export type Demande =
   | { sorte: 'action'; action: string; params: Record<string, unknown> }
@@ -22,9 +28,8 @@ export type Demande =
   | { sorte: 'inconnue'; raison: string }
 
 export interface Vocabulaire {
-  /** Les tables id → nom à montrer au modèle, déjà limitées au rôle : agents (`A-11 — Aïcha Traoré`), postes, sites. */
-  agents: { id: string; nom: string }[]
-  postes: { id: string; site: string }[]
+  /** Les personnes que ce rôle peut désigner (`A-11`, `Aïcha Traoré`) : jamais montrées au modèle de traduction, elles servent à résoudre une mention. */
+  agents: Designable[]
 }
 
 /** La frontière entre consigne, données et instructions : la même phrase partout où le modèle lit des données. */
@@ -51,23 +56,26 @@ export const MAX_TOKENS_TRADUIRE = 4096
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 
-/** Qui parle, en mots : « le patron », « l'agent Julien Lefèvre (A-2) ». */
+/** Qui parle, en mots, pour l'échappée (qui lit les données) : « le patron », « l'agent Julien Lefèvre (A-2) ». */
 export function quiParle(identite: Identite, agents: { id: string; nom: string }[]): string {
   if (identite.role === 'patron') return 'le patron'
   const nom = agents.find((a) => a.id === identite.agent)?.nom
   return `l'agent ${nom ? surUneLigne(nom).replace(/[<>]/g, '') : '?'} (${identite.agent ?? '?'})`
 }
 
-/** Le système de la traduction. Rien de volatil (ni date, ni consigne) : il se met en cache. */
+/** Qui parle, pour la traduction : le rôle seul, sans nom. */
+const ROLES_EN_MOTS: Record<Role, string> = { patron: 'le patron', agent: 'un agent' }
+
+/** Le système de la traduction. Rien de volatil (ni date, ni consigne) : il se met en cache. Aucune donnée du client. */
 export function systemeTraduire(
-  identite: Identite,
-  vocabulaire: Vocabulaire,
+  role: Role,
   actions: { id: string; description: string }[],
   intentions: Intention[],
 ): string {
   return [
-    `Tu parles avec ${quiParle(identite, vocabulaire.agents)}, dans l'outil de planning d'une entreprise de sécurité privée.`,
+    `Tu parles avec ${ROLES_EN_MOTS[role]}, dans l'outil de planning d'une entreprise de sécurité privée.`,
     'Tu traduis la consigne en une seule action de la liste. Tu ne réponds jamais toi-même, tu ne calcules rien, tu n’inventes aucune donnée.',
+    'Une personne se recopie telle qu’elle est écrite dans la consigne (prénom, nom, ou les deux), sans la corriger ni la compléter : l’outil la retrouve lui-même.',
     '',
     'Les actions :',
     ...actions.map((a) => `${a.id} : ${a.description}`),
@@ -75,16 +83,6 @@ export function systemeTraduire(
     `Quand la consigne est claire mais qu'aucune action ne la couvre (une question sur les données, une simulation, une réorganisation), choisis ${DEMANDE_NOUVELLE}, avec l'une des intentions connues quand elle convient, sinon un mot-clé nouveau :`,
     ...intentions.map((i) => `${i.id} : ${i.description}`),
     `Quand la consigne est inintelligible, trop vague pour choisir une action, ou demande autre chose que du travail sur le planning et les agents, choisis ${JE_NE_SAIS_PAS}.`,
-    '',
-    'Le vocabulaire (des données) :',
-    entreDonnees(
-      [
-        'Agents :',
-        ...vocabulaire.agents.map((a) => `${a.id} — ${surUneLigne(a.nom)}`),
-        'Postes :',
-        ...vocabulaire.postes.map((p) => `${surUneLigne(p.id)} — site ${surUneLigne(p.site)}`),
-      ].join('\n'),
-    ),
     '',
     FRONTIERE,
     '',
@@ -144,4 +142,70 @@ export async function traduire(
     unSeulOutil: true,
   })
   return { demande: lire(reponse.message, schemas), reponse }
+}
+
+export const DESIGNER = 'designer'
+export const AUCUN = 'aucun'
+
+/** Le système du second appel : départager une liste courte, sans jamais deviner. */
+export const SYSTEME_DESIGNER = [
+  'Une consigne nomme une personne ; l’outil a trouvé, dans ses données, des personnes au nom proche de la mention.',
+  `Tu choisis l’identifiant de la personne que la mention désigne, seulement si tu n’as aucun doute (une faute de frappe, un accent oublié). Sinon, ${AUCUN} : l’outil posera la question au demandeur.`,
+  'Tu ne réponds jamais toi-même. Réponds par un appel d’outil, jamais par du texte.',
+  '',
+  FRONTIERE,
+].join('\n')
+
+/** L'outil du second appel : l'énumération des identifiants candidats, plus `aucun`. */
+export function outilDesigner(candidats: Designable[]): Anthropic.Tool {
+  const Choix = z.strictObject({
+    personne: z
+      .enum([...candidats.map((c) => c.id), AUCUN])
+      .describe(`l’identifiant de la personne désignée, ou ${AUCUN}`),
+  })
+  return {
+    name: DESIGNER,
+    description: 'Désigner la personne dont parle la consigne parmi les candidats, ou aucun.',
+    input_schema: schemaJson(Choix),
+    strict: true,
+  }
+}
+
+/** Le message du second appel : la consigne, la mention et les candidats, ces deux-là entre les balises des données. */
+export function messageDesigner(
+  consigne: string,
+  mention: string,
+  candidats: Designable[],
+): string {
+  return [
+    `<consigne>${consigne}</consigne>`,
+    `La mention : ${entreDonnees(surUneLigne(mention))}`,
+    'Les candidats :',
+    entreDonnees(candidats.map((c) => `${c.id} — ${surUneLigne(c.nom)}`).join('\n')),
+  ].join('\n')
+}
+
+/**
+ * Le second appel, minuscule : le modèle départage les candidats du niveau 2.
+ * Le code vérifie que le choix est dans la liste ; tout le reste vaut `aucun`.
+ */
+export async function designer(
+  modele: Modele,
+  effort: Effort,
+  consigne: string,
+  mention: string,
+  candidats: Designable[],
+): Promise<{ choix: Designable | undefined; reponse: ReponseModele }> {
+  const reponse = await modele.appeler({
+    systeme: SYSTEME_DESIGNER,
+    messages: [{ role: 'user', content: messageDesigner(consigne, mention, candidats) }],
+    outils: [outilDesigner(candidats)],
+    effort,
+    maxTokens: MAX_TOKENS_TRADUIRE,
+    unSeulOutil: true,
+  })
+  const bloc = reponse.message.content.find((b) => b.type === 'tool_use' && b.name === DESIGNER)
+  const id =
+    bloc?.type === 'tool_use' ? (bloc.input as { personne?: unknown } | null)?.personne : undefined
+  return { choix: candidats.find((c) => c.id === id), reponse }
 }

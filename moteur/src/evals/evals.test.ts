@@ -55,6 +55,21 @@ describe('ecartsTraduction', () => {
       ),
     ).toEqual(['intention compter_heures, attendu heures_par_agent'])
   })
+  it('une question attendue : les candidats comparés sans ordre ; une action rendue à la place est un écart', () => {
+    const homonyme = { sorte: 'precision' as const, candidats: ['A-11', 'A-14'] }
+    expect(ecartsTraduction(homonyme, { sorte: 'precision', candidats: ['A-14', 'A-11'] })).toEqual(
+      [],
+    )
+    expect(ecartsTraduction(homonyme, { sorte: 'precision', candidats: ['A-11'] })).toEqual([
+      'candidats A-11, attendu A-11, A-14',
+    ])
+    expect(ecartsTraduction(homonyme, absence)).toEqual([
+      'sorte action gerer_absence, attendu precision',
+    ])
+    expect(ecartsTraduction(absence, { sorte: 'precision', candidats: [] })).toEqual([
+      'sorte precision (personne), attendu action',
+    ])
+  })
 })
 
 describe('ecartsEchappee', () => {

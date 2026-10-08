@@ -1,43 +1,65 @@
-import { cpSync, mkdtempSync, readFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  accueillir,
+  chargerPersonnes,
   confirmer,
+  FICHIER_PERSONNES,
   type Identite,
+  type IdentiteVerifiee,
+  messageConsigne,
   modeleSimule,
+  recevoir,
   type Scripte,
+  TYPE_ACCES_REFUSE,
   TYPE_APPEL,
+  TYPE_PRECISION_ATTENDUE,
   traiterConsigne,
 } from '@harnais/moteur'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CONVERSATION } from './conversation'
 import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
 import { aParis, type Session } from './remplacement'
 
 // La conversation sur le client fictif, de bout en bout, sur une copie (le
-// journal y est écrit), avec le modèle simulé (PLAN-ESPACES.md § 5.7).
+// journal y est écrit), avec le modèle simulé (PLAN-ESPACES.md § 5.7). Chaque
+// tour ouvre sa propre session, après la traduction (REFLEXIONS.md, décidé le 2026-10-08) ;
+// `s` sert aux confirmations et à relire le journal.
 
 const exemple = fileURLToPath(new URL('../../../../exemples/client-fictif', import.meta.url))
 const maintenant = aParis('2026-10-10T21:40')
-const PATRON: Identite = { role: 'patron' }
-const agent = (id: string): Identite => ({ role: 'agent', agent: id })
+/** Une identité passée par la porte, sur le registre d'accès du client fictif. */
+function verifiee(demandeur: Identite, dossier = exemple): IdentiteVerifiee {
+  const accueil = recevoir(chargerPersonnes(dossier), demandeur)
+  if (accueil.sorte === 'refus') throw new Error(accueil.motif)
+  return accueil.identite
+}
+const PATRON = verifiee({ role: 'patron' })
+const agent = (id: string) => verifiee({ role: 'agent', agent: id })
 
 const planningDe = (s: Session) => readFileSync(join(s.dossier, 'planning.csv'), 'utf8')
 
-/** Une copie neuve du client fictif, sans journal ni sorties. */
-function session(): Session {
+/** Une copie neuve du client fictif, sans journal ni sorties ; `avant` la modifie avant l'ouverture. */
+function session(avant?: (dossier: string) => void): Session {
   const dossier = mkdtempSync(join(tmpdir(), 'conversation-'))
   cpSync(exemple, dossier, { recursive: true, filter: (f) => !/\.sqlite$|rapport-demo/.test(f) })
+  avant?.(dossier)
   return CONVERSATION.ouvrir(dossier)
 }
 
 let n = 0
 /** Un tour, le modèle simulé jouant `pas`. */
-async function tour(s: Session, identite: Identite, pas: Scripte[], consigne = 'consigne') {
+async function tour(
+  s: Session,
+  identite: IdentiteVerifiee,
+  pas: Scripte[],
+  consigne = 'consigne',
+  conversation = `C-test-${++n}`,
+) {
   const modele = modeleSimule(pas)
-  const conversation = `C-test-${++n}`
-  const r = await traiterConsigne(CONVERSATION, s, modele, {
+  const r = await traiterConsigne(CONVERSATION, s.dossier, modele, {
     identite,
     consigne,
     maintenant,
@@ -136,18 +158,28 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
 })
 
 describe('un agent ne travaille que sur ses données', () => {
-  it('voir_planning ignore l’agent demandé et rend les vacations de celui qui parle', async () => {
+  it('voir_planning rend les vacations de celui qui parle ; un autre agent nommé : refus, sans rien de lui', async () => {
     const s = session()
-    const { r } = await tour(
+    const soi = await tour(
       s,
       agent('A-2'),
-      outil('voir_planning', { agent: 'A-1', du: null, au: null }),
+      outil('voir_planning', { agent: null, du: null, au: null }),
     )
-    expect(r.sorte).toBe('resultat')
-    expect(r.texte).toContain('V-04')
-    expect(r.texte).toContain('V-05')
-    expect(r.texte).not.toContain('Karim')
-    expect(r.texte.split('\n')).toHaveLength(2)
+    expect(soi.r.sorte).toBe('resultat')
+    expect(soi.r.texte).toContain('V-04')
+    expect(soi.r.texte).toContain('V-05')
+    expect(soi.r.texte.split('\n')).toHaveLength(2)
+    const autre = await tour(
+      s,
+      agent('A-2'),
+      outil('voir_planning', { agent: 'Karim', du: null, au: null }),
+      'Montre-moi le planning de Karim',
+    )
+    expect(autre.r).toEqual({
+      sorte: 'refus',
+      texte: 'Tu ne peux désigner que toi-même : « Karim » ne te désigne pas.',
+    })
+    expect(autre.modele.appels).toHaveLength(1)
   })
   it('un agent n’a pas les outils du patron', async () => {
     const s = session()
@@ -159,17 +191,54 @@ describe('un agent ne travaille que sur ses données', () => {
   })
 })
 
-describe('qui parle', () => {
-  it('un agent inconnu, ou un patron qui se dit agent : refus, sans appel au modèle', async () => {
+describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', () => {
+  it('un inconnu du registre, un rôle faux, un patron qui se dit agent : refusés sans ouvrir le dossier, le refus au journal', () => {
     const s = session()
-    const inconnu = await tour(s, agent('A-99'), [{ texte: 'x' }])
-    expect(inconnu.r.sorte).toBe('refus')
-    expect(inconnu.modele.appels).toHaveLength(0)
-    const inconnu2 = await tour(s, { role: 'x' } as unknown as Identite, [{ texte: 'x' }])
-    expect(inconnu2.r).toEqual({ sorte: 'refus', texte: 'rôle inconnu : x' })
-    const patron = await tour(s, { role: 'patron', agent: 'A-1' }, [{ texte: 'x' }])
-    expect(patron.r.sorte).toBe('refus')
-    expect(patron.modele.appels).toHaveLength(0)
+    CONVERSATION.fermer(s)
+    const ouvrir = vi.spyOn(CONVERSATION, 'ouvrir')
+    const demandes = [
+      { role: 'agent', agent: 'A-99' },
+      { role: 'x' },
+      { role: 'patron', agent: 'A-1' },
+    ]
+    try {
+      const refus = demandes.map((demandeur) =>
+        accueillir(CONVERSATION, s.dossier, {
+          demandeur,
+          canal: 'terminal',
+          maintenant,
+          conversation: 'C-porte',
+        }),
+      )
+      expect(refus.map((r) => r.sorte)).toEqual(['refus', 'refus', 'refus'])
+      expect(ouvrir).not.toHaveBeenCalled()
+    } finally {
+      ouvrir.mockRestore()
+    }
+    const s2 = CONVERSATION.ouvrir(s.dossier)
+    const lignes = s2.journal.historique('C-porte')
+    CONVERSATION.fermer(s2)
+    expect(lignes.map((l) => [l.type, l.motif])).toEqual([
+      [TYPE_ACCES_REFUSE, "inconnu au registre d'accès : A-99"],
+      [TYPE_ACCES_REFUSE, 'rôle inconnu : x'],
+      [TYPE_ACCES_REFUSE, "le patron parle en son nom : pas d'identifiant d'agent"],
+    ])
+    expect(JSON.parse(lignes[0]?.donnees ?? '{}')).toEqual({
+      identite: '{"role":"agent","agent":"A-99"}',
+      canal: 'terminal',
+    })
+  })
+  it('une personne du registre absente des données : refus de cohérence, rien d’exécuté', async () => {
+    const s = session()
+    writeFileSync(
+      join(s.dossier, FICHIER_PERSONNES),
+      'personnes:\n  - { role: agent, agent: A-99 }\n',
+    )
+    const fantome = verifiee({ role: 'agent', agent: 'A-99' }, s.dossier)
+    const { r } = await tour(s, fantome, outil('mes_titres', {}))
+    expect(r.sorte).toBe('refus')
+    expect(r.texte).toMatch(/A-99/)
+    expect(confirmer(CONVERSATION, s, fantome, 'C-x', 'e', true, maintenant).sorte).toBe('refus')
   })
 })
 
@@ -295,14 +364,19 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
     expect(r.texte).toMatch(/^Ton absence du 11\/10\/2026 est enregistrée \(demande D-V-17\)/)
     for (const nom of ['Julien', 'Karim', 'Sophie', 'Moussa']) expect(r.texte).not.toContain(nom)
   })
-  it('l’absence d’un autre : refusée', async () => {
+  it('l’absence d’un autre : refusée, rien d’ouvert', async () => {
     const s = session()
     const { r } = await tour(
       s,
       agent('A-2'),
-      outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }),
+      outil('gerer_absence', { agent: 'Aïcha', jour: '2026-10-11' }),
+      'Aïcha ne vient pas demain',
     )
-    expect(r).toEqual({ sorte: 'refus', texte: 'Tu ne peux déclarer que ta propre absence.' })
+    expect(r).toEqual({
+      sorte: 'refus',
+      texte: 'Tu ne peux désigner que toi-même : « Aïcha » ne te désigne pas.',
+    })
+    expect(s.journal.historique('D-V-17')).toEqual([])
   })
   it('son non : enregistré, sans le nom du suivant ; la reformulation du patron écarte celui qui a refusé', async () => {
     const s = session()
@@ -353,5 +427,182 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
       outil('valider_remplacement', { demande: 'D-V-17', agent: null }),
     )
     expect(encore.r.texte).toMatch(/^Valider Karim Haddad \(A-1\)/)
+  })
+})
+
+describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-10-08)', () => {
+  /** Tout ce que le client fictif sait des personnes et des postes : rien de cela ne part chez le fournisseur. */
+  const NOMS = [
+    ...readFileSync(join(exemple, 'agents.csv'), 'utf8')
+      .split('\n')
+      .slice(1)
+      .flatMap((l) => (l.split(';')[1] ?? '').split(' ')),
+    ...readFileSync(join(exemple, 'postes.csv'), 'utf8')
+      .split('\n')
+      .slice(1)
+      .flatMap((l) => l.split(';').slice(0, 2)),
+  ].filter((x) => x.length > 0)
+  /** Une copie où un second agent porte le prénom d'Aïcha Traoré. */
+  const avecHomonyme = (dossier: string) => {
+    const agents = join(dossier, 'agents.csv')
+    writeFileSync(
+      agents,
+      `${readFileSync(agents, 'utf8').trimEnd()}\nA-14;Aïcha Mansouri;surveillance-humaine;2023-03-01;2028-02-29;;oui;oui;;;;;;;;;;\n`,
+    )
+  }
+
+  it('« Aicha ne vient pas demain » (patron) : gerer_absence pour A-11, sans aucun nom ni poste dans l’appel', async () => {
+    const s = session()
+    const consigne = 'Aicha ne vient pas demain'
+    const { r, modele } = await tour(
+      s,
+      PATRON,
+      outil('gerer_absence', { agent: 'Aicha', jour: '2026-10-11' }),
+      consigne,
+    )
+    expect(r.sorte).toBe('resultat')
+    expect(r.texte).toContain('Demande D-V-17')
+    expect(r.texte).toContain('Aïcha Traoré')
+    expect(s.journal.historique('D-V-17')[0]?.motif).toBe('absence de Aïcha Traoré')
+    expect(modele.appels).toHaveLength(1)
+    const appel = modele.appels[0]
+    const envoye = JSON.stringify({ systeme: appel?.systeme, outils: appel?.outils })
+    expect(NOMS.length).toBeGreaterThan(20)
+    for (const nom of NOMS) expect(envoye).not.toContain(nom)
+    expect(appel?.messages).toEqual([
+      { role: 'user', content: messageConsigne(consigne, maintenant) },
+    ])
+  })
+  it('« Aisha » : le code propose une liste courte, le modèle désigne A-11 dans un second appel, journalisé', async () => {
+    const s = session()
+    const { r, modele, conversation } = await tour(
+      s,
+      PATRON,
+      [
+        { outil: 'gerer_absence', entree: { agent: 'Aisha', jour: '2026-10-11' } },
+        { outil: 'designer', entree: { personne: 'A-11' } },
+      ],
+      'Aisha ne vient pas demain',
+    )
+    expect(r.sorte).toBe('resultat')
+    expect(r.texte).toContain('Aïcha Traoré')
+    const second = JSON.stringify(modele.appels[1]?.messages)
+    expect(second).toContain('A-11 — Aïcha Traoré')
+    expect(second.split(' — ').length - 1).toBeLessThanOrEqual(3)
+    expect(
+      lignes(s, conversation)
+        .filter((l) => l.type === TYPE_APPEL)
+        .map((l) => l.issue),
+    ).toEqual(['traduire', 'designer'])
+  })
+  it('le modèle répond aucun : la question, rien d’exécuté', async () => {
+    const s = session()
+    const { r } = await tour(
+      s,
+      PATRON,
+      [
+        { outil: 'gerer_absence', entree: { agent: 'Aisha', jour: '2026-10-11' } },
+        { outil: 'designer', entree: { personne: 'aucun' } },
+      ],
+      'Aisha ne vient pas demain',
+    )
+    expect(r.sorte).toBe('precision')
+    expect(r.texte).toMatch(/^Vous parlez de qui : .*Aïcha Traoré.* \?$/)
+    expect(s.journal.historique('D-V-17')).toEqual([])
+  })
+  it('personne ne ressemble : la question, sans second appel', async () => {
+    const s = session()
+    const { r, modele } = await tour(
+      s,
+      PATRON,
+      outil('gerer_absence', { agent: 'Bidule', jour: '2026-10-11' }),
+      'Bidule ne vient pas demain',
+    )
+    expect(r).toEqual({
+      sorte: 'precision',
+      texte:
+        'Je ne trouve personne qui corresponde à « Bidule ». Redites la consigne avec le prénom et le nom.',
+      candidats: [],
+    })
+    expect(modele.appels).toHaveLength(1)
+  })
+  it('un homonyme : la question, rien d’exécuté ; la réponse reprend le geste sans appel au modèle', async () => {
+    const s = session(avecHomonyme)
+    const premier = await tour(
+      s,
+      PATRON,
+      outil('gerer_absence', { agent: 'Aïcha', jour: '2026-10-11' }),
+      'Aïcha ne vient pas demain',
+    )
+    expect(premier.r).toEqual({
+      sorte: 'precision',
+      texte: 'Vous parlez de qui : Aïcha Traoré ou Aïcha Mansouri ?',
+      candidats: [
+        { id: 'A-11', nom: 'Aïcha Traoré' },
+        { id: 'A-14', nom: 'Aïcha Mansouri' },
+      ],
+    })
+    expect(premier.modele.appels).toHaveLength(1)
+    expect(s.journal.historique('D-V-17')).toEqual([])
+    expect(lignes(s, premier.conversation).at(-1)?.type).toBe(TYPE_PRECISION_ATTENDUE)
+
+    // Un autre demandeur dans la même conversation ne répond pas à sa place : nouvelle consigne.
+    const intrus = await tour(s, agent('A-2'), [{ texte: 'x' }], 'Traoré', premier.conversation)
+    expect(intrus.modele.appels).toHaveLength(1)
+
+    const reponse = await tour(s, PATRON, [], 'Traoré', premier.conversation)
+    expect(reponse.r.sorte).toBe('resultat')
+    expect(reponse.r.texte).toContain('Demande D-V-17')
+    expect(reponse.r.texte).toContain('Aïcha Traoré')
+    expect(reponse.modele.appels).toHaveLength(0)
+    const consignes = lignes(s, premier.conversation).filter((l) => l.type === 'consigne')
+    expect(consignes.map((l) => l.issue)).toEqual(['action', 'inconnue', 'precision'])
+
+    // La question est close : la même réponse redevient une consigne à traduire.
+    const encore = await tour(s, PATRON, [{ texte: 'x' }], 'Traoré', premier.conversation)
+    expect(encore.modele.appels).toHaveLength(1)
+  })
+  it('une réponse qui ne désigne aucun candidat : traitée comme une nouvelle consigne', async () => {
+    const s = session(avecHomonyme)
+    const premier = await tour(
+      s,
+      PATRON,
+      outil('gerer_absence', { agent: 'Aïcha', jour: '2026-10-11' }),
+      'Aïcha ne vient pas demain',
+    )
+    const suite = await tour(
+      s,
+      PATRON,
+      outil('voir_echeances', {}),
+      'Quelles échéances arrivent ?',
+      premier.conversation,
+    )
+    expect(suite.modele.appels).toHaveLength(1)
+    expect(suite.r.texte).toContain('Sophie Marchand — carte professionnelle')
+  })
+  it('un agent : pas de niveau 2, un nom proche du sien ne le désigne pas', async () => {
+    const s = session()
+    const { r, modele } = await tour(
+      s,
+      agent('A-11'),
+      outil('gerer_absence', { agent: 'Aisha', jour: '2026-10-11' }),
+      'Aisha ne vient pas demain',
+    )
+    expect(r).toEqual({
+      sorte: 'refus',
+      texte: 'Tu ne peux désigner que toi-même : « Aisha » ne te désigne pas.',
+    })
+    expect(modele.appels).toHaveLength(1)
+    expect(s.journal.historique('D-V-17')).toEqual([])
+  })
+  it('le planning d’un agent sans vacation dit son nom complet : le patron voit qui l’outil a compris', async () => {
+    const s = session()
+    const { r } = await tour(
+      s,
+      PATRON,
+      outil('voir_planning', { agent: 'Laura', du: '2026-12-01', au: '2026-12-02' }),
+      'Le planning de Laura début décembre',
+    )
+    expect(r).toEqual({ sorte: 'resultat', texte: 'Aucune vacation pour Laura Petit.' })
   })
 })

@@ -7,8 +7,8 @@ import { cout, type PrixModele, type ReponseModele } from './modele'
 
 export const TYPE_APPEL = 'appel_modele'
 
-/** Ce qui a demandé l'appel : traduire une consigne, ou une échappée. */
-export type UsageAppel = 'traduire' | 'echappee'
+/** Ce qui a demandé l'appel : traduire une consigne, désigner la personne qu'elle nomme (REFLEXIONS.md, décidé le 2026-10-08), ou une échappée. */
+export type UsageAppel = 'traduire' | 'designer' | 'echappee'
 
 /** Les appels d'un mois `AAAA-MM`, lus dans les lignes `appel_modele` du journal. */
 export function coutDuMois(journal: Journal, mois: string): { usd: number; appels: number } {

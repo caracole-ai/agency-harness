@@ -38,7 +38,9 @@ import { decrire, VEILLER } from './veille'
 // Les gestes du quotidien de la sécurité privée (espace 1) : la liste fermée
 // que le modèle choisit et que le code exécute. Pour le rôle `agent`, chaque
 // geste travaille sur `identite.agent` et ignore tout autre agent demandé :
-// c'est structurel, pas un filtre (PLAN-ESPACES.md § 5.2, D4).
+// c'est structurel, pas un filtre (PLAN-ESPACES.md § 5.2, D4). Un paramètre
+// qui désigne une personne (`personnes`) est montré au modèle comme la
+// mention écrite ; le moteur la résout en identifiant (REFLEXIONS.md, décidé le 2026-10-08).
 
 const IdAgent = z.string().regex(/^A-\d+$/)
 const Jour = z.iso.date()
@@ -135,6 +137,10 @@ const gererAbsence: Action<Session, z.infer<typeof GererAbsence>> = {
   description:
     "Gérer l'absence d'un agent un jour donné : l'outil retrouve sa vacation, cherche et propose un remplaçant au patron.",
   parametres: GererAbsence,
+  personnes: {
+    agent:
+      "l'agent absent, tel qu'il est écrit dans la consigne (prénom, nom, ou les deux) ; null quand c'est l'agent qui parle de lui-même",
+  },
   roles: ['patron', 'agent'],
   ecrit: false,
   reformuler: (s, identite, p) => {
@@ -169,6 +175,10 @@ const validerRemplacement: Action<Session, z.infer<typeof ValiderRemplacement>> 
   description:
     "Le patron valide la proposition de remplaçant d'une demande, ou choisit un autre remplaçant possible.",
   parametres: ValiderRemplacement,
+  personnes: {
+    agent:
+      "un autre remplaçant choisi par le patron, tel qu'il est écrit dans la consigne ; null pour la proposition",
+  },
   roles: ['patron'],
   ecrit: true,
   reformuler: (s, _identite, p) => {
@@ -309,6 +319,10 @@ const voirPlanning: Action<Session, z.infer<typeof VoirPlanning>> = {
   id: 'voir_planning',
   description: "Montrer le planning : les vacations d'un agent ou de tous, entre deux dates.",
   parametres: VoirPlanning,
+  personnes: {
+    agent:
+      "l'agent dont on veut le planning, tel qu'il est écrit dans la consigne ; null pour tous, ou pour soi-même quand c'est un agent qui parle",
+  },
   roles: ['patron', 'agent'],
   ecrit: false,
   reformuler: (s, identite, p) => {
@@ -329,11 +343,14 @@ const voirPlanning: Action<Session, z.infer<typeof VoirPlanning>> = {
         )
       })
       .sort((a, b) => Temporal.ZonedDateTime.compare(a.debut, b.debut))
+    // Le nom complet de l'agent visé, même sans vacation : le patron voit qui l'outil a compris.
     return {
       texte:
         vacations.length > 0
           ? vacations.map(({ v }) => decrire(s.ctx, v.id)).join('\n')
-          : 'Aucune vacation.',
+          : identite.role === 'patron' && agent
+            ? `Aucune vacation pour ${nomDe(s, agent)}.`
+            : 'Aucune vacation.',
     }
   },
 }

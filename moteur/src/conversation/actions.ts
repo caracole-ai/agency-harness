@@ -6,7 +6,10 @@ import type { Temporal } from '../temps/temporal'
 // le modèle ne fait que choisir. Le métier les écrit (`ACTIONS`) ; ce fichier
 // dit leur forme, qui peut quoi, et ce qu'on envoie au modèle : un outil par
 // action, en mode strict, plus deux méta-outils pour « demande nouvelle » et
-// « je ne sais pas » (PLAN-ESPACES.md § 5.1 et § 5.3).
+// « je ne sais pas » (PLAN-ESPACES.md § 5.1 et § 5.3). Un paramètre qui
+// désigne une personne est montré au modèle comme une mention en texte libre,
+// jamais comme un identifiant : le modèle ne voit aucun nom, le moteur trouve
+// la personne (REFLEXIONS.md, décidé le 2026-10-08, `designation.ts`).
 
 export const ROLES = ['patron', 'agent'] as const
 export type Role = (typeof ROLES)[number]
@@ -31,6 +34,13 @@ export interface Action<Session, Params> {
   description: string
   /** `z.strictObject` ; chaque champ porte `.describe()`. Pas de champ optionnel : `nullable()` quand il peut manquer. */
   parametres: z.ZodType<Params>
+  /**
+   * Les paramètres qui désignent une personne, et ce que le modèle y met à la
+   * place de l'identifiant : la mention telle qu'écrite, ou null (avec son
+   * sens pour ce geste). Le moteur résout la mention en identifiant avant
+   * l'exécution. Les exemples ne citent aucun nom des données.
+   */
+  personnes?: Record<string, string>
   roles: Role[]
   /** true : l'action inscrit une validation ou écrit chez le client → elle n'est exécutée qu'après un « oui » explicite à sa reformulation. */
   ecrit: boolean
@@ -124,10 +134,30 @@ export const META_OUTILS: Anthropic.Tool[] = [
   ),
 ]
 
+/**
+ * Le schéma que le modèle voit pour une action : celui de l'exécution, où
+ * chaque paramètre qui désigne une personne devient une mention (texte ou
+ * null). C'est aussi le schéma qui lit sa réponse.
+ */
+export function schemaMontre<S>(action: Action<S, unknown>): z.ZodType<unknown> {
+  const personnes = Object.entries(action.personnes ?? {})
+  if (personnes.length === 0) return action.parametres
+  const objet = action.parametres
+  if (!(objet instanceof z.ZodObject)) {
+    throw new Error(`${action.id} : des personnes dans des paramètres qui ne sont pas un objet`)
+  }
+  const mentions: Record<string, z.ZodType> = {}
+  for (const [champ, description] of personnes) {
+    if (!(champ in objet.shape)) throw new Error(`${action.id} : pas de paramètre ${champ}`)
+    mentions[champ] = z.string().nullable().describe(description)
+  }
+  return z.strictObject({ ...objet.shape, ...mentions })
+}
+
 /** Les outils à envoyer au modèle : un par action du rôle, `strict: true`, plus les deux méta-outils. */
 export function outilsDe<S>(actions: Action<S, unknown>[], role: Role): Anthropic.Tool[] {
   return [
-    ...actionsDe(actions, role).map((a) => outil(a.id, a.description, a.parametres)),
+    ...actionsDe(actions, role).map((a) => outil(a.id, a.description, schemaMontre(a))),
     ...META_OUTILS,
   ]
 }

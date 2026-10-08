@@ -13,6 +13,15 @@
 
 maintenant: "2026-10-10T21:40"
 
+# Les dossiers d'éval dérivés du client fictif (jamais modifié lui-même) : la
+# copie du cas reçoit le remplacement. `homonyme` ajoute A-14 Aïcha Mansouri,
+# même prénom qu'Aïcha Traoré (A-11) ; écrit à la main le 2026-10-08.
+variantes:
+  homonyme:
+    fichier: agents.csv
+    remplacer: "A-13;Laura Petit;"
+    par: "A-14;Aïcha Mansouri;surveillance-humaine;2023-03-01;2028-02-29;;oui;oui;;;;;;;;;;\nA-13;Laura Petit;"
+
 cas:
   # --- Patron : déclarer une absence ---
   - id: P-ABS-1
@@ -69,6 +78,49 @@ cas:
     role: patron
     consigne: "Le planning de tout le monde du 12 au 18 octobre, s'il te plaît."
     attendu: { sorte: action, action: voir_planning, params: { agent: null, du: "2026-10-12", au: "2026-10-18" } }
+
+  # --- Patron : nommer une personne (REFLEXIONS.md, décidé le 2026-10-08) ---
+  # Le modèle ne voit aucun nom : il recopie la mention, le moteur la résout.
+  # Les étiquettes restent en identifiants (traduction et résolution
+  # ensemble). `precision` : le moteur pose la question, rien n'est exécuté.
+  - id: R-1
+    role: patron
+    consigne: "Aicha ne vient pas demain"
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+  - id: R-2
+    role: patron
+    consigne: "Aisha ne vient pas demain"
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+  - id: R-3
+    role: patron
+    consigne: "Traoré sera absente demain."
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+  - id: R-4
+    role: patron
+    consigne: "Traoré Aïcha ne viendra pas demain"
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+  - id: R-5
+    role: patron
+    consigne: "Bidule ne vient pas demain"
+    attendu: { sorte: [precision, inconnue] }
+  - id: R-6
+    role: patron
+    variante: homonyme
+    consigne: "Aïcha ne vient pas demain"
+    attendu: { sorte: precision, candidats: [A-11, A-14] }
+  - id: R-7
+    role: patron
+    variante: homonyme
+    consigne: "Aïcha Traoré ne vient pas demain"
+    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+  - id: R-8
+    role: patron
+    consigne: "Montre-moi le planning de Mehdi Saidi."
+    attendu: { sorte: action, action: voir_planning, params: { agent: A-9 } }
+  - id: R-9
+    role: patron
+    consigne: "Le planning de A-4, s'il te plaît."
+    attendu: { sorte: action, action: voir_planning, params: { agent: A-4 } }
 
   # --- Patron : les échéances ---
   - id: P-ECH-1

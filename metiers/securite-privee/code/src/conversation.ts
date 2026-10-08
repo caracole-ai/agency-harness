@@ -1,11 +1,14 @@
+import { join } from 'node:path'
 import {
   type ConfigConversation,
+  chargerConfig,
   echappee,
+  FICHIER_CONFIG,
   type Identite,
   type Intention,
+  Journal,
   type MetierConversation,
   quiParle,
-  ROLES,
 } from '@harnais/moteur'
 import { z } from 'zod'
 import { ACTIONS } from './actions'
@@ -14,11 +17,13 @@ import { tablesPour } from './copie'
 import { constatsNouveaux, decrireModifications, Modification } from './modifications'
 import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
 import { evaluer, ouvrir, type Session } from './remplacement'
-import type { PREFERENCES } from './veille'
+import { ConfigSecurite, type PREFERENCES } from './veille'
 
-// Ce que la sécurité privée fournit à la conversation : ouvrir un client, ses
-// gestes, le vocabulaire montré au modèle (limité au rôle), et qui a le droit
-// de parler (PLAN-ESPACES.md § 5.6).
+// Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
+// son journal seul), ses gestes, les personnes que chaque rôle peut désigner
+// (jamais montrées au modèle de traduction), et la cohérence
+// de qui parle avec ses données (PLAN-ESPACES.md § 5.6). Qui a le droit de
+// parler, c'est le registre d'accès du harnais qui le dit (REFLEXIONS.md, décidé le 2026-10-08).
 
 /** Les préférences du patron, dites en mots pour le modèle. */
 const PREFERENCES_EN_MOTS: Record<(typeof PREFERENCES)[number], string> = {
@@ -78,7 +83,7 @@ function decrireProposition(s: Session, id: string, modifications: Modification[
   ].join('\n')
 }
 
-const configDe = (s: Session): ConfigConversation => {
+const configDe = (s: Pick<Session, 'dossier' | 'config'>): ConfigConversation => {
   if (!s.config.conversation) {
     throw new Error(`${s.dossier} : la config n'a pas de section « conversation »`)
   }
@@ -100,24 +105,24 @@ export const CONVERSATION: MetierConversation<Session> = {
   config: configDe,
   client: (s) => s.config.client,
   journal: (s) => s.journal,
+  ouvrirJournal: (dossier) => {
+    const config = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigSecurite)
+    const conversation = configDe({ dossier, config })
+    return {
+      client: config.client,
+      journal: new Journal(join(dossier, config.journal)),
+      config: conversation,
+    }
+  },
   actions: ACTIONS,
   intentions: INTENTIONS,
   vocabulaire: (s, identite) => ({
     agents: s.ctx.planning.agents
       .filter((a) => identite.role === 'patron' || a.id === identite.agent)
       .map((a) => ({ id: a.id, nom: a.nom })),
-    postes: s.ctx.planning.postes.map((p) => ({ id: p.id, site: p.site })),
   }),
   verifierIdentite: (s, identite: Identite) => {
-    if (!ROLES.includes(identite.role)) throw new Error(`rôle inconnu : ${String(identite.role)}`)
-    if (identite.role === 'patron') {
-      if (identite.agent !== undefined) {
-        throw new Error("le patron parle en son nom : pas d'identifiant d'agent")
-      }
-      return
-    }
-    if (identite.agent === undefined) throw new Error('un agent doit dire qui il est (--agent A-…)')
-    s.ctx.agent(identite.agent)
+    if (identite.role === 'agent') s.ctx.agent(identite.agent ?? '')
   },
   proposition: {
     ouvrir: (s, conversation, modifications, maintenant) => {

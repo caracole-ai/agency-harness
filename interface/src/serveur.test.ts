@@ -1,17 +1,21 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
-import { cpSync, mkdtempSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  FICHIER_PERSONNES,
   type Identite,
+  Journal,
   type Ligne,
   modeleSimule,
   type Reponse,
   type Scripte,
+  TYPE_ACCES_REFUSE,
 } from '@harnais/moteur'
-import { describe, expect, it } from 'vitest'
+import { CONVERSATION } from '@harnais/securite-privee'
+import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
 
 const exemple = fileURLToPath(new URL('../../exemples/client-fictif', import.meta.url))
@@ -25,8 +29,8 @@ function copie(): string {
   return dossier
 }
 
-const app = (script: Scripte[] = []) =>
-  creerApp({ dossier: copie(), maintenant: MAINTENANT, modele: modeleSimule(script) })
+const app = (script: Scripte[] = [], dossier = copie()) =>
+  creerApp({ dossier, maintenant: MAINTENANT, modele: modeleSimule(script) })
 
 const poster = (a: ReturnType<typeof app>, route: string, corps: unknown) =>
   a.request(route, {
@@ -34,6 +38,19 @@ const poster = (a: ReturnType<typeof app>, route: string, corps: unknown) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(corps),
   })
+/** Les deux lectures passent la porte : l'identité dans le corps. */
+const lire = (a: ReturnType<typeof app>, route: string, identite: unknown = PATRON) =>
+  poster(a, route, { identite })
+
+/** Le journal d'une copie, lu sans passer par l'application. */
+function journalDe(dossier: string): Ligne[] {
+  const j = new Journal(join(dossier, 'journal.sqlite'))
+  try {
+    return j.lire()
+  } finally {
+    j.fermer()
+  }
+}
 
 interface Etat {
   client: string
@@ -47,8 +64,8 @@ interface Etat {
   ia: { coutMois: number; plafond: number; appels: number }
 }
 
-describe('GET /api/etat', async () => {
-  const r = await app().request('/api/etat')
+describe('POST /api/etat', async () => {
+  const r = await lire(app(), '/api/etat')
   const etat = (await r.json()) as Etat
   it('rend le client fictif, ses agents et ses 21 règles', () => {
     expect(r.status).toBe(200)
@@ -70,26 +87,85 @@ describe('les pages', () => {
     const a = app()
     const page = await a.request('/')
     expect(page.status).toBe(200)
-    expect(await page.text()).toContain("L'identité n'est pas vérifiée")
+    expect(await page.text()).toContain('pas authentifiée')
     expect((await a.request('/static/app.js')).status).toBe(200)
     expect((await a.request('/static/style.css')).status).toBe(200)
   })
 })
 
-describe('les erreurs de requête', () => {
-  it('refuse une identité inconnue en 400', async () => {
-    const r = await poster(app(), '/api/consigne', {
-      identite: { role: 'agent', agent: 'A-99' },
+describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', () => {
+  it('une identité absente du registre : 403, le dossier jamais ouvert, le refus au journal', async () => {
+    const dossier = copie()
+    const a = app([], dossier)
+    const ouvrir = vi.spyOn(CONVERSATION, 'ouvrir')
+    try {
+      const r = await poster(a, '/api/consigne', {
+        identite: { role: 'agent', agent: 'A-99' },
+        consigne: 'mon planning',
+      })
+      expect(r.status).toBe(403)
+      expect(((await r.json()) as { erreur: string }).erreur).toBe(
+        "inconnu au registre d'accès : A-99",
+      )
+      expect((await lire(a, '/api/etat', { role: 'agent', agent: 'A-99' })).status).toBe(403)
+      expect((await lire(a, '/api/journal', { role: 'roi' })).status).toBe(403)
+      expect(ouvrir).not.toHaveBeenCalled()
+    } finally {
+      ouvrir.mockRestore()
+    }
+    const refus = journalDe(dossier).filter((l) => l.type === TYPE_ACCES_REFUSE)
+    expect(refus).toHaveLength(3)
+    expect(refus[0]).toMatchObject({
+      motif: "inconnu au registre d'accès : A-99",
+      horodatage: '2026-10-10T19:40:00Z',
+    })
+    expect(JSON.parse(refus[0]?.donnees ?? '{}')).toEqual({
+      identite: '{"role":"agent","agent":"A-99"}',
+      canal: 'web',
+    })
+  })
+  it('tout le planning et tout le journal : au patron seul, un agent reçoit 403', async () => {
+    const a = app()
+    const julien = { role: 'agent', agent: 'A-2' }
+    for (const route of ['/api/etat', '/api/journal']) {
+      const r = await lire(a, route, julien)
+      expect(r.status).toBe(403)
+      expect(((await r.json()) as { erreur: string }).erreur).toBe('réservé au patron')
+    }
+  })
+  it('le registre est relu à chaque requête : retirer un agent vaut tout de suite', async () => {
+    const dossier = copie()
+    const a = app([], dossier)
+    const chemin = join(dossier, FICHIER_PERSONNES)
+    writeFileSync(
+      chemin,
+      readFileSync(chemin, 'utf8').replace('  - { role: agent, agent: A-2 }\n', ''),
+    )
+    const r = await poster(a, '/api/consigne', {
+      identite: { role: 'agent', agent: 'A-2' },
       consigne: 'mon planning',
     })
-    expect(r.status).toBe(400)
-    expect(((await r.json()) as { erreur: string }).erreur).toMatch(/A-99/)
+    expect(r.status).toBe(403)
   })
-  it('refuse un rôle inconnu, une consigne vide, un corps qui n’est pas du JSON', async () => {
+  it('au démarrage : un registre absent, ou qui nomme un agent inconnu des données, arrête tout', () => {
+    const inconnu = copie()
+    writeFileSync(
+      join(inconnu, FICHIER_PERSONNES),
+      'personnes:\n  - { role: agent, agent: A-99 }\n',
+    )
+    expect(() => app([], inconnu)).toThrow(/registre d'accès : .*A-99/)
+    const absent = copie()
+    rmSync(join(absent, FICHIER_PERSONNES))
+    expect(() => app([], absent)).toThrow(/registre d'accès absent/)
+  })
+})
+
+describe('les erreurs de requête', () => {
+  it('refuse un rôle inconnu (à la porte), une consigne vide, un corps qui n’est pas du JSON', async () => {
     const a = app()
     expect(
       (await poster(a, '/api/consigne', { identite: { role: 'roi' }, consigne: 'x' })).status,
-    ).toBe(400)
+    ).toBe(403)
     expect((await poster(a, '/api/consigne', { identite: PATRON, consigne: ' ' })).status).toBe(400)
     const r = await a.request('/api/consigne', {
       method: 'POST',
@@ -99,7 +175,7 @@ describe('les erreurs de requête', () => {
     expect(r.status).toBe(400)
   })
   it('refuse une limite de journal hors bornes', async () => {
-    expect((await app().request('/api/journal?limite=0')).status).toBe(400)
+    expect((await lire(app(), '/api/journal?limite=0')).status).toBe(400)
   })
   it('ne répond qu’à la page elle-même : autre origine, corps non JSON, hôte étranger', async () => {
     const a = app()
@@ -126,9 +202,9 @@ describe('les erreurs de requête', () => {
     })
     expect(xml.status).toBe(400)
     // Un nom d'hôte qui n'est pas local (rebinding DNS) : refusé, même en lecture.
-    const etranger = await a.request('http://ailleurs.example/api/etat')
+    const etranger = await lire(a, 'http://ailleurs.example/api/etat')
     expect(etranger.status).toBe(421)
-    expect((await a.request('http://localhost:3777/api/etat')).status).toBe(200)
+    expect((await lire(a, 'http://localhost:3777/api/etat')).status).toBe(200)
   })
 })
 
@@ -158,7 +234,7 @@ describe('un parcours simulé : absence, validation, oui', async () => {
         ...(conversation ? { conversation } : {}),
       })
     ).json()) as { conversation: string; reponse: Reponse }
-  const etat = async () => (await (await a.request('/api/etat')).json()) as Etat
+  const etat = async () => (await (await lire(a, '/api/etat')).json()) as Etat
 
   const premiere = await consigne('Aïcha ne vient pas demain')
   const apresAbsence = await etat()
@@ -201,8 +277,8 @@ describe('un parcours simulé : absence, validation, oui', async () => {
       },
     ])
   })
-  it('GET /api/journal?limite=5 rend 5 lignes, la plus récente d’abord', async () => {
-    const r = await a.request('/api/journal?limite=5')
+  it('POST /api/journal?limite=5 rend 5 lignes, la plus récente d’abord', async () => {
+    const r = await lire(a, '/api/journal?limite=5')
     const lignes = (await r.json()) as Ligne[]
     expect(lignes).toHaveLength(5)
     expect(lignes[0]?.type).toBe('confirmation')

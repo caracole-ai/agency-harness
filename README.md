@@ -72,9 +72,16 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `src/conversation/actions.ts` (la forme d'un geste du quotidien, les rôles
   `patron` et `agent`, les outils stricts envoyés au modèle et les deux
   méta-outils), `src/conversation/traduire.ts` (une consigne → une action,
-  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai),
-  `src/conversation/conversation.ts` (le déroulé d'un tour : qui parle,
-  plafond du mois, traduction, exécution ou confirmation par « oui » à la
+  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
+  modèle ne reçoit que la phrase, sans aucun nom ni poste du client),
+  `src/personnes/personnes.ts` (le registre d'accès, `personnes.yaml` dans le
+  dossier du client : qui peut parler, avec quel rôle, vérifié avant toute
+  ouverture du dossier), `src/conversation/designation.ts` (la personne
+  qu'une mention désigne : le code décide si c'est sûr, sinon une liste
+  courte que le modèle départage, sinon une question au demandeur),
+  `src/conversation/conversation.ts` (le déroulé d'un tour : la porte,
+  plafond du mois et traduction sur le journal seul, puis le dossier, la
+  personne nommée, exécution ou confirmation par « oui » à la
   reformulation, tout au journal), `src/cli/parler.ts` et
   `src/archetypes/veille-client.ts` (la veille d'un client
   journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`),
@@ -94,11 +101,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   qui revient (`pnpm promotions`).
 - `interface/` — l'interface du patron, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
-  une session par requête), `src/serveur.ts` (`pnpm interface`, sur
-  127.0.0.1 seulement), `public/` (HTML, CSS et JavaScript sans framework,
-  la charte de `presentation/`). Quatre onglets (à valider, règles,
-  délégations, journal) et la conversation toujours visible ; l'identité
-  n'est pas vérifiée, et la page le dit.
+  chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
+  (`pnpm interface`, sur 127.0.0.1 seulement), `public/` (HTML, CSS et
+  JavaScript sans framework, la charte de `presentation/`). Quatre onglets
+  (à valider, règles, délégations, journal), réservés au patron, et la
+  conversation toujours visible ; l'identité est choisie dans le registre
+  d'accès, pas authentifiée, et la page le dit.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -142,7 +150,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   la démo, parler à l'outil) est un autre artefact claude.ai, dont les
   sources ne sont pas versionnées : lien dans `HANDOFF.md`.
 - `exemples/client-fictif/` — une entreprise de sécurité fictive (13 agents,
-  19 vacations, des erreurs posées exprès), sa config et `attendu.yaml`, la
+  19 vacations, des erreurs posées exprès), sa config, son registre d'accès
+  (`personnes.yaml` : le patron et les 13 agents) et `attendu.yaml`, la
   liste écrite à la main de ce que la veille doit trouver ; un test la
   compare au résultat. Sert aux démonstrations : jamais de données réelles
   ici.
@@ -176,7 +185,7 @@ pnpm remplacer suivre  --client <copie> --demande D-V-17
                          # un remplacement : proposition, validation du patron, accord de
                          # l'agent, écriture du planning ; sur une COPIE du client fictif
 pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 2026-10-10T21:40] [--modele simule]
-            --consigne "Aïcha ne vient pas demain"
+            --consigne "Aïcha ne vient pas demain" [--conversation <C-…>]
             | --confirmer <empreinte> --conversation <C-…> --oui|--non
             | --interactif
                          # parler à l'outil : la consigne devient un geste de la liste, ou « je ne

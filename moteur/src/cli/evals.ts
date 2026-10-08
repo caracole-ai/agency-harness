@@ -1,6 +1,7 @@
 // pnpm evals traduire|echappee --client <dossier> [--seulement id,id] [--modele simule]
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : chaque cas, écrit à la
-// main dans `evals/`, tourne sur une copie fraîche du client ; la sortie est
+// main dans `evals/`, tourne sur une copie fraîche du client (ou sur une
+// variante dérivée de lui, pour un homonyme) ; la sortie est
 // vérifiée en code, la trace complète est gardée dans `evals/traces/` (non
 // versionné) et le tableau dans `evals/resultats/`. Appelle le vrai modèle :
 // exige la clé que nomme la config (ANTHROPIC_API_KEY sans `acces`) et coûte (≈ 0,3 $ les deux passes avec GLM-5.3). `--modele
@@ -12,9 +13,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse } from 'yaml'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import { actionsDe, type Identite, outilsDe } from '../conversation/actions'
-import { prixDe } from '../conversation/config'
-import type { MetierConversation } from '../conversation/conversation'
+import { actionsDe, outilsDe, schemaMontre } from '../conversation/actions'
+import { type ConfigConversation, prixDe } from '../conversation/config'
+import { avecSession, type MetierConversation, resoudre } from '../conversation/conversation'
 import { systemeTraduire, traduire } from '../conversation/traduire'
 import {
   bilan,
@@ -23,6 +24,7 @@ import {
   ecartsTraduction,
   FichierEchappee,
   FichierTraduire,
+  type IssueTraduction,
   modeleTrace,
   type ResultatCas,
   rendreResultats,
@@ -30,6 +32,7 @@ import {
 import { modeleDepuisConfig } from '../modele/anthropic'
 import { cout, type Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
+import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
 import { FUSEAU, Temporal } from '../temps/temporal'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
@@ -65,7 +68,7 @@ const module = (await import(
 if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
 const m = module.CONVERSATION
 
-/** Une copie fraîche du client ; `piege` remplace une chaîne dans un de ses fichiers. */
+/** Une copie fraîche du client ; `piege` (ou une variante) remplace une chaîne dans un de ses fichiers. */
 function copie(piege?: { fichier: string; remplacer: string; par: string }): string {
   const dossier = mkdtempSync(join(tmpdir(), 'eval-'))
   cpSync(source, dossier, {
@@ -83,15 +86,20 @@ function copie(piege?: { fichier: string; remplacer: string; par: string }): str
   return dossier
 }
 
+/** La config de la conversation d'une copie, lue sans ouvrir ses données. */
+function configDe(dossier: string): ConfigConversation {
+  const { journal, config } = m.ouvrirJournal(dossier)
+  journal.fermer()
+  return config
+}
+
 // La clé se vérifie au démarrage, sur une copie (ouvrir écrit un journal),
 // pas au premier cas : une variable absente arrête tout.
 if (values.modele === undefined) {
   const essai = copie()
-  const s = m.ouvrir(essai)
   try {
-    modeleDepuisConfig(m.config(s), process.env)
+    modeleDepuisConfig(configDe(essai), process.env)
   } finally {
-    m.fermer(s)
     rmSync(essai, { recursive: true, force: true })
   }
 }
@@ -107,29 +115,46 @@ const seulement = values.seulement ? new Set(values.seulement.split(',')) : unde
 let idModele = values.modele === 'simule' ? 'simulé' : ''
 const aParis = (s: string) => Temporal.PlainDateTime.from(s).toZonedDateTime(FUSEAU)
 
-/** Lance un cas sur sa copie, garde sa trace, rend son résultat. */
+/**
+ * Lance un cas sur sa copie (l'identité du cas passe d'abord la porte ; le
+ * cas ouvre lui-même la session, après la traduction), garde sa trace, rend
+ * son résultat.
+ */
 async function lancer(
   id: string,
   strict: boolean,
   piege: Parameters<typeof copie>[0],
-  jouer: (s: unknown, modele: Modele) => Promise<{ ecarts: string[]; issue: unknown }>,
+  demandeur: { role: string; agent?: string | undefined },
+  jouer: (
+    dossier: string,
+    modele: Modele,
+    identite: IdentiteVerifiee,
+  ) => Promise<{ ecarts: string[]; issue: unknown }>,
 ): Promise<ResultatCas> {
   const dossier = copie(piege)
-  const s = m.ouvrir(dossier)
-  const prix = prixDe(m.config(s))
+  const accueil = recevoir(chargerPersonnes(dossier), {
+    role: demandeur.role,
+    ...(demandeur.agent ? { agent: demandeur.agent } : {}),
+  })
+  if (accueil.sorte === 'refus') {
+    rmSync(dossier, { recursive: true, force: true })
+    console.log(`${id} : écart (refus à la porte : ${accueil.motif})`)
+    return { id, ecarts: [`refus à la porte : ${accueil.motif}`], coutUsd: 0, strict }
+  }
+  const config = configDe(dossier)
+  const prix = prixDe(config)
   const modele = modeleTrace(
-    values.modele === 'simule' ? modeleSimule([]) : modeleDepuisConfig(m.config(s), process.env),
+    values.modele === 'simule' ? modeleSimule([]) : modeleDepuisConfig(config, process.env),
   )
   idModele = modele.id
   let ecarts: string[]
   let issue: unknown
   try {
-    ;({ ecarts, issue } = await jouer(s, modele))
+    ;({ ecarts, issue } = await jouer(dossier, modele, accueil.identite))
   } catch (erreur) {
     ecarts = [`exception : ${(erreur as Error).message}`]
     issue = undefined
   } finally {
-    m.fermer(s)
     rmSync(dossier, { recursive: true, force: true })
   }
   const coutUsd = modele.appels.reduce(
@@ -160,22 +185,50 @@ const resultats: ResultatCas[] = []
 if (quoi === 'traduire') {
   const fichier = FichierTraduire.parse(parse(readFileSync(join(EVALS, 'consignes.yaml'), 'utf8')))
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
-    const identite: Identite = { role: c.role, ...(c.agent ? { agent: c.agent } : {}) }
+    const variante = c.variante === undefined ? undefined : fichier.variantes?.[c.variante]
+    if (c.variante !== undefined && !variante)
+      throw new Error(`${c.id} : variante ${c.variante} inconnue`)
     resultats.push(
-      await lancer(c.id, c.categorie === CATEGORIE_AGENT_PATRON, undefined, async (s, modele) => {
-        m.verifierIdentite(s, identite)
-        const actions = actionsDe(m.actions, c.role)
-        const { demande } = await traduire(
-          modele,
-          m.config(s).modele.effort.traduire,
-          systemeTraduire(identite, m.vocabulaire(s, identite), actions, m.intentions),
-          outilsDe(m.actions, c.role),
-          c.consigne,
-          aParis(c.maintenant ?? fichier.maintenant),
-          new Map(actions.map((a) => [a.id, a.parametres])),
-        )
-        return { ecarts: ecartsTraduction(c.attendu, demande), issue: demande }
-      }),
+      await lancer(
+        c.id,
+        c.categorie === CATEGORIE_AGENT_PATRON,
+        variante,
+        c,
+        async (dossier, modele, identite) => {
+          // Le circuit de la conversation, sans l'exécution : la traduction (la
+          // phrase seule), puis le dossier, puis la résolution de la personne.
+          const quand = aParis(c.maintenant ?? fichier.maintenant)
+          const actions = actionsDe(m.actions, c.role)
+          const { demande } = await traduire(
+            modele,
+            configDe(dossier).modele.effort.traduire,
+            systemeTraduire(c.role, actions, m.intentions),
+            outilsDe(m.actions, c.role),
+            c.consigne,
+            quand,
+            new Map(actions.map((a) => [a.id, schemaMontre(a)])),
+          )
+          const action =
+            demande.sorte === 'action' ? actions.find((a) => a.id === demande.action) : undefined
+          const issue: IssueTraduction =
+            demande.sorte !== 'action' || !action
+              ? demande
+              : await avecSession(m, dossier, identite, async (s) => {
+                  m.verifierIdentite(s, identite)
+                  const tour = {
+                    identite,
+                    consigne: c.consigne,
+                    maintenant: quand,
+                    conversation: `C-eval-${c.id}`,
+                  }
+                  const r = await resoudre(m, s, modele, tour, action, demande.params)
+                  return r.sorte === 'resolue'
+                    ? { ...demande, params: r.params }
+                    : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
+                })
+          return { ecarts: ecartsTraduction(c.attendu, issue), issue }
+        },
+      ),
     )
   }
 } else {
@@ -183,25 +236,26 @@ if (quoi === 'traduire') {
   const echappee = m.echappee
   if (!echappee) throw new Error(`le métier ${metier} n'a pas d'échappée`)
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
-    const identite: Identite = { role: c.role, ...(c.agent ? { agent: c.agent } : {}) }
     resultats.push(
       await lancer(
         c.id,
         c.piege === true,
         c.piege ? fichier.piege : undefined,
-        async (s, modele) => {
-          m.verifierIdentite(s, identite)
-          const issue = await echappee(
-            s,
-            identite,
-            `C-eval-${c.id}`,
-            c.consigne,
-            c.intention,
-            aParis(c.maintenant ?? fichier.maintenant),
-            modele,
-          )
-          return { ecarts: ecartsEchappee(c.attendu, issue), issue }
-        },
+        c,
+        (dossier, modele, identite) =>
+          avecSession(m, dossier, identite, async (s) => {
+            m.verifierIdentite(s, identite)
+            const issue = await echappee(
+              s,
+              identite,
+              `C-eval-${c.id}`,
+              c.consigne,
+              c.intention,
+              aParis(c.maintenant ?? fichier.maintenant),
+              modele,
+            )
+            return { ecarts: ecartsEchappee(c.attendu, issue), issue }
+          }),
       ),
     )
   }

@@ -9,17 +9,27 @@ import type { AppelModele, Modele, ReponseModele } from '../modele/modele'
 // cas et dit, pour chacun, ses écarts à l'attendu ; `cli/evals.ts` appelle le
 // modèle, garde les traces et écrit le tableau des résultats.
 
-export const SORTES_DEMANDE = ['action', 'nouvelle', 'inconnue'] as const
+/** Ce qu'une consigne devient : `precision`, une personne nommée que le code n'a pas trouvée seul (REFLEXIONS.md, décidé le 2026-10-08). */
+export const SORTES_DEMANDE = ['action', 'nouvelle', 'inconnue', 'precision'] as const
 export const SORTES_ECHAPPEE = ['reponse', 'proposition', 'abandon'] as const
 
 /** Les catégories qui doivent passer à 100 %, quel que soit le taux global. */
 export const CATEGORIE_AGENT_PATRON = 'agent_patron'
+
+/** Un dossier d'éval dérivé du client : une chaîne remplacée dans un de ses fichiers, sur la copie du cas. */
+export const Variante = z.strictObject({
+  fichier: z.string(),
+  remplacer: z.string(),
+  par: z.string(),
+})
 
 export const CasTraduire = z.strictObject({
   id: z.string().min(1),
   role: z.enum(ROLES),
   agent: z.string().optional(),
   maintenant: z.string().optional(),
+  /** Le nom d'une variante du fichier (`variantes`) : le cas tourne sur elle. */
+  variante: z.string().optional(),
   categorie: z.literal(CATEGORIE_AGENT_PATRON).optional(),
   consigne: z.string().min(1),
   attendu: z.strictObject({
@@ -27,12 +37,15 @@ export const CasTraduire = z.strictObject({
     action: z.string().optional(),
     params: z.record(z.string(), z.unknown()).optional(),
     intention: z.array(z.string()).min(1).optional(),
+    /** Pour une `precision` : les identifiants des candidats proposés, dans n'importe quel ordre. */
+    candidats: z.array(z.string()).optional(),
   }),
 })
 export type CasTraduire = z.infer<typeof CasTraduire>
 
 export const FichierTraduire = z.strictObject({
   maintenant: z.string(),
+  variantes: z.record(z.string(), Variante).optional(),
   cas: z.array(CasTraduire).min(1),
 })
 export type FichierTraduire = z.infer<typeof FichierTraduire>
@@ -69,8 +82,14 @@ const normaliser = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLo
 
 const egal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
-/** Les écarts d'une traduction à l'attendu ; vide : le cas passe. */
-export function ecartsTraduction(attendu: CasTraduire['attendu'], demande: Demande): string[] {
+/** Ce que l'éval de traduction compare : la demande, ses personnes résolues, ou la question posée et ses candidats. */
+export type IssueTraduction = Demande | { sorte: 'precision'; candidats: string[] }
+
+/** Les écarts d'une traduction (et de la résolution des personnes) à l'attendu ; vide : le cas passe. */
+export function ecartsTraduction(
+  attendu: CasTraduire['attendu'],
+  demande: IssueTraduction,
+): string[] {
   const sortes = Array.isArray(attendu.sorte) ? attendu.sorte : [attendu.sorte]
   if (!sortes.includes(demande.sorte)) {
     const detail =
@@ -78,7 +97,9 @@ export function ecartsTraduction(attendu: CasTraduire['attendu'], demande: Deman
         ? ` ${demande.action}`
         : demande.sorte === 'nouvelle'
           ? ` ${demande.intention}`
-          : ` (${demande.raison})`
+          : demande.sorte === 'precision'
+            ? ` (${demande.candidats.join(', ') || 'personne'})`
+            : ` (${demande.raison})`
     return [`sorte ${demande.sorte}${detail}, attendu ${sortes.join(' ou ')}`]
   }
   const ecarts: string[] = []
@@ -100,6 +121,15 @@ export function ecartsTraduction(attendu: CasTraduire['attendu'], demande: Deman
     !attendu.intention.includes(demande.intention)
   ) {
     ecarts.push(`intention ${demande.intention}, attendu ${attendu.intention.join(' | ')}`)
+  }
+  if (
+    demande.sorte === 'precision' &&
+    attendu.candidats &&
+    !egal([...demande.candidats].sort(), [...attendu.candidats].sort())
+  ) {
+    ecarts.push(
+      `candidats ${demande.candidats.join(', ')}, attendu ${attendu.candidats.join(', ')}`,
+    )
   }
   return ecarts
 }

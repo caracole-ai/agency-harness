@@ -46,6 +46,8 @@ spécifique.
 | 2026-10-08 | **Une donnée qui ressemble à une consigne se signale sans la recopier** (Lionel). Traiter le piège comme une donnée est la sécurité n° 8 ; ne pas le relayer mot pour mot au patron en est la suite : un texte qui vise l'humain (« appelez ce numéro ») arriverait sinon avec la voix du harnais. Phrase du système de l'échappée ; l'étiquette des cas piégés reste stricte. | `moteur/src/echappee/echappee.ts` |
 | 2026-10-08 | **GLM-5.3 chez GMI Cloud est le modèle de référence jusqu'à nouvel ordre, et le laboratoire passe avant le terrain** (Lionel). Pas de passe Claude « avant un bon moment » ; pas de nouvelle clé ni de révocation pour l'instant. On avance sur les données fictives, en veillant à ce qu'elles restent pertinentes et cohérentes, jusqu'à un produit correct, fonctionnel et efficient — pour démarcher sereinement, et pour que Lionel comprenne lui-même la proposition et les enjeux techniques. Conséquence : la config du client fictif désigne GLM (`acces`, prix GMI, plafonds relevés) ; les branches `espaces/*` sont fusionnées dans `main`. | `exemples/client-fictif/config.yaml`, `HANDOFF.md` |
 | 2026-10-08 | **« Libère le mercredi de Sophie » : deux lectures acceptées** (Lionel) — la demande nouvelle, ou le geste `gerer_absence`, qui libère aussi la journée sous validation. « Libérer » vaut-il « absente » dans le métier : question pour le premier patron réel, pas pour le client fictif. | `evals/consignes.yaml` (N-4) |
+| 2026-10-08 | **L'identité et les droits d'abord, le dossier ensuite** (Lionel). Dès qu'une demande arrive par un canal, le moteur vérifie l'expéditeur contre un **registre d'accès qui appartient au harnais** (`personnes.yaml`, au format du harnais, jamais la donnée du client) et fixe ses droits ; seulement ensuite le dossier s'ouvre. Un inconnu ne fait plus lire tout le dossier, et son refus est au journal (identité reçue, canal, heure, motif) par le journal seul. La garantie est **structurelle** : `traiterConsigne`, `confirmer` et toute ouverture de session pour quelqu'un exigent une `IdentiteVerifiee`, que seule la porte construit. `verifierIdentite` du métier reste en seconde ligne (cohérence avec `agents.csv`) ; au démarrage, chaque agent du registre doit exister. `/api/etat` et `/api/journal` sont réservés au patron. L'identité reste **déclarée, pas authentifiée** (D12) : le registre est conçu pour recevoir l'identifiant d'un canal. | `moteur/src/personnes/`, `PLAN-ESPACES.md` D12 |
+| 2026-10-08 | **Le modèle ne reçoit que la phrase ; le code trouve la personne** (Lionel). Les noms de tous les salariés partaient chez le fournisseur à chaque demande, pour la seule raison qu'un geste attend un identifiant. Désormais le modèle de traduction ne voit ni nom ni poste : il recopie la mention (« Aicha »), et le moteur la résout en trois niveaux, chacun là où il est fiable. (1) **Le code décide si c'est sûr** : une seule correspondance exacte, aux accents, à la casse, aux espaces et aux tirets près, sur le prénom, le nom, les deux, ou l'identifiant écrit ; aucune approximation. (2) **Le code propose, le modèle départage** : 3 noms au plus, par clé phonétique et distance d'édition, au seuil large (ne pas rater le bon nom), dans un second appel minuscule dont le choix est une énumération vérifiée en code. (3) **L'humain tranche** : « Vous parlez de qui : … ? », rien n'est exécuté ; la réponse (un nom, un rang) reprend le geste sans appel. Lionel a refusé une correspondance approximative qui déciderait seule : « Alicia » est à deux lettres d'« Aïcha ». | `moteur/src/conversation/designation.ts`, `conversation.ts` |
 
 ## Fait (2026-09-29 et 30)
 
@@ -226,6 +228,29 @@ spécifique.
   7. **Une relecture indépendante après coup a trouvé douze défauts**, dont
      trois graves, dans un code dont chaque lot passait ses tests. À garder
      comme étape de tout chantier, avant la clôture.
+
+- **`PLAN-IDENTITE.md` exécuté** (lots 1 et 2, Opus 5.5, une session ; le
+  plan est retiré du dépôt une fois consigné ici et dans `HANDOFF.md`).
+  Choix faits dans le silence du plan, à relire par Lionel : un **homonyme
+  exact** (deux « Aïcha ») va droit à la question, sans second appel — le
+  modèle n'a rien de plus que l'humain pour trancher ; un **agent** qui nomme
+  quelqu'un d'autre que lui reçoit « Tu ne peux désigner que toi-même »,
+  sans liste (D4 : rien à lui apprendre) ; une **question en attente**
+  appartient à qui elle a été posée (une autre personne dans la même
+  conversation ne la ferme pas) ; les deux lectures de l'interface sont des
+  `POST` (un `GET` portant l'identité dans l'adresse écrirait des refus au
+  journal depuis n'importe quel site) ; le registre est **relu à chaque
+  requête** (retirer quelqu'un vaut tout de suite) ; l'effort du second appel
+  est celui de la traduction (pas de réglage de plus). **Appris** :
+  1. **Ce qu'on envoie au fournisseur se mesure dans un test**, pas dans une
+     intention : le test lit le système et les outils du modèle simulé et y
+     cherche chaque prénom, nom, poste et site du client fictif.
+  2. **Un test qui joue un intrus dans la même conversation a trouvé un vrai
+     défaut** : la question posée au patron se fermait dès qu'un autre
+     parlait. L'état d'une conversation se lit par personne.
+  3. **« Montrer le nom complet résolu » se vérifie geste par geste** : le
+     planning vide d'un agent ne disait pas qui l'outil avait compris ; il le
+     dit maintenant (« Aucune vacation pour Laura Petit. »).
 
 ## Ce que le croisement des quatre métiers a appris
 
@@ -427,6 +452,12 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
 ## À trancher
 
 **Par Lionel**
+- L'**authentification** d'un canal (D12 : identité déclarée dans la démo) :
+  le registre d'accès est prêt à recevoir l'identifiant d'un canal (numéro,
+  compte) et à le relier à un rôle ; quel canal d'abord, et comment ?
+- **« Le hash d'une demande, d'un échange »** : l'empreinte existe sur ce qui
+  attend un oui (la clé). L'étendre à chaque échange (une empreinte par ligne
+  du journal ? un chaînage ?) est à préciser avant tout code.
 - ~~Dans quel ordre attaquer : le moteur (A), ou les appels et le premier
   rendez-vous d'abord ?~~ Tranché le 2026-10-05 : le moteur (`PLAN.md`).
 - Le transport frigorifique : un sous-métier du transport, ou une cible à part ?

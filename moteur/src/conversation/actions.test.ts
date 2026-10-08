@@ -7,6 +7,7 @@ import {
   JE_NE_SAIS_PAS,
   outilsDe,
   schemaJson,
+  schemaMontre,
 } from './actions'
 
 // La forme des gestes et ce qu'on envoie au modèle (PLAN-ESPACES.md § 5.7).
@@ -67,5 +68,40 @@ describe('outilsDe', () => {
       'gerer_absence',
       'valider_remplacement',
     ])
+  })
+})
+
+describe('schemaMontre : une personne se montre en mention, jamais en identifiant', () => {
+  const absence: Action<null, unknown> = {
+    ...action('gerer_absence', ['patron']),
+    parametres: z.strictObject({
+      agent: z
+        .string()
+        .regex(/^A-\d+$/)
+        .nullable()
+        .describe("l'identifiant"),
+      jour: z.iso.date().describe('le jour'),
+    }),
+    personnes: { agent: 'la personne telle qu’écrite, ou null pour soi-même' },
+  }
+  it('le champ devient un texte libre ou null, décrit pour le modèle ; le reste ne change pas', () => {
+    const json = schemaJson(schemaMontre(absence))
+    expect(json.properties).toMatchObject({
+      agent: { description: 'la personne telle qu’écrite, ou null pour soi-même' },
+      jour: { description: 'le jour' },
+    })
+    expect(JSON.stringify(json)).not.toContain('A-\\d')
+    expect(json.required).toEqual(['agent', 'jour'])
+    expect(schemaMontre(absence).safeParse({ agent: 'Aicha', jour: '2026-10-11' }).success).toBe(
+      true,
+    )
+    expect(absence.parametres.safeParse({ agent: 'Aicha', jour: '2026-10-11' }).success).toBe(false)
+  })
+  it('sans personne, le schéma de l’exécution ; une personne qui n’est pas un paramètre arrête', () => {
+    const simple = action('voir', ['patron'])
+    expect(schemaMontre(simple)).toBe(simple.parametres)
+    expect(() => schemaMontre({ ...simple, personnes: { agent: 'x' } })).toThrow(
+      /pas de paramètre agent/,
+    )
   })
 })

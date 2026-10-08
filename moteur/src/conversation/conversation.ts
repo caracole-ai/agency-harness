@@ -4,21 +4,59 @@ import { verifierReponse } from '../echappee/reponse'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
+import {
+  chargerPersonnes,
+  type IdentiteVerifiee,
+  type Personne,
+  recevoir,
+} from '../personnes/personnes'
 import type { Temporal } from '../temps/temporal'
-import { type Action, actionsDe, type Identite, type Intention, outilsDe } from './actions'
+import {
+  type Action,
+  actionsDe,
+  type Identite,
+  type Intention,
+  outilsDe,
+  schemaMontre,
+} from './actions'
 import { type ConfigConversation, prixDe } from './config'
-import { type Demande, systemeTraduire, traduire, type Vocabulaire } from './traduire'
+import {
+  choisirParmi,
+  correspondances,
+  type Designable,
+  normaliserNom,
+  proches,
+} from './designation'
+import {
+  type Demande,
+  designer,
+  surUneLigne,
+  systemeTraduire,
+  traduire,
+  type Vocabulaire,
+} from './traduire'
 
-// Le déroulé d'un tour de conversation : qui parle, le plafond du mois, la
-// traduction, puis l'action (tout de suite si elle ne fait que lire, après
-// un « oui » à sa reformulation si elle écrit). Chaque sortie laisse sa ligne
-// au journal (PLAN-ESPACES.md § 5.4).
+// Le déroulé d'un tour de conversation (PLAN-ESPACES.md § 5.4, REFLEXIONS.md (2026-10-08)) :
+// la porte (qui parle, avant toute ouverture du dossier) ; sur le journal
+// seul, le plafond du mois puis la traduction, qui ne reçoit que la phrase ;
+// ensuite seulement le dossier s'ouvre, le moteur trouve la personne nommée
+// (ou pose la question), puis l'action (tout de suite si elle ne fait que
+// lire, après un « oui » à sa reformulation si elle écrit). Chaque sortie
+// laisse sa ligne au journal.
 
 export const TYPE_CONSIGNE = 'consigne'
 export const TYPE_CONFIRMATION_ATTENDUE = 'confirmation_attendue'
 export const TYPE_CONFIRMATION = 'confirmation'
 /** Une proposition de l'échappée que le métier a refusé d'ouvrir (une règle s'y oppose au moment de l'écrire). */
 export const TYPE_PROPOSITION_REFUSEE = 'proposition refusée'
+/** La question « vous parlez de qui ? » attend sa réponse ; la ligne garde de quoi reprendre le geste. */
+export const TYPE_PRECISION_ATTENDUE = 'precision_attendue'
+/** Une demande refusée à la porte : l'identité reçue n'est pas au registre d'accès. */
+export const TYPE_ACCES_REFUSE = 'accès refusé'
+
+/** Par où une demande arrive ; il est écrit avec un refus à la porte. */
+export const CANAUX = ['terminal', 'web'] as const
+export type Canal = (typeof CANAUX)[number]
 
 /** Ce qu'un métier fournit pour converser chez un de ses clients (export `CONVERSATION`). */
 export interface MetierConversation<Session> {
@@ -27,11 +65,25 @@ export interface MetierConversation<Session> {
   config(s: Session): ConfigConversation
   client(s: Session): string
   journal(s: Session): Journal
+  /**
+   * Le journal et la config de la conversation, sans rien lire des données
+   * (ni planning ni agents) : pour un refus à la porte, le plafond du mois et
+   * la traduction, avant l'ouverture du dossier. L'appelant ferme le journal.
+   */
+  ouvrirJournal(dossierClient: string): {
+    client: string
+    journal: Journal
+    config: ConfigConversation
+  }
   actions: Action<Session, unknown>[]
   /** Les sortes de demandes nouvelles déjà connues, que le modèle réutilise comme mot-clé d'intention. */
   intentions: Intention[]
   vocabulaire(s: Session, identite: Identite): Vocabulaire
-  /** Lève si l'identité n'existe pas (agent inconnu). */
+  /**
+   * Contrôle de cohérence, en seconde ligne : l'identité, déjà passée par le
+   * registre d'accès, existe encore dans les données du client. Lève sinon. Il
+   * ne décide pas de l'accès.
+   */
   verifierIdentite(s: Session, identite: Identite): void
   /** Absente, toute demande nouvelle finit en « je ne sais pas encore faire ça ». */
   echappee?: Echappee<Session>
@@ -58,9 +110,11 @@ export type Reponse =
   | { sorte: 'proposition'; texte: string; empreinte: string }
   | { sorte: 'je_ne_sais_pas'; texte: string }
   | { sorte: 'refus'; texte: string }
+  /** Une personne nommée que le code n'a pas trouvée seul : la question, et les candidats à choisir (vides : personne ne ressemble). */
+  | { sorte: 'precision'; texte: string; candidats: Designable[] }
 
 export interface Tour {
-  identite: Identite
+  identite: IdentiteVerifiee
   consigne: string
   maintenant: Temporal.ZonedDateTime
   conversation: string
@@ -75,28 +129,114 @@ interface Attente {
   empreinte: string
 }
 
+/** Ce qu'une question « vous parlez de qui ? » garde : qui, le geste, ses paramètres, la personne à préciser et ses candidats. */
+interface PrecisionAttendue {
+  identite: Identite
+  action: string
+  /** En identifiants pour les personnes déjà trouvées (`resolus`), en mentions pour les autres. */
+  params: Record<string, unknown>
+  resolus: string[]
+  champ: string
+  candidats: Designable[]
+}
+
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
+
+/** Ce que la porte a reçu, pour un refus : l'identité telle quelle, bornée (elle vient de l'extérieur). */
+const identiteRecue = (demandeur: unknown) => (JSON.stringify(demandeur) ?? 'rien').slice(0, 200)
+
+/**
+ * La porte, avant toute ouverture du dossier : le registre d'accès décide qui
+ * parle. Un refus est écrit au journal seul, avec l'identité reçue, le canal,
+ * l'heure et le motif ; ni le planning ni les agents ne sont lus.
+ */
+export function accueillir<S>(
+  m: MetierConversation<S>,
+  dossier: string,
+  demande: {
+    demandeur: unknown
+    canal: Canal
+    maintenant: Temporal.ZonedDateTime
+    conversation?: string
+  },
+): ReturnType<typeof recevoir> {
+  const accueil = recevoir(chargerPersonnes(dossier), demande.demandeur)
+  if (accueil.sorte === 'refus') {
+    const { client, journal } = m.ouvrirJournal(dossier)
+    try {
+      journal.ecrire(
+        [
+          {
+            type: TYPE_ACCES_REFUSE,
+            client,
+            ...(demande.conversation ? { objet: demande.conversation } : {}),
+            motif: accueil.motif,
+            donnees: { identite: identiteRecue(demande.demandeur), canal: demande.canal },
+          },
+        ],
+        demande.maintenant.toInstant().toString(),
+      )
+    } finally {
+      journal.fermer()
+    }
+  }
+  return accueil
+}
+
+/** Au démarrage : chaque personne du registre d'accès existe dans les données du client, sinon rien ne démarre. */
+export function verifierRegistre<S>(m: MetierConversation<S>, s: S, personnes: Personne[]): void {
+  for (const p of personnes) {
+    try {
+      m.verifierIdentite(s, p)
+    } catch (erreur) {
+      throw new Error(`registre d'accès : ${message(erreur)}`)
+    }
+  }
+}
+
+/**
+ * Une session par échange, fermée quoi qu'il arrive. Elle ne s'ouvre que pour
+ * une identité passée par la porte : le dossier n'est jamais lu pour un inconnu.
+ */
+export async function avecSession<S, T>(
+  m: MetierConversation<S>,
+  dossier: string,
+  _identite: IdentiteVerifiee,
+  f: (s: S) => T | Promise<T>,
+): Promise<T> {
+  const s = m.ouvrir(dossier)
+  try {
+    return await f(s)
+  } finally {
+    m.fermer(s)
+  }
+}
 
 /** Une identité comparable : le rôle, et l'agent ou rien. */
 const memeIdentite = (a: Identite, b: Identite) =>
   a.role === b.role && (a.agent ?? null) === (b.agent ?? null)
 
-function ecrire<S>(
-  m: MetierConversation<S>,
-  s: S,
-  tour: Tour,
-  evenements: Omit<Evenement, 'client'>[],
-) {
-  m.journal(s).ecrire(
-    evenements.map((e) => ({ ...e, client: m.client(s) })),
+/** Où écrire : le journal du client, ouvert seul (avant le dossier) ou par la session. */
+interface Cible {
+  client: string
+  journal: Journal
+}
+const cibleDe = <S>(m: MetierConversation<S>, s: S): Cible => ({
+  client: m.client(s),
+  journal: m.journal(s),
+})
+
+function ecrire(cible: Cible, tour: Tour, evenements: Omit<Evenement, 'client'>[]) {
+  cible.journal.ecrire(
+    evenements.map((e) => ({ ...e, client: cible.client })),
     tour.maintenant.toInstant().toString(),
   )
 }
 
-/** La ligne `consigne` : la consigne mot pour mot, ce qu'elle est devenue. */
+/** La ligne `consigne` : la consigne mot pour mot, ce qu'elle est devenue (`precision` : la réponse à « vous parlez de qui ? »). */
 const ligneConsigne = (
   tour: Tour,
-  issue: Demande['sorte'] | 'refus',
+  issue: Demande['sorte'] | 'refus' | 'precision',
   donnees: Record<string, unknown> = {},
 ): Omit<Evenement, 'client'> => ({
   type: TYPE_CONSIGNE,
@@ -106,15 +246,106 @@ const ligneConsigne = (
   donnees: { identite: tour.identite, ...donnees },
 })
 
-/** Un tour : une consigne, une réponse. */
+/** Un tour : une consigne, une réponse. Le dossier ne s'ouvre qu'après la traduction. */
 export async function traiterConsigne<S>(
+  m: MetierConversation<S>,
+  dossier: string,
+  modele: Modele,
+  tour: Tour,
+): Promise<Reponse> {
+  const avant = await avantLeDossier(m, dossier, modele, tour)
+  if (avant.sorte === 'reponse') return avant.reponse
+  return avecSession(m, dossier, tour.identite, (s) => apresLeDossier(m, s, modele, tour, avant))
+}
+
+/** Ce qui se décide sur le journal seul : une réponse déjà, une demande traduite, ou la réponse à une question en attente. */
+type Avant =
+  | { sorte: 'reponse'; reponse: Reponse }
+  | { sorte: 'traduite'; demande: Demande }
+  | { sorte: 'precisee'; precision: PrecisionAttendue; choix: Designable }
+
+/** La question en attente dans cette conversation, posée à ce demandeur et pas encore suivie d'une autre de ses consignes. */
+function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | undefined {
+  const derniere = journal
+    .historique(tour.conversation)
+    .filter((l) => l.type === TYPE_CONSIGNE || l.type === TYPE_PRECISION_ATTENDUE)
+    .map((l) => ({ type: l.type, donnees: l.donnees ? JSON.parse(l.donnees) : undefined }))
+    .filter((l) => l.donnees?.identite && memeIdentite(l.donnees.identite, tour.identite))
+    .at(-1)
+  return derniere?.type === TYPE_PRECISION_ATTENDUE
+    ? (derniere.donnees as PrecisionAttendue)
+    : undefined
+}
+
+/**
+ * Avant le dossier : le plafond du mois, la réponse à une question en attente
+ * (comparée à ses candidats, sans appel), sinon la traduction. Le modèle ne
+ * reçoit que la consigne, la date, le rôle et ses gestes.
+ */
+async function avantLeDossier<S>(
+  m: MetierConversation<S>,
+  dossier: string,
+  modele: Modele,
+  tour: Tour,
+): Promise<Avant> {
+  const { client, journal, config } = m.ouvrirJournal(dossier)
+  const ici: Cible = { client, journal }
+  try {
+    const mois = tour.maintenant.toString().slice(0, 7)
+    if (plafondAtteint(coutDuMois(journal, mois).usd, config.plafonds.par_mois_usd)) {
+      const texte =
+        "Le plafond d'IA du mois est atteint : les gestes du quotidien restent possibles par l'interface, la conversation reprend le mois prochain."
+      ecrire(ici, tour, [ligneConsigne(tour, 'refus', { erreur: texte })])
+      return { sorte: 'reponse', reponse: { sorte: 'refus', texte } }
+    }
+
+    const attendue = precisionEnAttente(journal, tour)
+    const choix = attendue ? choisirParmi(tour.consigne, attendue.candidats) : undefined
+    if (attendue && choix) return { sorte: 'precisee', precision: attendue, choix }
+
+    const role = tour.identite.role
+    const actions = actionsDe(m.actions, role)
+    let traduite: Awaited<ReturnType<typeof traduire>>
+    try {
+      traduite = await traduire(
+        modele,
+        config.modele.effort.traduire,
+        systemeTraduire(role, actions, m.intentions),
+        outilsDe(m.actions, role),
+        tour.consigne,
+        tour.maintenant,
+        new Map(actions.map((a) => [a.id, schemaMontre(a)])),
+      )
+    } catch (erreur) {
+      ecrire(ici, tour, [ligneConsigne(tour, 'refus', { erreur: message(erreur) })])
+      return {
+        sorte: 'reponse',
+        reponse: {
+          sorte: 'je_ne_sais_pas',
+          texte: `Je n'arrive pas à joindre le modèle : ${message(erreur)}`,
+        },
+      }
+    }
+    ecrire(ici, tour, [
+      evenementAppel(client, tour.conversation, 'traduire', 1, traduite.reponse, prixDe(config)),
+    ])
+    return { sorte: 'traduite', demande: traduite.demande }
+  } finally {
+    journal.fermer()
+  }
+}
+
+/** Le dossier ouvert : la cohérence de qui parle, puis la demande traduite (ou reprise après une question). */
+async function apresLeDossier<S>(
   m: MetierConversation<S>,
   s: S,
   modele: Modele,
   tour: Tour,
+  avant: Exclude<Avant, { sorte: 'reponse' }>,
 ): Promise<Reponse> {
+  const ici = cibleDe(m, s)
   const refuser = (texte: string, donnees: Record<string, unknown> = {}): Reponse => {
-    ecrire(m, s, tour, [ligneConsigne(tour, 'refus', { ...donnees, erreur: texte })])
+    ecrire(ici, tour, [ligneConsigne(tour, 'refus', { ...donnees, erreur: texte })])
     return { sorte: 'refus', texte }
   }
 
@@ -124,48 +355,23 @@ export async function traiterConsigne<S>(
     return refuser(message(erreur))
   }
 
-  const config = m.config(s)
-  const mois = tour.maintenant.toString().slice(0, 7)
-  if (plafondAtteint(coutDuMois(m.journal(s), mois).usd, config.plafonds.par_mois_usd)) {
-    return refuser(
-      "Le plafond d'IA du mois est atteint : les gestes du quotidien restent possibles par l'interface, la conversation reprend le mois prochain.",
-    )
-  }
-
   const actions = actionsDe(m.actions, tour.identite.role)
-  const schemas = new Map(actions.map((a) => [a.id, a.parametres]))
-  let traduite: Awaited<ReturnType<typeof traduire>>
-  try {
-    traduite = await traduire(
-      modele,
-      config.modele.effort.traduire,
-      systemeTraduire(tour.identite, m.vocabulaire(s, tour.identite), actions, m.intentions),
-      outilsDe(m.actions, tour.identite.role),
-      tour.consigne,
-      tour.maintenant,
-      schemas,
-    )
-  } catch (erreur) {
-    ecrire(m, s, tour, [ligneConsigne(tour, 'refus', { erreur: message(erreur) })])
-    return {
-      sorte: 'je_ne_sais_pas',
-      texte: `Je n'arrive pas à joindre le modèle : ${message(erreur)}`,
+  if (avant.sorte === 'precisee') {
+    const { precision, choix } = avant
+    const action = actions.find((a) => a.id === precision.action)
+    if (!action) return refuser(`l'action ${precision.action} n'est pas ouverte à ce rôle`)
+    const demande = {
+      sorte: 'action' as const,
+      action: action.id,
+      params: { ...precision.params, [precision.champ]: choix.id },
     }
+    return agir(m, s, modele, tour, action, demande, [...precision.resolus, precision.champ])
   }
-  const { demande, reponse } = traduite
-  const appel = evenementAppel(
-    m.client(s),
-    tour.conversation,
-    'traduire',
-    1,
-    reponse,
-    prixDe(config),
-  )
-  ecrire(m, s, tour, [appel])
 
+  const { demande } = avant
   switch (demande.sorte) {
     case 'inconnue': {
-      ecrire(m, s, tour, [ligneConsigne(tour, 'inconnue', { demande })])
+      ecrire(ici, tour, [ligneConsigne(tour, 'inconnue', { demande })])
       // La raison peut venir du modèle : montrée seulement si elle ne cite rien d'autre que la consigne.
       const noms = m.vocabulaire(s, tour.identite).agents.map((a) => a.nom)
       const raison = verifierReponse(demande.raison, [tour.consigne], noms).ok
@@ -179,7 +385,7 @@ export async function traiterConsigne<S>(
       }
     }
     case 'nouvelle': {
-      ecrire(m, s, tour, [ligneConsigne(tour, 'nouvelle', { demande })])
+      ecrire(ici, tour, [ligneConsigne(tour, 'nouvelle', { demande })])
       if (!m.echappee) return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
       let issue: Awaited<ReturnType<Echappee<S>>>
       try {
@@ -204,7 +410,7 @@ export async function traiterConsigne<S>(
       try {
         ouverte = m.proposition.ouvrir(s, tour.conversation, issue.modifications, tour.maintenant)
       } catch (erreur) {
-        ecrire(m, s, tour, [
+        ecrire(ici, tour, [
           { type: TYPE_PROPOSITION_REFUSEE, objet: tour.conversation, motif: message(erreur) },
         ])
         return { sorte: 'je_ne_sais_pas', texte: message(erreur) }
@@ -219,7 +425,7 @@ export async function traiterConsigne<S>(
         demande: { sorte: 'reaffectation', id: ouverte.id },
         empreinte: e,
       }
-      ecrire(m, s, tour, [
+      ecrire(ici, tour, [
         {
           type: TYPE_CONFIRMATION_ATTENDUE,
           objet: tour.conversation,
@@ -238,36 +444,195 @@ export async function traiterConsigne<S>(
       const action = actions.find((a) => a.id === demande.action)
       if (!action)
         return refuser(`l'action ${demande.action} n'est pas ouverte à ce rôle`, { demande })
-      if (!action.ecrit) {
-        const r = executer(action, s, tour.identite, demande.params, tour.maintenant)
-        ecrire(m, s, tour, [ligneConsigne(tour, 'action', { demande, ...erreurDe(r) })])
-        return r
-      }
-      let texte: string
-      try {
-        texte = action.reformuler(s, tour.identite, demande.params)
-      } catch (erreur) {
-        ecrire(m, s, tour, [ligneConsigne(tour, 'action', { demande, erreur: message(erreur) })])
-        return { sorte: 'refus', texte: message(erreur) }
-      }
-      const e = empreinte({
-        conversation: tour.conversation,
-        action: action.id,
-        params: JSON.stringify(demande.params),
-      })
-      ecrire(m, s, tour, [
-        ligneConsigne(tour, 'action', { demande }),
-        {
-          type: TYPE_CONFIRMATION_ATTENDUE,
-          objet: tour.conversation,
-          issue: action.id,
-          motif: texte,
-          donnees: { identite: tour.identite, demande, empreinte: e } satisfies Attente,
-        },
-      ])
-      return { sorte: 'confirmation', texte: `${texte} (oui / non)`, empreinte: e }
+      return agir(m, s, modele, tour, action, demande)
     }
   }
+}
+
+/** L'issue de la résolution : les paramètres en identifiants, ou la personne qu'il faut faire préciser. */
+export type Resolution =
+  | { sorte: 'resolue'; params: Record<string, unknown> }
+  | ({ sorte: 'precision'; mention: string } & Omit<PrecisionAttendue, 'identite' | 'action'>)
+
+/**
+ * Trouve les personnes que nomment les paramètres d'une action, parmi celles
+ * que ce rôle peut désigner : le code décide si c'est sûr (niveau 1) ; sinon
+ * il propose une liste courte que le modèle départage (niveau 2, journalisé
+ * avec son coût) ; sinon l'humain tranche (niveau 3 : une question). Un
+ * homonyme exact va droit à la question : le modèle n'en sait pas plus.
+ */
+export async function resoudre<S>(
+  m: MetierConversation<S>,
+  s: S,
+  modele: Modele,
+  tour: Tour,
+  action: Action<S, unknown>,
+  params: Record<string, unknown>,
+  resolus: string[] = [],
+): Promise<Resolution> {
+  const personnes = m.vocabulaire(s, tour.identite).agents
+  const p = { ...params }
+  const faits = [...resolus]
+  for (const champ of Object.keys(action.personnes ?? {})) {
+    if (faits.includes(champ)) continue
+    const mention = p[champ]
+    const precision = (candidats: Designable[]): Resolution => ({
+      sorte: 'precision',
+      mention: String(mention),
+      params: p,
+      resolus: faits,
+      champ,
+      candidats,
+    })
+    // null : soi-même ou tous, selon le geste ; le geste en décide.
+    if (typeof mention === 'string') {
+      const exacts = correspondances(mention, personnes)
+      if (exacts.length > 1) return precision(exacts)
+      let trouve = exacts[0]
+      // Un agent ne désigne que lui-même (D4) : pas de niveau 2, où le modèle
+      // dirait « oui, c'est lui » pour un collègue au nom proche.
+      if (!trouve && tour.identite.role === 'agent') return precision([])
+      if (!trouve) {
+        const liste = proches(mention, personnes)
+        if (liste.length === 0) return precision([])
+        const config = m.config(s)
+        let choix: Awaited<ReturnType<typeof designer>>
+        try {
+          choix = await designer(
+            modele,
+            config.modele.effort.traduire,
+            tour.consigne,
+            mention,
+            liste,
+          )
+        } catch {
+          return precision(liste)
+        }
+        ecrire(cibleDe(m, s), tour, [
+          evenementAppel(
+            m.client(s),
+            tour.conversation,
+            'designer',
+            1,
+            choix.reponse,
+            prixDe(config),
+          ),
+        ])
+        if (!choix.choix) return precision(liste)
+        trouve = choix.choix
+      }
+      p[champ] = trouve.id
+    }
+    faits.push(champ)
+  }
+  return { sorte: 'resolue', params: p }
+}
+
+/** La mention, citée seulement si elle est dans la consigne : jamais un nom venu d'ailleurs. */
+const citer = (tour: Tour, mention: string) =>
+  normaliserNom(tour.consigne).includes(normaliserNom(mention))
+    ? `« ${surUneLigne(mention)} »`
+    : 'la personne nommée'
+
+/** La question du niveau 3, rendue par le code. */
+function question(tour: Tour, mention: string, candidats: Designable[]): string {
+  const tu = tour.identite.role === 'agent'
+  if (candidats.length === 0) {
+    return `Je ne trouve personne qui corresponde à ${citer(tour, mention)}. ${tu ? 'Redis' : 'Redites'} la consigne avec le prénom et le nom.`
+  }
+  // Deux candidats au même nom complet : l'identifiant les distingue (il se tape aussi en réponse).
+  const noms = candidats.map((c) =>
+    candidats.filter((x) => x.nom === c.nom).length > 1 ? `${c.nom} (${c.id})` : c.nom,
+  )
+  const liste = noms.length === 1 ? noms[0] : `${noms.slice(0, -1).join(', ')} ou ${noms.at(-1)}`
+  return `${tu ? 'Tu parles' : 'Vous parlez'} de qui : ${liste} ?`
+}
+
+/**
+ * Une action choisie : ses personnes trouvées (ou la question), ses
+ * paramètres relus par le schéma de l'exécution, puis tout de suite si elle
+ * lit, après un « oui » si elle écrit. `resolus` : les personnes déjà
+ * trouvées, quand le geste reprend après une question.
+ */
+async function agir<S>(
+  m: MetierConversation<S>,
+  s: S,
+  modele: Modele,
+  tour: Tour,
+  action: Action<S, unknown>,
+  demande: Extract<Demande, { sorte: 'action' }>,
+  resolus?: string[],
+): Promise<Reponse> {
+  const ici = cibleDe(m, s)
+  const issue = resolus === undefined ? 'action' : 'precision'
+  const r = await resoudre(m, s, modele, tour, action, demande.params, resolus)
+  if (r.sorte === 'precision' && r.candidats.length === 0 && tour.identite.role === 'agent') {
+    // Un agent ne peut désigner que lui-même (D4) : rien à lui proposer, rien à lui apprendre.
+    const texte = `Tu ne peux désigner que toi-même : ${citer(tour, r.mention)} ne te désigne pas.`
+    ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, erreur: texte })])
+    return { sorte: 'refus', texte }
+  }
+  if (r.sorte === 'precision') {
+    const texte = question(tour, r.mention, r.candidats)
+    const attendue: PrecisionAttendue = {
+      identite: tour.identite,
+      action: action.id,
+      params: r.params,
+      resolus: r.resolus,
+      champ: r.champ,
+      candidats: r.candidats,
+    }
+    ecrire(ici, tour, [
+      ligneConsigne(tour, issue, { demande }),
+      {
+        type: TYPE_PRECISION_ATTENDUE,
+        objet: tour.conversation,
+        issue: action.id,
+        motif: texte,
+        donnees: attendue,
+      },
+    ])
+    return { sorte: 'precision', texte, candidats: r.candidats }
+  }
+  const lus = action.parametres.safeParse(r.params)
+  if (!lus.success) {
+    const texte = 'paramètres invalides'
+    ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, erreur: texte })])
+    return { sorte: 'refus', texte }
+  }
+  const params = lus.data as Record<string, unknown>
+  if (!action.ecrit) {
+    const fait = executer(action, s, tour.identite, params, tour.maintenant)
+    ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, params, ...erreurDe(fait) })])
+    return fait
+  }
+  let texte: string
+  try {
+    texte = action.reformuler(s, tour.identite, params)
+  } catch (erreur) {
+    ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, params, erreur: message(erreur) })])
+    return { sorte: 'refus', texte: message(erreur) }
+  }
+  const e = empreinte({
+    conversation: tour.conversation,
+    action: action.id,
+    params: JSON.stringify(params),
+  })
+  ecrire(ici, tour, [
+    ligneConsigne(tour, issue, { demande, params }),
+    {
+      type: TYPE_CONFIRMATION_ATTENDUE,
+      objet: tour.conversation,
+      issue: action.id,
+      motif: texte,
+      donnees: {
+        identite: tour.identite,
+        demande: { sorte: 'action', action: action.id, params },
+        empreinte: e,
+      } satisfies Attente,
+    },
+  ])
+  return { sorte: 'confirmation', texte: `${texte} (oui / non)`, empreinte: e }
 }
 
 /** Le message d'un refus, à garder au journal. */
@@ -288,16 +653,21 @@ function executer<S>(
   }
 }
 
-/** La réponse à une confirmation en attente : la dernière de la conversation, du même demandeur, au même contenu. */
+/** La réponse à une confirmation en attente : la dernière de la conversation, du même demandeur, au même contenu. Le demandeur doit encore exister dans les données. */
 export function confirmer<S>(
   m: MetierConversation<S>,
   s: S,
-  identite: Identite,
+  identite: IdentiteVerifiee,
   conversation: string,
   empreinteRecue: string,
   oui: boolean,
   maintenant: Temporal.ZonedDateTime,
 ): Reponse {
+  try {
+    m.verifierIdentite(s, identite)
+  } catch (erreur) {
+    return { sorte: 'refus', texte: message(erreur) }
+  }
   const tour = { identite, consigne: oui ? 'oui' : 'non', maintenant, conversation }
   const derniere = m
     .journal(s)
@@ -318,7 +688,7 @@ export function confirmer<S>(
   const r: Reponse = !oui
     ? { sorte: 'resultat', texte: "D'accord, rien n'est fait." }
     : executerAttente(m, s, identite, attente.demande, maintenant)
-  ecrire(m, s, tour, [
+  ecrire(cibleDe(m, s), tour, [
     {
       type: TYPE_CONFIRMATION,
       objet: conversation,

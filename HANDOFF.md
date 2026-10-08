@@ -7,6 +7,12 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **`PLAN-IDENTITE.md` exécuté le 2026-10-08 (lots 1 et 2), pas encore
+  commité** (sur `main`, dans l'arbre de travail) ; le plan est retiré du
+  dépôt comme il le demandait, son contenu consigné dans `REFLEXIONS.md`
+  (Décidé, Fait, À trancher) et ci-dessous (« Identité et données
+  minimales »). **Rien de ce chantier n'a parlé au vrai modèle** (pas de clé
+  GMI dans la session) : tout est vérifié avec le modèle simulé.
 - **`PLAN-ESPACES.md` est exécuté en entier (lots 0 à 7) le 2026-10-08**, plus
   un commit de corrections après une relecture indépendante, puis
   `espaces/fournisseur` (un autre point d'accès, GMI Cloud, les premières
@@ -27,8 +33,8 @@ fichiers qu'il cite, si.
   de passe Claude « avant un bon moment ». **On reste au laboratoire, sur
   les données fictives** (à garder pertinentes et cohérentes), jusqu'à un
   produit correct et efficient ; le réel viendra après.
-- `pnpm check` passe sur `main` : Biome, types des trois paquets, 195 tests
-  du moteur, 102 du métier, 12 de l'interface, registre cohérent (21
+- `pnpm check` passe : Biome, types des trois paquets, 225 tests
+  du moteur, 110 du métier, 15 de l'interface, registre cohérent (21
   interdits, 34 tests, 10 escalades).
 - **Le mini-site « Le harnais en clair » est à jour de l'état du 2026-10-08**
   (trois pages, six schémas des mécanismes réels : carte du système, chemin
@@ -171,6 +177,79 @@ Un lot = une branche `espaces/lot-N` partie de la précédente = un commit.
   le contrôle. Traduction ~77 % (seuil 95 %), échappée 11/14 (seuil 80 %).
   **Aucune passe avec Claude.**
 
+## Identité et données minimales (`PLAN-IDENTITE.md`, 2026-10-08)
+
+**Lot 1, l'identité avant le dossier.** `moteur/src/personnes/personnes.ts` :
+le registre d'accès `personnes.yaml` (dans le dossier du client, au format du
+harnais : le patron, et chaque agent par son identifiant), `recevoir()` et le
+type `IdentiteVerifiee`, que seule la porte construit. Dans
+`conversation.ts` : `accueillir()` (la porte ; un refus s'écrit par
+`ouvrirJournal`, le journal seul, type `accès refusé`, avec l'identité reçue
+bornée à 200 caractères, le canal `terminal` ou `web`, l'heure, le motif),
+`verifierRegistre()` (au démarrage de `pnpm parler` et de l'interface :
+chaque agent du registre existe dans `agents.csv`), `avecSession()` (exige une
+`IdentiteVerifiee`). `verifierIdentite` du métier ne fait plus que la
+cohérence. Interface : chaque route passe la porte avant d'ouvrir quoi que ce
+soit (inconnu : 403, au journal) ; `/api/etat` et `/api/journal` deviennent
+des **`POST { identite }`**, réservées au patron (403 « réservé au patron ») ;
+la page envoie l'identité choisie et montre « Accès refusé » pour un agent ;
+la liste « Je suis » vient du registre. Le registre est relu à chaque
+requête.
+
+**Lot 2, le modèle ne reçoit que la phrase.** `systemeTraduire(role, …)` :
+plus d'agents ni de postes, le rôle seul. `Action.personnes` déclare les
+paramètres qui désignent une personne (`gerer_absence.agent`,
+`valider_remplacement.agent`, `voir_planning.agent`) ; `schemaMontre()` les
+montre au modèle en mention libre. `designation.ts` : niveau 1
+(`correspondances`), niveau 2 (`proches`, clé phonétique et
+Damerau-Levenshtein, 3 au plus), réponse à la question (`choisirParmi` : un
+nom ou un rang). `traduire.ts` : le second appel `designer` (énumération des
+candidats + `aucun`, journalisé `appel_modele` / `designer`). `traiterConsigne`
+prend le **dossier** : sur le journal seul, plafond, question en attente
+(`precision_attendue`), traduction ; puis `ouvrir()`, cohérence, `resoudre()`,
+le geste. Nouvelle réponse `precision` (`texte`, `candidats`), montrée avec
+les candidats en boutons. Évals : 9 cas `R-1` à `R-9`, une variante
+`homonyme` (A-14 Aïcha Mansouri, ajoutée à la copie du cas), la sorte
+`precision`.
+
+**Changements de comportement à connaître** : un agent qui nomme quelqu'un
+d'autre reçoit « Tu ne peux désigner que toi-même : « Karim » ne te désigne
+pas. » (avant : son propre planning, ou « Tu ne peux déclarer que ta propre
+absence ») ; un homonyme exact va droit à la question, sans second appel ; le
+planning vide d'un agent nommé dit son nom (« Aucune vacation pour Laura
+Petit. ») ; une ligne `consigne` porte `demande` (la mention, telle que le
+modèle l'a rendue) et `params` (ce qui a été exécuté).
+
+**Non vérifié** : aucune passe réelle — la **passe 3 GLM mesurera un autre
+prompt** que les passes 1 et 2 (plus de vocabulaire d'agents ni de postes) :
+l'avant/après des six corrections est confondu avec ce changement, à lire cas
+par cas ; le second appel `designer` n'a jamais tourné sur un vrai modèle ;
+le seuil de `proches` (2 lettres ou 40 %) n'est éprouvé que sur des listes
+synthétiques et le client fictif (13 agents), jamais sur 300 noms ; la clé
+phonétique est une maison, sans référence publiée ; le chemin `precision`
+du runner d'évals (`moteur/src/cli/evals.ts`) n'a tourné qu'en simulé, où
+tout finit en « script simulé épuisé » (le câblage et la variante sont
+vérifiés, pas le classement) ; relecture indépendante faite (sous-agent,
+lecture seule) : rien de grave ; corrigés : texte reçu borné dans le motif
+d'un refus, `--conversation` pour répondre à une question en CLI, pas de
+niveau 2 pour un agent ; **ouverts, à trancher avec Lionel** : une personne
+trouvée au niveau 2 exécute un geste qui lit (`gerer_absence` ouvre une
+demande) sans « oui » — forcer une confirmation ? ; une réponse ambiguë à la
+question (le prénom partagé) devient une nouvelle consigne au lieu de
+reposer la question ; un agent ajouté au registre sans exister dans
+`agents.csv` pendant que le serveur tourne fait échouer `/api/etat` (500)
+jusqu'à correction ; la marque d'`IdentiteVerifiee` survit à une copie
+modifiée (`{ ...identite, agent }`), aucun code ne le fait ; navigateur : Chromium de playwright-cli
+seulement, 1280 px, thème clair. **Limite connue de l'interface** : une
+confirmation qui attend un agent, listée dans « À valider », propose
+« Répondre en tant que … » ; une fois l'agent choisi, l'onglet devient
+« Accès refusé » et ses boutons Oui / Non disparaissent : l'agent ne peut
+répondre que depuis la bulle de la conversation, si elle est dans la page
+(une confirmation ouverte ailleurs, par `pnpm parler`, n'a plus de bouton
+pour lui). Conséquence directe de la décision 5 (lectures réservées au
+patron) ; à trancher avec Lionel (une route « mes confirmations » pour un
+agent ?).
+
 ## Corrigé le 2026-10-08 (session suivante), à mesurer
 
 Les six points issus des passes GLM, dans l'ordre où ils étaient posés.
@@ -202,7 +281,9 @@ passe 2 » ; décisions de Lionel dans `REFLEXIONS.md` (Décidé, 2026-10-08).
 **Reste à faire, dans l'ordre** : relancer les deux passes GLM sur une
 copie du client fictif avec le bloc `acces` et les plafonds relevés
 (`evals/erreurs-2026-10-08.md`, « Passe 3 ») ; lire les traces des cas
-corrigés ; noter l'avant/après ; puis la passe Claude dès qu'une clé est là.
+corrigés **et des cas `R-*`** (le prompt a changé entre-temps : voir
+« Identité et données minimales ») ; noter l'avant/après ; puis la passe
+Claude dès qu'une clé est là.
 
 ## Ce qui reste (à Lionel, ou avec lui)
 
@@ -400,6 +481,17 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - Un agent ne doit jamais lire le texte d'une étape destiné au patron
   (`decrireEtape`) : les gestes de l'agent ont leurs propres phrases
   (`actions.ts`, `reponseEnregistree`, `vacationPourAgent`).
+- **`traiterConsigne` prend le dossier, pas une session** : elle ouvre la
+  sienne après la traduction. Un test qui garde une `Session` pour relire le
+  journal ou confirmer voit les écritures (SQLite), pas un `ctx` rechargé.
+- **Tout dossier client exige `personnes.yaml`** : sans lui, `pnpm parler`
+  et l'interface refusent tout (« registre d'accès absent »). Les copies
+  faites par `cpSync` l'emportent ; un client réel devra le recevoir.
+- **`/api/etat` et `/api/journal` sont des `POST`** avec `{ identite }` ; un
+  test de l'interface passe par `lire(a, route, identite)`.
+- **Une question « Vous parlez de qui ? » appartient à qui elle a été
+  posée** (`precisionEnAttente` filtre par identité) ; elle se ferme dès que
+  cette personne envoie une autre consigne.
 - **L'interface ne répond qu'à sa propre page** (`app.ts`) : `hono/csrf`
   sur `/api/*` (403 sur un POST de formulaire ou `text/plain` d'une autre
   origine), nom d'hôte dans `HOTES` sinon 421, corps déclaré
@@ -572,8 +664,9 @@ pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm registre:verifier     # couverture, codes cités, veille des textes en retard
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
 pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README
-pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …] [--modele simule] --consigne "…"
+pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]
 pnpm promotions --client <copie> [--date AAAA-MM-JJ]
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]
+# Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.
 ```

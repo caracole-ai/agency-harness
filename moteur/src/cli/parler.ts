@@ -1,27 +1,32 @@
 // pnpm parler --client <dossier> --role patron|agent [--agent A-2] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule]
-//   --consigne "…"                                          une consigne, une réponse
+//   --consigne "…" [--conversation <C-…>]                   une consigne, une réponse (dans une conversation déjà ouverte : répondre à une question)
 //   --confirmer <empreinte> --conversation <C-…> --oui|--non la réponse à une confirmation en attente
 //   --interactif                                            une conversation au clavier, « quitter » pour sortir
-// Parler à l'outil (PLAN-ESPACES.md § 5.5) : la consigne est traduite en un
-// geste, ou finit en « je ne sais pas ». Ce qui écrit attend un « oui ».
+// Parler à l'outil (PLAN-ESPACES.md § 5.5) : l'identité passe d'abord la
+// porte (le registre d'accès, REFLEXIONS.md (2026-10-08)), puis la consigne est traduite
+// en un geste, ou finit en « je ne sais pas ». Ce qui écrit attend un « oui ».
 // Travailler sur une copie du client fictif, jamais sur `exemples/`.
 import { join, resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { Identite, Role } from '../conversation/actions'
+import type { Role } from '../conversation/actions'
 import { ROLES } from '../conversation/actions'
 import {
+  accueillir,
+  avecSession,
   confirmer,
   type MetierConversation,
   type Reponse,
   traiterConsigne,
+  verifierRegistre,
 } from '../conversation/conversation'
 import { idConversation } from '../conversation/id'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
+import { chargerPersonnes, type IdentiteVerifiee } from '../personnes/personnes'
 import { FUSEAU, Temporal } from '../temps/temporal'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
@@ -43,7 +48,7 @@ const { values } = parseArgs({
 })
 const usage = (): never => {
   console.error(
-    'usage : pnpm parler --client <dossier> --role patron|agent [--agent A-…] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule] --consigne "…" | --confirmer <empreinte> --conversation <C-…> --oui|--non | --interactif',
+    'usage : pnpm parler --client <dossier> --role patron|agent [--agent A-…] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule] --consigne "…" [--conversation <C-…>] | --confirmer <empreinte> --conversation <C-…> --oui|--non | --interactif',
   )
   process.exit(2)
 }
@@ -59,7 +64,7 @@ const module = (await import(
 if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
 const m = module.CONVERSATION
 
-const identite: Identite = {
+const demandeur = {
   role: values.role as Role,
   ...(values.agent ? { agent: values.agent } : {}),
 }
@@ -73,49 +78,66 @@ const maintenant = () =>
 function modele(): Modele {
   if (values.modele === 'simule') return modeleSimule([])
   if (values.modele !== undefined) usage()
-  const s = m.ouvrir(dossier)
-  try {
-    return modeleDepuisConfig(m.config(s), process.env)
-  } finally {
-    m.fermer(s)
-  }
+  const { journal, config } = m.ouvrirJournal(dossier)
+  journal.fermer()
+  return modeleDepuisConfig(config, process.env)
 }
 
-/** Une session par échange : le planning relu après chaque écriture. */
-async function avecSession<T>(f: (s: unknown) => T | Promise<T>): Promise<T> {
+/**
+ * La porte, avant toute ouverture du dossier ; un refus est au journal. Puis,
+ * pour qui l'a passée, chaque agent du registre doit exister chez le client.
+ */
+function entrer(conversation?: string): IdentiteVerifiee | undefined {
+  const accueil = accueillir(m, dossier, {
+    demandeur,
+    canal: 'terminal',
+    maintenant: maintenant(),
+    ...(conversation ? { conversation } : {}),
+  })
+  if (accueil.sorte === 'refus') {
+    afficher({ sorte: 'refus', texte: accueil.motif }, conversation ?? '')
+    return undefined
+  }
   const s = m.ouvrir(dossier)
   try {
-    return await f(s)
+    verifierRegistre(m, s, chargerPersonnes(dossier))
   } finally {
     m.fermer(s)
   }
+  return accueil.identite
 }
 
 function afficher(r: Reponse, conversation: string): void {
   console.log(`Réponse (${r.sorte}) : ${r.texte}`)
+  if (r.sorte === 'precision' && r.candidats.length > 0 && !values.interactif) {
+    console.log(
+      `\nRépondre : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.agent ? ` --agent ${demandeur.agent}` : ''} --conversation ${conversation} --consigne "<le nom, ou son rang>"`,
+    )
+  }
   if ((r.sorte === 'confirmation' || r.sorte === 'proposition') && !values.interactif) {
     console.log(
-      `\nConfirmer : pnpm parler --client ${values.client} --role ${identite.role}${identite.agent ? ` --agent ${identite.agent}` : ''} --confirmer ${r.empreinte} --conversation ${conversation} --oui | --non`,
+      `\nConfirmer : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.agent ? ` --agent ${demandeur.agent}` : ''} --confirmer ${r.empreinte} --conversation ${conversation} --oui | --non`,
     )
   }
 }
 
 try {
-  if (values.consigne !== undefined) {
+  const identite = entrer(values.conversation)
+  if (identite === undefined) process.exitCode = 1
+  else if (values.consigne !== undefined) {
     const llm = modele()
-    const conversation = idConversation(maintenant())
-    const r = await avecSession((s) =>
-      traiterConsigne(m, s, llm, {
-        identite,
-        consigne: values.consigne as string,
-        maintenant: maintenant(),
-        conversation,
-      }),
-    )
+    // `--conversation` : continuer une conversation (répondre à « Vous parlez de qui ? »).
+    const conversation = values.conversation ?? idConversation(maintenant())
+    const r = await traiterConsigne(m, dossier, llm, {
+      identite,
+      consigne: values.consigne as string,
+      maintenant: maintenant(),
+      conversation,
+    })
     afficher(r, conversation)
   } else if (values.confirmer !== undefined) {
     if (!values.conversation || values.oui === values.non) usage()
-    const r = await avecSession((s) =>
+    const r = await avecSession(m, dossier, identite, (s) =>
       confirmer(
         m,
         s,
@@ -139,24 +161,25 @@ try {
       if (ligne === '') continue
       const reponse = /^(oui|non)$/i.test(ligne) && enAttente !== undefined
       const empreinte = enAttente
-      const r = await avecSession((s) =>
+      const r =
         reponse && empreinte
-          ? confirmer(
-              m,
-              s,
-              identite,
-              conversation,
-              empreinte,
-              ligne.toLowerCase() === 'oui',
-              maintenant(),
+          ? await avecSession(m, dossier, identite, (s) =>
+              confirmer(
+                m,
+                s,
+                identite,
+                conversation,
+                empreinte,
+                ligne.toLowerCase() === 'oui',
+                maintenant(),
+              ),
             )
-          : traiterConsigne(m, s, llm, {
+          : await traiterConsigne(m, dossier, llm, {
               identite,
               consigne: ligne,
               maintenant: maintenant(),
               conversation,
-            }),
-      )
+            })
       enAttente = r.sorte === 'confirmation' || r.sorte === 'proposition' ? r.empreinte : undefined
       afficher(r, conversation)
     }

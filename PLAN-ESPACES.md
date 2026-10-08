@@ -80,7 +80,7 @@ ni le journal, ni la clé d'accord.
 | D9 | **Une demande nouvelle ne se délègue jamais.** Seules les actions de la liste fermée peuvent porter une délégation ; la réaffectation groupée n'en a pas. | Seul le déterministe donne toujours le même résultat ; c'est la sécurité n° 4 de la page. |
 | D10 | **Le texte montré au demandeur est rendu par le code** chaque fois que c'est possible (reformulation d'une action, diff d'une proposition, tableau d'une requête). Le texte libre du modèle n'est montré que dans la réponse d'une échappée, et seulement après le contrôle « pas un chiffre, pas un nom hors des données » (§ 6.6). | Structurel avant hook. |
 | D11 | **Un seul outil par tour** (`disable_parallel_tool_use: true`), 12 tours au plus, 6 000 tokens de sortie, 120 secondes : les bornes sont dans la config, validées au démarrage. | Simplifie la boucle et la journalisation ; les plafonds par demande sont la sécurité n° 7. |
-| D12 | **Interface web : Hono + `@hono/node-server`**, HTML et JavaScript sans framework, dans un paquet `interface/`. Identité **non vérifiée** dans la démo (un sélecteur « je suis… »), annoncée comme telle à l'écran. La vraie identité (numéro de téléphone, compte) vient avec les connecteurs d'un client. | Standard pour la plomberie ; une fausse authentification serait pire qu'aucune. |
+| D12 | **Interface web : Hono + `@hono/node-server`**, HTML et JavaScript sans framework, dans un paquet `interface/`. Identité **non vérifiée** dans la démo (un sélecteur « je suis… »), annoncée comme telle à l'écran. La vraie identité (numéro de téléphone, compte) vient avec les connecteurs d'un client. **Complété le 2026-10-08** (`REFLEXIONS.md`, décidé le 2026-10-08) : un registre d'accès du harnais, `personnes.yaml` dans le dossier du client, décide qui parle **avant** que le dossier soit ouvert ; l'identité reste déclarée, pas authentifiée. | Standard pour la plomberie ; une fausse authentification serait pire qu'aucune. |
 | D13 | **Les évals ne font pas partie de `pnpm check`** (elles appellent le réseau, elles coûtent). Elles ont leurs commandes, leurs seuils et leurs traces (§ 9). `pnpm check` couvre tout le reste avec l'adaptateur simulé. | Une vérification locale ne dépend ni d'une clé ni du réseau. |
 
 ### Coût d'inférence annoncé (décision du 2026-10-04, à vérifier au § 9)
@@ -110,8 +110,12 @@ moteur/src/
     config.ts                 ConversationSchema (section `conversation` de la config client) (lot 0)
     actions.ts                Action, Resultat, Identite, ROLES, outilsDe() (lot 1)
     traduire.ts               consigne → Demande (lot 2)
-    conversation.ts           traiterConsigne, confirmer : le déroulé d'un tour (lot 2)
+    conversation.ts           traiterConsigne, confirmer : le déroulé d'un tour (lot 2) ;
+                              accueillir (la porte), resoudre (la personne nommée) : REFLEXIONS.md (2026-10-08)
+    designation.ts            mention → personne : niveaux 1 et 2, sans le modèle (REFLEXIONS.md, décidé le 2026-10-08)
     id.ts                     identifiant d'une conversation (lot 2)
+  personnes/
+    personnes.ts              le registre d'accès (personnes.yaml), recevoir(), IdentiteVerifiee (REFLEXIONS.md, décidé le 2026-10-08)
   echappee/
     copie.ts                  la copie SQLite en lecture seule, à l'échelle du rôle (lot 3)
     requete.ts                le garde-fou SQL (lot 3)
@@ -410,6 +414,14 @@ La `Session` est celle de `remplacement.ts` (`ouvrir(dossier)`). Pour un rôle
 
 ### 5.3 `moteur/src/conversation/traduire.ts` (lot 2)
 
+> **Modifié le 2026-10-08** (`REFLEXIONS.md`, décidé le 2026-10-08) : le système de la
+> traduction ne porte plus de vocabulaire (ni agents, ni postes) et ne dit
+> que le rôle de qui parle (`systemeTraduire(role, actions, intentions)`).
+> Un paramètre qui désigne une personne (`Action.personnes`) est montré au
+> modèle comme une mention en texte libre ; le moteur la résout ensuite
+> (`designation.ts`, puis un second appel `designer` sur 3 candidats au plus,
+> puis une question au demandeur). Le code ci-dessous est celui d'époque.
+
 ```ts
 export type Demande =
   | { sorte: 'action'; action: string; params: Record<string, unknown> }
@@ -461,6 +473,16 @@ Rien de volatile dans le système : il se met en cache.
   Succès → `{ sorte: 'action', action: name, params: data }`.
 
 ### 5.4 `moteur/src/conversation/conversation.ts` (lot 2)
+
+> **Modifié le 2026-10-08** (`REFLEXIONS.md`, décidé le 2026-10-08) : le circuit de l'espace 1
+> est désormais : la porte (`accueillir`, registre d'accès, refus au journal
+> seul) ; sur le journal seul (`ouvrirJournal`), le plafond du mois, la
+> réponse à une question en attente (`precision_attendue`), sinon la
+> traduction ; **ensuite seulement** `ouvrir()` ; la cohérence de qui parle
+> (`verifierIdentite`, seconde ligne) ; la résolution de la personne
+> (`resoudre`) ; le geste. `traiterConsigne` prend le dossier, pas une
+> session ; `confirmer` exige une `IdentiteVerifiee`. Le code ci-dessous est
+> celui d'époque.
 
 ```ts
 export interface MetierConversation<Session> {
@@ -1064,6 +1086,10 @@ silencieux) :
   (résoudre le dossier par `import.meta.url`, pas par `process.cwd()`).
 - `GET /api/etat` → `{ client, maintenant, aValider: [confirmations en attente par identité, demandes D-/R- en cours avec leur statut], regles: [{ id, nom, interdit, statut }], delegations: config.delegations ?? [], ia: { coutMois, plafond, appels } }`.
 - `GET /api/journal?limite=200` → les dernières lignes, plus récentes d'abord.
+- **Modifié le 2026-10-08** (`REFLEXIONS.md`, décidé le 2026-10-08) : `/api/etat` et
+  `/api/journal` sont des `POST` `{ identite }`, réservés au patron (403
+  sinon) ; chaque route passe la porte avant d'ouvrir le dossier (identité
+  absente du registre : 403, refus au journal).
 - `POST /api/consigne` `{ identite, consigne, conversation? }` → `traiterConsigne`
   (nouvelle conversation si absente) ; réponse `{ conversation, reponse }`.
 - `POST /api/confirmer` `{ identite, conversation, empreinte, oui }` → `confirmer`.

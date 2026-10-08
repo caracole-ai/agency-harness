@@ -37,6 +37,7 @@ const SORTES = {
   proposition: { libelle: 'Proposition', classe: 'pastille--outil' },
   refus: { libelle: 'Refusé', classe: 'pastille--refus' },
   je_ne_sais_pas: { libelle: 'Je ne sais pas', classe: 'pastille--doute' },
+  precision: { libelle: 'À préciser', classe: 'pastille--doute' },
 }
 
 const TYPES_LISIBLES = {
@@ -74,7 +75,7 @@ function el(tag, attributs = {}, ...enfants) {
   return n
 }
 
-/** Un appel au serveur ; lève avec un message en français. */
+/** Un appel au serveur ; lève avec un message en français, et le statut HTTP (`statut`). */
 async function appeler(url, corps) {
   let r
   try {
@@ -97,7 +98,11 @@ async function appeler(url, corps) {
   } catch {
     throw new Error(`Réponse illisible du serveur (statut ${r.status}).`)
   }
-  if (!r.ok) throw new Error(json?.erreur ?? `Erreur du serveur (statut ${r.status}).`)
+  if (!r.ok) {
+    throw Object.assign(new Error(json?.erreur ?? `Erreur du serveur (statut ${r.status}).`), {
+      statut: r.status,
+    })
+  }
   return json
 }
 
@@ -147,12 +152,18 @@ const conditions = (c) =>
 
 // ---------- l'état : la tête et les onglets ----------
 
+/** Les lectures de tout le planning et du journal passent la porte au nom de la personne choisie : un agent n'y a pas accès. */
 async function chargerEtat() {
   try {
-    ici.donnees = await appeler(API.etat)
+    ici.donnees = await appeler(API.etat, { identite: ici.identite })
   } catch (erreur) {
+    if (erreur.statut === 403) $('compte-valider').hidden = true
     for (const id of ['valider', 'regles', 'delegations']) {
-      $(id).replaceChildren(erreurBloc(erreur.message, chargerEtat))
+      $(id).replaceChildren(
+        erreur.statut === 403
+          ? reserveBloc(erreur.message)
+          : erreurBloc(erreur.message, chargerEtat),
+      )
     }
     return
   }
@@ -160,6 +171,16 @@ async function chargerEtat() {
   rendreValider()
   rendreRegles()
   rendreDelegations()
+}
+
+/** Une partie que la personne choisie ne peut pas lire : le refus du serveur, et comment revenir. */
+function reserveBloc(message) {
+  return el(
+    'p',
+    { classe: 'vide' },
+    el('b', { texte: `Accès refusé : ${message}. ` }),
+    'Choisissez « le patron » dans « Je suis » pour voir cette partie.',
+  )
 }
 
 function erreurBloc(message, reessayer) {
@@ -461,9 +482,13 @@ async function chargerJournal() {
     zone.replaceChildren(el('p', { classe: 'chargement', texte: 'Chargement…' }))
   let lignes
   try {
-    lignes = await appeler(API.journal)
+    lignes = await appeler(API.journal, { identite: ici.identite })
   } catch (erreur) {
-    zone.replaceChildren(erreurBloc(erreur.message, chargerJournal))
+    zone.replaceChildren(
+      erreur.statut === 403
+        ? reserveBloc(erreur.message)
+        : erreurBloc(erreur.message, chargerJournal),
+    )
     return
   }
   if (lignes.length === 0) {
@@ -571,6 +596,25 @@ function bulleOutil(reponse, conf) {
     const attente = { ...conf, empreinte: reponse.empreinte }
     ici.attente = attente
     corps.append(zoneReponse(attente, nomDe(conf.identite)))
+  }
+  // « Vous parlez de qui ? » : chaque candidat, à cliquer, envoie son nom dans la même conversation.
+  if (reponse.sorte === 'precision' && reponse.candidats.length > 0) {
+    corps.append(
+      el(
+        'div',
+        { classe: 'actions' },
+        ...reponse.candidats.map((c) => {
+          // Deux candidats au même nom : l'identifiant les distingue, et c'est lui qui part.
+          const homonyme = reponse.candidats.filter((x) => x.nom === c.nom).length > 1
+          return el('button', {
+            classe: 'bouton bouton--outil bouton--petit suggestion',
+            type: 'button',
+            texte: homonyme ? `${c.nom} (${c.id})` : c.nom,
+            onclick: () => envoyer(homonyme ? c.id : c.nom),
+          })
+        }),
+      ),
+    )
   }
   return ajouter(
     el(
@@ -740,7 +784,7 @@ function changerIdentite(identite) {
   )
   accueil()
   rendreSuggestions()
-  if (ici.donnees) rendreValider()
+  rafraichir()
 }
 
 /** Met une consigne dans le champ, au nom de cette identité, sans l'envoyer : on la relit d'abord. */
