@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.132.0",
     "@js-temporal/polyfill": "0.5.1",
     "marked": "18.1.0",
     "yaml": "2.9.1",

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { passerVeille, Temporal } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
-import { VEILLER } from './veille'
+import { ConfigSecurite, VEILLER } from './veille'
 
 // Le client fictif (`exemples/client-fictif/`) : la veille trouve chaque
 // erreur posée exprès, avec le bon verdict ou le bon niveau, et rien d'autre.
@@ -46,5 +46,14 @@ describe('veille du client fictif', () => {
       (c) => c.regle === 'I-05' && c.objet === 'V-15',
     )
     expect(v15?.verdict).toBe('refus')
+  })
+})
+
+describe('config du client fictif', () => {
+  it('la section « conversation » est facultative', () => {
+    const config = parse(readFileSync(`${exemple}/config.yaml`, 'utf8')) as Record<string, unknown>
+    expect(ConfigSecurite.safeParse(config).success).toBe(true)
+    delete config.conversation
+    expect(ConfigSecurite.safeParse(config).success).toBe(true)
   })
 })

@@ -1,4 +1,5 @@
 import {
+  ConversationSchema,
   DelegationSchema,
   FenetreSchema,
   type MetierVeiller,
@@ -43,6 +44,8 @@ export const ConfigSecurite = z.strictObject({
     .optional(),
   /** Les décisions que le patron a confiées au harnais (G-01) ; absentes, tout passe par lui. */
   delegations: z.array(DelegationRemplacement).optional(),
+  /** La conversation avec l'outil (PLAN-ESPACES.md) ; absente, `pnpm parler` refuse de démarrer. */
+  conversation: ConversationSchema.optional(),
   veiller: z.strictObject({
     echeances: z.strictObject({
       depot_renouvellement: FenetreSchema,

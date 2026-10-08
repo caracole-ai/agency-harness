@@ -25,7 +25,18 @@ registre, calendrier juridique, contrôles I-01 à I-05 (I-05 en partie) et
 I-20, Veiller (`pnpm veiller`), le remplacement validé par le patron et la
 délégation (`pnpm remplacer`). Détail dans `PLAN.md`.
 
-## La suite : `PLAN-ESPACES.md`, lot 0
+## `PLAN-ESPACES.md` : l'avancement
+
+Un lot = une branche `espaces/lot-N` partie de la précédente = un commit.
+Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
+
+- **Lot 0 (socle)** fait le 2026-10-08, branche `espaces/lot-0` :
+  `moteur/src/modele/` (`Modele`, adaptateurs Anthropic et simulé, coût,
+  compteur du mois), `moteur/src/conversation/config.ts`, section
+  `conversation` de `ConfigSecurite` (facultative) et du client fictif.
+  `@anthropic-ai/sdk@0.132.0` ajouté au moteur.
+
+## La suite : `PLAN-ESPACES.md`, lots suivants
 
 Lionel a accepté le 2026-10-07 les **trois espaces** (gestes du quotidien,
 échappée sur une copie, promotion) et a délégué les choix de conception ; ils
@@ -66,6 +77,15 @@ et le noter ici sous « Choix faits faute de consigne ».
 - Durée maximale d'une vacation : **12 h**.
 
 ## Non vérifié, risques ouverts
+
+- **Coût du mois** (`coutDuMois`) : il compare le mois au début de
+  l'horodatage du journal, qui est en UTC (comme le plan le prescrit). Entre
+  minuit et 1 h ou 2 h, heure de Paris, le premier jour du mois, un appel
+  compte dans le mois précédent. Sans effet sur un plafond mensuel ; à
+  changer si un jour le plafond doit être exact à l'heure près.
+- **L'adaptateur Anthropic n'a jamais appelé le vrai modèle** (lot 0) : seul
+  le typage contre le SDK 0.132.0 le vérifie ; le premier appel réel se fera
+  au critère du lot 3 ou aux évals, avec la clé de Lionel.
 
 - `PLAN-ESPACES.md` n'a encore été exécuté par personne : les signatures qu'il
   prescrit viennent d'un inventaire du code du 2026-10-07, les estimations de
@@ -110,7 +130,17 @@ et le noter ici sous « Choix faits faute de consigne ».
 
 ## Choix faits faute de consigne
 
-(vide : à remplir par la session qui exécute le plan)
+- **Numérotation des lots 6 et 7** : le § 3 dit « interface (lot 6), évals
+  (lot 7) », les §§ 9 à 11 disent l'inverse. Suivi : §§ 9 à 11 (6 = évals,
+  7 = interface).
+- **Refus simulé** (§ 4.3) : le type du SDK n'accepte pas `category:
+  'simulé'` (catégories fermées, ou `null`) ; l'adaptateur simulé rend
+  `{ type: 'refusal', category: null, explanation: 'refus simulé' }`.
+- **Lot 0 écrit sans sous-agent** : huit petits fichiers, plus court à écrire
+  qu'à décrire à un sous-agent ; la règle 6 du § 1 sert là où des modules
+  indépendants sont gros (lot 3).
+- **Le test « `ConfigSecurite` sans `conversation` passe »** est dans
+  `exemple.test.ts` (le test de la config du client fictif).
 
 ## Commandes
 

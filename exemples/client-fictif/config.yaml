@@ -37,3 +37,15 @@ veiller:
     recyclage_ssiap: { alerter: { mois: 2 }, preparation: { mois: 1 } }
     secourisme: { alerter: { mois: 2 }, preparation: { mois: 1 } }
     habilitation_electrique: { alerter: { mois: 2 }, preparation: { mois: 1 } }
+
+conversation:
+  modele:
+    fournisseur: anthropic
+    id: claude-opus-5-5
+    # Prix API Anthropic relevés le 2026-10-07, en dollars par million de tokens.
+    prix_par_million_usd: { entree: 4, sortie: 20, cache_ecrit: 5, cache_lu: 0.2 }
+    effort: { traduire: low, echappee: medium }
+  plafonds:
+    par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
+    par_mois_usd: 30
+  promotion: { occurrences: 3, jours: 30 }

@@ -63,7 +63,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   ajout seul, tenu par la base), `src/archetypes/candidats.ts` (évaluer des
   candidats par les contrôles, les classer), `src/approbation/jeton.ts` (la
   clé d'accord : pas d'écriture sans validation de ce contenu exact au
-  journal) et `src/cli/veiller.ts`.
+  journal) et `src/cli/veiller.ts`. Depuis `PLAN-ESPACES.md` :
+  `src/modele/` (l'accès au modèle derrière une interface à nous, `Modele` ;
+  l'adaptateur du SDK d'Anthropic, l'adaptateur simulé des tests, le coût
+  d'un appel et le coût du mois lu dans le journal) et
+  `src/conversation/config.ts` (la section `conversation` de la config
+  client : modèle, prix, effort, plafonds, seuil de promotion).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
