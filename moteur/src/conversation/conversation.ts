@@ -1,5 +1,6 @@
 import { empreinte } from '../approbation/jeton'
 import type { Echappee } from '../echappee/echappee'
+import { verifierReponse } from '../echappee/reponse'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
@@ -16,6 +17,8 @@ import { type Demande, systemeTraduire, traduire, type Vocabulaire } from './tra
 export const TYPE_CONSIGNE = 'consigne'
 export const TYPE_CONFIRMATION_ATTENDUE = 'confirmation_attendue'
 export const TYPE_CONFIRMATION = 'confirmation'
+/** Une proposition de l'échappée que le métier a refusé d'ouvrir (une règle s'y oppose au moment de l'écrire). */
+export const TYPE_PROPOSITION_REFUSEE = 'proposition refusée'
 
 /** Ce qu'un métier fournit pour converser chez un de ses clients (export `CONVERSATION`). */
 export interface MetierConversation<Session> {
@@ -159,14 +162,20 @@ export async function traiterConsigne<S>(
   ecrire(m, s, tour, [appel])
 
   switch (demande.sorte) {
-    case 'inconnue':
+    case 'inconnue': {
       ecrire(m, s, tour, [ligneConsigne(tour, 'inconnue', { demande })])
+      // La raison peut venir du modèle : montrée seulement si elle ne cite rien d'autre que la consigne.
+      const noms = m.vocabulaire(s, tour.identite).agents.map((a) => a.nom)
+      const raison = verifierReponse(demande.raison, [tour.consigne], noms).ok
+        ? demande.raison
+        : 'la consigne ne correspond à aucun geste'
       return {
         sorte: 'je_ne_sais_pas',
-        texte: `Je ne sais pas faire ça : ${demande.raison}. Vous pouvez reformuler, ou demander : ${actions
+        texte: `Je ne sais pas faire ça : ${raison}. Vous pouvez reformuler, ou demander : ${actions
           .map((a) => a.description)
           .join(' ; ')}`,
       }
+    }
     case 'nouvelle': {
       ecrire(m, s, tour, [ligneConsigne(tour, 'nouvelle', { demande })])
       if (!m.echappee) return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
@@ -193,6 +202,9 @@ export async function traiterConsigne<S>(
       try {
         ouverte = m.proposition.ouvrir(s, tour.conversation, issue.modifications, tour.maintenant)
       } catch (erreur) {
+        ecrire(m, s, tour, [
+          { type: TYPE_PROPOSITION_REFUSEE, objet: tour.conversation, motif: message(erreur) },
+        ])
         return { sorte: 'je_ne_sais_pas', texte: message(erreur) }
       }
       const e = empreinte({

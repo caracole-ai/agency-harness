@@ -121,6 +121,22 @@ describe('ce qui ne s’écrit pas', () => {
     )
     expect(agentDe(planning(s2), 'V-07')).toBe('A-3')
   })
+  it('une vacation qui change de main avant l’écriture : la clé ne correspond plus, et le temps clôt la demande', () => {
+    const s = session()
+    const { id } = ouvrirReaffectation(s, 'C-1', NOMINAL, t0)
+    validerReaffectation(s, id, plus(1))
+    s.journal.fermer()
+    const fichier = join(s.dossier, 'planning.csv')
+    writeFileSync(fichier, readFileSync(fichier, 'utf8').replace('V-07;A-3;', 'V-07;A-5;'))
+    const s2 = ouvrir(s.dossier)
+    repondreReaffectation(s2, id, 'A-9', true, plus(2))
+    expect(() => repondreReaffectation(s2, id, 'A-2', true, plus(3))).toThrow(
+      'le contenu diffère de celui qui a été validé',
+    )
+    expect(agentDe(planning(s2), 'V-07')).toBe('A-5')
+    expect(statutReaffectation(s2, id)).toBe(STATUT_R.acceptee)
+    expect(suivreReaffectation(s2, id, aParis('2026-10-13T08:00'))?.statut).toBe(STATUT_R.tropTard)
+  })
   it('un agent dit non : fin, sans conséquence, rien d’écrit', () => {
     const s = session()
     const avant = planning(s)

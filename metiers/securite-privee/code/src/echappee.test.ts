@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest'
 import { CONVERSATION } from './conversation'
 import { tablesPour } from './copie'
 import { appliquer, constatsNouveaux, decrireModifications } from './modifications'
-import { aParis, type Session } from './remplacement'
+import { aParis, evaluer, type Session } from './remplacement'
 
 // L'échappée de la sécurité privée sur le client fictif : la copie à l'échelle
 // du rôle, les modifications et leurs constats, puis l'échappée de bout en
@@ -267,5 +267,23 @@ describe('une donnée piégée reste une donnée', async () => {
     const apres = readFileSync(fichierPlanning, 'utf8')
     expect(apres).toBe(planningAvant)
     expect(apres).toContain('V-17;A-11;')
+  })
+})
+
+describe('un refus déjà là ne masque pas celui du nouvel agent', () => {
+  it('V-07 (Sophie, carte expirée) à Moussa (carte expirée le 10/10) : refus I-01', () => {
+    const s = session()
+    const refus = constatsNouveaux(s, [reaffecter('V-07', 'A-4')]).filter(
+      (c) => c.verdict === 'refus',
+    )
+    expect(refus.map((c) => `${c.regle} ${c.objet}`)).toContain('I-01 V-07')
+  })
+  it('le remplacement de Sophie sur V-07 exclut Moussa', () => {
+    const s = session()
+    const v = s.ctx.planning.vacations.find((x) => x.id === 'V-07')
+    if (!v) throw new Error('V-07')
+    const p = evaluer(s, 'D-V-07', v, [])
+    expect(p.exclus.map((c) => c.agent)).toContain('A-4')
+    expect(p.possibles.map((c) => c.agent)).not.toContain('A-4')
   })
 })

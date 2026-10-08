@@ -46,7 +46,13 @@ export function appliquer(planning: Planning, modifications: Modification[]): Pl
 /** Les constats que les modifications font apparaître ou aggraver, par rapport au planning de départ. */
 export function constatsNouveaux(s: Session, modifications: Modification[]): Constat[] {
   const apres = contexte(appliquer(s.ctx.planning, modifications))
-  return constatsApparus(CONTROLES, s.registre, s.ctx, apres)
+  return constatsApparus(
+    CONTROLES,
+    s.registre,
+    s.ctx,
+    apres,
+    modifications.map((m) => m.vacation),
+  )
 }
 
 /**

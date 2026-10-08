@@ -1,7 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { schemaJson } from '../conversation/actions'
-import { messageConsigne } from '../conversation/traduire'
+import { entreDonnees, messageConsigne } from '../conversation/traduire'
 import {
   additionner,
   type Effort,
@@ -29,6 +29,8 @@ export interface BornesEchappee {
 }
 
 export const CONTROLE_RETIRE = 'résumé du modèle retiré'
+/** Le motif d'abandon montré quand celui du modèle cite une donnée non vérifiée. */
+export const MOTIF_RETIRE = "le modèle s'est arrêté sans réponse vérifiable"
 
 export type IssueEchappee =
   | {
@@ -52,7 +54,7 @@ export type IssueEchappee =
 /** Ce que le métier fournit à la boucle : la requête sur sa copie, et le jugement d'une modification. */
 export interface OutilsEchappee<Modif> {
   schemaModifications: z.ZodType<Modif[]>
-  requete(sql: string): ResultatRequete
+  requete(sql: string): ResultatRequete | Promise<ResultatRequete>
   /** Les constats que les modifications font apparaître, et ce qui change ; lève si elles sont inapplicables. */
   verifier(modifications: Modif[]): { constats: Constat[]; description: string }
   decrire(modifications: Modif[]): string
@@ -152,10 +154,6 @@ export function outilsEchappee<Modif>(outils: OutilsEchappee<Modif>): Anthropic.
   ]
 }
 
-/** Met un texte entre les balises des données, sans qu'une donnée puisse les ouvrir ou les fermer elle-même. */
-export const entreDonnees = (texte: string) =>
-  `<donnees>${texte.replace(/<\/?donnees>/gi, '[balise retirée]')}</donnees>`
-
 const tronquer = (s: string, max: number) => (s.length > max ? `${s.slice(0, max)}…` : s)
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
 
@@ -214,7 +212,7 @@ export async function boucle<Modif>(
         messages,
         outils: definitions,
         effort,
-        maxTokens: 4096,
+        maxTokens: Math.min(4096, bornes.tokensSortie - usage.sortie),
         unSeulOutil: true,
       })
     } catch (erreur) {
@@ -267,7 +265,7 @@ export async function boucle<Modif>(
           invalide(e.error)
           break
         }
-        const r = outils.requete(e.data.sql)
+        const r = await outils.requete(e.data.sql)
         const rendu = tronquer(rendreResultat(r), SORTIE_MAX)
         const sortie = entreDonnees(rendu)
         if ('erreur' in r) {
@@ -327,7 +325,7 @@ export async function boucle<Modif>(
         }
         const refus = constats.find((c) => c.verdict === 'refus')
         if (refus) {
-          const texte = `la proposition enfreint ${outils.nomRegle(refus.regle)} (${refus.regle}) : ${refus.motif}. Corrige ou abandonne.`
+          const texte = `la proposition enfreint ${outils.nomRegle(refus.regle)} (${refus.regle}) : ${entreDonnees(refus.motif)}. Corrige ou abandonne.`
           resultat(texte, texte)
           break
         }
@@ -358,7 +356,9 @@ export async function boucle<Modif>(
           invalide(e.error)
           break
         }
-        return abandon(e.data.motif)
+        // Le motif est du texte libre du modèle : montré seulement s'il ne cite rien hors des données.
+        const sur = verifierReponse(e.data.motif, [...sources, consigne], nomsConnus).ok
+        return abandon(sur ? e.data.motif : MOTIF_RETIRE)
       }
       default:
         resultat(`outil inconnu : ${bloc.name}`, `outil inconnu : ${bloc.name}`)

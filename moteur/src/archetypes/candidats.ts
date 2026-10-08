@@ -22,18 +22,25 @@ const cle = (c: Constat) => `${c.regle} ${c.objet}`
 
 /**
  * Les constats non conformes qu'un contexte modifié fait apparaître, ou
- * aggrave, par rapport au contexte de départ. Un contrôle qui échoue refuse
- * (le moteur échoue fermé).
+ * aggrave, par rapport au contexte de départ. Un refus qui porte sur un objet
+ * modifié (`touches`) compte toujours, même s'il existait avant : sinon
+ * confier une vacation déjà en infraction à un autre agent en infraction
+ * passerait pour sans effet. Un contrôle qui échoue refuse (le moteur échoue
+ * fermé).
  */
 export function constatsApparus<Contexte>(
   controles: Controle<Contexte>[],
   registre: Registre,
   depart: Contexte,
   apres: Contexte,
+  touches: string[] = [],
 ): Constat[] {
   const avant = new Map(executer(controles, depart, registre).map((c) => [cle(c), c.verdict]))
   return executer(controles, apres, registre).filter(
-    (c) => c.verdict !== 'ok' && rang(c.verdict) > rang(avant.get(cle(c)) ?? 'ok'),
+    (c) =>
+      c.verdict !== 'ok' &&
+      (rang(c.verdict) > rang(avant.get(cle(c)) ?? 'ok') ||
+        (c.verdict === 'refus' && touches.includes(c.objet))),
   )
 }
 
@@ -48,9 +55,10 @@ export function evaluerCandidats<Contexte>(
   depart: Contexte,
   candidats: string[],
   affecter: (candidat: string) => Contexte,
+  touches: string[] = [],
 ): Evaluation[] {
   return candidats.map((candidat) => {
-    const constats = constatsApparus(controles, registre, depart, affecter(candidat))
+    const constats = constatsApparus(controles, registre, depart, affecter(candidat), touches)
     const issue: Issue = constats.some((c) => c.verdict === 'refus')
       ? 'exclu'
       : constats.length > 0

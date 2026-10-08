@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +22,8 @@ const exemple = fileURLToPath(new URL('../../../../exemples/client-fictif', impo
 const maintenant = aParis('2026-10-10T21:40')
 const PATRON: Identite = { role: 'patron' }
 const agent = (id: string): Identite => ({ role: 'agent', agent: id })
+
+const planningDe = (s: Session) => readFileSync(join(s.dossier, 'planning.csv'), 'utf8')
 
 /** Une copie neuve du client fictif, sans journal ni sorties. */
 function session(): Session {
@@ -163,6 +165,8 @@ describe('qui parle', () => {
     const inconnu = await tour(s, agent('A-99'), [{ texte: 'x' }])
     expect(inconnu.r.sorte).toBe('refus')
     expect(inconnu.modele.appels).toHaveLength(0)
+    const inconnu2 = await tour(s, { role: 'x' } as unknown as Identite, [{ texte: 'x' }])
+    expect(inconnu2.r).toEqual({ sorte: 'refus', texte: 'rôle inconnu : x' })
     const patron = await tour(s, { role: 'patron', agent: 'A-1' }, [{ texte: 'x' }])
     expect(patron.r.sorte).toBe('refus')
     expect(patron.modele.appels).toHaveLength(0)
@@ -246,7 +250,9 @@ describe('une demande nouvelle jusqu’au planning : proposition, validation, ac
       maintenant,
     )
     expect(fin.sorte).toBe('resultat')
-    expect(fin.texte).toMatch(/^Planning mis à jour\./)
+    expect(fin.texte).toMatch(/^C'est confirmé : V-07, mer\. 14\/10 08:00/)
+    expect(fin.texte).not.toContain('Sophie')
+    expect(planningDe(s)).toContain('V-07;A-9;')
   })
   it('un autre agent ne peut pas répondre à la place de Mehdi', async () => {
     const id = `R-${conversation.replace(/^C-/, '')}`
@@ -274,5 +280,78 @@ describe('suivre une réaffectation', () => {
     validerReaffectation(s, id, maintenant)
     const { r } = await tour(s, PATRON, outil('suivre_demande', { demande: id }))
     expect(r).toEqual({ sorte: 'resultat', texte: `${id} : demandée aux agents` })
+  })
+})
+
+describe('un agent ne lit que ce qui le concerne (D4)', () => {
+  it('sa propre absence : enregistrée, sans la proposition ni les autres agents', async () => {
+    const s = session()
+    const { r } = await tour(
+      s,
+      agent('A-11'),
+      outil('declarer_absence', { agent: null, jour: '2026-10-11' }),
+    )
+    expect(r.sorte).toBe('resultat')
+    expect(r.texte).toMatch(/^Ton absence du 11\/10\/2026 est enregistrée \(demande D-V-17\)/)
+    for (const nom of ['Julien', 'Karim', 'Sophie', 'Moussa']) expect(r.texte).not.toContain(nom)
+  })
+  it('l’absence d’un autre : refusée', async () => {
+    const s = session()
+    const { r } = await tour(
+      s,
+      agent('A-2'),
+      outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }),
+    )
+    expect(r).toEqual({ sorte: 'refus', texte: 'Tu ne peux déclarer que ta propre absence.' })
+  })
+  it('son non : enregistré, sans le nom du suivant ; la reformulation du patron écarte celui qui a refusé', async () => {
+    const s = session()
+    await tour(s, PATRON, outil('declarer_absence', { agent: 'A-11', jour: '2026-10-11' }))
+    const v = await tour(
+      s,
+      PATRON,
+      outil('valider_remplacement', { demande: 'D-V-17', agent: null }),
+    )
+    if (v.r.sorte !== 'confirmation') throw new Error(v.r.sorte)
+    confirmer(CONVERSATION, s, PATRON, v.conversation, v.r.empreinte, true, maintenant)
+    const julien = await tour(
+      s,
+      agent('A-2'),
+      outil('repondre_sollicitation', { demande: 'D-V-17', oui: false }),
+    )
+    if (julien.r.sorte !== 'confirmation') throw new Error(julien.r.sorte)
+    expect(julien.r.texte).not.toContain('Aïcha')
+    const non = confirmer(
+      CONVERSATION,
+      s,
+      agent('A-2'),
+      julien.conversation,
+      julien.r.empreinte,
+      false,
+      maintenant,
+    )
+    expect(non.texte).toBe("D'accord, rien n'est fait.")
+    const julien2 = await tour(
+      s,
+      agent('A-2'),
+      outil('repondre_sollicitation', { demande: 'D-V-17', oui: false }),
+    )
+    if (julien2.r.sorte !== 'confirmation') throw new Error(julien2.r.sorte)
+    const dit = confirmer(
+      CONVERSATION,
+      s,
+      agent('A-2'),
+      julien2.conversation,
+      julien2.r.empreinte,
+      true,
+      maintenant,
+    )
+    expect(dit.texte).toBe('Ta réponse est enregistrée : tu as dit non, sans aucune conséquence.')
+    const encore = await tour(
+      s,
+      PATRON,
+      outil('valider_remplacement', { demande: 'D-V-17', agent: null }),
+    )
+    expect(encore.r.texte).toMatch(/^Valider Karim Haddad \(A-1\)/)
   })
 })

@@ -3,7 +3,7 @@ import { type ConfigConversation, prixDe } from '../conversation/config'
 import { FRONTIERE } from '../conversation/traduire'
 import type { Evenement, Journal } from '../journal/journal'
 import { evenementAppel } from '../modele/compteur'
-import { cout, type Modele } from '../modele/modele'
+import { cout, type Modele, USAGE_NUL } from '../modele/modele'
 import type { Temporal } from '../temps/temporal'
 import { boucle, type EvenementBoucle, type IssueEchappee, type OutilsEchappee } from './boucle'
 import { creerCopie, type TableCopie } from './copie'
@@ -120,15 +120,17 @@ export async function echappee<Modif>(
     })
   }
 
-  const copie = creerCopie(metier.tables)
+  let copie: ReturnType<typeof creerCopie> | undefined
   try {
+    copie = creerCopie(metier.tables)
+    const ouverte = copie
     const { plafonds, modele: m } = cadre.config
     const issue = await boucle(
       modele,
       m.effort.echappee,
       systemeEchappee(
         cadre.quiParle,
-        copie.description,
+        ouverte.description,
         metier.regles,
         metier.preferences,
         metier.outils.proposer,
@@ -136,7 +138,7 @@ export async function echappee<Modif>(
       consigne,
       intention,
       maintenant,
-      { ...metier.outils, requete: (sql) => executerRequete(copie, sql) },
+      { ...metier.outils, requete: (sql) => executerRequete(ouverte, sql) },
       {
         tours: plafonds.par_demande.tours,
         tokensSortie: plafonds.par_demande.tokens_sortie,
@@ -163,7 +165,22 @@ export async function echappee<Modif>(
       },
     })
     return issue
+  } catch (erreur) {
+    // Une échappée qui n'a pas pu tourner reste au journal, comptée comme un abandon.
+    ecrire({
+      type: TYPE_ECHAPPEE,
+      issue: 'abandon',
+      motif: consigne,
+      donnees: {
+        intention,
+        tours: 0,
+        usage: USAGE_NUL,
+        cout_usd: 0,
+        abandon: (erreur as Error).message,
+      },
+    })
+    throw erreur
   } finally {
-    copie.fermer()
+    copie?.fermer()
   }
 }

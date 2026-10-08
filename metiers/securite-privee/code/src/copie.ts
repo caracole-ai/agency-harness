@@ -22,7 +22,8 @@ export function tablesPour(
   identite: Identite,
   maintenant: Temporal.ZonedDateTime,
 ): TableCopie[] {
-  const estAgent = identite.role === 'agent'
+  // Tout ce qui n'est pas le patron ne voit que ses données (échec fermé).
+  const estAgent = identite.role !== 'patron'
   const agents = s.ctx.planning.agents.filter((a) => !estAgent || a.id === identite.agent)
   const vacations = s.ctx.planning.vacations.filter((v) => !estAgent || v.agent === identite.agent)
   const constats = estAgent

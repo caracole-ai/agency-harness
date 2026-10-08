@@ -44,37 +44,37 @@ describe('executerRequete : refus', () => {
     "ATTACH DATABASE '/tmp/autre.sqlite' AS autre",
     'WITH x AS (SELECT 1) DELETE FROM agents',
     'SELECT * FROM agents WHERE id IN (SELECT id FROM agents) AND 1 = 1 OR replace(nom, 1, 2)',
-  ])('%s → erreur, base intacte', (sql) => {
-    expect(executerRequete(copie, sql)).toHaveProperty('erreur')
-    expect(executerRequete(copie, TEMOIN)).toEqual(avant)
+  ])('%s → erreur, base intacte', async (sql) => {
+    expect(await executerRequete(copie, sql)).toHaveProperty('erreur')
+    expect(await executerRequete(copie, TEMOIN)).toEqual(await avant)
   })
-  it('deux requêtes séparées par « ; » → erreur', () => {
-    expect(executerRequete(copie, 'SELECT 1; SELECT 2')).toHaveProperty('erreur')
+  it('deux requêtes séparées par « ; » → erreur', async () => {
+    expect(await executerRequete(copie, 'SELECT 1; SELECT 2')).toHaveProperty('erreur')
   })
-  it('un « ; » final, suivi d’espaces, est toléré', () => {
-    expect(executerRequete(copie, '  select 1 AS un;  ')).toEqual({
+  it('un « ; » final, suivi d’espaces, est toléré', async () => {
+    expect(await executerRequete(copie, '  select 1 AS un;  ')).toEqual({
       colonnes: ['un'],
       lignes: [[1]],
       tronque: false,
     })
   })
-  it(`une requête de ${SQL_MAX + 1} caractères → erreur`, () => {
+  it(`une requête de ${SQL_MAX + 1} caractères → erreur`, async () => {
     const sql = `SELECT 1 AS un${' '.repeat(SQL_MAX + 1 - 'SELECT 1 AS un'.length)}`
     expect(sql).toHaveLength(SQL_MAX + 1)
-    expect(executerRequete(copie, sql)).toEqual({
+    expect(await executerRequete(copie, sql)).toEqual({
       erreur: expect.stringMatching(/trop longue/),
     })
   })
-  it('une table inconnue → erreur SQLite rendue, sans exception', () => {
-    expect(executerRequete(copie, 'SELECT * FROM inconnue')).toEqual({
+  it('une table inconnue → erreur SQLite rendue, sans exception', async () => {
+    expect(await executerRequete(copie, 'SELECT * FROM inconnue')).toEqual({
       erreur: expect.stringMatching(/no such table/),
     })
   })
 })
 
 describe('executerRequete : lectures', () => {
-  it('SELECT : colonnes et lignes', () => {
-    expect(executerRequete(copie, TEMOIN)).toEqual({
+  it('SELECT : colonnes et lignes', async () => {
+    expect(await executerRequete(copie, TEMOIN)).toEqual({
       colonnes: ['id', 'nom'],
       lignes: [
         ['A-1', 'Mehdi Saïdi'],
@@ -83,19 +83,19 @@ describe('executerRequete : lectures', () => {
       tronque: false,
     })
   })
-  it('WITH x AS (…) SELECT → accepté', () => {
+  it('WITH x AS (…) SELECT → accepté', async () => {
     expect(
-      executerRequete(copie, 'WITH x AS (SELECT id FROM agents) SELECT count(*) AS n FROM x'),
+      await executerRequete(copie, 'WITH x AS (SELECT id FROM agents) SELECT count(*) AS n FROM x'),
     ).toEqual({ colonnes: ['n'], lignes: [[2]], tronque: false })
   })
-  it(`250 lignes → tronque, ${LIGNES_MAX} rendues`, () => {
-    const r = executerRequete(copie, 'SELECT id FROM vacations')
+  it(`250 lignes → tronque, ${LIGNES_MAX} rendues`, async () => {
+    const r = await executerRequete(copie, 'SELECT id FROM vacations')
     expect(r).toMatchObject({ tronque: true })
     if ('erreur' in r) throw new Error(r.erreur)
     expect(r.lignes).toHaveLength(LIGNES_MAX)
   })
-  it('un commentaire qui neutralise le LIMIT ne lève pas la borne de lignes', () => {
-    const r = executerRequete(
+  it('un commentaire qui neutralise le LIMIT ne lève pas la borne de lignes', async () => {
+    const r = await executerRequete(
       copie,
       'WITH RECURSIVE c(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM c) SELECT n FROM c) /*',
     )
@@ -103,12 +103,31 @@ describe('executerRequete : lectures', () => {
     if ('erreur' in r) throw new Error(r.erreur)
     expect(r.lignes).toHaveLength(LIGNES_MAX)
   })
-  it('aucune ligne : les colonnes viennent de la requête', () => {
-    expect(executerRequete(copie, "SELECT id, nom FROM agents WHERE id = 'A-9'")).toEqual({
+  it('aucune ligne : les colonnes viennent de la requête', async () => {
+    expect(await executerRequete(copie, "SELECT id, nom FROM agents WHERE id = 'A-9'")).toEqual({
       colonnes: ['id', 'nom'],
       lignes: [],
       tronque: false,
     })
+  })
+})
+
+describe('executerRequete : le temps', () => {
+  it('une récursion sans fin sous un agrégat est arrêtée au délai, sans figer le processus', async () => {
+    const debut = Date.now()
+    const r = await executerRequete(
+      copie,
+      'WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t) SELECT count(*) FROM t',
+      300,
+    )
+    expect(r).toEqual({ erreur: expect.stringMatching(/^requête arrêtée/) })
+    expect(Date.now() - debut).toBeLessThan(3000)
+  })
+  it('randomblob et zeroblob sont refusés', async () => {
+    expect(await executerRequete(copie, 'SELECT hex(randomblob(500000000))')).toHaveProperty(
+      'erreur',
+    )
+    expect(await executerRequete(copie, 'SELECT zeroblob(10)')).toHaveProperty('erreur')
   })
 })
 

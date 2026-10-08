@@ -20,10 +20,12 @@ import {
 import {
   agentSollicite,
   decrireEtape,
+  dejaSollicites,
   evaluer,
   METIER,
   repondre,
   type Session,
+  STATUT,
   signalerAbsence,
   statut,
   suivre,
@@ -41,12 +43,35 @@ import { decrire, VEILLER } from './veille'
 const IdAgent = z.string().regex(/^A-\d+$/)
 const Jour = z.iso.date()
 
+/** L'absent d'une déclaration : un agent ne déclare que la sienne ; le patron nomme l'absent. */
+function absentVise(identite: Identite, demande: string | null): string | undefined {
+  if (identite.role === 'agent' && demande !== null && demande !== identite.agent) {
+    throw new Error('Tu ne peux déclarer que ta propre absence.')
+  }
+  return agentVise(identite, demande)
+}
+
 /** L'agent sur qui porte un geste : soi-même pour un agent, celui que nomme le patron sinon. */
 function agentVise(identite: Identite, demande: string | null): string | undefined {
   return identite.role === 'agent' ? identite.agent : (demande ?? undefined)
 }
 
 const nomDe = (s: Session, agent: string) => s.ctx.agent(agent).nom
+
+/** Une vacation dite à un agent : quand, quel poste, quel site ; jamais qui la tient (D4). */
+function vacationPourAgent(s: Session, id: string): string {
+  const v = s.ctx.planning.vacations.find((x) => x.id === id)
+  if (!v) throw new Error(`vacation ${id} inconnue`)
+  const poste = s.ctx.poste(v.poste)
+  return `${v.id}, ${decrire(s.ctx, v.id).split(' · ').at(-1) ?? ''}, ${poste.id} (${poste.site})`
+}
+
+/** Ce qu'un agent lit après avoir répondu : sa réponse, et seulement ce qui le concerne. */
+function reponseEnregistree(oui: boolean, statut: string, demande: string): string {
+  return oui
+    ? `Ta réponse est enregistrée (${demande} : ${statut}).`
+    : 'Ta réponse est enregistrée : tu as dit non, sans aucune conséquence.'
+}
 
 /** Lève si la sollicitation de cette demande ne vise pas cet agent. */
 function exigerSollicite(s: Session, identite: Identite, demande: string): void {
@@ -58,7 +83,7 @@ function exigerSollicite(s: Session, identite: Identite, demande: string): void 
 /** Le premier remplaçant possible d'une demande, qui doit exister. */
 function premierPossible(s: Session, demande: string): string {
   const v = vacationDe(s, demande)
-  const premier = evaluer(s, demande, v, []).possibles[0]
+  const premier = evaluer(s, demande, v, dejaSollicites(s, demande)).possibles[0]
   if (!premier) throw new Error(`${demande} : aucun remplaçant possible`)
   return premier.agent
 }
@@ -113,15 +138,18 @@ const declarerAbsence: Action<Session, z.infer<typeof DeclarerAbsence>> = {
   roles: ['patron', 'agent'],
   ecrit: false,
   reformuler: (s, identite, p) => {
-    const agent = agentVise(identite, p.agent)
+    const agent = absentVise(identite, p.agent)
     return `Je déclare l'absence de ${agent ? nomDe(s, agent) : "l'agent"} le ${dateFr(Temporal.PlainDate.from(p.jour))} et je cherche un remplaçant.`
   },
   executer: (s, identite, p, maintenant) => {
-    const agent = agentVise(identite, p.agent)
+    const agent = absentVise(identite, p.agent)
     if (!agent) throw new Error("Précisez l'agent absent.")
     const r = signalerAbsence(s, agent, Temporal.PlainDate.from(p.jour), maintenant)
     return {
-      texte: `Demande ${r.demande}\n${decrireEtape(s, r, r.demande)}`,
+      texte:
+        identite.role === 'patron'
+          ? `Demande ${r.demande}\n${decrireEtape(s, r, r.demande)}`
+          : `Ton absence du ${dateFr(Temporal.PlainDate.from(p.jour))} est enregistrée (demande ${r.demande}). Le patron s'occupe de ton remplacement.`,
       donnees: { demande: r.demande, statut: r.statut },
     }
   },
@@ -167,12 +195,16 @@ const repondreSollicitation: Action<Session, z.infer<typeof RepondreSollicitatio
   ecrit: true,
   reformuler: (s, identite, p) => {
     exigerSollicite(s, identite, p.demande)
-    return `Tu confirmes : ${p.oui ? 'OUI' : 'NON'} pour ${decrire(s.ctx, vacationDe(s, p.demande).id)} ?`
+    return `Tu confirmes : ${p.oui ? 'OUI' : 'NON'} pour ${vacationPourAgent(s, vacationDe(s, p.demande).id)} ?`
   },
   executer: (s, identite, p, maintenant) => {
     exigerSollicite(s, identite, p.demande)
     const e = repondre(s, p.demande, p.oui, maintenant)
-    return { texte: decrireEtape(s, e, p.demande), donnees: { statut: e.statut } }
+    const texte =
+      p.oui && e.statut === STATUT.ecrite
+        ? `C'est confirmé : ${vacationPourAgent(s, vacationDe(s, p.demande).id)}. Merci.`
+        : reponseEnregistree(p.oui, e.statut, p.demande)
+    return { texte, donnees: { statut: e.statut } }
   },
 }
 
@@ -212,13 +244,23 @@ const repondreAReaffectation: Action<Session, z.infer<typeof RepondreReaffectati
     exigerAttendu(s, identite, p.reaffectation)
     const vacations = reaffectation(s, p.reaffectation)
       .modifications.filter((m) => m.agent === identite.agent)
-      .map((m) => decrire(s.ctx, m.vacation))
+      .map((m) => vacationPourAgent(s, m.vacation))
     return `Tu confirmes : ${p.oui ? 'OUI' : 'NON'} pour ${vacations.join(' et ')} ?`
   },
   executer: (s, identite, p, maintenant) => {
     exigerAttendu(s, identite, p.reaffectation)
-    const e = repondreReaffectation(s, p.reaffectation, identite.agent ?? '', p.oui, maintenant)
-    return { texte: decrireEtape2(p.reaffectation, e), donnees: { statut: e.statut } }
+    const agent = identite.agent ?? ''
+    const e = repondreReaffectation(s, p.reaffectation, agent, p.oui, maintenant)
+    const siens = reaffectation(s, p.reaffectation)
+      .modifications.filter((m) => m.agent === agent)
+      .map((m) => vacationPourAgent(s, m.vacation))
+    const texte =
+      p.oui && e.statut === STATUT_R.ecrite
+        ? `C'est confirmé : ${siens.join(' et ')}. Merci.`
+        : p.oui && e.statut === STATUT_R.demandee
+          ? "Ta réponse est enregistrée : on attend encore l'accord d'autres agents avant d'écrire le planning."
+          : reponseEnregistree(p.oui, e.statut, p.reaffectation)
+    return { texte, donnees: { statut: e.statut } }
   },
 }
 

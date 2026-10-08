@@ -81,6 +81,7 @@ export const JE_NE_SAIS_PAS = 'je_ne_sais_pas'
 export const DemandeNouvelle = z.strictObject({
   intention: z
     .string()
+    .regex(/^[a-z0-9_]{1,60}$/)
     .describe(
       'un mot-clé en snake_case, stable d’une fois sur l’autre pour la même sorte de demande : liberer_un_jour, heures_par_agent, simuler_changement_de_site',
     ),

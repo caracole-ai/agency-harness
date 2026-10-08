@@ -70,6 +70,35 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   `R-…`. Testé en simulé de bout en bout (`conversation.test.ts`) et pas à
   pas (`reaffectation.test.ts`, 12 cas). **Critère « avec la vraie clé »
   non passé** (pas de clé).
+- **Corrections de relecture** le 2026-10-08, branche `espaces/corrections`
+  (après le lot 6) : une relecture indépendante de tout le code du chantier
+  a trouvé douze défauts ; corrigés et testés :
+  - un agent lisait la proposition entière après sa déclaration d'absence ou
+    son « non » (noms, heures, titres expirés des autres) : il ne lit plus que
+    ce qui le concerne (D4) ; il ne peut déclarer que sa propre absence ;
+  - la confirmation du patron (« Valider Julien ? ») pouvait nommer celui qui
+    avait déjà dit non, alors que `valider` en sollicitait un autre ;
+  - une requête SQL sans fin (`WITH RECURSIVE` sous un `count(*)`) figeait le
+    processus : elle tourne désormais dans un processus enfant tué au bout de
+    5 s (un fil ne suffit pas : une boucle SQLite native ne s'interrompt pas) ;
+  - un refus déjà présent sur une vacation masquait le même refus chez le
+    nouvel agent — **défaut hérité du remplacement de la phase 5** (Moussa,
+    carte expirée, était « possible » pour V-07 de Sophie) ; corrigé dans
+    `constatsApparus` pour les deux ;
+  - la clé d'accord porte aussi l'agent qui tient la vacation (remplacement
+    et réaffectation) : si elle change de main avant l'écriture, rien ne
+    s'écrit ;
+  - la frontière des données : le vocabulaire du système est entre
+    `<donnees>`, un nom ne peut plus sauter de ligne, une cellule ne peut plus
+    forger `<consigne>`, l'intention est un mot-clé `snake_case` validé ;
+  - un rôle inconnu est refusé (et seule la copie du patron est complète) ;
+  - une demande « acceptée » dont l'écriture échoue peut encore finir en
+    « trop tard » (elle restait bloquée) ;
+  - le texte libre du modèle dans un abandon ou un « je ne sais pas » passe le
+    contrôle des chiffres et des noms ;
+  - `max_tokens` suit ce qui reste du plafond de sortie ;
+  - une échappée qui plante, une proposition refusée à l'ouverture laissent
+    leur ligne au journal.
 - **Lot 6 (évals)** fait le 2026-10-08, branche `espaces/lot-6` :
   `evals/consignes.yaml` (51 cas écrits à la main), `evals/echappees.yaml`
   (14 cas, dont 2 piégés, calculs à la main en tête du fichier),
@@ -191,20 +220,17 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   minuit et 1 h ou 2 h, heure de Paris, le premier jour du mois, un appel
   compte dans le mois précédent. Sans effet sur un plafond mensuel ; à
   changer si un jour le plafond doit être exact à l'heure près.
-- **`valider_remplacement` sans agent** : la confirmation nomme le premier
-  possible au moment de la consigne ; si le planning change avant le « oui »,
-  `valider` reprend le premier possible du moment, qui peut être un autre.
-  Sans effet dans la démo (rien ne change entre les deux) ; à fermer si la
-  conversation sert sur un vrai planning (inscrire l'agent dans les paramètres
-  confirmés).
+- **Le contrôle des chiffres prouve la présence d'une chaîne, pas son
+  origine** : un modèle peut faire passer un chiffre par une requête de
+  constantes (`SELECT 17.5`), et un petit nombre se retrouve souvent dans un
+  identifiant ou une date (`9` dans `A-9`). Le contrôle arrête l'invention
+  grossière, pas la mauvaise foi ; les évals mesurent le reste.
+- **Une requête SQL coûte un processus** (≈ 50 ms) : sans effet à 12 tours
+  par échappée.
 - **Aucune clé d'API dans la session du 2026-10-08** (ni
   `ANTHROPIC_API_KEY`, ni le CLI `ant`) : les critères « avec la vraie clé »
   des lots 3 et 4, le critère global, et les passes d'évals (lot 6) sont à
   lancer par Lionel. Tout le reste est vérifié avec l'adaptateur simulé.
-- **Échappée : une requête lourde qui ne rend aucune ligne** n'est bornée
-  que par la borne `secondes`, vérifiée entre deux tours : une requête
-  SQLite très longue bloquerait le tour en cours. Sur 19 vacations, sans
-  effet ; à revoir avec de vraies volumétries.
 - **L'adaptateur Anthropic n'a jamais appelé le vrai modèle** (lot 0) : seul
   le typage contre le SDK 0.132.0 le vérifie ; le premier appel réel se fera
   au critère du lot 3 ou aux évals, avec la clé de Lionel.
@@ -335,6 +361,11 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **Promotion : la « suite donnée »** se lit sur les objets (`R-…`) dont une
   ligne porte `donnees.conversation` ; « écrite » l'emporte sur « validée ».
   Elle n'est dite que pour une proposition.
+- **Corrections hors du découpage en lots** : un commit à part
+  (`espaces/corrections`), plutôt que de réécrire les commits des lots déjà
+  faits.
+- **Le texte d'une étape montré à un agent ne suit plus le § 5.2** (qui
+  disait « l'affichage de `cli/remplacer.ts` ») : D4 l'emporte.
 - **Évals : `pnpm evals … --modele simule`** existe pour vérifier le
   câblage sans clé (tous les cas finissent en écart) ; le plan ne le
   prévoyait pas.

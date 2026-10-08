@@ -4,6 +4,7 @@ import {
   type Identite,
   type MetierConversation,
   quiParle,
+  ROLES,
 } from '@harnais/moteur'
 import { z } from 'zod'
 import { ACTIONS } from './actions'
@@ -77,6 +78,7 @@ export const CONVERSATION: MetierConversation<Session> = {
     postes: s.ctx.planning.postes.map((p) => ({ id: p.id, site: p.site })),
   }),
   verifierIdentite: (s, identite: Identite) => {
+    if (!ROLES.includes(identite.role)) throw new Error(`rôle inconnu : ${String(identite.role)}`)
     if (identite.role === 'patron') {
       if (identite.agent !== undefined) {
         throw new Error("le patron parle en son nom : pas d'identifiant d'agent")

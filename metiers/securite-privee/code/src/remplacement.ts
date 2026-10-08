@@ -59,7 +59,8 @@ const SUIVANTS: Record<Statut, Statut[]> = {
   [STATUT.proposee]: [STATUT.validee, STATUT.tropTard],
   [STATUT.validee]: [STATUT.demandee],
   [STATUT.demandee]: [STATUT.acceptee, STATUT.refusee, STATUT.sansReponse, STATUT.tropTard],
-  [STATUT.acceptee]: [STATUT.ecrite],
+  // Une écriture refusée (clé) laisse « acceptée » : le temps la clôt.
+  [STATUT.acceptee]: [STATUT.ecrite, STATUT.tropTard],
   [STATUT.refusee]: [STATUT.proposee, STATUT.escaladee],
   [STATUT.sansReponse]: [STATUT.proposee, STATUT.escaladee],
   [STATUT.ecrite]: [],
@@ -159,6 +160,8 @@ const prenom = (nom: string) => nom.split(' ')[0] ?? nom
 export const contenuDe = (demande: string, v: Vacation, agent: string): Contenu => ({
   demande,
   vacation: v.id,
+  /** Qui la tient au moment de la validation : si elle change de main avant l'écriture, la clé ne correspond plus. */
+  de: v.agent,
   agent,
   poste: v.poste,
   debut: v.debut,
@@ -217,11 +220,17 @@ export function evaluer(s: Session, demande: string, v: Vacation, exclure: strin
   const candidats = s.ctx.planning.agents
     .map((a) => a.id)
     .filter((id) => id !== v.agent && !exclure.includes(id))
-  const evaluations = evaluerCandidats(CONTROLES, s.registre, s.ctx, candidats, (agent) =>
-    contexte({
-      ...s.ctx.planning,
-      vacations: s.ctx.planning.vacations.map((x) => (x.id === v.id ? { ...x, agent } : x)),
-    }),
+  const evaluations = evaluerCandidats(
+    CONTROLES,
+    s.registre,
+    s.ctx,
+    candidats,
+    (agent) =>
+      contexte({
+        ...s.ctx.planning,
+        vacations: s.ctx.planning.vacations.map((x) => (x.id === v.id ? { ...x, agent } : x)),
+      }),
+    [v.id],
   )
   const nom = (agent: string) => s.ctx.agent(agent).nom
   const nomRegle = (id: string) => s.registre.interdits.find((i) => i.id === id)?.nom ?? id
@@ -267,7 +276,8 @@ export function evaluer(s: Session, demande: string, v: Vacation, exclure: strin
   }
 }
 
-const dejaSollicites = (s: Session, demande: string) =>
+/** Les agents déjà sollicités qui ont dit non ou n'ont pas répondu : on ne les repropose pas. */
+export const dejaSollicites = (s: Session, demande: string) =>
   historique(s, demande)
     .filter((l) => l.issue === STATUT.refusee || l.issue === STATUT.sansReponse)
     .map((l) => donnees<{ agent: string }>(l)?.agent)

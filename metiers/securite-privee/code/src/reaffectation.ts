@@ -50,7 +50,8 @@ const SUIVANTS: Record<Statut2, Statut2[]> = {
     STATUT_R.sansReponse,
     STATUT_R.tropTard,
   ],
-  [STATUT_R.acceptee]: [STATUT_R.ecrite],
+  // Une écriture refusée (clé, règle) laisse « acceptée » : le temps la clôt.
+  [STATUT_R.acceptee]: [STATUT_R.ecrite, STATUT_R.tropTard],
   [STATUT_R.ecrite]: [],
   [STATUT_R.refusee]: [],
   [STATUT_R.sansReponse]: [],
@@ -137,7 +138,14 @@ export const contenuReaffectation = (
       .sort((a, b) => a.vacation.localeCompare(b.vacation))
       .map((m) => {
         const v = vacation(s, m.vacation)
-        return { vacation: m.vacation, agent: m.agent, poste: v.poste, debut: v.debut, fin: v.fin }
+        return {
+          vacation: m.vacation,
+          de: v.agent,
+          agent: m.agent,
+          poste: v.poste,
+          debut: v.debut,
+          fin: v.fin,
+        }
       }),
   ),
 })
