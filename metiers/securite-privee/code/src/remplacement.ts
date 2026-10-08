@@ -34,7 +34,8 @@ import { ConfigSecurite, decrire, type PREFERENCES, VEILLER } from './veille'
 // clé d'accord ; l'accord de l'agent est toujours demandé (plus strict
 // qu'I-06, qui ne l'exige que sous 7 jours ou 48 h).
 
-const METIER = fileURLToPath(new URL('../..', import.meta.url))
+/** Le dossier du métier (son registre). */
+export const METIER = fileURLToPath(new URL('../..', import.meta.url))
 const TYPE = 'remplacement'
 const PAR_PATRON = 'patron'
 
@@ -137,12 +138,17 @@ function passer(
   )
 }
 
-const vacationDe = (s: Session, demande: string): Vacation => {
+/** La vacation d'une demande, telle qu'elle est au planning. Lève si la demande est inconnue. */
+export const vacationDe = (s: Session, demande: string): Vacation => {
   const id = donnees<{ vacation: string }>(dernier(historique(s, demande), STATUT.recue))?.vacation
   const v = s.ctx.planning.vacations.find((x) => x.id === id)
   if (!v) throw new Error(`${demande} : demande inconnue`)
   return v
 }
+
+/** L'agent à qui la demande a été adressée en dernier, s'il y en a un. */
+export const agentSollicite = (s: Session, demande: string): string | undefined =>
+  donnees<{ agent: string }>(dernier(historique(s, demande), STATUT.demandee))?.agent
 
 /** « dim. 11/10 08:00 → dim. 11/10 20:00 » : la fin de la description du rapport. */
 const quand = (s: Session, v: Vacation) => decrire(s.ctx, v.id).split(' · ').at(-1) ?? ''
@@ -574,4 +580,75 @@ export function suivre(
     donnees: { agent },
   })
   return proposer(s, demande, maintenant)
+}
+
+/**
+ * Ce qu'une étape dit au demandeur, rendu par le code : la proposition et ses
+ * raisons, le message envoyé, le planning mis à jour. Sans les commandes à
+ * taper, que chaque interface ajoute à sa façon (PLAN-ESPACES.md § 5.2).
+ */
+export function decrireEtape(s: Session, etape: Etape | null, demande: string): string {
+  if (!etape) return `${demande} : rien de nouveau.`
+  switch (etape.statut) {
+    case STATUT.proposee: {
+      const p = etape.proposition
+      const [premier, ...autres] = p.possibles
+      return [
+        ...(etape.horsCadre.length > 0
+          ? [
+              `Hors du cadre délégué (${etape.horsCadre.join(', ')}) : la décision revient au patron.`,
+              '',
+            ]
+          : []),
+        `Absence : ${decrire(s.ctx, p.vacation)}`,
+        '',
+        premier
+          ? `Je propose ${premier.nom} (${premier.raisons.join(', ')}).`
+          : 'Aucun remplaçant possible.',
+        ...(autres.length > 0
+          ? [
+              '',
+              'Autres possibles :',
+              ...autres.map((c) => `  - ${c.nom} : ${c.raisons.join(', ')}`),
+            ]
+          : []),
+        ...(p.exclus.length > 0
+          ? [
+              '',
+              'Exclus (un interdit s’y oppose) :',
+              ...p.exclus.map((c) => `  - ${c.nom} : ${c.raisons.join(' ; ')}`),
+            ]
+          : []),
+        ...(p.ecartes.length > 0
+          ? [
+              '',
+              'Écartés (une donnée manque, rien n’est supposé) :',
+              ...p.ecartes.map((c) => `  - ${c.nom} : ${c.raisons.join(' ; ')}`),
+            ]
+          : []),
+      ].join('\n')
+    }
+    case STATUT.demandee:
+      return [
+        ...(etape.par === PAR_PATRON ? [] : [`Validé par ${etape.par}.`]),
+        `Message envoyé à l'agent : « ${etape.message} »`,
+      ].join('\n')
+    case STATUT.ecrite:
+      return [
+        'Planning mis à jour.',
+        ...etape.messages.map((m) => `Message : « ${m} »`),
+        ...(etape.delegationProposee
+          ? [
+              '',
+              `Ce remplacement a réussi. Il peut devenir automatique dans ces conditions : ${Object.entries(
+                etape.delegationProposee,
+              )
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(', ')} (révocable).`,
+            ]
+          : []),
+      ].join('\n')
+    default:
+      return `${demande} : ${etape.statut}. ${etape.motif}`
+  }
 }

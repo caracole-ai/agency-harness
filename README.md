@@ -68,7 +68,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   l'adaptateur du SDK d'Anthropic, l'adaptateur simulé des tests, le coût
   d'un appel et le coût du mois lu dans le journal) et
   `src/conversation/config.ts` (la section `conversation` de la config
-  client : modèle, prix, effort, plafonds, seuil de promotion).
+  client : modèle, prix, effort, plafonds, seuil de promotion),
+  `src/conversation/actions.ts` (la forme d'un geste du quotidien, les rôles
+  `patron` et `agent`, les outils stricts envoyés au modèle et les deux
+  méta-outils) et `src/archetypes/veille-client.ts` (la veille d'un client
+  journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont

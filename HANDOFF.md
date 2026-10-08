@@ -35,6 +35,13 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   compteur du mois), `moteur/src/conversation/config.ts`, section
   `conversation` de `ConfigSecurite` (facultative) et du client fictif.
   `@anthropic-ai/sdk@0.132.0` ajouté au moteur.
+- **Lot 1 (gestes)** fait le 2026-10-08, branche `espaces/lot-1` :
+  `moteur/src/conversation/actions.ts`, `moteur/src/archetypes/veille-client.ts`
+  (extrait de `cli/veiller.ts` ; rapport et journal de `pnpm veiller`
+  comparés avant/après : identiques), `metiers/securite-privee/code/src/actions.ts`
+  (`ACTIONS` : les huit gestes), `decrireEtape` dans `remplacement.ts`
+  (sortie de `pnpm remplacer` comparée avant/après sur tout le déroulé :
+  identique). Les gestes eux-mêmes sont testés au lot 2 (`conversation.test.ts`).
 
 ## La suite : `PLAN-ESPACES.md`, lots suivants
 
@@ -83,6 +90,12 @@ et le noter ici sous « Choix faits faute de consigne ».
   minuit et 1 h ou 2 h, heure de Paris, le premier jour du mois, un appel
   compte dans le mois précédent. Sans effet sur un plafond mensuel ; à
   changer si un jour le plafond doit être exact à l'heure près.
+- **`valider_remplacement` sans agent** : la confirmation nomme le premier
+  possible au moment de la consigne ; si le planning change avant le « oui »,
+  `valider` reprend le premier possible du moment, qui peut être un autre.
+  Sans effet dans la démo (rien ne change entre les deux) ; à fermer si la
+  conversation sert sur un vrai planning (inscrire l'agent dans les paramètres
+  confirmés).
 - **L'adaptateur Anthropic n'a jamais appelé le vrai modèle** (lot 0) : seul
   le typage contre le SDK 0.132.0 le vérifie ; le premier appel réel se fera
   au critère du lot 3 ou aux évals, avec la clé de Lionel.
@@ -139,6 +152,21 @@ et le noter ici sous « Choix faits faute de consigne ».
 - **Lot 0 écrit sans sous-agent** : huit petits fichiers, plus court à écrire
   qu'à décrire à un sous-agent ; la règle 6 du § 1 sert là où des modules
   indépendants sont gros (lot 3).
+- **`META_OUTILS` vit dans `actions.ts`**, pas dans `traduire.ts` (§ 5.3) :
+  `outilsDe` (lot 1) en a besoin et `traduire.ts` importe `actions.ts` ;
+  les mettre dans `traduire.ts` aurait créé un import circulaire.
+- **`decrireEtape(s, etape, demande)`** prend la demande en plus (§ 5.2 dit
+  `(s, etape)`) : une étape « trop tard » ou « escaladée » ne la porte pas,
+  et le texte doit la nommer. Le texte n'a pas les commandes à taper : le CLI
+  les ajoute, et garde son bloc YAML de délégation ; la conversation dit la
+  délégation proposée en une phrase.
+- **`valider_remplacement` sans agent** : la reformulation nomme le premier
+  possible (« Valider Julien Lefèvre (A-2) pour … ? », comme le test du § 5.7
+  l'attend, plutôt que « Valider la proposition pour … »).
+- **`declarer_absence` par le patron sans agent** : refus « Précisez l'agent
+  absent. ».
+- **`mes_titres`** : une ligne par titre, « non renseigné » quand la donnée
+  manque, la carte avec ses activités et sa dernière période de validité.
 - **Le test « `ConfigSecurite` sans `conversation` passe »** est dans
   `exemple.test.ts` (le test de la config du client fictif).
 
