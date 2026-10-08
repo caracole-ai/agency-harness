@@ -16,6 +16,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm registre:verifier",
     "veiller": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/veiller.ts",
     "remplacer": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx metiers/securite-privee/code/src/cli/remplacer.ts",
+    "parler": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/parler.ts",
     "rapport:html": "tsx moteur/src/cli/rapport-html.ts"
   },
   "devDependencies": {

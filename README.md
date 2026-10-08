@@ -71,7 +71,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   client : modèle, prix, effort, plafonds, seuil de promotion),
   `src/conversation/actions.ts` (la forme d'un geste du quotidien, les rôles
   `patron` et `agent`, les outils stricts envoyés au modèle et les deux
-  méta-outils) et `src/archetypes/veille-client.ts` (la veille d'un client
+  méta-outils), `src/conversation/traduire.ts` (une consigne → une action,
+  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai),
+  `src/conversation/conversation.ts` (le déroulé d'un tour : qui parle,
+  plafond du mois, traduction, exécution ou confirmation par « oui » à la
+  reformulation, tout au journal), `src/cli/parler.ts` et
+  `src/archetypes/veille-client.ts` (la veille d'un client
   journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
@@ -149,6 +154,13 @@ pnpm remplacer reponse --client <copie> --demande D-V-17 --oui | --non
 pnpm remplacer suivre  --client <copie> --demande D-V-17
                          # un remplacement : proposition, validation du patron, accord de
                          # l'agent, écriture du planning ; sur une COPIE du client fictif
+pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 2026-10-10T21:40] [--modele simule]
+            --consigne "Aïcha ne vient pas demain"
+            | --confirmer <empreinte> --conversation <C-…> --oui|--non
+            | --interactif
+                         # parler à l'outil : la consigne devient un geste de la liste, ou « je ne
+                         # sais pas » ; ce qui écrit attend un « oui ». Exige ANTHROPIC_API_KEY,
+                         # sauf --modele simule (aucun appel). Sur une COPIE du client fictif
 ```
 
 ## Le déroulé d'un rendez-vous

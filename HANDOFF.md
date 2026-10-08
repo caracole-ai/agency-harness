@@ -42,6 +42,14 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   (`ACTIONS` : les huit gestes), `decrireEtape` dans `remplacement.ts`
   (sortie de `pnpm remplacer` comparée avant/après sur tout le déroulé :
   identique). Les gestes eux-mêmes sont testés au lot 2 (`conversation.test.ts`).
+- **Lot 2 (traduction, CLI)** fait le 2026-10-08, branche `espaces/lot-2` :
+  `moteur/src/conversation/{traduire,conversation,id}.ts`,
+  `moteur/src/cli/parler.ts` (`pnpm parler`),
+  `metiers/securite-privee/code/src/conversation.ts` (`CONVERSATION`).
+  Testé en simulé (`traduire.test.ts`, `conversation.test.ts` : 13 cas sur
+  une copie). Critère du lot : `pnpm parler … --modele simule --consigne
+  "bonjour"` affiche `Réponse (je_ne_sais_pas)`. **Aucune consigne n'a encore
+  été traduite par le vrai modèle** (pas de clé dans cette session).
 
 ## La suite : `PLAN-ESPACES.md`, lots suivants
 
@@ -155,6 +163,24 @@ et le noter ici sous « Choix faits faute de consigne ».
 - **`META_OUTILS` vit dans `actions.ts`**, pas dans `traduire.ts` (§ 5.3) :
   `outilsDe` (lot 1) en a besoin et `traduire.ts` importe `actions.ts` ;
   les mettre dans `traduire.ts` aurait créé un import circulaire.
+- **`pnpm parler --confirmer` exige `--conversation <C-…>`** : la
+  confirmation en attente est rangée au journal sous l'identifiant de la
+  conversation, que le § 5.5 ne fait pas passer. Le CLI affiche la commande
+  complète à taper. En mode `--interactif`, « oui » ou « non » répond à la
+  dernière confirmation ; une session est rouverte à chaque échange (le
+  planning est relu après une écriture).
+- **La ligne `consigne` d'une action s'écrit après son exécution** (ou après
+  sa reformulation, pour une action qui écrit), avec `erreur` dans `donnees`
+  quand l'action refuse ; de même la ligne `confirmation`. Ainsi l'échec d'un
+  geste reste au journal (sécurité n° 9). Une erreur du modèle : ligne
+  `consigne` en `issue: 'refus'`, le motif reste la consigne mot pour mot
+  (§ 4.6), le message d'erreur va dans `donnees.erreur` (le § 5.4 disait
+  « motif = message » : le tableau du § 4.6 a primé).
+- **Une confirmation refusée (empreinte fausse, autre demandeur) n'écrit
+  rien** : une ligne `confirmation` consommerait l'attente, et n'importe qui
+  pourrait alors annuler la confirmation d'un autre.
+- **`MetierConversation.echappee` et la réponse `proposition`** ne sont
+  ajoutées qu'aux lots 3 et 4, où elles servent.
 - **`decrireEtape(s, etape, demande)`** prend la demande en plus (§ 5.2 dit
   `(s, etape)`) : une étape « trop tard » ou « escaladée » ne la porte pas,
   et le texte doit la nommer. Le texte n'a pas les commandes à taper : le CLI
