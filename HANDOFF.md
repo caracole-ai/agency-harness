@@ -13,17 +13,29 @@ fichiers qu'il cite, si.
   passes réelles des évals, et leurs corrections). **Le tout est fusionné
   dans `main` le 2026-10-08** (avance rapide, `main` et `espaces/fournisseur`
   poussés sur origin) ; les branches `espaces/lot-*` et `espaces/corrections`
-  restent locales. Le lot 7 et `espaces/fournisseur` n'ont pas eu de relecture
-  indépendante avant la fusion.
+  restent locales. **Relecture indépendante du lot 7 et de
+  `espaces/fournisseur` faite après la fusion** (2026-10-08, sous-agent, par
+  lecture seule) : un défaut moyen corrigé (les routes JSON de l'interface
+  répondaient à n'importe quelle page web ouverte dans le navigateur :
+  `hono/csrf`, hôte local exigé, corps déclaré JSON exigé, test), deux
+  mineurs corrigés (la balise de frontière écrite de travers, `</donnees >`,
+  passait ; changer de « Je suis » pendant une requête mêlait les
+  identités), un mineur noté (voir « Pièges »).
 - **GLM-5.3 chez GMI Cloud est le modèle de référence jusqu'à nouvel ordre**
   (Lionel, 2026-10-08) : la config du client fictif le désigne (`acces`,
   prix GMI, plafonds relevés) ; l'API d'Anthropic reste en commentaire. Pas
   de passe Claude « avant un bon moment ». **On reste au laboratoire, sur
   les données fictives** (à garder pertinentes et cohérentes), jusqu'à un
   produit correct et efficient ; le réel viendra après.
-- `pnpm check` passe sur `espaces/fournisseur` : Biome, types des trois
-  paquets, 194 tests du moteur, 102 du métier, 11 de l'interface, registre
-  cohérent (21 interdits, 34 tests, 10 escalades).
+- `pnpm check` passe sur `main` : Biome, types des trois paquets, 195 tests
+  du moteur, 102 du métier, 12 de l'interface, registre cohérent (21
+  interdits, 34 tests, 10 escalades).
+- **Le mini-site « Le harnais en clair » est à jour de l'état du 2026-10-08**
+  (trois pages, six schémas des mécanismes réels : carte du système, chemin
+  d'une consigne, échappée, promotion, boucle des évals, modèle et point
+  d'accès) : https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52. Ses sources
+  ne sont pas dans le dépôt (artefact claude.ai, fichiers `index.html`,
+  `espaces.html`, `demo.html`, `style.css`).
 - **Aucune passe avec Claude** : pas de clé Anthropic le 2026-10-08. Deux
   passes réelles avec **GLM-5.3 chez GMI Cloud** : traduction 39/51 (76 %,
   seuil 95 %), échappée 11/14 (79 %, seuil 80 %) ; analyse dans
@@ -377,6 +389,18 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - Un agent ne doit jamais lire le texte d'une étape destiné au patron
   (`decrireEtape`) : les gestes de l'agent ont leurs propres phrases
   (`actions.ts`, `reponseEnregistree`, `vacationPourAgent`).
+- **L'interface ne répond qu'à sa propre page** (`app.ts`) : `hono/csrf`
+  sur `/api/*` (403 sur un POST de formulaire ou `text/plain` d'une autre
+  origine), nom d'hôte dans `HOTES` sinon 421, corps déclaré
+  `application/json` sinon 400. Un test qui poste doit mettre l'en-tête
+  `Content-Type: application/json`. Une `HTTPException` de Hono garde son
+  statut dans `onError`.
+- Le test « rien des autres agents dans le système » de
+  `metiers/…/echappee.test.ts` (ligne ~217) ne peut pas échouer : le système
+  de l'échappée ne contient jamais de donnée. La garantie D4 est prouvée par
+  le test de `tablesPour` ; un test de bout en bout (un agent joue
+  `SELECT nom FROM agents`, le résultat ne contient que lui) serait plus
+  honnête.
 
 ## Choix faits faute de consigne
 

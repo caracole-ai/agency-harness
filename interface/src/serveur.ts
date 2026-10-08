@@ -10,9 +10,8 @@ import { parseArgs } from 'node:util'
 import { type Modele, modeleDepuisConfig, modeleSimule, type Scripte } from '@harnais/moteur'
 import { CONVERSATION } from '@harnais/securite-privee'
 import { serve } from '@hono/node-server'
-import { creerApp } from './app'
+import { creerApp, HOTE } from './app'
 
-const HOTE = '127.0.0.1'
 const PORT = 3777
 
 const { values } = parseArgs({

@@ -39,9 +39,16 @@ import {
 } from '@harnais/securite-privee'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
+import { csrf } from 'hono/csrf'
+import { HTTPException } from 'hono/http-exception'
 
 /** Le dossier servi : `index.html` et `static/`, à côté de ce paquet, quel que soit le dossier de lancement. */
 const PUBLIC = fileURLToPath(new URL('../public', import.meta.url))
+
+/** L'interface n'écoute qu'en local. */
+export const HOTE = '127.0.0.1'
+/** Les noms sous lesquels une requête peut arriver : un autre nom est un site tiers qui pointe ici (rebinding DNS). */
+const HOTES = new Set([HOTE, 'localhost', '[::1]'])
 
 export const LIMITE_JOURNAL = { defaut: 200, max: 1000 }
 /** Une consigne tient en quelques phrases ; au-delà, c'est un document, pas une consigne. */
@@ -84,6 +91,12 @@ function verifier(s: Session, identite: Identite): void {
 }
 
 async function lireCorps(requete: Request): Promise<Record<string, unknown>> {
+  // Un corps déclaré autrement (text/plain) s'envoie depuis n'importe quelle page
+  // web sans pré-vol : il est refusé ; un POST JSON venu d'ailleurs exige un
+  // pré-vol, que rien n'autorise ici.
+  if (!/^application\/json\b/i.test(requete.headers.get('content-type') ?? '')) {
+    throw new ErreurRequete('le corps de la requête doit être déclaré application/json')
+  }
   let corps: unknown
   try {
     corps = await requete.json()
@@ -254,10 +267,23 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
 
   app.onError((erreur, c) => {
     if (erreur instanceof ErreurRequete) return c.json({ erreur: erreur.message }, 400)
+    // Un refus d'un intergiciel de Hono (csrf : 403) garde son statut.
+    if (erreur instanceof HTTPException) return erreur.getResponse()
     console.error(erreur)
     return c.json({ erreur: message(erreur) }, 500)
   })
   app.notFound((c) => c.json({ erreur: `introuvable : ${c.req.path}` }, 404))
+
+  // Les routes JSON ne répondent qu'à la page elle-même : même origine pour
+  // tout ce qu'un formulaire ou un fetch sans pré-vol peut envoyer
+  // (hono/csrf), et un nom d'hôte local (un site tiers ne peut pas lire le
+  // journal par un nom à lui qui pointe sur cette machine).
+  app.use('/api/*', csrf())
+  app.use('/api/*', async (c, next) => {
+    const { hostname } = new URL(c.req.url)
+    if (!HOTES.has(hostname)) return c.json({ erreur: `hôte inconnu : ${hostname}` }, 421)
+    await next()
+  })
 
   app.get('/', serveStatic({ root: PUBLIC, path: 'index.html' }))
   app.get('/static/*', serveStatic({ root: PUBLIC }))

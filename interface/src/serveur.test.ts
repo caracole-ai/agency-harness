@@ -91,11 +91,44 @@ describe('les erreurs de requête', () => {
       (await poster(a, '/api/consigne', { identite: { role: 'roi' }, consigne: 'x' })).status,
     ).toBe(400)
     expect((await poster(a, '/api/consigne', { identite: PATRON, consigne: ' ' })).status).toBe(400)
-    const r = await a.request('/api/consigne', { method: 'POST', body: 'pas du json' })
+    const r = await a.request('/api/consigne', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: 'pas du json',
+    })
     expect(r.status).toBe(400)
   })
   it('refuse une limite de journal hors bornes', async () => {
     expect((await app().request('/api/journal?limite=0')).status).toBe(400)
+  })
+  it('ne répond qu’à la page elle-même : autre origine, corps non JSON, hôte étranger', async () => {
+    const a = app()
+    const corps = JSON.stringify({ identite: PATRON, consigne: 'Aïcha ne vient pas demain' })
+    // Ce qu'une page tierce peut envoyer sans pré-vol : refusé par hono/csrf.
+    const tierce = await a.request('/api/consigne', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain', Origin: 'https://ailleurs.example' },
+      body: corps,
+    })
+    expect(tierce.status).toBe(403)
+    // Même sans Origin, un corps déclaré text/plain est refusé (csrf) ; un
+    // corps déclaré autrement que JSON l'est aussi, par lireCorps (400).
+    const texte = await a.request('/api/consigne', {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: corps,
+    })
+    expect(texte.status).toBe(403)
+    const xml = await a.request('/api/consigne', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/xml' },
+      body: corps,
+    })
+    expect(xml.status).toBe(400)
+    // Un nom d'hôte qui n'est pas local (rebinding DNS) : refusé, même en lecture.
+    const etranger = await a.request('http://ailleurs.example/api/etat')
+    expect(etranger.status).toBe(421)
+    expect((await a.request('http://localhost:3777/api/etat')).status).toBe(200)
   })
 })
 

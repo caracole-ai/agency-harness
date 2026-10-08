@@ -647,15 +647,23 @@ function occuper(oui) {
   ici.occupe = oui
   $('envoyer').disabled = oui
   $('envoyer').textContent = oui ? 'Patientez…' : 'Envoyer'
+  // Changer de « Je suis » pendant qu'une réponse est en route mêlerait les
+  // identités : la réponse reviendrait au nom de l'ancienne.
+  $('identite').disabled = oui
   for (const b of document.querySelectorAll('.suggestion, [data-confirmation] button'))
     b.disabled = oui
 }
 
-/** Les boutons d'une confirmation, partout où ils sont, remplacés par la réponse donnée. */
-function marquerRepondu(conf, oui) {
+/** Les boutons d'une confirmation, partout où ils sont, remplacés par la réponse donnée (et son sort, si elle a été refusée). */
+function marquerRepondu(conf, oui, refusee) {
   const cle = `${conf.conversation}|${conf.empreinte}`
   for (const zone of boutons.get(cle) ?? []) {
-    zone.replaceWith(el('p', { classe: 'repondu', texte: `Réponse : ${oui ? 'oui' : 'non'}` }))
+    zone.replaceWith(
+      el('p', {
+        classe: 'repondu',
+        texte: `Réponse : ${oui ? 'oui' : 'non'}${refusee ? ', refusée' : ''}`,
+      }),
+    )
   }
   boutons.delete(cle)
   if (ici.attente && `${ici.attente.conversation}|${ici.attente.empreinte}` === cle)
@@ -708,7 +716,7 @@ async function repondre(conf, oui) {
       oui,
     })
     attente.remove()
-    marquerRepondu(conf, oui)
+    marquerRepondu(conf, oui, reponse.sorte === 'refus')
     bulleOutil(reponse, conf)
   } catch (erreur) {
     attente.remove()
