@@ -41,18 +41,22 @@ veiller:
 conversation:
   modele:
     fournisseur: anthropic
-    id: claude-opus-5-5
-    # Prix API Anthropic relevés le 2026-10-07, en dollars par million de tokens.
-    prix_par_million_usd: { entree: 4, sortie: 20, cache_ecrit: 5, cache_lu: 0.2 }
+    # Référence jusqu'à nouvel ordre (Lionel, 2026-10-08) : GLM-5.3 chez GMI
+    # Cloud, par son point d'accès au format Anthropic. Prix GMI relevés le
+    # 2026-10-08, en dollars par million de tokens. La clé reste dans la
+    # variable nommée, jamais ici. GMI ignore les outils stricts et « un seul
+    # outil par tour » : le harnais le tient quand même.
+    id: zai-org/GLM-5.3
+    prix_par_million_usd: { entree: 1.4, sortie: 4.4, cache_ecrit: 0, cache_lu: 0.26 }
     effort: { traduire: low, echappee: medium }
-    # Un autre point d'accès au format Anthropic (essayé le 2026-10-08 avec
-    # GLM-5.3 chez GMI Cloud) : remplacer `id` et les prix, et ajouter
-    #   acces: { url: "https://api.gmi-serving.com", authentification: bearer, variable_cle: GMI_API_KEY }
-    # La clé reste dans la variable nommée, jamais ici. GMI ignore les outils
-    # stricts et « un seul outil par tour » : le harnais le tient quand même.
-    # Avec GLM, relever aussi plafonds.par_demande à 240 s et 12 000 tokens
-    # de sortie : il est plus lent (jusqu'à 45 s par appel) et réfléchit plus.
+    acces: { url: "https://api.gmi-serving.com", authentification: bearer, variable_cle: GMI_API_KEY }
+    # Pour l'API d'Anthropic (prix relevés le 2026-10-07), retirer `acces` (la
+    # clé est alors lue dans ANTHROPIC_API_KEY) et mettre :
+    #   id: claude-opus-5-5
+    #   prix_par_million_usd: { entree: 4, sortie: 20, cache_ecrit: 5, cache_lu: 0.2 }
+    #   plafonds.par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
   plafonds:
-    par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
+    # Relevés pour GLM : jusqu'à 45 s par appel, et sa réflexion est longue.
+    par_demande: { tours: 12, tokens_sortie: 12000, secondes: 240 }
     par_mois_usd: 30
   promotion: { occurrences: 3, jours: 30 }

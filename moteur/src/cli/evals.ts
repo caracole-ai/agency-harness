@@ -3,7 +3,7 @@
 // main dans `evals/`, tourne sur une copie fraîche du client ; la sortie est
 // vérifiée en code, la trace complète est gardée dans `evals/traces/` (non
 // versionné) et le tableau dans `evals/resultats/`. Appelle le vrai modèle :
-// exige la clé que nomme la config (ANTHROPIC_API_KEY par défaut) et coûte (≈ 3 $ la passe complète). `--modele
+// exige la clé que nomme la config (ANTHROPIC_API_KEY sans `acces`) et coûte (≈ 0,3 $ les deux passes avec GLM-5.3). `--modele
 // simule` ne sert qu'à vérifier le câblage (tous les cas finissent en écart).
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'

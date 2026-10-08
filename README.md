@@ -180,22 +180,24 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 202
             | --confirmer <empreinte> --conversation <C-…> --oui|--non
             | --interactif
                          # parler à l'outil : la consigne devient un geste de la liste, ou « je ne
-                         # sais pas » ; ce qui écrit attend un « oui ». Exige ANTHROPIC_API_KEY,
-                         # sauf --modele simule (aucun appel). Sur une COPIE du client fictif
+                         # sais pas » ; ce qui écrit attend un « oui ». Exige la clé que nomme la
+                         # config, sauf --modele simule (aucun appel). Sur une COPIE du client fictif
                          # Le modèle et sa clé viennent de la config (`conversation.modele`) :
                          # sans `acces`, l'API d'Anthropic et ANTHROPIC_API_KEY ; avec `acces`, un
-                         # autre point d'accès au même format (GMI Cloud…) et la variable qu'il nomme
+                         # autre point d'accès au même format et la variable qu'il nomme. Le client
+                         # fictif désigne GLM-5.3 chez GMI Cloud (GMI_API_KEY), la référence
+                         # jusqu'à nouvel ordre (2026-10-08)
 pnpm promotions --client <copie> [--date 2026-10-08]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
                          # intention ; au seuil, écrit promotions/<intention>-<date>.md chez le
                          # client et l'inscrit au journal. Aucun modèle. Sur une COPIE du client fictif
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
                          # les évals de la conversation (cas dans evals/, copie fraîche par cas) :
-                         # appellent le vrai modèle (ANTHROPIC_API_KEY, ≈ 3 $ la passe complète) ;
+                         # appellent le vrai modèle (≈ 0,3 $ les deux passes avec GLM-5.3) ;
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,
-                         # délégations, journal, et la conversation. Exige ANTHROPIC_API_KEY, sauf
+                         # délégations, journal, et la conversation. Exige la clé de la config, sauf
                          # --modele simule (rejoue --script, un tableau de réponses). Sur une COPIE
 ```
 

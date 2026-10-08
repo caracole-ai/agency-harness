@@ -15,8 +15,9 @@ const section = () =>
 describe('ConversationSchema', () => {
   it('la config du client fictif passe', () => {
     const c = ConversationSchema.parse(section())
-    expect(c.modele.id).toBe('claude-opus-5-5')
-    expect(prixDe(c)).toEqual({ entree: 4, sortie: 20, cacheEcrit: 5, cacheLu: 0.2 })
+    expect(c.modele.id).toBe('zai-org/GLM-5.3')
+    expect(prixDe(c)).toEqual({ entree: 1.4, sortie: 4.4, cacheEcrit: 0, cacheLu: 0.26 })
+    expect(c.modele.acces?.variable_cle).toBe('GMI_API_KEY')
   })
   it('une clé inconnue refuse', () => {
     const s = section() as Record<string, unknown>

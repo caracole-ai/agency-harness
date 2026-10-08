@@ -8,12 +8,19 @@ fichiers qu'il cite, si.
 ## Où on en est
 
 - **`PLAN-ESPACES.md` est exécuté en entier (lots 0 à 7) le 2026-10-08**, plus
-  un commit de corrections après une relecture indépendante. Neuf branches
-  en chaîne, une par lot, **ni poussées ni fusionnées**, puis
-  `espaces/fournisseur` (un autre point d'accès, GMI Cloud, et les
-  premières passes réelles des évals) : **`espaces/fournisseur` contient
-  tout**. `main` n'a pas bougé (étape 5).
-  Pour relire : `git log --oneline main..espaces/fournisseur`.
+  un commit de corrections après une relecture indépendante, puis
+  `espaces/fournisseur` (un autre point d'accès, GMI Cloud, les premières
+  passes réelles des évals, et leurs corrections). **Le tout est fusionné
+  dans `main` le 2026-10-08** (avance rapide, `main` et `espaces/fournisseur`
+  poussés sur origin) ; les branches `espaces/lot-*` et `espaces/corrections`
+  restent locales. Le lot 7 et `espaces/fournisseur` n'ont pas eu de relecture
+  indépendante avant la fusion.
+- **GLM-5.3 chez GMI Cloud est le modèle de référence jusqu'à nouvel ordre**
+  (Lionel, 2026-10-08) : la config du client fictif le désigne (`acces`,
+  prix GMI, plafonds relevés) ; l'API d'Anthropic reste en commentaire. Pas
+  de passe Claude « avant un bon moment ». **On reste au laboratoire, sur
+  les données fictives** (à garder pertinentes et cohérentes), jusqu'à un
+  produit correct et efficient ; le réel viendra après.
 - `pnpm check` passe sur `espaces/fournisseur` : Biome, types des trois
   paquets, 194 tests du moteur, 102 du métier, 11 de l'interface, registre
   cohérent (21 interdits, 34 tests, 10 escalades).
@@ -180,19 +187,21 @@ corrigés ; noter l'avant/après ; puis la passe Claude dès qu'une clé est là
 
 ## Ce qui reste (à Lionel, ou avec lui)
 
-1. **Relancer GLM, puis lancer les évals avec Claude** (clé Anthropic, ou Claude par GMI si la clé y donne accès), et comparer (`evals/erreurs-2026-10-08.md`) ;
-   **révoquer la clé GMI** passée en clair dans la conversation du 2026-10-08. Les étiquettes sont tranchées (section précédente).
-   Ancien point : **mettre la clé et lancer les évals** (≈ 3,7 $ les deux passes, section
-   « Évals ») ; puis l'analyse d'erreurs du § 9.3 avec une session.
+1. **Relancer les deux passes GLM** (passe 3, `evals/erreurs-2026-10-08.md`) avec
+   `GMI_API_KEY` dans le shell ; Lionel a tranché le 2026-10-08 : pas de
+   nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
+   pas de passe Claude avant un bon moment. Les étiquettes sont tranchées
+   (section précédente).
 2. **Rejouer le critère global avec la clé**, sur une copie, à
    `--maintenant 2026-10-10T21:40` : `pnpm parler` (absence d'Aïcha,
    « Qui a le moins d'heures cette semaine ? ») puis `pnpm interface` (le
    scénario de `prospection.md`, § 10.3). Le n° 3 du critère est à reformuler
    d'abord (« Choix faits faute de consigne »).
-3. **Relire et fusionner** les branches `espaces/*` (dans l'ordre, ou
-   `espaces/lot-7` seule).
-4. **Relire les étiquettes des évals** (`evals/consignes.yaml`), avec des
-   phrases de vrais patrons dès le premier rendez-vous.
+3. ~~Relire et fusionner les branches `espaces/*`~~ : fusionnées le
+   2026-10-08 sans relecture du lot 7 ni de `espaces/fournisseur` (à faire
+   sur `main`).
+4. **Relire les étiquettes des évals** (`evals/consignes.yaml`) ; les
+   phrases de vrais patrons viendront plus tard (le réel après le produit).
 5. Hors de ce plan, comme prévu (§ 12) : la mise à jour à distance d'un
    harnais livré, l'identité réelle, créer et supprimer une vacation, la
    politique réglable à l'écran, le plafond d'IA dans le rapport Veiller.
@@ -202,8 +211,9 @@ corrigés ; noter l'avant/après ; puis la passe Claude dès qu'une clé est là
 **Deux passes GLM-5.3 ont tourné le 2026-10-08** (`evals/resultats/`,
 `evals/erreurs-2026-10-08.md`), **aucune avec Claude**. Commandes, sur le
 client fictif (les évals travaillent toujours sur une copie fraîche) :
-`pnpm evals traduire --client exemples/client-fictif` (51 cas, ≈ 0,7 $) et
-`pnpm evals echappee --client exemples/client-fictif` (14 cas, ≈ 3 $),
+`pnpm evals traduire --client exemples/client-fictif` (51 cas, ≈ 0,1 $ avec
+GLM) et `pnpm evals echappee --client exemples/client-fictif` (14 cas,
+≈ 0,2 $ avec GLM ; ≈ 0,7 $ et 3 $ avec Opus),
 `--seulement id,id` pour relancer des cas. Seuils : 95 %, 80 %, 100 % sur
 les cas stricts (`agent_patron`, piégés). Puis le § 9.3 : lire chaque trace
 en écart (`evals/traces/`), écrire `evals/erreurs-<date>.md` avec des
@@ -273,7 +283,9 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **2026-10-08** : le métier fournit le vocabulaire des intentions, montré
   au modèle ; une donnée qui ressemble à une consigne se signale sans être
   recopiée ; « libère le mercredi de Sophie » admet le geste
-  `declarer_absence` comme la demande nouvelle.
+  `declarer_absence` comme la demande nouvelle. **GLM-5.3 (GMI) est la
+  référence** jusqu'à nouvel ordre ; **laboratoire d'abord**, sur données
+  fictives, jusqu'à un produit correct et efficient.
 - **KISS** : éviter l'over-engineering, ne jamais sacrifier la qualité.
 - Durée maximale d'une vacation : **12 h**.
 
