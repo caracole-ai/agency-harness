@@ -13,3 +13,6 @@ dist/
 
 # Le rapport de démonstration se régénère (metiers/securite-privee/prospection.md).
 exemples/*/rapport-demo.*
+
+# Les traces complètes des évals (PLAN-ESPACES.md § 9) : relues, jamais versionnées.
+evals/traces/

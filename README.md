@@ -88,7 +88,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
   coup sous la clé d'accord. `src/promotion/` (espace 3) compte les
   demandes nouvelles par intention et écrit le dossier de promotion de celle
-  qui revient (`pnpm promotions`).
+  qui revient (`pnpm promotions`). `src/evals/` : les contrôles binaires des
+  évals (aucun juge LLM), lancées par `pnpm evals` sur les cas écrits à la
+  main dans `evals/` (racine du dépôt).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -176,6 +178,10 @@ pnpm promotions --client <copie> [--date 2026-10-08]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
                          # intention ; au seuil, écrit promotions/<intention>-<date>.md chez le
                          # client et l'inscrit au journal. Aucun modèle. Sur une COPIE du client fictif
+pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
+                         # les évals de la conversation (cas dans evals/, copie fraîche par cas) :
+                         # appellent le vrai modèle (ANTHROPIC_API_KEY, ≈ 3 $ la passe complète) ;
+                         # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
 ```
 
 ## Le déroulé d'un rendez-vous

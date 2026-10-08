@@ -70,6 +70,16 @@ Pas de push, pas de fusion dans `main` : à Lionel de relire et fusionner.
   `R-…`. Testé en simulé de bout en bout (`conversation.test.ts`) et pas à
   pas (`reaffectation.test.ts`, 12 cas). **Critère « avec la vraie clé »
   non passé** (pas de clé).
+- **Lot 6 (évals)** fait le 2026-10-08, branche `espaces/lot-6` :
+  `evals/consignes.yaml` (51 cas écrits à la main), `evals/echappees.yaml`
+  (14 cas, dont 2 piégés, calculs à la main en tête du fichier),
+  `moteur/src/evals/evals.ts` (contrôles binaires), `moteur/src/cli/evals.ts`
+  (`pnpm evals`), `evals/traces/` ignoré par git. Câblage vérifié avec
+  `--modele simule` (traces et tableau écrits, code de sortie 1 sous le
+  seuil). Un test métier garde les étiquettes honnêtes (chaque geste a
+  trois formulations ouvertes à son rôle, 8 demandes nouvelles, 4 tentatives
+  d'agent jamais attendues en action, le piège porte sur une vraie cellule).
+  **Aucune passe réelle** : voir « Évals ».
 - **Lot 5 (promotion)** fait le 2026-10-08, branche `espaces/lot-5` :
   `moteur/src/promotion/promotion.ts`, `moteur/src/cli/promotions.ts`
   (`pnpm promotions`). Acceptation rejouée sans clé : trois conversations
@@ -94,6 +104,61 @@ que Lionel met ; elles ne font pas partie de `pnpm check`.
 
 Quand le plan se tait : choisir la version la plus simple qui ne ferme rien,
 et le noter ici sous « Choix faits faute de consigne ».
+
+## Évals (lot 6) : à lancer, puis l'audit ci-dessous à refaire
+
+**Aucune passe n'a tourné** (pas de clé le 2026-10-08). Commandes, sur le
+client fictif (les évals travaillent toujours sur une copie fraîche) :
+`pnpm evals traduire --client exemples/client-fictif` (51 cas, ≈ 0,7 $) et
+`pnpm evals echappee --client exemples/client-fictif` (14 cas, ≈ 3 $),
+`--seulement id,id` pour relancer des cas. Seuils : 95 %, 80 %, 100 % sur
+les cas stricts (`agent_patron`, piégés). Puis le § 9.3 : lire chaque trace
+en écart (`evals/traces/`), écrire `evals/erreurs-<date>.md` avec des
+catégories **observées**, corriger, relancer, noter l'avant/après ici.
+
+Audit du dispositif (skill `eval-audit`, 2026-10-08, avant toute passe) :
+
+### Pas encore d'analyse d'erreurs
+**Statut :** attendu à ce stade. Les contrôles visent des défauts prévus
+(date relative, paramètre, chiffre inventé, donnée piégée), pas observés.
+**Correction :** la première passe, puis `error-discovery` sur ses traces ;
+ajouter un contrôle seulement pour une catégorie vue deux fois.
+
+### Les étiquettes n'ont pas été relues par un humain du métier
+**Statut :** problème. Les 65 cas sont écrits par Claude depuis les CSV ; les
+formulations ne sont peut-être pas celles d'un patron de sécurité privée.
+**Correction :** Lionel relit `evals/consignes.yaml` (une heure), et ajoute
+les phrases réelles entendues en entretien (`entretien-metier`) dès le
+premier rendez-vous.
+
+### Les mots-clés d'intention acceptés sont devinés
+**Statut :** risque de faux écarts sur les 8 demandes nouvelles (N-1 à
+N-8) : la liste des mots-clés acceptés est une supposition, alors que ce qui
+compte pour la promotion est la **stabilité** (la même sorte de demande
+rend le même mot-clé). **Correction :** à la première passe, lire les
+mots-clés rendus ; si N-3 et N-4 (même sorte) rendent le même mot hors de
+la liste, c'est la liste qui est fausse, pas le modèle — décider avec
+Lionel, et l'écrire ici, avant toute relance (jamais pour faire passer un
+cas en silence).
+
+### Peu de cas, une seule passe
+**Statut :** à surveiller. 14 échappées : un cas = 7 points ; deux écarts
+suffisent à passer sous 80 %. Chaque cas ne tourne qu'une fois alors que le
+modèle n'est pas déterministe. **Correction :** relancer trois fois les cas
+stricts (piégés, `agent_patron`) et tout cas en écart avant de conclure ;
+viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
+
+### Traces en JSON brut
+**Statut :** mineur. Lisibles par Claude, pénibles pour Lionel.
+**Correction :** si Lionel relit lui-même, une page qui rend une trace
+(système, tours, requêtes, issue) ; sinon rien.
+
+### Corrigé pendant l'audit
+- Un nombre attendu se cherche **entier** (« 4 » n'est plus trouvé dans
+  « V-14 ») : E-04 aurait passé à tort.
+- Une réponse dont le contrôle a **retiré** le résumé du modèle compte en
+  écart, même si le tableau rendu à la place contient les chiffres attendus.
+- Aucun juge LLM, tout est en code et binaire : rien à valider de ce côté.
 
 ## Décisions à respecter (détail et dates : `REFLEXIONS.md`, « Décidé »)
 
@@ -270,6 +335,21 @@ et le noter ici sous « Choix faits faute de consigne ».
 - **Promotion : la « suite donnée »** se lit sur les objets (`R-…`) dont une
   ligne porte `donnees.conversation` ; « écrite » l'emporte sur « validée ».
   Elle n'est dite que pour une proposition.
+- **Évals : `pnpm evals … --modele simule`** existe pour vérifier le
+  câblage sans clé (tous les cas finissent en écart) ; le plan ne le
+  prévoyait pas.
+- **Évals : les cas d'échappée ont un champ `sortes`** (les issues
+  acceptées) et `interdit_vers` (aucune vacation confiée à ces agents, quelle
+  que soit l'issue), en plus des champs du § 9.1.
+- **Évals : les résultats s'appellent `<date>-<heure>-traduire.md` et
+  `…-echappee.md`** (§ 9.1 : `<date>-<heure>.md`), pour que les deux passes
+  du même moment ne s'écrasent pas.
+- **Le critère global n° 3 ne colle pas aux données** : « Refais la semaine
+  de Karim en lui laissant son mercredi », à `2026-10-10T21:40` — le seul
+  mercredi de Karim (V-01, 07/10) est passé et il n'en a pas à venir. Les
+  évals utilisent à la place « Libère le mardi 13 de Karim » (V-03) et
+  « Libère le mercredi 14 de Sophie » (V-07). À Lionel de choisir : changer
+  la phrase de démo, ou ajouter un mercredi à Karim dans les données.
 - **Une donnée ne peut pas fermer la frontière** : `<donnees>` et
   `</donnees>` écrits dans une cellule sont remplacés par « [balise
   retirée] » avant d'être rendus au modèle (`entreDonnees`, `boucle.ts`).
