@@ -135,6 +135,19 @@ describe('une question', () => {
       'nom | heures\nJulien Lefèvre | 16\n\nnom\nMehdi Saïdi',
     )
   })
+  it('le nombre de lignes d’un résultat entier se cite ; d’un résultat tronqué, non', async () => {
+    // Vu avec GLM (E-05, E-14) : « 4 agents » comptés par le modèle sur les lignes rendues.
+    const repondre = { outil: 'repondre', entree: { texte: '2 agents : Julien 16 h, Karim 24 h.' } }
+    expect((await lancer([REQUETE, repondre])).issue).toMatchObject({ controle: 'ok' })
+    const o = outils()
+    o.requete = () => ({ ...(outils().requete('') as object), tronque: true }) as never
+    const { issue } = await lancer([REQUETE, repondre], {
+      outils: o,
+      bornes: BORNES,
+      usage: undefined,
+    })
+    expect(issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
+  })
   it('sans aucune requête, une réponse chiffrée est retirée', async () => {
     const { issue } = await lancer([{ outil: 'repondre', entree: { texte: 'Julien : 16 h.' } }])
     expect(issue).toMatchObject({

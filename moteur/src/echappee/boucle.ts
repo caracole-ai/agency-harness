@@ -276,12 +276,16 @@ export async function boucle<Modif>(
             break
           }
           const r = await outils.requete(e.data.sql)
-          const rendu = tronquer(rendreResultat(r), SORTIE_MAX)
+          const complet = rendreResultat(r)
+          const rendu = tronquer(complet, SORTIE_MAX)
           const sortie = entreDonnees(rendu)
           if ('erreur' in r) {
             resultat(sortie, r.erreur)
           } else {
             sources.push(sortie)
+            // Le nombre de lignes d'un résultat entier se cite (« 4 agents ») :
+            // le code l'a compté, pas le modèle.
+            if (!r.tronque && rendu === complet) sources.push(String(r.lignes.length))
             tableaux.push(rendu)
             resultat(sortie)
           }

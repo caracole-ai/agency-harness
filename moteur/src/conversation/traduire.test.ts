@@ -135,6 +135,24 @@ describe('traduire', () => {
     })
     expect(demande).toEqual({ sorte: 'inconnue', raison: 'le modèle a choisi plusieurs actions' })
   })
+  it('"null" ou "None" en texte se relit comme null, sur un champ qui l’accepte seulement', async () => {
+    for (const vide of ['null', 'None']) {
+      const { demande } = await essai({
+        outil: 'gerer_absence',
+        entree: { agent: vide, jour: '2026-10-11' },
+      })
+      expect(demande).toEqual({
+        sorte: 'action',
+        action: 'gerer_absence',
+        params: { agent: null, jour: '2026-10-11' },
+      })
+    }
+    const { demande } = await essai({
+      outil: 'gerer_absence',
+      entree: { agent: null, jour: 'null' },
+    })
+    expect(demande.sorte === 'inconnue' && demande.raison).toMatch(/^paramètres invalides/)
+  })
   it('un outil inconnu : inconnue', async () => {
     const { demande } = await essai({ outil: 'effacer_tout', entree: {} })
     expect(demande.sorte).toBe('inconnue')

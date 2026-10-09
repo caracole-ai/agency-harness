@@ -98,6 +98,19 @@ export function messageConsigne(consigne: string, maintenant: Temporal.ZonedDate
   return `Maintenant : ${date} (${JOURS[maintenant.dayOfWeek - 1]}).\n<consigne>${consigne}</consigne>`
 }
 
+/**
+ * `"null"` ou `"None"` écrit en texte au lieu de `null` (GMI ignore `strict` :
+ * vu quatre fois sur deux passes) se relit comme `null`, d'abord : une mention
+ * est un texte libre, « null » y passerait pour un nom. Si cette lecture
+ * échoue (un champ qui refuse `null`), l'entrée telle quelle est lue.
+ */
+function nullEnTexte(entree: unknown): unknown {
+  if (typeof entree !== 'object' || entree === null || Array.isArray(entree)) return entree
+  return Object.fromEntries(
+    Object.entries(entree).map(([cle, v]) => [cle, v === 'null' || v === 'None' ? null : v]),
+  )
+}
+
 /** Lit la réponse du modèle, dans l'ordre du plan, sans réessai. */
 function lire(message: Anthropic.Message, schemas: Map<string, z.ZodType<unknown>>): Demande {
   if (message.stop_reason === 'refusal') return { sorte: 'inconnue', raison: 'le modèle a refusé' }
@@ -120,7 +133,8 @@ function lire(message: Anthropic.Message, schemas: Map<string, z.ZodType<unknown
   }
   const schema = schemas.get(bloc.name)
   if (!schema) return { sorte: 'inconnue', raison: `action inconnue : ${bloc.name}` }
-  const r = schema.safeParse(bloc.input)
+  const relue = schema.safeParse(nullEnTexte(bloc.input))
+  const r = relue.success ? relue : schema.safeParse(bloc.input)
   if (!r.success) {
     return { sorte: 'inconnue', raison: `paramètres invalides : ${z.prettifyError(r.error)}` }
   }
