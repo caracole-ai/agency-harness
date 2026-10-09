@@ -1,10 +1,15 @@
 // Le contrôle de la réponse de l'échappée : le modèle ne calcule rien de tête.
 // Chaque nombre, chaque date et chaque nom connu que cite sa réponse doit se
 // retrouver dans les sorties d'outils de cette échappée ; sinon, le code
-// retire son résumé (PLAN-ESPACES.md § 6.6).
+// retire son résumé (PLAN-ESPACES.md § 6.6). Les dates que le harnais lui-même
+// a dites au modèle (le jour, les bornes de la semaine) se citent comme dates
+// et par leur année, jamais comme nombres : « 10 » ne devient pas citable
+// parce qu'on est en octobre (evals/erreurs-2026-10-08.md, passes 5 et 6).
 
 /** `JJ/MM` ou `JJ/MM/AAAA`, isolée des autres chiffres et barres obliques. */
 const DATE = /(?<![\d/])(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?(?![\d/])/g
+/** `AAAA-MM-JJ`, isolée des autres chiffres et tirets (une heure peut suivre : `2026-10-11T08:00`). */
+const DATE_ISO = /(?<![\d-])\d{4}-\d{2}-\d{2}(?![\d-])/g
 const NOMBRE = /\d+(?:[.,]\d+)?/g
 const MOT = /[\p{L}\p{M}\p{N}]+/gu
 const MOT_DE_NOM = /^\p{L}{3,}$/u
@@ -34,18 +39,32 @@ function motsTrouves(sources: string, mots: string[]): boolean {
   return new RegExp(`(?<![\\p{L}\\p{N}])${suite}(?![\\p{L}\\p{N}])`, 'u').test(sources)
 }
 
-function datesEtNombres(texte: string, sources: string, intrus: Intrus[]): void {
+function datesEtNombres(
+  texte: string,
+  sources: string,
+  datesConnues: string[],
+  intrus: Intrus[],
+): void {
+  const connues = datesConnues.join('\n')
+  const dateTrouvee = (iso: string) => sources.includes(iso) || connues.includes(iso)
+  /** L'année d'une date connue n'est pas une quantité : elle se cite. */
+  const annees = datesConnues.map((d) => d.slice(0, 4))
   const masquees: [number, number][] = []
+  for (const m of texte.matchAll(DATE_ISO)) {
+    masquees.push([m.index, m.index + m[0].length])
+    if (!dateTrouvee(m[0])) intrus.push({ position: m.index, texte: m[0] })
+  }
   for (const m of texte.matchAll(DATE)) {
     const [ecrite, jour = '', mois = '', annee] = m
     if (Number(mois) < 1 || Number(mois) > 12 || Number(jour) < 1 || Number(jour) > 31) continue
     const iso = `${annee ?? ''}-${mois.padStart(2, '0')}-${jour.padStart(2, '0')}`
     masquees.push([m.index, m.index + ecrite.length])
-    if (!sources.includes(iso)) intrus.push({ position: m.index, texte: ecrite })
+    if (!dateTrouvee(iso)) intrus.push({ position: m.index, texte: ecrite })
   }
   for (const m of texte.matchAll(NOMBRE)) {
     if (masquees.some(([debut, fin]) => m.index >= debut && m.index < fin)) continue
     const point = m[0].replace(',', '.')
+    if (annees.includes(point)) continue
     if (!nombreTrouve(sources, [point, point.replace('.', ',')])) {
       intrus.push({ position: m.index, texte: m[0] })
     }
@@ -87,15 +106,20 @@ function noms(texte: string, sources: string, nomsConnus: string[], intrus: Intr
   }
 }
 
-/** Chaque nombre du texte et chaque nom connu cité doivent apparaître dans les sources (les sorties d'outils de cette échappée). */
+/**
+ * Chaque nombre du texte et chaque nom connu cité doivent apparaître dans les sources
+ * (les sorties d'outils de cette échappée) ; une date peut aussi venir de `datesConnues`,
+ * les dates ISO que le harnais a dites au modèle.
+ */
 export function verifierReponse(
   texte: string,
   sources: string[],
   nomsConnus: string[],
+  datesConnues: string[] = [],
 ): { ok: true } | { ok: false; intrus: string[] } {
   const brutes = sources.join('\n')
   const intrus: Intrus[] = []
-  datesEtNombres(texte, brutes, intrus)
+  datesEtNombres(texte, brutes, datesConnues, intrus)
   noms(texte, normaliser(brutes), nomsConnus, intrus)
   if (intrus.length === 0) return { ok: true }
   const ordonnes = intrus.sort((a, b) => a.position - b.position).map((i) => i.texte)

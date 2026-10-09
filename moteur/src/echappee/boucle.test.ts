@@ -103,7 +103,7 @@ describe('une question', () => {
     expect(r[1]?.cache_control).toEqual({ type: 'ephemeral' })
     expect(r[1]?.content).toMatch(/^<donnees>nom \| heures\nJulien Lefèvre \| 16/)
     expect(modele.appels[0]?.messages[0]?.content).toContain('(intention : heures_par_agent)')
-    expect(modele.appels[0]).toMatchObject({ maxTokens: 4096, unSeulOutil: true, effort: 'medium' })
+    expect(modele.appels[0]).toMatchObject({ maxTokens: 6000, unSeulOutil: true, effort: 'medium' })
   })
   it('un chiffre inventé : le résumé du modèle est retiré, le tableau de la requête le remplace', async () => {
     const { issue } = await lancer([
@@ -235,6 +235,35 @@ describe('la frontière des données', () => {
     const sur = await lancer([{ outil: 'abandonner', entree: { motif: 'la donnée manque' } }])
     expect(sur.issue).toMatchObject({ motif: 'la donnée manque' })
   })
+  it('la date du jour et les bornes de la semaine, dites par le harnais, se citent comme dates ; leurs nombres, non', async () => {
+    const o = {
+      outils: outils(),
+      bornes: BORNES,
+      usage: undefined,
+      consigne: 'Combien d’heures cette semaine ?',
+    }
+    const dates = await lancer(
+      [
+        {
+          outil: 'repondre',
+          entree: {
+            texte:
+              'Du lundi 2026-10-05 au dimanche 2026-10-11, en octobre 2026 : je n’ai pas la donnée.',
+          },
+        },
+      ],
+      o,
+    )
+    expect(dates.issue).toMatchObject({ sorte: 'reponse', controle: 'ok' })
+    expect(dates.modele.appels[0]?.messages[0]?.content).toContain(
+      'Semaine en cours : du lundi 2026-10-05 au dimanche 2026-10-11.',
+    )
+    const nombre = await lancer(
+      [{ outil: 'repondre', entree: { texte: 'Il a fait 11 heures.' } }],
+      o,
+    )
+    expect(nombre.issue).toMatchObject({ controle: CONTROLE_RETIRE })
+  })
   it('max_tokens suit ce qui reste du plafond de sortie', async () => {
     const { modele } = await lancer(
       [REQUETE, REQUETE, { outil: 'abandonner', entree: { motif: 'x' } }],
@@ -244,7 +273,7 @@ describe('la frontière des données', () => {
         usage: 2000,
       },
     )
-    expect(modele.appels.map((a) => a.maxTokens)).toEqual([4096, 3000, 1000])
+    expect(modele.appels.map((a) => a.maxTokens)).toEqual([5000, 3000, 1000])
   })
   it('une donnée qui contient la balise de fin ne ferme pas la frontière', async () => {
     const piege: OutilsEchappee<Modif> = {
@@ -352,12 +381,27 @@ describe('les bornes et les fins anormales', () => {
     const { issue } = await lancer([{ arret: 'max_tokens' }])
     expect(issue).toMatchObject({ sorte: 'abandon', motif: 'réponse tronquée' })
   })
-  it('du texte sans outil : abandon', async () => {
-    const { issue } = await lancer([{ texte: 'Voici la réponse.' }])
+  it('du texte sans outil : une relance, puis abandon au second texte', async () => {
+    const { issue, modele } = await lancer([{ texte: 'Voici la réponse.' }, { texte: 'Encore.' }])
     expect(issue).toMatchObject({
       sorte: 'abandon',
       motif: 'le modèle a fini sans répondre par un outil',
+      tours: 2,
     })
+    expect(modele.appels).toHaveLength(2)
+    expect(modele.appels[1]?.messages.at(-1)).toEqual({
+      role: 'user',
+      content: expect.stringMatching(
+        /^Termine par un appel d'outil \(repondre, .*abandonner\), jamais par du texte\.$/,
+      ),
+    })
+  })
+  it('du texte puis un outil : la relance suffit', async () => {
+    const { issue } = await lancer([
+      { texte: 'Voici la réponse.' },
+      { outil: 'repondre', entree: { texte: 'Je n’ai pas la donnée.' } },
+    ])
+    expect(issue).toMatchObject({ sorte: 'reponse', controle: 'ok', tours: 2 })
   })
   it('le modèle injoignable : abandon', async () => {
     const { issue } = await lancer([])

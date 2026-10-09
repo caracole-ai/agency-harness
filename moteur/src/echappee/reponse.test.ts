@@ -38,6 +38,21 @@ describe('verifierReponse', () => {
   it('un nombre se trouve dans une date ISO des sources', () => {
     expect(verifierReponse('le 11', ['2026-10-11'], NOMS)).toEqual({ ok: true })
   })
+  it('une date ISO du texte se cherche entière', () => {
+    expect(verifierReponse('le 2026-10-11', ['2026-10-11T08:00'], NOMS)).toEqual({ ok: true })
+    expect(verifierReponse('le 2026-10-12', ['2026-10-11T08:00'], NOMS)).toEqual({
+      ok: false,
+      intrus: ['2026-10-12'],
+    })
+  })
+  it('une date connue du harnais se cite comme date et par son année, pas par ses nombres', () => {
+    const connues = ['2026-10-05']
+    expect(verifierReponse('lundi 2026-10-05, le 05/10, en 2026', [], NOMS, connues)).toEqual({
+      ok: true,
+    })
+    expect(verifierReponse('le 5', [], NOMS, connues)).toEqual({ ok: false, intrus: ['5'] })
+    expect(verifierReponse('le 10', [], NOMS, connues)).toEqual({ ok: false, intrus: ['10'] })
+  })
   it('une heure : ses nombres se cherchent comme les autres', () => {
     expect(verifierReponse('à 08:00', ['debut | 2026-10-11T08:00'], NOMS)).toEqual({ ok: true })
     expect(verifierReponse('à 8 h', ['debut | 2026-10-11T08:00'], NOMS)).toEqual({

@@ -281,11 +281,22 @@ spécifique.
   échoue : finir par du texte au lieu de `repondre` (3), recopier les bornes
   de semaine qu'il a calculées (2) ou l'année du jour (1), que le contrôle ne
   tient pas pour des sources, une somme de tête attrapée (1). Deux pistes
-  déterministes écrites, non faites (relancer une fois ; donner la date et
-  les bornes de la semaine comme sources). **Appris** : avec 14 cas, un cas
-  vaut 7 points ; on ne conclut qu'après trois passes (0,45 $) ; et un
-  contrôle « pas un chiffre hors des données » doit compter parmi ses sources
-  ce que le harnais lui-même a dit au modèle.
+  déterministes **faites le soir même** (relancer une fois ; la date du jour
+  et les bornes de la semaine citables comme dates et par leur année, pas
+  comme nombres), puis **passes 7 à 9 : 11, 14, 11 sur 14 (36/42, 86 %)**.
+  Les deux catégories visées ont disparu sur 42 cas ; une ancienne revient
+  (4 écarts) : la réflexion de GLM avant `proposer` tronquée par un plafond
+  de **4 096 tokens par appel codé en dur** dans `boucle.ts`, même famille
+  que N-6 (1 024 en traduction). Plafond retiré dans la foulée : **passes 10
+  à 12 : 14, 14, 13 sur 14 = 41/42 (98 %), trois passes au-dessus du
+  seuil**. Un seul écart : « le plus petit total » pris pour une mention de
+  Laura Petit (catégorie nouvelle, vue une fois, piste notée, non faite).
+  **Appris** : avec
+  14 cas, un cas vaut 7 points ; on ne conclut qu'après trois passes
+  (0,45 $) ; un contrôle « pas un chiffre hors des données » doit compter
+  parmi ses sources ce que le harnais lui-même a dit au modèle ; et chaque
+  plafond « pensé pour Claude » laissé dans le code finit par tronquer un
+  autre modèle — un plafond vit dans la config.
 - **`PLAN-PROMOTION.md` écrit** (Fable 5.1) : un geste appris est une
   **donnée** (YAML : paramètres typés d'une liste fermée, SQL paramétré sur la
   copie du rôle, gabarit rendu par le code), jamais du code ; aucun appel au

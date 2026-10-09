@@ -12,11 +12,12 @@ fichiers qu'il cite, si.
   geste) est l'**auto-amélioration** du harnais et qu'elle est prioritaire ;
   Claude proposait l'inverse (geler, livrer l'échappée en lecture seule). La
   discussion et la décision sont dans `REFLEXIONS.md` (« Décidé », deux
-  lignes du 2026-10-09). L'arbre de travail porte, **non commités**, les
-  corrections des pistes 1 à 3 de la passe 3 (`traduire.ts`, `boucle.ts`,
-  `echappee.ts`, leurs tests ; `pnpm check` vert le 2026-10-09 au soir), les
-  résultats des passes 3 à 6, et les notes du jour (`REFLEXIONS.md`,
-  `HANDOFF.md`, `evals/erreurs-2026-10-08.md`, `PLAN-PROMOTION.md`).
+  lignes du 2026-10-09). Commits du soir : `fbbd24c` (corrections des pistes
+  1 à 3 de la passe 3), `5c94e9d` (le plan et les notes du jour), puis un
+  troisième (voir `git log`) : trois corrections de l'échappée (`boucle.ts`,
+  `reponse.ts`, leurs tests ; `pnpm check` vert, 233 tests moteur), les
+  passes 7 à 12 et leurs notes. **L'échappée tient son seuil : 41/42 sur
+  trois passes.**
 - **`PLAN-IDENTITE.md` exécuté le 2026-10-08 (lots 1 et 2), commité et
   poussé** (`1dc97fa`, sur `main`) ; le plan est retiré du
   dépôt comme il le demandait, son contenu consigné dans `REFLEXIONS.md`
@@ -310,10 +311,18 @@ Passes 5 et 6 de l'échappée, même harnais : 13/14 puis 11/14, soit **35/42
 écarts, la réponse du modèle était juste ; ce qui échoue : finir par du
 texte (3), recopier les bornes de semaine calculées (2) ou l'année du jour
 (1) que le contrôle ne tient pas pour des sources, une somme de tête attrapée
-(1). **Deux pistes déterministes, non faites** (« Pistes après les passes 5
-et 6 ») : relancer une fois un modèle qui finit par du texte ; donner la
-date du jour et les bornes de la semaine comme sources. Restent à Lionel :
-le repli qui montre les cellules piégées, AP-4.
+(1). **Deux pistes déterministes faites le soir même** (relancer une fois un
+modèle qui finit par du texte ; la date du jour et les bornes de la semaine
+citables comme dates, pas comme nombres), puis **passes 7 à 9 : 11, 14 et
+11 sur 14, soit 36/42 (86 %)**. Les deux catégories visées ont disparu sur
+42 cas ; une catégorie ancienne revient (4 écarts) : la réflexion de GLM
+avant `proposer` **tronquée à 4 096 tokens, plafond par appel codé en dur**
+dans `boucle.ts` (même famille que N-6). Plafond retiré, puis **passes 10 à
+12 : 14, 14, 13 sur 14 = 41/42 (98 %), trois passes au-dessus du seuil**.
+Un seul écart (E-03) : « le plus petit total » pris pour une mention de
+Laura Petit — catégorie nouvelle, vue une fois, piste notée, non faite
+(« Passes 10 à 12 »). Restent à Lionel : le repli qui montre les cellules
+piégées, AP-4, et cette sévérité du contrôle des noms.
 
 ## Ce qui reste (à Lionel, ou avec lui)
 
@@ -322,10 +331,9 @@ le repli qui montre les cellules piégées, AP-4.
    « il faut absolument que ce soit sécurisé »). Quatre lots, un geste appris
    = une donnée YAML (SQL paramétré sur la copie du rôle, gabarit rendu par
    le code), fabriqué par le modèle, vérifié en code par rejeu sur
-   instantané, activé par un humain avec une clé. Avant de commencer : les
-   deux pistes des passes 5 et 6 (ci-dessus) et trois passes de l'échappée
-   à 80 %, puisque le lot 0 touche ses lignes de journal. Les choix à relire
-   par Lionel sont au § 11 du plan.
+   instantané, activé par un humain avec une clé. L'échappée tient son
+   seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
+   commencer. Les choix à relire par Lionel sont au § 11 du plan.
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),

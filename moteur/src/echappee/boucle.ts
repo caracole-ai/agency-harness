@@ -85,6 +85,20 @@ const OUTIL_ABANDONNER = 'abandonner'
 const FINS = new Set([OUTIL_REPONDRE, OUTIL_PROPOSER, OUTIL_ABANDONNER])
 const FIN_PAS_SEULE =
   'un outil de fin (repondre, proposer, abandonner) vient seul, après avoir lu les résultats : rappelle-le seul au tour suivant'
+const SANS_OUTIL = 'le modèle a fini sans répondre par un outil'
+/**
+ * Un modèle qui finit par du texte est relancé une fois (vu trois fois sur trois
+ * passes GLM, la réponse juste dans le texte) ; au second texte, abandon.
+ */
+const messageRelance = (fins: string[]) =>
+  `Termine par un appel d'outil (${fins.join(', ')}), jamais par du texte.`
+
+/** La semaine du moment, du lundi au dimanche, en dates ISO : le code la calcule, le modèle ne la devine pas. */
+export function semaineDe(maintenant: Temporal.ZonedDateTime): { lundi: string; dimanche: string } {
+  const jour = maintenant.toPlainDate()
+  const lundi = jour.subtract({ days: jour.dayOfWeek - 1 })
+  return { lundi: lundi.toString(), dimanche: lundi.add({ days: 6 }).toString() }
+}
 
 /** Les sorties d'outil plus longues sont tronquées : le journal et le modèle n'en ont pas besoin de plus. */
 export const SORTIE_MAX = 2000
@@ -186,11 +200,16 @@ export async function boucle<Modif>(
   const { Verifier, Proposer } = schemas(outils)
   const definitions = outilsEchappee(outils)
   const permis = new Set(definitions.map((d) => d.name))
-  const demande = `${messageConsigne(consigne, maintenant)}\n(intention : ${intention})`
+  const { lundi, dimanche } = semaineDe(maintenant)
+  const demande = `${messageConsigne(consigne, maintenant)}\nSemaine en cours : du lundi ${lundi} au dimanche ${dimanche}.\n(intention : ${intention})`
   const messages: Anthropic.MessageParam[] = [{ role: 'user', content: demande }]
   // Ce que le demandeur a écrit n'est pas inventé : ses nombres se citent. Seule la
   // consigne, pas la date du message (10, 21, 40… deviendraient citables).
   sources.push(consigne)
+  // Ce que le harnais a dit au modèle n'est pas inventé non plus : la date du jour et
+  // les bornes de la semaine se citent comme dates (et par leur année), pas comme nombres.
+  const datesConnues = [maintenant.toPlainDate().toString(), lundi, dimanche]
+  let relance = false
   const debut = Date.now()
   let usage = USAGE_NUL
   let appels = 0
@@ -216,7 +235,10 @@ export async function boucle<Modif>(
         messages,
         outils: definitions,
         effort,
-        maxTokens: Math.min(4096, bornes.tokensSortie - usage.sortie),
+        // Pas de plafond par appel dans le code : celui de la demande (config) borne
+        // le coût ; un 4 096 codé en dur tronquait la réflexion de GLM avant `proposer`
+        // (evals/erreurs-2026-10-08.md, passes 7 à 9).
+        maxTokens: bornes.tokensSortie - usage.sortie,
         unSeulOutil: true,
       })
     } catch (erreur) {
@@ -235,7 +257,16 @@ export async function boucle<Modif>(
     // Un fournisseur peut ignorer « un seul outil par tour » : chaque appel reçoit
     // son résultat, tous dans un seul message, sinon la conversation est invalide.
     const blocs = m.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-    if (blocs.length === 0) return abandon('le modèle a fini sans répondre par un outil')
+    if (blocs.length === 0) {
+      if (relance || m.content.length === 0) return abandon(SANS_OUTIL)
+      relance = true
+      messages.push({ role: 'assistant', content: m.content })
+      messages.push({
+        role: 'user',
+        content: messageRelance(definitions.map((d) => d.name).filter((n) => FINS.has(n))),
+      })
+      continue
+    }
     // La réponse revient telle quelle : le modèle lie sa réflexion à la conversation.
     messages.push({ role: 'assistant', content: m.content })
     const resultats: Anthropic.ToolResultBlockParam[] = []
@@ -313,7 +344,7 @@ export async function boucle<Modif>(
             invalide(e.error)
             break
           }
-          const controle = verifierReponse(e.data.texte, sources, nomsConnus)
+          const controle = verifierReponse(e.data.texte, sources, nomsConnus, datesConnues)
           return controle.ok
             ? { sorte: 'reponse', texte: e.data.texte, controle: 'ok', tours: appels, usage }
             : {
@@ -347,7 +378,7 @@ export async function boucle<Modif>(
             break
           }
           const aVerifier = constats.filter((c) => c.verdict === 'à vérifier')
-          const resumeOk = verifierReponse(e.data.resume, sources, nomsConnus).ok
+          const resumeOk = verifierReponse(e.data.resume, sources, nomsConnus, datesConnues).ok
           const texte = [
             outils.decrire(e.data.modifications),
             ...(aVerifier.length > 0
@@ -374,7 +405,12 @@ export async function boucle<Modif>(
             break
           }
           // Le motif est du texte libre du modèle : montré seulement s'il ne cite rien hors des données.
-          const sur = verifierReponse(e.data.motif, [...sources, consigne], nomsConnus).ok
+          const sur = verifierReponse(
+            e.data.motif,
+            [...sources, consigne],
+            nomsConnus,
+            datesConnues,
+          ).ok
           return abandon(sur ? e.data.motif : MOTIF_RETIRE)
         }
         default:
