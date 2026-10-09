@@ -1,4 +1,4 @@
-# Handoff — 2026-10-09
+# Handoff — 2026-10-10
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
 des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
@@ -13,17 +13,18 @@ fichiers qu'il cite, si.
   Claude proposait l'inverse (geler, livrer l'échappée en lecture seule). La
   discussion et la décision sont dans `REFLEXIONS.md` (« Décidé », deux
   lignes du 2026-10-09). Commits du soir : `fbbd24c` (corrections des pistes
-  1 à 3 de la passe 3), `5c94e9d` (le plan et les notes du jour), puis un
-  troisième (voir `git log`) : trois corrections de l'échappée (`boucle.ts`,
+  1 à 3 de la passe 3), `5c94e9d` (le plan et les notes du jour), puis
+  `02368f7` : trois corrections de l'échappée (`boucle.ts`,
   `reponse.ts`, leurs tests ; `pnpm check` vert, 233 tests moteur), les
   passes 7 à 12 et leurs notes. **L'échappée tient son seuil : 41/42 sur
-  trois passes.**
+  trois passes.** Le tout est poussé sur `origin/main` le 2026-10-10.
 - **`PLAN-IDENTITE.md` exécuté le 2026-10-08 (lots 1 et 2), commité et
   poussé** (`1dc97fa`, sur `main`) ; le plan est retiré du
   dépôt comme il le demandait, son contenu consigné dans `REFLEXIONS.md`
   (Décidé, Fait, À trancher) et ci-dessous (« Identité et données
-  minimales »). **Rien de ce chantier n'a parlé au vrai modèle** (pas de clé
-  GMI dans la session) : tout est vérifié avec le modèle simulé.
+  minimales »). Le lot 1 est du code sans part de modèle ; la traduction du
+  lot 2 (le modèle ne reçoit que la phrase) est mesurée depuis sur GLM-5.3 :
+  58/60 (97 %) le 2026-10-09, voir les passes ci-dessus.
 - **`PLAN-ESPACES.md` est exécuté en entier (lots 0 à 7) le 2026-10-08**, plus
   un commit de corrections après une relecture indépendante, puis
   `espaces/fournisseur` (un autre point d'accès, GMI Cloud, les premières
@@ -77,10 +78,10 @@ fichiers qu'il cite, si.
   passes réelles avec **GLM-5.3 chez GMI Cloud** : traduction 39/51 (76 %,
   seuil 95 %), échappée 11/14 (79 %, seuil 80 %) ; analyse dans
   `evals/erreurs-2026-10-08.md`. **Les six points « à corriger » issus de
-  ces passes sont traités** (section ci-dessous) ; **aucun n'est mesuré sur
-  un modèle réel** : pas de clé dans la session de correction non plus.
-- `presentation/schema-harnais.html` est modifié et **pas commité** : travail
-  de Lionel, jamais touché (l'interface en a lu la charte).
+  ces passes sont traités** (section ci-dessous) et mesurés depuis par les
+  passes 3 à 12 du 2026-10-09 (`evals/erreurs-2026-10-08.md`).
+- `presentation/schema-harnais.html` est commité (`c257ac8`, 2026-10-08) :
+  travail de Lionel, jamais touché (l'interface en a lu la charte).
 - Le mini-site « Le harnais en clair » (artefact claude.ai) :
   https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52 — les pages s'ouvrent
   depuis la barre du haut. La section « Honnêtement » de « Parler à l'outil »
