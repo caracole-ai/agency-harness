@@ -1,4 +1,4 @@
-# Handoff — 2026-10-08
+# Handoff — 2026-10-09
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
 des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
@@ -7,6 +7,16 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-09, soir : `PLAN-PROMOTION.md` est écrit, pas commencé.** Lionel
+  a tranché que la promotion (une demande nouvelle qui revient devient un
+  geste) est l'**auto-amélioration** du harnais et qu'elle est prioritaire ;
+  Claude proposait l'inverse (geler, livrer l'échappée en lecture seule). La
+  discussion et la décision sont dans `REFLEXIONS.md` (« Décidé », deux
+  lignes du 2026-10-09). L'arbre de travail porte, **non commités**, les
+  corrections des pistes 1 à 3 de la passe 3 (`traduire.ts`, `boucle.ts`,
+  `echappee.ts`, leurs tests ; `pnpm check` vert le 2026-10-09 au soir), les
+  résultats des passes 3 à 6, et les notes du jour (`REFLEXIONS.md`,
+  `HANDOFF.md`, `evals/erreurs-2026-10-08.md`, `PLAN-PROMOTION.md`).
 - **`PLAN-IDENTITE.md` exécuté le 2026-10-08 (lots 1 et 2), commité et
   poussé** (`1dc97fa`, sur `main`) ; le plan est retiré du
   dépôt comme il le demandait, son contenu consigné dans `REFLEXIONS.md`
@@ -33,7 +43,7 @@ fichiers qu'il cite, si.
   de passe Claude « avant un bon moment ». **On reste au laboratoire, sur
   les données fictives** (à garder pertinentes et cohérentes), jusqu'à un
   produit correct et efficient ; le réel viendra après.
-- `pnpm check` passe : Biome, types des trois paquets, 227 tests
+- `pnpm check` passe : Biome, types des trois paquets, 229 tests
   du moteur, 111 du métier, 15 de l'interface, registre cohérent (21
   interdits, 34 tests, 10 escalades).
 - **Le mini-site « Le harnais en clair » et la présentation sont à jour du
@@ -291,17 +301,33 @@ passe 2 » ; décisions de Lionel dans `REFLEXIONS.md` (Décidé, 2026-10-08).
 6. **Plafonds GLM** : un commentaire dans `exemples/client-fictif/config.yaml`
    (GLM n'est pas retenu).
 
-**Reste à faire, dans l'ordre** : relancer les deux passes GLM sur une
-copie du client fictif avec le bloc `acces` et les plafonds relevés
-(`evals/erreurs-2026-10-08.md`, « Passe 3 ») ; lire les traces des cas
-corrigés **et des cas `R-*`** (le prompt a changé entre-temps : voir
-« Identité et données minimales ») ; noter l'avant/après ; puis la passe
-Claude dès qu'une clé est là.
+**Passes 3 à 6 faites le 2026-10-09** (`evals/erreurs-2026-10-08.md`) :
+en passe 3, traduction 93 % et échappée 57 % (régression : le modèle
+finissait par du texte). Pistes 1 à 3 corrigées, puis passe 4 : **traduction
+58/60 (97 %, au-dessus du seuil), échappée 11/14 (79 %, seuil 80 %)**.
+Passes 5 et 6 de l'échappée, même harnais : 13/14 puis 11/14, soit **35/42
+(83 %) sur trois passes, deux sur trois sous le seuil**. Dans les sept
+écarts, la réponse du modèle était juste ; ce qui échoue : finir par du
+texte (3), recopier les bornes de semaine calculées (2) ou l'année du jour
+(1) que le contrôle ne tient pas pour des sources, une somme de tête attrapée
+(1). **Deux pistes déterministes, non faites** (« Pistes après les passes 5
+et 6 ») : relancer une fois un modèle qui finit par du texte ; donner la
+date du jour et les bornes de la semaine comme sources. Restent à Lionel :
+le repli qui montre les cellules piégées, AP-4.
 
 ## Ce qui reste (à Lionel, ou avec lui)
 
-1. **Relancer les deux passes GLM** (passe 3, `evals/erreurs-2026-10-08.md`) avec
-   `GMI_API_KEY` dans le shell ; Lionel a tranché le 2026-10-08 : pas de
+0. **Exécuter `PLAN-PROMOTION.md`** (écrit le 2026-10-09 sur décision de
+   Lionel : la promotion est l'auto-amélioration du harnais, prioritaire,
+   « il faut absolument que ce soit sécurisé »). Quatre lots, un geste appris
+   = une donnée YAML (SQL paramétré sur la copie du rôle, gabarit rendu par
+   le code), fabriqué par le modèle, vérifié en code par rejeu sur
+   instantané, activé par un humain avec une clé. Avant de commencer : les
+   deux pistes des passes 5 et 6 (ci-dessus) et trois passes de l'échappée
+   à 80 %, puisque le lot 0 touche ses lignes de journal. Les choix à relire
+   par Lionel sont au § 11 du plan.
+1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
+   se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
    pas de passe Claude avant un bon moment. Les étiquettes sont tranchées
    (section précédente).

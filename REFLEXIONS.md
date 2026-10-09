@@ -6,7 +6,7 @@ une règle : c'est le fil d'une discussion entre Lionel et Claude, à reprendre 
 chaque séance. Une piste réalisée passe dans « Fait », avec le fichier qui la
 porte. Une idée abandonnée se barre et dit pourquoi, elle ne s'efface pas.
 
-Dernière mise à jour : 2026-10-08.
+Dernière mise à jour : 2026-10-09.
 
 ---
 
@@ -46,6 +46,8 @@ spécifique.
 | 2026-10-08 | **Une donnée qui ressemble à une consigne se signale sans la recopier** (Lionel). Traiter le piège comme une donnée est la sécurité n° 8 ; ne pas le relayer mot pour mot au patron en est la suite : un texte qui vise l'humain (« appelez ce numéro ») arriverait sinon avec la voix du harnais. Phrase du système de l'échappée ; l'étiquette des cas piégés reste stricte. | `moteur/src/echappee/echappee.ts` |
 | 2026-10-08 | **GLM-5.3 chez GMI Cloud est le modèle de référence jusqu'à nouvel ordre, et le laboratoire passe avant le terrain** (Lionel). Pas de passe Claude « avant un bon moment » ; pas de nouvelle clé ni de révocation pour l'instant. On avance sur les données fictives, en veillant à ce qu'elles restent pertinentes et cohérentes, jusqu'à un produit correct, fonctionnel et efficient — pour démarcher sereinement, et pour que Lionel comprenne lui-même la proposition et les enjeux techniques. Conséquence : la config du client fictif désigne GLM (`acces`, prix GMI, plafonds relevés) ; les branches `espaces/*` sont fusionnées dans `main`. | `exemples/client-fictif/config.yaml`, `HANDOFF.md` |
 | 2026-10-08 | **« Libère le mercredi de Sophie » : deux lectures acceptées** (Lionel) — la demande nouvelle, ou le geste `gerer_absence`, qui libère aussi la journée sous validation. « Libérer » vaut-il « absente » dans le métier : question pour le premier patron réel, pas pour le client fictif. | `evals/consignes.yaml` (N-4) |
+| 2026-10-09 | **L'architecture des trois espaces reste ; la simplification est ailleurs.** Lionel a demandé si « reproduire guard.py, empêcher ce qu'on veut empêcher, et un chatbot qui appelle Claude directement » ne suffirait pas. Réponse, après lecture du plan, du code et des traces : ce que décrit Lionel, pris au sérieux (une boucle à nous, des outils à nous, des refus sur les outils), **c'est déjà le harnais**, avec une seule chose en plus : le pas qui choisit un geste ne voit jamais une donnée. Fusionner les espaces 1 et 2 est la mauvaise simplification : un geste coûte 0,002 $ et une échappée 0,01 $ (mesuré sur GLM), le planning ne part chez le fournisseur que pour une échappée, un geste répond en un appel, une liste fermée se vérifie en code et se défend devant un conseil de prud'hommes. Un garde-fou métier regarde l'**état** (repos, heures, titres), pas la forme d'une commande : il ne tient pas dans un fichier de motifs. La simplification retenue n'est pas moins de code : **moins de surfaces non mesurées**. Ce qui a été corrigé dans l'analyse : comparer 93 % et 57 % ne prouve rien (le 57 % est une régression de deux mots du prompt, et 14 cas = 7 points par cas) ; « plus de la moitié du code entoure le modèle au lieu de le garder » est faux (la copie, les requêtes en lecture seule, le contrôle des chiffres, les plafonds et la porte sont du garde-fou). | cette ligne |
+| 2026-10-09 | **La promotion devient l'auto-amélioration du harnais, et elle est prioritaire** (Lionel) : « sans cette possibilité d'auto-amélioration, notre harnais n'a strictement aucune valeur pour un client potentiel, car il voit toute la journée des IA et des essaims d'agents qui font des miracles ; si on se ramène avec un système qui n'est pas capable de ce type de flexibilité, on sera inaudibles ». Condition posée : « il faut absolument que ce soit sécurisé ». Ça remplace, pour partie, la ligne du 2026-10-07 (« codé à l'atelier avec ses tests, jamais par le harnais lui-même ») : ~~jamais par le harnais lui-même~~ → le harnais **fabrique** le geste et ses tests, un humain le **valide** avant qu'il s'active. Claude avait proposé l'inverse (geler la promotion, livrer l'échappée en lecture seule au premier client) ; Lionel tranche pour la promotion. Plan : `PLAN-PROMOTION.md`. | `PLAN-PROMOTION.md` |
 | 2026-10-08 | **L'identité et les droits d'abord, le dossier ensuite** (Lionel). Dès qu'une demande arrive par un canal, le moteur vérifie l'expéditeur contre un **registre d'accès qui appartient au harnais** (`personnes.yaml`, au format du harnais, jamais la donnée du client) et fixe ses droits ; seulement ensuite le dossier s'ouvre. Un inconnu ne fait plus lire tout le dossier, et son refus est au journal (identité reçue, canal, heure, motif) par le journal seul. La garantie est **structurelle** : `traiterConsigne`, `confirmer` et toute ouverture de session pour quelqu'un exigent une `IdentiteVerifiee`, que seule la porte construit. `verifierIdentite` du métier reste en seconde ligne (cohérence avec `agents.csv`) ; au démarrage, chaque agent du registre doit exister. `/api/etat` et `/api/journal` sont réservés au patron. L'identité reste **déclarée, pas authentifiée** (D12) : le registre est conçu pour recevoir l'identifiant d'un canal. | `moteur/src/personnes/`, `PLAN-ESPACES.md` D12 |
 | 2026-10-08 | **Le modèle ne reçoit que la phrase ; le code trouve la personne** (Lionel). Les noms de tous les salariés partaient chez le fournisseur à chaque demande, pour la seule raison qu'un geste attend un identifiant. Désormais le modèle de traduction ne voit ni nom ni poste : il recopie la mention (« Aicha »), et le moteur la résout en trois niveaux, chacun là où il est fiable. (1) **Le code décide si c'est sûr** : une seule correspondance exacte, aux accents, à la casse, aux espaces et aux tirets près, sur le prénom, le nom, les deux, ou l'identifiant écrit ; aucune approximation. (2) **Le code propose, le modèle départage** : 3 noms au plus, par clé phonétique et distance d'édition, au seuil large (ne pas rater le bon nom), dans un second appel minuscule dont le choix est une énumération vérifiée en code. (3) **L'humain tranche** : « Vous parlez de qui : … ? », rien n'est exécuté ; la réponse (un nom, un rang) reprend le geste sans appel. Lionel a refusé une correspondance approximative qui déciderait seule : « Alicia » est à deux lettres d'« Aïcha ». | `moteur/src/conversation/designation.ts`, `conversation.ts` |
 
@@ -264,6 +266,34 @@ spécifique.
   consigne admise va à son terme, le dépassement est d'une consigne au plus.
   Revérifier avant `designer` (l'appel le moins cher) a été écarté : une
   relecture du journal entier pour quelques millièmes de dollar.
+- **Passes 3 et 4 sur GLM** (`evals/erreurs-2026-10-08.md`) : la passe 3
+  a donné traduction 93 % et échappée 57 % (régression : le modèle finissait
+  par du texte, sans appeler `repondre`, à cause de « Réponds court »). Trois
+  corrections (la fin par un appel d'outil, jamais par du texte ; le nombre de
+  lignes d'un résultat comme source ; `"null"` écrit en texte relu comme
+  `null`), puis passe 4 : **traduction 58/60 (97 %, seuil atteint), échappée
+  11/14 (79 %, seuil 80 %)**. Les trois écarts restants : E-02 et E-10, le
+  modèle finit encore par du texte (réponse juste, « 16 h ») ; E-04, il
+  additionne deux comptes de tête (« 19 au total »), le contrôle retire le
+  résumé. **Passes 5 et 6, même harnais** (Fable 5.1) : 13/14 puis 11/14,
+  soit **35/42 (83 %) sur trois passes**, deux sur trois sous le seuil. Dans
+  les sept écarts, **la réponse du modèle était juste à chaque fois** ; ce qui
+  échoue : finir par du texte au lieu de `repondre` (3), recopier les bornes
+  de semaine qu'il a calculées (2) ou l'année du jour (1), que le contrôle ne
+  tient pas pour des sources, une somme de tête attrapée (1). Deux pistes
+  déterministes écrites, non faites (relancer une fois ; donner la date et
+  les bornes de la semaine comme sources). **Appris** : avec 14 cas, un cas
+  vaut 7 points ; on ne conclut qu'après trois passes (0,45 $) ; et un
+  contrôle « pas un chiffre hors des données » doit compter parmi ses sources
+  ce que le harnais lui-même a dit au modèle.
+- **`PLAN-PROMOTION.md` écrit** (Fable 5.1) : un geste appris est une
+  **donnée** (YAML : paramètres typés d'une liste fermée, SQL paramétré sur la
+  copie du rôle, gabarit rendu par le code), jamais du code ; aucun appel au
+  modèle à l'exécution ; fabriqué par le modèle en un appel, vérifié en code
+  par **rejeu sur l'instantané** de la copie que l'échappée a vu, activé par
+  un humain avec une clé sur l'empreinte du fichier ; lecture seule jusqu'à
+  une décision de Lionel sur l'écriture (lot 4). Quatorze décisions (P1 à
+  P14), quatre lots, les mesures à faire avant de déclarer fini.
 
 ## Ce que le croisement des quatre métiers a appris
 
@@ -465,6 +495,18 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
 ## À trancher
 
 **Par Lionel**
+- **Les choix de `PLAN-PROMOTION.md` § 11** : qui active un geste appris
+  (l'agence, défaut) ; 90 jours de conservation des instantanés ; les six
+  types de paramètres ; le seuil de la fabrication ; l'écriture (lot 4) qui
+  attend.
+- **L'écriture d'une échappée, un réglage par client ?** Aujourd'hui tout
+  patron peut recevoir une proposition (`proposer: identite.role === 'patron'`,
+  en dur). Claude propose une ligne de config : ouverte chez le client fictif
+  (la démo garde « votre oui écrit »), fermée chez un client réel tant que
+  l'échappée ne tient pas 80 % sur trois passes. Non tranché le 2026-10-09.
+- **Restes de la passe 4** (`evals/erreurs-2026-10-08.md`) : AP-4
+  (étiquette ou description) ; le repli de l'échappée qui montre les cellules
+  telles quelles, piège compris.
 - L'**authentification** d'un canal (D12 : identité déclarée dans la démo) :
   le registre d'accès est prêt à recevoir l'identifiant d'un canal (numéro,
   compte) et à le relier à un rôle ; quel canal d'abord, et comment ?

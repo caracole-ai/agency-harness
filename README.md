@@ -48,6 +48,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   réaffectation groupée, la promotion d'une demande qui revient, les évals,
   l'interface web. Écrit lot par lot pour être exécuté sans décision à
   prendre.
+- `PLAN-PROMOTION.md` — le plan de la promotion (2026-10-09), qui remplace
+  le § 8 du précédent : une demande nouvelle qui revient devient un **geste
+  appris**, une donnée (paramètres typés, SQL paramétré sur la copie du rôle,
+  gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
+  rejeu sur l'instantané de la copie, activée par un humain avec une clé.
+  Lecture seule tant que Lionel n'a pas tranché l'écriture. Pas commencé.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
