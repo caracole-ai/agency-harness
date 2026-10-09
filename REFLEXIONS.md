@@ -252,6 +252,19 @@ spécifique.
      planning vide d'un agent ne disait pas qui l'outil avait compris ; il le
      dit maintenant (« Aucune vacation pour Laura Petit. »).
 
+## Fait (2026-10-09)
+
+- **Trois écarts code/discours, trouvés en remettant le mini-site à jour.**
+  (1) La traduction gardait le premier appel d'outil quand le modèle en
+  rendait plusieurs : c'est maintenant `inconnue`, et `aucun` pour
+  `designer` (aucune trace GLM n'en montrait en traduction ; l'échappée en
+  reçoit souvent et les traite tous). (2) « Un outil par tour » est demandé
+  au fournisseur, pas tenu : GMI l'ignore. (3) Le plafond du mois se vérifie
+  une fois par consigne, à la porte, comme le prévoit le plan : une
+  consigne admise va à son terme, le dépassement est d'une consigne au plus.
+  Revérifier avant `designer` (l'appel le moins cher) a été écarté : une
+  relecture du journal entier pour quelques millièmes de dollar.
+
 ## Ce que le croisement des quatre métiers a appris
 
 1. **Le général vit à deux étages, pas dans une liste de types de règles.**

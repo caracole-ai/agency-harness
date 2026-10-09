@@ -102,7 +102,11 @@ export function messageConsigne(consigne: string, maintenant: Temporal.ZonedDate
 function lire(message: Anthropic.Message, schemas: Map<string, z.ZodType<unknown>>): Demande {
   if (message.stop_reason === 'refusal') return { sorte: 'inconnue', raison: 'le modèle a refusé' }
   if (message.stop_reason === 'max_tokens') return { sorte: 'inconnue', raison: 'réponse tronquée' }
-  const bloc = message.content.find((b) => b.type === 'tool_use')
+  const blocs = message.content.filter((b) => b.type === 'tool_use')
+  // Un fournisseur peut ignorer « un seul outil » (GMI le fait) : plusieurs
+  // actions ne se départagent pas, aucune n'est retenue.
+  if (blocs.length > 1) return { sorte: 'inconnue', raison: 'le modèle a choisi plusieurs actions' }
+  const bloc = blocs[0]
   if (!bloc) return { sorte: 'inconnue', raison: "le modèle n'a choisi aucune action" }
   if (bloc.name === DEMANDE_NOUVELLE) {
     const r = DemandeNouvelle.safeParse(bloc.input)
@@ -187,7 +191,7 @@ export function messageDesigner(
 
 /**
  * Le second appel, minuscule : le modèle départage les candidats du niveau 2.
- * Le code vérifie que le choix est dans la liste ; tout le reste vaut `aucun`.
+ * Le code vérifie que le choix est unique et dans la liste ; tout le reste vaut `aucun`.
  */
 export async function designer(
   modele: Modele,
@@ -204,8 +208,9 @@ export async function designer(
     maxTokens: MAX_TOKENS_TRADUIRE,
     unSeulOutil: true,
   })
-  const bloc = reponse.message.content.find((b) => b.type === 'tool_use' && b.name === DESIGNER)
-  const id =
-    bloc?.type === 'tool_use' ? (bloc.input as { personne?: unknown } | null)?.personne : undefined
+  // Plusieurs appels, même à `designer` : le modèle hésite, l'humain tranche.
+  const blocs = reponse.message.content.filter((b) => b.type === 'tool_use')
+  const bloc = blocs.length === 1 && blocs[0]?.name === DESIGNER ? blocs[0] : undefined
+  const id = (bloc?.input as { personne?: unknown } | null | undefined)?.personne
   return { choix: candidats.find((c) => c.id === id), reponse }
 }

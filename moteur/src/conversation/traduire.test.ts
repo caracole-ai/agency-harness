@@ -126,6 +126,15 @@ describe('traduire', () => {
     expect(demande.sorte).toBe('inconnue')
     expect(demande.sorte === 'inconnue' && demande.raison).toMatch(/^paramètres invalides/)
   })
+  it('plusieurs appels d’outil : inconnue, aucun n’est retenu', async () => {
+    const { demande } = await essai({
+      plusieurs: [
+        { outil: 'gerer_absence', entree: { agent: 'Aicha', jour: '2026-10-11' } },
+        { outil: 'demande_nouvelle', entree: { intention: 'heures_par_agent', resume: 'x' } },
+      ],
+    })
+    expect(demande).toEqual({ sorte: 'inconnue', raison: 'le modèle a choisi plusieurs actions' })
+  })
   it('un outil inconnu : inconnue', async () => {
     const { demande } = await essai({ outil: 'effacer_tout', entree: {} })
     expect(demande.sorte).toBe('inconnue')
@@ -208,6 +217,10 @@ describe('designer : le second appel, sur la liste courte', () => {
     expect((await appeler({ outil: DESIGNER, entree: { personne: AUCUN } })).choix).toBeUndefined()
     expect((await appeler({ outil: DESIGNER, entree: { personne: 'A-2' } })).choix).toBeUndefined()
     expect((await appeler({ texte: 'A-11' })).choix).toBeUndefined()
+  })
+  it('plusieurs appels, même d’accord : rien, l’humain tranche', async () => {
+    const deux = { outil: DESIGNER, entree: { personne: 'A-11' } }
+    expect((await appeler({ plusieurs: [deux, deux] })).choix).toBeUndefined()
   })
   it('le message porte la consigne, la mention et les candidats entre les balises des données', async () => {
     const { modele } = await appeler({ outil: DESIGNER, entree: { personne: AUCUN } })

@@ -280,7 +280,10 @@ function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | u
 /**
  * Avant le dossier : le plafond du mois, la réponse à une question en attente
  * (comparée à ses candidats, sans appel), sinon la traduction. Le modèle ne
- * reçoit que la consigne, la date, le rôle et ses gestes.
+ * reçoit que la consigne, la date, le rôle et ses gestes. Le plafond se vérifie
+ * ici seulement, une fois par consigne : une consigne admise va à son terme
+ * (`designer`, échappée), le dépassement est d'une consigne au plus, bornée
+ * par les plafonds par demande.
  */
 async function avantLeDossier<S>(
   m: MetierConversation<S>,

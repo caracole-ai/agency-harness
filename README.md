@@ -87,8 +87,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`),
   `src/echappee/` (l'échappée, espace 2 : la copie SQLite jetable en lecture
   seule, le garde-fou SQL, le contrôle « pas un chiffre, pas un nom hors des
-  données », la boucle bornée à un outil par tour, et `echappee.ts` qui
-  assemble copie, système et journal). `src/archetypes/candidats.ts` expose
+  données », la boucle bornée (tours, tokens, temps ; un seul outil par
+  tour demandé, que GMI ignore : chaque appel reçoit son résultat), et
+  `echappee.ts` qui assemble copie, système et journal). `src/archetypes/candidats.ts` expose
   aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le

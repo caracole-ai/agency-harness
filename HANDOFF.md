@@ -7,8 +7,8 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
-- **`PLAN-IDENTITE.md` exécuté le 2026-10-08 (lots 1 et 2), pas encore
-  commité** (sur `main`, dans l'arbre de travail) ; le plan est retiré du
+- **`PLAN-IDENTITE.md` exécuté le 2026-10-08 (lots 1 et 2), commité et
+  poussé** (`1dc97fa`, sur `main`) ; le plan est retiré du
   dépôt comme il le demandait, son contenu consigné dans `REFLEXIONS.md`
   (Décidé, Fait, À trancher) et ci-dessous (« Identité et données
   minimales »). **Rien de ce chantier n'a parlé au vrai modèle** (pas de clé
@@ -33,10 +33,23 @@ fichiers qu'il cite, si.
   de passe Claude « avant un bon moment ». **On reste au laboratoire, sur
   les données fictives** (à garder pertinentes et cohérentes), jusqu'à un
   produit correct et efficient ; le réel viendra après.
-- `pnpm check` passe : Biome, types des trois paquets, 225 tests
-  du moteur, 110 du métier, 15 de l'interface, registre cohérent (21
+- `pnpm check` passe : Biome, types des trois paquets, 227 tests
+  du moteur, 111 du métier, 15 de l'interface, registre cohérent (21
   interdits, 34 tests, 10 escalades).
-- **Le mini-site « Le harnais en clair » est à jour de l'état du 2026-10-08**
+- **Le mini-site « Le harnais en clair » et la présentation sont à jour du
+  code du 2026-10-08 au soir (identité avant le dossier), le 2026-10-09** :
+  chiffres et circuit revérifiés dans le code (351 tests, 74 cas d'évals,
+  9 gestes, 21 interdits, scénario D-V-17 rejoué). Trois écarts
+  code/discours trouvés, **traités le 2026-10-09** : plusieurs appels
+  d'outil en traduction donnent `inconnue` (« le modèle a choisi plusieurs
+  actions »), et `aucun` pour `designer` (`traduire.ts`, deux tests ; aucune
+  trace GLM n'en montrait en traduction, l'échappée en a et les traite
+  tous) ; « un outil par tour » est demandé, pas tenu (README corrigé) ; le
+  plafond du mois se vérifie **une fois par consigne, à la porte**, choix
+  gardé et écrit (`avantLeDossier`) : le dépassement est d'une consigne au
+  plus. **Le mini-site et la présentation ne sont pas repris** : vérifier
+  qu'ils disent « à la porte, par consigne » et rien de plus.
+- Mini-site, état antérieur :
   (trois pages, six schémas des mécanismes réels : carte du système, chemin
   d'une consigne, échappée, promotion, boucle des évals, modèle et point
   d'accès) : https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52. Ses sources
