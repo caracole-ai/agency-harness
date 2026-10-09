@@ -50,6 +50,7 @@ spécifique.
 | 2026-10-09 | **La promotion devient l'auto-amélioration du harnais, et elle est prioritaire** (Lionel) : « sans cette possibilité d'auto-amélioration, notre harnais n'a strictement aucune valeur pour un client potentiel, car il voit toute la journée des IA et des essaims d'agents qui font des miracles ; si on se ramène avec un système qui n'est pas capable de ce type de flexibilité, on sera inaudibles ». Condition posée : « il faut absolument que ce soit sécurisé ». Ça remplace, pour partie, la ligne du 2026-10-07 (« codé à l'atelier avec ses tests, jamais par le harnais lui-même ») : ~~jamais par le harnais lui-même~~ → le harnais **fabrique** le geste et ses tests, un humain le **valide** avant qu'il s'active. Claude avait proposé l'inverse (geler la promotion, livrer l'échappée en lecture seule au premier client) ; Lionel tranche pour la promotion. Plan : `PLAN-PROMOTION.md`. | `PLAN-PROMOTION.md` |
 | 2026-10-08 | **L'identité et les droits d'abord, le dossier ensuite** (Lionel). Dès qu'une demande arrive par un canal, le moteur vérifie l'expéditeur contre un **registre d'accès qui appartient au harnais** (`personnes.yaml`, au format du harnais, jamais la donnée du client) et fixe ses droits ; seulement ensuite le dossier s'ouvre. Un inconnu ne fait plus lire tout le dossier, et son refus est au journal (identité reçue, canal, heure, motif) par le journal seul. La garantie est **structurelle** : `traiterConsigne`, `confirmer` et toute ouverture de session pour quelqu'un exigent une `IdentiteVerifiee`, que seule la porte construit. `verifierIdentite` du métier reste en seconde ligne (cohérence avec `agents.csv`) ; au démarrage, chaque agent du registre doit exister. `/api/etat` et `/api/journal` sont réservés au patron. L'identité reste **déclarée, pas authentifiée** (D12) : le registre est conçu pour recevoir l'identifiant d'un canal. | `moteur/src/personnes/`, `PLAN-ESPACES.md` D12 |
 | 2026-10-08 | **Le modèle ne reçoit que la phrase ; le code trouve la personne** (Lionel). Les noms de tous les salariés partaient chez le fournisseur à chaque demande, pour la seule raison qu'un geste attend un identifiant. Désormais le modèle de traduction ne voit ni nom ni poste : il recopie la mention (« Aicha »), et le moteur la résout en trois niveaux, chacun là où il est fiable. (1) **Le code décide si c'est sûr** : une seule correspondance exacte, aux accents, à la casse, aux espaces et aux tirets près, sur le prénom, le nom, les deux, ou l'identifiant écrit ; aucune approximation. (2) **Le code propose, le modèle départage** : 3 noms au plus, par clé phonétique et distance d'édition, au seuil large (ne pas rater le bon nom), dans un second appel minuscule dont le choix est une énumération vérifiée en code. (3) **L'humain tranche** : « Vous parlez de qui : … ? », rien n'est exécuté ; la réponse (un nom, un rang) reprend le geste sans appel. Lionel a refusé une correspondance approximative qui déciderait seule : « Alicia » est à deux lettres d'« Aïcha ». | `moteur/src/conversation/designation.ts`, `conversation.ts` |
+| 2026-10-10 | **Le patron active lui-même un geste appris, dans l'interface** (Lionel ; Claude proposait l'agence). Conséquence : `pnpm promotions` vérifie tout (code, puis passe de traduction avec modèle) avant de proposer, le patron n'active que du vérifié ; l'agence garde le CLI. **La fabrication est relancée une fois** sur un échec de forme ou une erreur SQL, jamais sur un écart de fond. Confirmés tels quels : 90 jours d'instantanés, six types de paramètres, seuil 2/3 comme mesure, l'écriture (lot 4) attend. **La proposition d'écriture d'une échappée reste en dur pour tout patron** ; à revoir avant un client réel. | `PLAN-PROMOTION.md` § 11 |
 
 ## Fait (2026-09-29 et 30)
 
@@ -306,6 +307,49 @@ spécifique.
   une décision de Lionel sur l'écriture (lot 4). Quatorze décisions (P1 à
   P14), quatre lots, les mesures à faire avant de déclarer fini.
 
+## Fait (2026-10-10)
+
+**L'article « Codemode » d'Armin Ronacher** (lucumr.pocoo.org, 2026-10-06 :
+le modèle écrit un script JS qui enchaîne des appels d'outils, exécuté dans
+un bac à sable du harnais), lu à la demande de Lionel, un avis d'Opus 5.5
+puis un contre-avis de Fable 5.1, vérifié dans le code.
+
+- **Ce qu'il confirme** : cerveau et mains séparés (notre copie en lecture
+  seule dans un processus enfant) ; « sonder cinq ou dix éléments, puis
+  écrire le script » = l'échappée puis la promotion, la nôtre en plus
+  testée, scellée par une clé et activée par un humain ; son « Starlark
+  plutôt que JS » = P1 poussé au bout (un geste appris est une donnée).
+- **Une idée fausse écartée** : « la liste des gestes qui grossit fait
+  baisser la traduction ». La traduction choisit parmi les gestes codés et
+  les onze intentions **écrites à la main** (`INTENTIONS`), sinon un mot-clé
+  libre qui varie et n'atteint pas le seuil ; P14 échange l'intention contre
+  le geste : le nombre de choix ne bouge pas. Ce qui change après une
+  promotion, c'est la tâche (extraire des paramètres typés), et le critère 6
+  du plan le mesure déjà. Le souci d'échelle de l'article (plusieurs serveurs
+  d'outils) ne nous concerne pas.
+- **La promotion est bornée au catalogue déclaré** (P15) : six intentions
+  sur onze sont des lectures simples promouvables aux lots 0 à 3 ; trois
+  écrivent (lot 4) ; deux simulations demandent les règles, pas une
+  requête. Le discours doit dire « le harnais fabrique un geste pour une
+  demande du catalogue qui revient ; le catalogue, c'est l'agence qui
+  l'écrit », pas « apprentissage ».
+- **« Codemode dans Codemode » = le lot 2** : du SQL avec ses guillemets
+  dans du JSON d'appel d'outil, sous un schéma `strict` que GLM ignore ; le
+  double échappement est ce qui perd les modèles moyens. D'où la relance
+  (P5) et une mesure à part des échecs de forme (§ 8).
+- **Le compromis sécurité ↔ couverture est le nôtre** (sa tension
+  Starlark/JS) : P11 et P12 refuseront de promouvoir une partie des
+  demandes ; l'indicateur qui tranche est le **taux de promotion**, ajouté
+  au § 8. Un type de plus ne s'ajoute qu'avec ce chiffre.
+- **Ce qu'on ne prend pas** : laisser l'échappée écrire du JS pour faire
+  moins de tours (petits modèles ; surtout, personne ne relira du JS généré
+  dans une annexe de devis ; D10 ne contrôlerait plus les chiffres) ; la
+  durabilité (une échappée est en lecture seule, idempotente, 0,01 $ : on la
+  refait) ; la concurrence (une copie, une requête à la fois).
+- Au passage : `PLAN-PROMOTION.md` § 6.1 disait encore `maxTokens: 4096`
+  pour la fabrication, contre la décision du 2026-10-09 (jamais de plafond
+  par appel en dur) ; corrigé dans le plan avant d'être codé.
+
 ## Ce que le croisement des quatre métiers a appris
 
 1. **Le général vit à deux étages, pas dans une liste de types de règles.**
@@ -506,15 +550,12 @@ Dans l'ordre proposé. Le code entre crochets reprend celui de la discussion.
 ## À trancher
 
 **Par Lionel**
-- **Les choix de `PLAN-PROMOTION.md` § 11** : qui active un geste appris
-  (l'agence, défaut) ; 90 jours de conservation des instantanés ; les six
-  types de paramètres ; le seuil de la fabrication ; l'écriture (lot 4) qui
-  attend.
-- **L'écriture d'une échappée, un réglage par client ?** Aujourd'hui tout
-  patron peut recevoir une proposition (`proposer: identite.role === 'patron'`,
-  en dur). Claude propose une ligne de config : ouverte chez le client fictif
-  (la démo garde « votre oui écrit »), fermée chez un client réel tant que
-  l'échappée ne tient pas 80 % sur trois passes. Non tranché le 2026-10-09.
+- ~~**Les choix de `PLAN-PROMOTION.md` § 11**~~ : tranchés le 2026-10-10
+  (« Décidé ») : le patron active ; une relance à la fabrication ; le reste
+  confirmé.
+- ~~**L'écriture d'une échappée, un réglage par client ?**~~ Tranché le
+  2026-10-10 : reste en dur pour tout patron (`proposer: identite.role ===
+  'patron'`) ; à revoir avant un client réel.
 - **Restes de la passe 4** (`evals/erreurs-2026-10-08.md`) : AP-4
   (étiquette ou description) ; le repli de l'échappée qui montre les cellules
   telles quelles, piège compris.

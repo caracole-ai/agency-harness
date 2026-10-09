@@ -7,6 +7,20 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-10 : `PLAN-PROMOTION.md` relu avec l'article Codemode, les
+  choix du § 11 tranchés par Lionel, prêt à commencer au lot 0.** Ce qui
+  a changé dans le plan : P6 (**le patron active dans l'interface**,
+  `pnpm promotions` vérifie tout avant, avec modèle, § 6.3 et 7.2) ; P5
+  (**une relance** sur échec de forme ou erreur SQL, § 6.1) ; P15 (la
+  promotion est bornée au catalogue : 6 lectures promouvables sur 11
+  intentions, `Intention.ecrit` non tentée avant le lot 4) ; § 8 (deux
+  mesures : taux de promotion, échecs de forme) ; § 6.1 (plus de
+  `maxTokens: 4096`, le plafond de la config) ; § 7.1 (ce n'est pas « une
+  liste qui s'allonge » qu'on mesure). Le détail et ce qu'on ne prend pas :
+  `REFLEXIONS.md`, « Fait (2026-10-10) ». La proposition d'écriture d'une
+  échappée reste en dur pour tout patron. Rien de ceci n'est codé ni
+  commité (arbre modifié : ce fichier, `PLAN-PROMOTION.md`,
+  `REFLEXIONS.md`).
 - **2026-10-09, soir : `PLAN-PROMOTION.md` est écrit, pas commencé.** Lionel
   a tranché que la promotion (une demande nouvelle qui revient devient un
   geste) est l'**auto-amélioration** du harnais et qu'elle est prioritaire ;
@@ -334,7 +348,9 @@ piégées, AP-4, et cette sévérité du contrôle des noms.
    le code), fabriqué par le modèle, vérifié en code par rejeu sur
    instantané, activé par un humain avec une clé. L'échappée tient son
    seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
-   commencer. Les choix à relire par Lionel sont au § 11 du plan.
+   commencer. Les choix du § 11 sont tranchés le 2026-10-10 (le patron
+   active ; une relance à la fabrication ; le reste confirmé) : **lancer le
+   lot 0** à la prochaine session, sur une branche `promotion/lot-0`.
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),

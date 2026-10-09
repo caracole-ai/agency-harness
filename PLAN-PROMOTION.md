@@ -9,6 +9,11 @@ reste, mais le harnais **fabrique** le geste et ses tests ; un humain le
 en plusieurs sessions, avec des sous-agents, sans avoir à décider**. Quand le
 plan se tait, la règle est au § 1.
 
+**Relu le 2026-10-10** avec l'article « Codemode » d'Armin Ronacher
+(`REFLEXIONS.md`, « Fait (2026-10-10) ») : P5 gagne une relance, P6 change
+(le patron active), P15 borne la promotion au catalogue, le § 8 gagne deux
+mesures ; les choix du § 11 sont tranchés par Lionel.
+
 Ce qu'il ne touche pas : les interdits, les contrôles `I01`…`I20`, la clé
 d'accord, le schéma du journal (il **ajoute** des champs dans `donnees`, il ne
 change aucune colonne), la traduction, l'échappée elle-même, la réaffectation
@@ -27,8 +32,11 @@ clé**, qui est l'unité que cette mise à jour transportera.
    l'instantané de la copie ;
 2. `pnpm promotions --client <copie> --date 2026-10-10` écrit
    `<copie>/gestes/heures_par_agent.yaml` (statut `proposé`), avec au moins
-   trois tests, et affiche « vérification : 3/3 » ;
-3. `pnpm gestes activer heures_par_agent --client <copie>` pose la clé ;
+   trois tests, et affiche « vérification : 3/3 ; traduction : ≥ 95 % » ;
+3. dans `pnpm interface`, le patron voit le geste sous « Ce que l'outil a
+   appris » et l'active : la clé est posée (ligne `geste appris` / `activé`,
+   `par` = l'identité vérifiée du patron) ; `pnpm gestes activer
+   heures_par_agent --client <copie> --par …` fait de même à l'atelier ;
 4. `pnpm parler … --consigne "Combien d'heures Julien a-t-il fait du 5 au 11 octobre ?"`
    répond avec « 16 », avec **un seul** `appel_modele` (issue `traduire`),
    sans ligne `echappee`, pour moins de 0,003 $ ;
@@ -36,7 +44,12 @@ clé**, qui est l'unité que cette mise à jour transportera.
    une ligne `geste appris` / `refusé` est au journal, et la consigne repart
    en échappée comme avant ;
 6. `pnpm check` vert ; `pnpm evals traduire` reste au-dessus de 95 % avec le
-   geste appris chargé ; `pnpm evals gestes` (rejeu sans modèle) rend 100 %.
+   geste appris chargé ; `pnpm evals gestes` (rejeu sans modèle) rend 100 % ;
+7. (modèle simulé) une fabrication dont le premier appel rend un SQL qui ne
+   s'exécute pas est relancée une fois avec l'erreur ; au second échec, le
+   dossier dit « fabrication échouée : à coder à l'atelier » et il n'y a
+   jamais de troisième `appel_modele` ; une intention qui écrit au seuil
+   n'appelle pas le modèle et le dossier dit « attend le lot 4 ».
 
 ---
 
@@ -83,8 +96,8 @@ clé**, qui est l'unité que cette mise à jour transportera.
 | P2 | **Aucun appel au modèle quand un geste appris s'exécute.** La traduction choisit le geste (comme pour les neuf gestes codés) ; ensuite tout est déterministe : copie du rôle, SQL lié, rendu par le code. | Décision du 2026-10-04 (le modèle ne touche que ce que le code ne sait pas faire) ; une question qui revient coûte alors 0,002 $ au lieu de 0,01 $, et répond en un appel au lieu de douze tours. |
 | P3 | **Un geste appris ne lit que la copie de son rôle, en lecture seule** : les mêmes `tablesPour`, `creerCopie`, `executerRequete` que l'échappée, avec les mêmes mots interdits, le même processus enfant, le même délai. Les paramètres sont **liés** (`:agent`), jamais interpolés dans le SQL. | Pas de surface nouvelle : un geste appris ne peut rien voir ni faire de plus qu'une échappée, et moins (pas de modèle). |
 | P4 | **Lecture seule aux lots 0 à 3. L'écriture (lot 4) attend une décision de Lionel**, après mesure. Quand elle viendra, elle passera par la réaffectation groupée telle quelle (contrôles, oui du patron, oui de chaque agent, clé sur la liste exacte). | Le seul endroit où sécurité et flexibilité se contredisent est l'écriture d'une demande nouvelle ; on la sépare pour la mesurer seule. |
-| P5 | **Fabriqué par le modèle, vérifié par le code, activé par un humain.** La fabrication est **un seul appel**, un seul outil (`proposer_geste`, schéma strict = le schéma du geste), pas de boucle ; ce qui ne se lit pas proprement finit en « fabrication échouée : à coder à l'atelier » (le chemin d'aujourd'hui reste le repli). La vérification est en code (§ 6.2). L'activation pose une clé sur l'empreinte du fichier. | Même grammaire que la traduction (un appel, un choix, un repli clair). Un juge LLM ne vérifie rien ici : tout ce qui compte (le SQL tourne, le rejeu reproduit le texte validé, la description tient en 200 caractères) se vérifie en code. |
-| P6 | **Qui active : l'agence** (Lionel, à l'atelier), pas le patron, pour les premiers clients. Le patron **voit** les gestes appris et leur statut dans l'interface. Donner l'activation au patron est un choix ultérieur, avec des chiffres. | Le geste activé est ce que l'annexe du devis engage ; l'agence doit l'avoir relu. À relire par Lionel. |
+| P5 | **Fabriqué par le modèle, vérifié par le code, activé par un humain.** La fabrication est **un appel**, un seul outil (`proposer_geste`, schéma strict = le schéma du geste), pas de boucle — **relancé une fois au plus** (Lionel, 2026-10-10) quand il échoue **sur la forme** (schéma, zéro ou deux outils) ou quand un SQL proposé ne s'exécute pas, l'erreur donnée en texte ; un écart de fond (valeur en dur, test manquant, rejeu qui ne reproduit pas le texte) ne relance pas. Le second échec finit en « fabrication échouée : à coder à l'atelier » (le chemin d'aujourd'hui reste le repli). La vérification est en code (§ 6.2). L'activation pose une clé sur l'empreinte du fichier. | Même grammaire que la traduction (un appel, un choix, un repli clair). Un juge LLM ne vérifie rien ici : tout ce qui compte (le SQL tourne, le rejeu reproduit le texte validé, la description tient en 200 caractères) se vérifie en code. La relance : GLM ignore `strict`, et du SQL avec ses guillemets dans du JSON d'appel d'outil est l'endroit où un modèle moyen se trompe de forme (Codemode : « codemode dans codemode ») ; un déclencheur déterministe et un appel de plus ne changent rien à ce qui est accepté. |
+| P6 | **Qui active : le patron, dans l'interface** (Lionel, 2026-10-10 ; Claude proposait l'agence). L'agence garde `pnpm gestes` pour relire, vérifier, activer ou retirer à l'atelier. Conséquence : tout ce que l'activation exige (vérification en code **et** passe de traduction avec modèle) est fait par `pnpm promotions` avant que le geste soit proposé ; le patron n'active que du vérifié, et ne peut rien activer d'autre. | La promotion est l'auto-amélioration du harnais vue par le client ; le patron en est l'acteur. La sécurité ne dépend pas de qui clique : un geste appris est une donnée bornée par le schéma, en lecture seule, vérifiée en code avant d'être montrée. |
 | P7 | **Un fichier de geste ne vaut que par sa clé.** Au chargement, l'empreinte du contenu doit être celle de la dernière ligne `geste appris` / `activé` du journal (et aucune ligne `retiré` après). Sinon le geste est **écarté** (pas chargé), une ligne `geste appris` / `refusé` est écrite, et la consigne repart en échappée. Le reste du harnais démarre. | Même mécanisme que la clé d'accord (`empreinte`, `exigerValidation`) : rien de nouveau à auditer. Écarter plutôt qu'arrêter : une altération d'un geste ne doit pas rendre le service muet, mais elle doit se voir (alerte Veiller). |
 | P8 | **Le journal se souvient de chaque échappée** : un identifiant d'échappée sur ses lignes, le rôle, le texte final montré, et **l'instantané de la copie** dans un fichier `echappees/<id>.json` du dossier client (pas dans le journal : il refuse `DELETE`, un instantané doit pouvoir se purger). Conservation : `conversation.promotion.conservation_jours` (défaut 90), purge par `pnpm promotions`. | Sans instantané, « le geste reproduit ce que le patron a validé » n'est pas un test : les données changent entre l'échappée et la promotion. L'instantané est déjà ce que le modèle a vu : rien de plus ne sort du dossier client. À relire par Lionel (durée). |
 | P9 | **Seules les échappées finies proprement comptent** pour le seuil : `reponse` avec `controle: ok`, ou `proposition` validée ou écrite. Les abandons et les résumés retirés ne comptent pas. Le seuil reste **3 en 30 jours** (D3). | On n'apprend que de ce qui a marché et a été vu. |
@@ -93,13 +106,15 @@ clé**, qui est l'unité que cette mise à jour transportera.
 | P12 | **Le rendu d'une réponse, deux formes et pas plus** : un gabarit d'une ligne qui ne peut citer que `{{requete.colonne}}` (première ligne du résultat) et `{{param}}`, ou un tableau rendu par `rendreResultat` ; plus un texte `vide` quand il n'y a aucune ligne. Pas de condition, pas de boucle, pas de calcul. | D10 (le texte montré est rendu par le code). Un gabarit qui ne peut citer que des colonnes ne peut rien inventer : `verifierReponse` n'est même pas nécessaire à l'exécution. |
 | P13 | **Un geste appris est évalué comme les autres** : ses tests sont des cas de traduction (la consigne d'origine → lui, avec ses paramètres) et des cas de rejeu (paramètres + instantané → texte qui contient les chiffres validés). Le test métier qui garde les étiquettes honnêtes exige trois tests par geste appris, comme pour les gestes codés. | Le capital, ce sont les tests. Un geste appris en a au moins trois le jour de sa naissance : les trois échappées qui l'ont fait naître. |
 | P14 | **L'intention promue sort de la liste des intentions** de la traduction au chargement du geste (le commentaire de `metiers/securite-privee/code/src/conversation.ts:37` le prévoit). | Deux portes pour la même demande seraient une ambiguïté de plus pour le modèle. |
+| P15 | **La promotion est bornée au catalogue déclaré.** Seules les intentions de `INTENTIONS` atteignent le seuil (un mot-clé libre varie d'une fois sur l'autre) ; P14 échange l'intention contre le geste : **la liste lue par la traduction garde la même taille**. Une intention qui écrit (`Intention.ecrit: true` : `liberer_un_jour`, `reorganiser_semaine`, `reaffecter_vacation`) n'est pas tentée avant le lot 4, le dossier le dit. Les deux simulations (`simuler_absence`, `simuler_changement_de_site`) demandent les règles, pas une requête : elles restent en échappée ou se codent à l'atelier. | Vérifié le 2026-10-10 dans le code (article Codemode) : son souci d'échelle (la recherche d'outils tient mal avec plusieurs serveurs) ne se transpose pas ; en revanche six intentions sur onze sont promouvables aux lots 0 à 3, et c'est le taux de promotion qu'on mesure (§ 8). Le discours doit dire « le harnais fabrique un geste pour une demande du catalogue qui revient ; le catalogue, c'est l'agence qui l'écrit », pas « apprentissage ». |
 
 ### Coût d'inférence annoncé (décision du 2026-10-04, à vérifier au § 8)
 
 | Unité | Estimation (prix GMI, `config.yaml`) | Plafond |
 |---|---|---|
-| Une fabrication (3 échappées, leurs tableaux, un appel) | ≈ 6 000 tokens en entrée, 1 500 en sortie : ≈ 0,015 $ (≈ 0,06 $ sur Claude) | `max_tokens: 4096`, un appel |
+| Une fabrication (3 échappées, leurs tableaux, un appel) | ≈ 6 000 tokens en entrée, 1 500 en sortie : ≈ 0,015 $ (≈ 0,06 $ sur Claude) | le plafond par demande de la config (`plafonds.par_demande.tokens_sortie`, jamais un nombre en dur : 2026-10-09), deux appels au plus (P5) |
 | Une vérification avec modèle (passe de traduction) | ≈ 0,12 $ | une passe |
+| Une promotion complète par `pnpm promotions` (fabrication, relance éventuelle, passe de traduction : P6) | ≈ 0,15 $ | deux appels, une passe, dans le plafond du mois |
 | Une exécution d'un geste appris | la traduction seule, ≈ 0,002 $ | — |
 | Une question posée trois fois par mois, avant / après | 0,03 $ / 0,006 $ : la promotion se rembourse le mois suivant | — |
 
@@ -112,6 +127,8 @@ moteur/src/
   echappee/
     requete.ts        (lot 0) executerRequete accepte des paramètres liés
     echappee.ts       (lot 0) id d'échappée, rôle, texte final, instantané
+  conversation/
+    actions.ts        (lot 2) Intention.ecrit : une intention qui écrit n'est pas tentée (P15)
   gestes/             (lot 1) nouveau dossier
     geste-appris.ts   schéma zod GesteAppris, types de paramètres, rendu
     charger.ts        chargement des fichiers, empreinte, statut
@@ -127,7 +144,7 @@ moteur/src/
 metiers/securite-privee/code/src/
   conversation.ts     (lot 1) copie exposée au moteur, intentions filtrées
   evals.test.ts       (lot 3) trois tests par geste appris
-interface/src/app.ts  (lot 3) /api/gestes (patron)
+interface/src/app.ts  (lot 3) /api/gestes : liste, activer, retirer (patron)
 evals/
   gestes.yaml         (lot 2) cas de rejeu
   promotions.yaml     (lot 2) cas de fabrication
@@ -320,7 +337,9 @@ export function systemeFabriquer(roles: Role[], types: typeof TYPES_PARAMETRE, g
 export async function fabriquerGeste(modele, effort, echappees: EchappeeJournalisee[], roles, gestesExistants): Promise<{ sorte: 'geste'; geste: GesteAppris; usage } | { sorte: 'echec'; raison; usage }>
 ```
 
-Un appel, `maxTokens: 4096`, `unSeulOutil: true`, un outil `proposer_geste`
+Un appel (deux au plus, P5), `maxTokens` = le plafond par demande de la config
+(`plafonds.par_demande.tokens_sortie` ; jamais un nombre en dur : le 2026-10-09,
+4 096 tronquait la réflexion de GLM), `unSeulOutil: true`, un outil `proposer_geste`
 dont `input_schema` est `schemaJson(GesteAppris.omit({ origine, tests }))`
 étendu d'un champ `tests: [{ echappee, params }]` (le modèle **relie** chaque
 échappée d'origine aux paramètres qu'elle instancie ; le code complète
@@ -331,6 +350,18 @@ la description tient en 200 caractères et ne doit ressembler à aucun geste
 existant (liste fournie), `FRONTIERE`. Les échappées sont données entre
 `<donnees>` : consigne, rôle, requêtes et sorties, texte final. Lecture comme
 `traduire.lire` : refus, troncature, zéro ou deux outils → `echec`.
+
+**La relance (P5).** Sur un `echec` de forme, ou quand `verifierGeste` rend
+un écart d'**exécution** (une requête du geste lève sur l'instantané :
+l'écart 3 porte `erreur`), un second appel reprend le même système et les
+mêmes données, plus un message utilisateur : « La proposition précédente n'a
+pas pu être lue : <raison>. Propose à nouveau. » ou « La requête `<nom>` a
+échoué : <erreur SQL>. Propose à nouveau. ». Un second `echec` ou un second
+écart d'exécution finit la fabrication (`echec`, raison « après relance »).
+Jamais plus de deux appels ; le journal porte les deux `appel_modele`
+(issue `fabriquer`, `donnees.relance: true` sur le second). Un écart de fond
+(valeur littérale, test manquant, rejeu qui ne contient pas le chiffre) ne
+relance pas : c'est une faute de sens, pas de forme, et l'atelier la lit.
 
 ### 6.2 La vérification, en code
 
@@ -358,16 +389,28 @@ jamais écrasé : le nouveau est écrit en `<id>-<date>.yaml`, le dossier le dit
 
 ### 6.3 `pnpm promotions`
 
-Pour chaque intention à proposer : `echappeesDe` → `fabriquerGeste` →
-`verifierGeste` → `ecrireGeste` si zéro écart, sinon rien d'écrit dans
-`gestes/`. Le dossier Markdown gagne une section « Geste proposé » (chemin,
-« vérification : n/n », ou « fabrication échouée : <raison> » / les écarts)
-qui remplace la liste « À faire à l'atelier » par : relire le YAML, `pnpm
-gestes verifier --avec-modele`, `pnpm gestes activer`. Journal :
-`appel_modele` (issue `fabriquer`), `promotion proposée` (existe), `geste
-appris` / `proposé` (`objet` = id, `donnees { fichier, jeton: empreinte, ecarts }`).
-`--sans-modele` : le dossier seul, comme aujourd'hui. Le coût de la
-fabrication compte dans le plafond du mois.
+Pour chaque intention à proposer **qui n'écrit pas** (P15 ; une intention
+`ecrit` au seuil est notée au dossier : « attend l'écriture par un geste
+appris, lot 4 », sans appel au modèle) : `echappeesDe` → `fabriquerGeste`
+(relance comprise) → `verifierGeste` → `ecrireGeste` si zéro écart, sinon
+rien d'écrit dans `gestes/` → **puis la passe de traduction avec modèle**
+(celle de `pnpm gestes verifier --avec-modele`, § 7.1), parce que c'est le
+patron qui active (P6) : il ne doit voir que du vérifié. Journal : `geste
+appris` / `vérifié`. Sous 95 %, le geste reste `proposé` et **non
+activable** (l'interface le dit) ; l'atelier regarde.
+
+Le dossier Markdown gagne une section « Geste proposé » (chemin,
+« vérification : n/n ; traduction : t % », ou « fabrication échouée :
+<raison>, après relance » / les écarts) qui remplace la liste « À faire à
+l'atelier » par : relire le YAML (atelier) ; activer : le patron dans
+l'interface, ou `pnpm gestes activer`. Le dossier compte aussi, pour le § 8 :
+intentions au seuil, non tentées (`ecrit`), tentées, écrites sans écart,
+activables ; et les échecs **de forme** (premier appel, après relance) à part
+des écarts de fond. Journal : `appel_modele` (issue `fabriquer`), `promotion
+proposée` (existe), `geste appris` / `proposé` (`objet` = id, `donnees {
+fichier, jeton: empreinte, ecarts }`). `--sans-modele` : le dossier seul,
+comme aujourd'hui. Le coût de la fabrication et de la passe compte dans le
+plafond du mois.
 
 ### 6.4 Évals du lot 2
 
@@ -380,7 +423,9 @@ fabrication compte dans le plafond du mois.
   (**avec modèle**) : un cas = une intention et les ids de cas de
   `echappees.yaml` qui la portent ; le lanceur rejoue ces échappées (modèle
   réel), puis fabrique, puis vérifie en code (§ 6.2) ; un cas passe si le
-  geste est écrit avec zéro écart. Premier jeu : `heures_par_agent`
+  geste est écrit avec zéro écart. Le rapport compte à part les cas passés
+  **après relance**, les échecs de forme et les écarts de fond (§ 8).
+  Premier jeu : `heures_par_agent`
   (E-01, E-02, E-03, E-10), `compter_vacations` (E-04 + deux consignes à
   ajouter à `echappees.yaml`, avec leurs chiffres à la main), `agents_sans_carte`
   (E-05 + deux à ajouter). Seuil 2/3 au départ (c'est une mesure, pas une
@@ -390,9 +435,15 @@ fabrication compte dans le plafond du mois.
 
 - `fabriquer.test.ts` (simulé) : un `proposer_geste` bien formé → geste
   écrit ; un SQL avec `'A-2'` en dur → écart 4 ; un test manquant → écart 2 ;
-  un rejeu qui ne contient pas « 16 » → écart 3 ; deux outils → `echec`.
+  un rejeu qui ne contient pas « 16 » → écart 3 ; deux outils → `echec` ;
+  **la relance** : deux outils puis un `proposer_geste` bien formé → geste
+  écrit, deux `appel_modele` dont le second `relance: true` ; un SQL qui
+  lève puis un bon → geste écrit ; deux échecs → `echec` « après relance »,
+  jamais un troisième appel (le simulé compte) ; un `'A-2'` en dur ne
+  relance pas.
 - `promotion.test.ts` : le dossier porte « vérification : 3/3 » ; une
-  intention sous le seuil ne fabrique rien ; `--sans-modele` n'appelle pas le
+  intention sous le seuil ne fabrique rien ; une intention `ecrit` au seuil
+  n'appelle pas le modèle et le dossier dit « lot 4 » ; `--sans-modele` n'appelle pas le
   modèle (le simulé compte ses appels).
 
 ---
@@ -406,22 +457,35 @@ fabrication compte dans le plafond du mois.
 - `verifier <id> [--avec-modele]` : `verifierGeste` (sans modèle) ; avec
   `--avec-modele`, en plus une passe de traduction (`evals.ts`) sur les
   tests du geste **et** sur `evals/consignes.yaml` entier, le geste chargé :
-  le seuil des 95 % doit tenir (une liste qui s'allonge peut faire baisser la
-  traduction : c'est ce qu'on mesure). Journal : `geste appris` / `vérifié`
+  le seuil des 95 % doit tenir (la liste lue par le modèle garde sa taille,
+  P14 ; ce qui change, c'est que la traduction doit extraire des paramètres
+  typés là où elle nommait un mot-clé : c'est ce changement de tâche qu'on
+  mesure, pas une liste qui s'allonge). Journal : `geste appris` / `vérifié`
   (`donnees { jeton, ecarts, traduction?: { taux, atteint, cout_usd } }`).
 - `activer <id>` : exige une ligne `vérifié` **sans écart, avec modèle, sur la
   même empreinte**, postérieure à toute modification du fichier ; écrit
   `statut: actif` et `validation { par: <nom lu dans --par>, le, jeton }` dans
   le YAML, et la ligne `geste appris` / `activé` (`donnees { jeton, par }`).
-  `--par` obligatoire (pas de valeur par défaut).
+  `--par` obligatoire (pas de valeur par défaut). C'est le chemin de
+  l'atelier ; le chemin courant est l'interface (§ 7.2, P6), aux mêmes
+  exigences.
 - `retirer <id> --motif "<texte>"` : `statut: retire`, ligne `retiré`.
 
 ### 7.2 Interface (`interface/src/app.ts`)
 
 `POST /api/gestes` (patron, mêmes gardes que `/api/etat`) : la liste
-(`id`, `description`, `statut`, `validation.le`, `tests.length`). Lecture
-seule : l'activation reste à l'atelier (P6). L'écran du patron l'affiche
-sous « Ce que l'outil a appris ».
+(`id`, `description`, `statut`, `validation.le`, `tests.length`, dernier
+`vérifié` : écarts, taux de traduction, activable ou non).
+**`POST /api/gestes/activer` et `POST /api/gestes/retirer`** (patron, mêmes
+gardes ; corps `{ id }`, et `{ id, motif }` pour retirer) : les mêmes
+exigences que le CLI (une ligne `vérifié` sans écart, avec modèle, sur la
+même empreinte, postérieure à toute modification du fichier) ; `par` =
+l'identité vérifiée du patron, jamais un champ du corps. Avant d'écrire,
+l'interface demande une confirmation à l'écran (« Activer le geste
+<description> ? ») : une activation engage, elle se confirme (choix de
+Claude, faute de consigne ; pas par la conversation : ce n'est pas une
+consigne). L'écran du patron affiche tout cela sous « Ce que l'outil a
+appris » : proposé (activable, ou pourquoi pas), actif, retiré.
 
 ### 7.3 Le test d'honnêteté
 
@@ -435,7 +499,10 @@ ne dépasse pas 200 caractères.
 README (la couche Client gagne `gestes/` et `echappees/` ; « la promotion »
 dans les trois espaces), `HANDOFF.md`, `PLAN-ESPACES.md` § 8 (renvoi vers ce
 plan), le mini-site et la présentation (la page « Parler à l'outil » dit
-« codé à l'atelier » : à corriger **avec Lionel**, ce sont ses artefacts).
+« codé à l'atelier » : à corriger **avec Lionel**, ce sont ses artefacts ;
+la phrase juste est celle de P15 : « le harnais fabrique un geste pour une
+demande du catalogue qui revient ; le catalogue, c'est l'agence qui
+l'écrit », pas « apprentissage »).
 
 ---
 
@@ -447,10 +514,19 @@ plan), le mini-site et la présentation (la page « Parler à l'outil » dit
 | Le rejeu des gestes appris | `pnpm evals gestes --client <copie>` | 100 % | 0 |
 | La fabrication | `pnpm evals promotion --client <copie>` | 2/3 (mesure) | ≈ 0,2 $ |
 | L'échappée, inchangée mais relue (lot 0 touche ses lignes) | `pnpm evals echappee` | 80 % sur **trois** passes | ≈ 0,45 $ |
+| **Le taux de promotion** (ajouté le 2026-10-10) : intentions au seuil → non tentées (`ecrit`) → tentées → écrites sans écart → activables | les dossiers de `pnpm promotions` et `evals/resultats/<date>-promotion.md` ; par construction, 6 des 11 intentions sont promouvables aux lots 0 à 3 | mesure, pas de seuil | 0 |
+| **Les échecs de forme** de la fabrication (ajouté le 2026-10-10) : échecs au premier appel, réussites après relance, échecs après relance, à part des écarts de fond | même rapport | mesure | 0 |
 
 Chaque passe laisse `evals/resultats/<date>-<quoi>.md` ; l'analyse va dans
 `evals/erreurs-<date>.md` (catégories observées, lecture, correction ou non),
 comme `evals/erreurs-2026-10-08.md`.
+
+Le taux de promotion est le chiffre qui tranche P11 et P12 : si l'atelier
+finit par coder la moitié du catalogue, l'auto-amélioration est un mot. Un
+type de paramètre ou une forme de réponse de plus ne s'ajoute **qu'avec** ce
+chiffre (une fabrication qui échoue faute de type, nommée). Les échecs de
+forme disent si c'est le modèle qui ne sait pas fabriquer ou la couche GMI
+qui déforme le JSON (`strict` ignoré) : on ne corrige pas la même chose.
 
 ---
 
@@ -477,11 +553,25 @@ réaffectation groupée : contrôles, oui du patron, oui de chaque agent, clé
 sur la liste exacte). `ecrit: true`. Le rejeu de ses tests compare les
 modifications, pas un texte. Rien d'autre ne change : c'est la raison de P4.
 
-## 11. Ce que Lionel doit relire (choix faits par Claude)
+## 11. Tranché par Lionel le 2026-10-10
 
-- P6 : l'agence active, le patron voit.
-- P8 : 90 jours de conservation des instantanés ; un instantané cité par un
-  geste reste tant que le geste existe.
-- P11 : les six types de paramètres.
-- § 6.4 : un seuil de 2/3 pour la fabrication, annoncé comme une mesure.
-- § 10 : l'écriture attend.
+- P6 : **le patron active, dans l'interface** ; l'agence garde le CLI.
+  (Claude proposait l'agence.)
+- P5 : **une relance** à la fabrication, sur un échec de forme ou une
+  erreur SQL seulement ; puis atelier.
+- P8 : 90 jours de conservation des instantanés, confirmé ; un instantané
+  cité par un geste reste tant que le geste existe.
+- P11 : les six types de paramètres, confirmés ; un septième seulement avec
+  le taux de promotion (§ 8).
+- § 6.4 : le seuil de 2/3 pour la fabrication, confirmé comme une mesure.
+- § 10 : l'écriture attend une décision après mesure des lots 0 à 3,
+  confirmé.
+- Hors de ce plan : la proposition d'écriture d'une échappée **reste en dur
+  pour tout patron** (`proposer: identite.role === 'patron'`) ; à revoir
+  avant un client réel, pas ici.
+
+Choix de Claude dans ce plan, à relire si on veut : la passe de traduction
+avec modèle faite par `pnpm promotions` avant toute proposition (§ 6.3,
+conséquence de P6) ; `pnpm promotions` reste une commande lancée par
+l'agence (ou une tâche planifiée), le patron ne la déclenche pas ; la
+confirmation à l'écran avant d'activer (§ 7.2).
