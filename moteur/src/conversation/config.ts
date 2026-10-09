@@ -47,6 +47,8 @@ export const ConversationSchema = z.strictObject({
   promotion: z.strictObject({
     occurrences: z.number().int().positive(),
     jours: z.number().int().positive(),
+    /** Combien de jours un instantané d'échappée (`echappees/<id>.json`) est gardé avant la purge (PLAN-PROMOTION.md P8). */
+    conservation_jours: z.number().int().positive().default(90),
   }),
 })
 export type ConfigConversation = z.infer<typeof ConversationSchema>

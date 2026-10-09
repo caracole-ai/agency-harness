@@ -53,7 +53,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   appris**, une donnée (paramètres typés, SQL paramétré sur la copie du rôle,
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
-  Lecture seule tant que Lionel n'a pas tranché l'écriture. Pas commencé.
+  Lecture seule tant que Lionel n'a pas tranché l'écriture. Lot 0 fait le
+  2026-10-10 (le journal se souvient de chaque échappée) ; lots 1 à 3 à
+  faire.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -95,14 +97,22 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   seule, le garde-fou SQL, le contrôle « pas un chiffre, pas un nom hors des
   données », la boucle bornée (tours, tokens, temps ; un seul outil par
   tour demandé, que GMI ignore : chaque appel reçoit son résultat), et
-  `echappee.ts` qui assemble copie, système et journal). `src/archetypes/candidats.ts` expose
+  `echappee.ts` qui assemble copie, système et journal ; chaque échappée
+  laisse au journal son identifiant `E-…`, le rôle, le texte final tel que
+  montré et l'instantané de sa copie, `echappees/<id>.json` chez le client,
+  pour que la promotion puisse la rejouer ; `requete.ts` lie les paramètres
+  d'un geste appris, `:agent`, jamais collés dans le SQL). `src/archetypes/candidats.ts` expose
   aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
   patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
   coup sous la clé d'accord. `src/promotion/` (espace 3) compte les
-  demandes nouvelles par intention et écrit le dossier de promotion de celle
-  qui revient (`pnpm promotions`). `src/evals/` : les contrôles binaires des
+  demandes nouvelles par intention (seules les échappées finies proprement :
+  réponse au contrôle `ok`, proposition validée ou écrite), écrit le dossier
+  de promotion de celle qui revient, requêtes et texte de chaque échappée
+  relus par son identifiant, et purge les instantanés plus vieux que
+  `conservation_jours` qu'aucun geste appris ne cite (`pnpm promotions`).
+  `src/evals/` : les contrôles binaires des
   évals (aucun juge LLM), lancées par `pnpm evals` sur les cas écrits à la
   main dans `evals/` (racine du dépôt).
   qui revient (`pnpm promotions`).
@@ -205,8 +215,10 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 202
                          # jusqu'à nouvel ordre (2026-10-08)
 pnpm promotions --client <copie> [--date 2026-10-08]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
-                         # intention ; au seuil, écrit promotions/<intention>-<date>.md chez le
-                         # client et l'inscrit au journal. Aucun modèle. Sur une COPIE du client fictif
+                         # intention (échappées finies proprement) ; au seuil, écrit
+                         # promotions/<intention>-<date>.md chez le client et l'inscrit au journal ;
+                         # purge echappees/<id>.json passé conservation_jours, sauf ceux qu'un geste
+                         # appris cite. Aucun modèle. Sur une COPIE du client fictif
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
                          # les évals de la conversation (cas dans evals/, copie fraîche par cas) :
                          # appellent le vrai modèle (≈ 0,3 $ les deux passes avec GLM-5.3) ;

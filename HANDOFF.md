@@ -7,6 +7,23 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-10, nuit : `PLAN-PROMOTION.md` lot 0 fait**, branche
+  `promotion/lot-0` partie de `main` (`dd13bdc`, le plan relu et commité,
+  poussé), un commit, **pas poussée**. Le journal se souvient de chaque
+  échappée : identifiant `E-…` sur ses lignes, rôle et agent, texte final
+  tel que montré, instantané de la copie dans `echappees/<id>.json` chez le
+  client ; `executerRequete` lie des paramètres nommés (`:agent`) ; le
+  compteur ne compte que les échappées finies proprement (P9) et relit
+  chaque échappée par son identifiant ; `pnpm promotions` purge les
+  instantanés passé `conversation.promotion.conservation_jours` (90, dans le
+  schéma et chez le client fictif) sauf ceux qu'un `gestes/*.yaml` cite.
+  `pnpm check` vert : 253 tests moteur (+20), 111 métier, 15 interface.
+  **Rien de ce que le modèle lit n'a changé** (système, outils, requête sans
+  paramètre : identiques) ; la passe `pnpm evals echappee` que le § 8
+  demande après le lot 0 **n'est pas refaite** (pas de clé dans la session),
+  ne pas écrire « mesuré ». Les choix pris faute de consigne sont listés
+  plus bas (« Lot 0 de la promotion »). Suite : **lot 1** (le geste appris,
+  chargé et exécuté), sur `promotion/lot-1` partie de `promotion/lot-0`.
 - **2026-10-10 : `PLAN-PROMOTION.md` relu avec l'article Codemode, les
   choix du § 11 tranchés par Lionel, prêt à commencer au lot 0.** Ce qui
   a changé dans le plan : P6 (**le patron active dans l'interface**,
@@ -105,6 +122,35 @@ fichiers qu'il cite, si.
 **Phases de `PLAN.md` faites (0 à 5)** : registre, calendrier juridique,
 contrôles I-01 à I-05 (I-05 en partie) et I-20, Veiller (`pnpm veiller`), le
 remplacement validé par le patron et la délégation (`pnpm remplacer`).
+
+## `PLAN-PROMOTION.md` : l'avancement
+
+Un lot = une branche `promotion/lot-N` partie de la précédente = un commit,
+pas de push (§ 1.2 du plan).
+
+- **Lot 0 (le journal se souvient de l'échappée)** fait le 2026-10-10,
+  branche `promotion/lot-0` : `moteur/src/echappee/requete.ts`
+  (`executerRequete(copie, sql, parametres?, delaiMs?)`, paramètres liés,
+  `parametresNommes`), `moteur/src/echappee/echappee.ts` (`CadreEchappee`
+  gagne `dossierClient` et `identite` ; `idEchappee` dans
+  `conversation/id.ts` ; `ecrireInstantane`, `cheminInstantane`,
+  `DOSSIER_ECHAPPEES` ; lignes `outil_echappee` et `echappee` avec
+  `donnees.echappee`, la ligne `echappee` avec `role`, `agent?`, `texte`,
+  `instantane`), `moteur/src/promotion/promotion.ts` (`intentions` ne
+  compte que les échappées finies proprement, `echappeesDe`,
+  `EchappeeJournalisee`, `debutFenetre`, `purgerInstantanes`,
+  `DOSSIER_GESTES` ; `ecrireDossier` relit chaque échappée par son
+  identifiant), `moteur/src/cli/promotions.ts` (purge),
+  `moteur/src/conversation/config.ts` (`conservation_jours`, défaut 90),
+  `moteur/src/echappee/boucle.ts` (`CONTROLE_OK`, constante seule),
+  `metiers/securite-privee/code/src/conversation.ts` (passe `s.dossier`
+  et `identite`), `exemples/client-fictif/config.yaml`. Tests :
+  `requete.test.ts` (+7), `echappee.test.ts` (nouveau, moteur, simulé),
+  `promotion.test.ts` (jeu refait : abandon, résumé retiré, proposition
+  sans suite et ligne d'avant le lot 0 ne comptent pas ; `echappeesDe`
+  sépare deux échappées d'une conversation ; la purge épargne l'instantané
+  cité), `config.test.ts`. Pas de passe réelle (voir « Où on en est »).
+- Lots 1 à 3 : à faire, dans l'ordre (§ 9).
 
 ## `PLAN-ESPACES.md` : l'avancement
 
@@ -349,8 +395,11 @@ piégées, AP-4, et cette sévérité du contrôle des noms.
    instantané, activé par un humain avec une clé. L'échappée tient son
    seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
    commencer. Les choix du § 11 sont tranchés le 2026-10-10 (le patron
-   active ; une relance à la fabrication ; le reste confirmé) : **lancer le
-   lot 0** à la prochaine session, sur une branche `promotion/lot-0`.
+   active ; une relance à la fabrication ; le reste confirmé). **Lot 0 fait
+   le 2026-10-10** sur `promotion/lot-0` (non poussée) : **lancer le lot
+   1** à la prochaine session, sur `promotion/lot-1` partie de
+   `promotion/lot-0` ; relire d'abord « Lot 0 de la promotion » dans « Choix
+   faits faute de consigne ».
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
@@ -718,6 +767,55 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **`MetierConversation.intentions`** (absent du plan) : le vocabulaire des
   demandes nouvelles connues, rendu dans le système de la traduction après
   la règle `demande_nouvelle`.
+
+### Lot 0 de la promotion (`PLAN-PROMOTION.md` § 4, 2026-10-10)
+
+- **Les paramètres partent au processus enfant par l'entrée standard, en
+  JSON, avec le SQL** (le § 4.1 disait « par `argv` ») : c'est le canal que
+  `requete.ts` utilisait déjà pour le chemin, le SQL et la borne ; l'essentiel
+  tient, ils ne sont jamais collés dans le SQL. SQLite les lie
+  (`iterate(parametres)`), les clés nues (`agent` pour `:agent`) passent sur
+  Node 22.22 (testé).
+- **Un paramètre nommé dans la requête et absent des paramètres est
+  refusé** (`{ erreur }`) : `node:sqlite` n'expose pas les noms des
+  paramètres d'une requête préparée, ils sont lus par une expression
+  régulière sur le SQL **hors chaînes et identifiants entre guillemets**
+  (`parametresNommes`, `:`, `@` et `$`). Une clé que la requête ne nomme pas
+  est tolérée (`setAllowUnknownNamedParameters`) : un geste passe tous ses
+  paramètres à chacune de ses requêtes. **Sans paramètres, rien ne change**
+  pour l'échappée (pas de vérification, même chemin qu'avant).
+- **`CONTROLE_OK = 'ok'` ajouté dans `boucle.ts`** (le type et la valeur
+  rendue, rien d'autre) : `promotion.ts` compare à la constante, pas à une
+  chaîne écrite deux fois.
+- **La purge est câblée dans `pnpm promotions` dès le lot 0** (le § 3 place
+  `cli/promotions.ts` au lot 2) : P8 dit que c'est cette commande qui
+  purge, et une fonction sans appelant serait du code mort.
+- **`EchappeeJournalisee` porte aussi `issue`, `modifications?` et
+  `constats?`** (absents du § 4.3) : le dossier de promotion en a besoin
+  (« proposition », les modifications, le contrôle) et la fabrication du lot
+  2 saura ce qu'elle relit.
+- **Le chemin de l'instantané est relatif au dossier du client**
+  (`echappees/<id>.json`), au journal comme dans le fichier de geste à
+  venir (`TestAppris.instantane`, § 5.1) : le dossier peut se déplacer.
+- **Une ligne `echappee` d'avant le lot 0** (sans `echappee`, `texte`,
+  `instantane`, `role`) **ne compte plus** pour le seuil et n'entre pas au
+  dossier : sans instantané, rien ne se rejoue. Le journal du client fictif
+  n'en a aucune (alertes, constats, veilles seulement).
+- **La suite d'une proposition se lit par conversation** (comme avant,
+  `suiteDe`), pas par échappée : deux propositions dans la même conversation
+  partagent leur suite. Cas non rencontré ; à affiner si la fabrication y
+  bute.
+- **`ecrireDossier` calcule le début de la fenêtre** depuis `maintenant` et
+  `fenetreJours` (`debutFenetre`, partagé avec le CLI), au lieu de retrouver
+  les lignes par `conversations` et `occurrences` : c'est `echappeesDe` qui
+  les donne, et chaque requête est celle de son échappée.
+- **Un abandon n'a pas de `texte`** au journal (le texte montré, « Je n'y
+  arrive pas : … », est rendu par `conversation.ts`) ; son instantané est
+  écrit quand même, avant la boucle, et la ligne le cite.
+- **La purge ne touche qu'aux fichiers que le journal cite** : un fichier
+  d'`echappees/` que nulle ligne `echappee` ne nomme reste là. Les dates
+  sont celles du journal (heure de Paris), pas celles du système de
+  fichiers.
 
 ## Commandes
 

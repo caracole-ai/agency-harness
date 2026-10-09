@@ -28,6 +28,7 @@ export interface BornesEchappee {
   secondes: number
 }
 
+export const CONTROLE_OK = 'ok'
 export const CONTROLE_RETIRE = 'résumé du modèle retiré'
 /** Le motif d'abandon montré quand celui du modèle cite une donnée non vérifiée. */
 export const MOTIF_RETIRE = "le modèle s'est arrêté sans réponse vérifiable"
@@ -36,7 +37,7 @@ export type IssueEchappee =
   | {
       sorte: 'reponse'
       texte: string
-      controle: 'ok' | typeof CONTROLE_RETIRE
+      controle: typeof CONTROLE_OK | typeof CONTROLE_RETIRE
       tours: number
       usage: UsageModele
     }
@@ -346,7 +347,7 @@ export async function boucle<Modif>(
           }
           const controle = verifierReponse(e.data.texte, sources, nomsConnus, datesConnues)
           return controle.ok
-            ? { sorte: 'reponse', texte: e.data.texte, controle: 'ok', tours: appels, usage }
+            ? { sorte: 'reponse', texte: e.data.texte, controle: CONTROLE_OK, tours: appels, usage }
             : {
                 sorte: 'reponse',
                 texte:

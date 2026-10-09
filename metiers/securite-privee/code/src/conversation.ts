@@ -146,9 +146,11 @@ export const CONVERSATION: MetierConversation<Session> = {
     return echappee(
       {
         client: s.config.client,
+        dossierClient: s.dossier,
         conversation,
         journal: s.journal,
         config: configDe(s),
+        identite,
         quiParle: quiParle(identite, visibles),
       },
       {
