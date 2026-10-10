@@ -7,6 +7,32 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-10, nuit : `PLAN-PROMOTION.md` lot 1 fait**, branche
+  `promotion/lot-1` partie de `promotion/lot-0`, un commit, **pas poussée**.
+  Un geste appris est une donnée YAML (`gestes/<id>.yaml`, schéma fermé,
+  six types de paramètres, SQL paramétré, gabarit rendu par le code) qui ne
+  se charge que par sa clé (empreinte = dernière ligne `geste appris` /
+  `activé` du journal, sinon écarté, `refusé`, alerte G-01), relue à chaque
+  consigne ; chargé, c'est une action comme les autres, exécutée sans modèle
+  sur la copie du rôle, et son intention sort de la liste des demandes
+  nouvelles (P14). `pnpm check` vert : 281 tests moteur (+28), 115 métier
+  (+4), 15 interface. **Mesuré, une passe réelle** (GLM-5.3 via GMI, le
+  2026-10-10 à 02:47, 0,12 $) : `pnpm evals traduire` sur une copie du
+  client fictif avec un `heures_par_agent.yaml` écrit à la main et activé :
+  **57/60 (95 %)**, `evals/resultats/2026-10-10-0247-traduire.md`, analyse
+  dans `evals/erreurs-2026-10-08.md` (« Passe 13 »). Le seuil numérique est
+  atteint, mais le lanceur dit « sous le seuil » à cause du cas strict AP-4,
+  écart ancien qui attend Lionel. N-2 (« Combien d'heures a fait Karim
+  cette semaine ? ») choisit **le geste appris avec ses paramètres typés**
+  (`agent: Karim, du: 2026-10-05, au: 2026-10-11`) : c'est le critère 4 du
+  plan avec le vrai modèle. N-1 (« Qui a le moins d'heures ? ») part en
+  demande nouvelle `moins_heures` : la description du geste écrit à la main
+  (« les heures faites par un agent ») ne couvre pas « qui a le moins »,
+  que l'intention remplacée couvrait (« ou par tous ») ; une question de
+  description pour la fabrication (lot 2), pas un défaut du chargement.
+  Les choix pris faute de consigne : « Lot 1 de la promotion » plus bas.
+  Suite : **lot 2** (la fabrication), sur `promotion/lot-2` partie de
+  `promotion/lot-1`.
 - **2026-10-10, nuit : `PLAN-PROMOTION.md` lot 0 fait**, branche
   `promotion/lot-0` partie de `main` (`dd13bdc`, le plan relu et commité,
   poussé), un commit, **pas poussée**. Le journal se souvient de chaque
@@ -150,7 +176,31 @@ pas de push (§ 1.2 du plan).
   sans suite et ligne d'avant le lot 0 ne comptent pas ; `echappeesDe`
   sépare deux échappées d'une conversation ; la purge épargne l'instantané
   cité), `config.test.ts`. Pas de passe réelle (voir « Où on en est »).
-- Lots 1 à 3 : à faire, dans l'ordre (§ 9).
+- **Lot 1 (le geste appris, chargé et exécuté)** fait le 2026-10-10,
+  branche `promotion/lot-1` partie de `promotion/lot-0` :
+  `moteur/src/gestes/geste-appris.ts` (schéma `GesteAppris`, `FichierGeste`
+  avec `statut` et `validation`, six types de paramètres, `clesDe`,
+  `verifierGabarit`, `rendre`, `empreinteGeste`, `DOSSIER_GESTES`),
+  `moteur/src/gestes/charger.ts` (`lireFichiersGestes`, `motifSansCle`,
+  `chargerGestesAppris` : la clé P7, `refusé` et alerte G-01,
+  `TYPE_GESTE_APPRIS`, `ISSUE_GESTE`), `moteur/src/gestes/action-apprise.ts`
+  (`parametresAppris`, `actionApprise` : exécution sans modèle sur la copie
+  du rôle, D4), `moteur/src/conversation/actions.ts` (`Action.executer`
+  rend `Resultat | Promise<Resultat>`), `moteur/src/conversation/conversation.ts`
+  (`MetierConversation.copie?`, gestes appris chargés avant la traduction,
+  intentions filtrées (P14), `await`, `confirmer` asynchrone, `resultat`
+  sur la ligne `consigne`), `moteur/src/cli/evals.ts` et
+  `moteur/src/evals/evals.ts` (gestes appris chargés par fichier,
+  `ecartsTraduction(…, appris)`), `moteur/src/archetypes/veille-client.ts`
+  (`TYPE_ALERTE`), `moteur/src/index.ts`,
+  `metiers/securite-privee/code/src/conversation.ts` (`copie: tablesPour`).
+  Tests : `geste-appris.test.ts`, `charger.test.ts`, `action-apprise.test.ts`
+  (nouveaux, moteur ; geste de référence dans `geste-appris.exemple.ts`),
+  `evals.test.ts` (+1), `conversation.test.ts` du métier (+4 : « 16 » pour le
+  patron en un appel et sans échappée, P14 dans le système du modèle, D4
+  pour un agent, un octet changé → écarté, refusé, alerte, échappée).
+  Mesure : voir « Où on en est ».
+- Lots 2 et 3 : à faire, dans l'ordre (§ 9).
 
 ## `PLAN-ESPACES.md` : l'avancement
 
@@ -816,6 +866,64 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   d'`echappees/` que nulle ligne `echappee` ne nomme reste là. Les dates
   sont celles du journal (heure de Paris), pas celles du système de
   fichiers.
+
+### Lot 1 de la promotion (`PLAN-PROMOTION.md` § 5, 2026-10-10)
+
+- **`verifierGabarit` est statique au chargement** : les références du
+  gabarit (requête, paramètre), une forme de réponse et une seule, une
+  période au plus et `du`, `au` réservés, des noms de requêtes uniques,
+  chaque `:param` d'un SQL déclaré — sans exécuter de requête. Le § 5.1
+  lisait les colonnes sur une copie vide à chaque chargement (cinq
+  processus enfants par consigne). Avec `colonnes` en second argument, il
+  vérifie aussi les colonnes : c'est le lot 2 (`verifierGeste`, copie vide)
+  qui les lui donnera. À l'exécution, une colonne absente rend « Je n'ai pas
+  pu lire les données : … », détail au journal ; un geste n'est activé
+  qu'après rejeu sur ses instantanés, qui l'aurait vu.
+- **Le paramètre `agent` est `z.string().nullable()`**, pas `/^A-\d+$/`
+  (§ 5.3) : le format des identifiants est au métier, et la résolution des
+  personnes du moteur garantit un identifiant connu (ou null). Pour le rôle
+  `agent`, il vaut toujours celui qui parle (D4), quel que soit le paramètre
+  reçu.
+- **Un fichier `propose` ou `retire` n'est ni chargé ni signalé** (son état
+  normal). Un fichier `actif` sans clé (jamais activé, empreinte différente,
+  retiré), illisible ou au gabarit faux est écarté, `refusé` au journal
+  (objet = l'id, ou le nom du fichier s'il ne se lit pas) et alerte G-01 —
+  **à chaque consigne** tant que le fichier reste là : voulu, ça doit se voir.
+- **La clé se lit sur les lignes `activé` et `retiré` seulement**
+  (`motifSansCle`) : une ligne `refusé`, `vérifié` ou `proposé` postérieure
+  ne la défait pas ; un fichier altéré puis rétabli se recharge.
+- **`chargerGestesAppris(dossierClient, { client, journal }, horodatage)`** :
+  le client et l'horodatage du tour servent aux lignes du journal (le § 5.2
+  ne les passait pas).
+- **`MetierConversation.copie` est facultatif** comme `echappee` : absent,
+  aucun geste appris n'est chargé.
+- **`confirmer` devient asynchrone** (avec `executerAttente`) :
+  `Action.executer` rend une promesse pour un geste appris, et `confirmer`
+  exécute une action après un « oui » ; le CLI et l'interface passaient déjà
+  par `avecSession`, seuls les tests ont gagné un `await`. Un geste appris
+  ne demande jamais de « oui » (`ecrit: false`).
+- **La ligne `consigne` d'une action porte `resultat`** (= `Resultat.donnees`
+  quand il existe) : le commentaire de `Resultat.donnees` disait « va au
+  journal » sans que rien ne l'écrive. Pour un geste appris : ses requêtes
+  (nom, SQL, lignes) ou son erreur. Les gestes codés qui rendent `donnees`
+  (`statut`, `demande`) y sont aussi désormais.
+- **`DOSSIER_GESTES` vit dans `gestes/geste-appris.ts`** (le lot 0 l'avait mis
+  dans `promotion.ts`) : `charger.ts` en a besoin, et `promotion.ts`
+  importera `gestes/` au lot 2.
+- **`parametresDe` s'appelle `parametresAppris`** : `regles/verdict.ts`
+  exporte déjà `parametresDe`, et deux `export *` du même nom s'annulent à
+  l'exécution (le métier a perdu son registre le temps de le comprendre).
+- **`TYPE_ALERTE = 'alerte'`** ajouté dans `archetypes/veille-client.ts` (la
+  veille l'écrivait en dur).
+- **Les évals de traduction chargent les gestes `propose` et `actif`** du
+  dossier `--client` **par leur fichier, sans la clé** : la copie d'un cas
+  n'a pas de journal, et le § 7.1 mesurera un geste seulement proposé. **Une
+  étiquette `nouvelle` d'une intention devenue geste appris passe quand le
+  modèle choisit ce geste** (`ecartsTraduction(…, appris)`) : N-1 et N-2
+  sont étiquetés `heures_par_agent` en demande nouvelle ; les paramètres se
+  mesureront par les tests du geste (lot 3, P13).
+- **Le geste de référence des tests vit dans `gestes/geste-appris.exemple.ts`**
+  (non exporté par le moteur) : importer un fichier de test en rejoue les cas.
 
 ## Commandes
 

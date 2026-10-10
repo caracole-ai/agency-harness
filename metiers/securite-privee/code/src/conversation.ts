@@ -116,6 +116,7 @@ export const CONVERSATION: MetierConversation<Session> = {
   },
   actions: ACTIONS,
   intentions: INTENTIONS,
+  copie: tablesPour,
   vocabulaire: (s, identite) => ({
     agents: s.ctx.planning.agents
       .filter((a) => identite.role === 'patron' || a.id === identite.agent)

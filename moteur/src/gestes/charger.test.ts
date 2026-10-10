@@ -1,0 +1,165 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { describe, expect, it } from 'vitest'
+import { TYPE_ALERTE } from '../archetypes/veille-client'
+import { Journal } from '../journal/journal'
+import {
+  chargerGestesAppris,
+  ISSUE_GESTE,
+  lireFichiersGestes,
+  motifSansCle,
+  REGLE_SANS_HUMAIN,
+  TYPE_GESTE_APPRIS,
+} from './charger'
+import { DOSSIER_GESTES, empreinteGeste, type FichierGeste } from './geste-appris'
+import { GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
+
+// Un fichier de geste ne vaut que par sa clé (PLAN-PROMOTION.md § 5.5, P7) :
+// jamais activé, un octet changé, retiré → écarté, refusé au journal, alerte ;
+// activé → chargé.
+
+const CLIENT = 'fictif'
+const FICHIER = 'heures_par_agent.yaml'
+
+function dossierAvec(...fichiers: [string, unknown][]): { dossier: string; journal: Journal } {
+  const dossier = mkdtempSync(join(tmpdir(), 'gestes-'))
+  mkdirSync(join(dossier, DOSSIER_GESTES))
+  // YAML lit le JSON : le fichier s'écrit sans sérialiseur.
+  for (const [nom, contenu] of fichiers) {
+    writeFileSync(
+      join(dossier, DOSSIER_GESTES, nom),
+      typeof contenu === 'string' ? contenu : JSON.stringify(contenu),
+    )
+  }
+  return { dossier, journal: new Journal(join(dossier, 'journal.sqlite')) }
+}
+const actif: FichierGeste = { ...GESTE, statut: 'actif' }
+const activer = (journal: Journal, jeton = empreinteGeste(GESTE)) =>
+  journal.ecrire([
+    {
+      type: TYPE_GESTE_APPRIS,
+      client: CLIENT,
+      objet: GESTE.id,
+      issue: ISSUE_GESTE.active,
+      donnees: { jeton, par: 'test' },
+    },
+  ])
+const charger = (dossier: string, journal: Journal) =>
+  chargerGestesAppris(dossier, { client: CLIENT, journal }, '2026-10-10T19:40:00Z')
+const refus = (journal: Journal) =>
+  journal.lire().filter((l) => l.type === TYPE_GESTE_APPRIS && l.issue === ISSUE_GESTE.refuse)
+
+describe('chargerGestesAppris', () => {
+  it('jamais activé → écarté, refusé au journal avec le jeton, alerte G-01', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    expect(charger(dossier, journal)).toEqual({
+      actifs: [],
+      ecartes: [{ fichier: FICHIER, id: GESTE.id, motif: 'jamais activé' }],
+    })
+    const [r] = refus(journal)
+    expect(r).toMatchObject({
+      objet: GESTE.id,
+      motif: 'jamais activé',
+      horodatage: '2026-10-10T19:40:00Z',
+    })
+    expect(JSON.parse(r?.donnees ?? '{}')).toEqual({
+      fichier: FICHIER,
+      jeton: empreinteGeste(GESTE),
+    })
+    const alerte = journal.lire().find((l) => l.type === TYPE_ALERTE)
+    expect(alerte).toMatchObject({ regle: REGLE_SANS_HUMAIN, objet: GESTE.id, issue: 'alerte' })
+    expect(alerte?.motif).toContain('jamais activé')
+    journal.fermer()
+  })
+  it('activé → chargé, rien d’écrit au journal', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    const avant = journal.lire().length
+    expect(charger(dossier, journal)).toEqual({ actifs: [GESTE], ecartes: [] })
+    expect(journal.lire()).toHaveLength(avant)
+    journal.fermer()
+  })
+  it('activé puis un octet changé → écarté, « empreinte différente »', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    writeFileSync(
+      join(dossier, DOSSIER_GESTES, FICHIER),
+      JSON.stringify({ ...actif, description: `${actif.description}.` }),
+    )
+    const { actifs, ecartes } = charger(dossier, journal)
+    expect(actifs).toEqual([])
+    expect(ecartes[0]?.motif).toBe('empreinte différente')
+    expect(refus(journal)[0]?.motif).toBe('empreinte différente')
+    journal.fermer()
+  })
+  it('activé puis retiré → écarté, « retiré » ; réactivé ensuite → chargé', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    journal.ecrire([
+      { type: TYPE_GESTE_APPRIS, client: CLIENT, objet: GESTE.id, issue: ISSUE_GESTE.retire },
+    ])
+    expect(charger(dossier, journal).ecartes[0]?.motif).toBe('retiré')
+    activer(journal)
+    expect(charger(dossier, journal).actifs).toHaveLength(1)
+    journal.fermer()
+  })
+  it('un refus au journal n’empêche pas le fichier rétabli de se charger', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    writeFileSync(
+      join(dossier, DOSSIER_GESTES, FICHIER),
+      JSON.stringify({ ...actif, roles: ['patron'] }),
+    )
+    expect(charger(dossier, journal).actifs).toEqual([])
+    writeFileSync(join(dossier, DOSSIER_GESTES, FICHIER), JSON.stringify(actif))
+    expect(charger(dossier, journal).actifs).toEqual([GESTE])
+    journal.fermer()
+  })
+  it('un fichier proposé ou retiré n’est ni chargé ni signalé', () => {
+    const { dossier, journal } = dossierAvec(
+      ['a.yaml', { ...GESTE, statut: 'propose' }],
+      ['b.yaml', { ...GESTE, id: 'compter_vacations', statut: 'retire' }],
+    )
+    expect(charger(dossier, journal)).toEqual({ actifs: [], ecartes: [] })
+    expect(journal.lire()).toEqual([])
+    journal.fermer()
+  })
+  it('un fichier illisible ou hors schéma, ou un gabarit faux : écarté, refusé, alerte', () => {
+    const { dossier, journal } = dossierAvec(
+      ['illisible.yaml', '{ pas: [du yaml'],
+      ['schema.yaml', { ...actif, requetes: [] }],
+      ['gabarit.yaml', { ...actif, reponse: { ...actif.reponse, ligne: '{{total.n}}' } }],
+    )
+    activer(journal)
+    const { actifs, ecartes } = charger(dossier, journal)
+    expect(actifs).toEqual([])
+    expect(ecartes.map((e) => e.fichier)).toEqual(['gabarit.yaml', 'illisible.yaml', 'schema.yaml'])
+    expect(ecartes[0]?.motif).toContain('gabarit : la ligne cite une requête inconnue')
+    expect(ecartes[1]?.motif).toMatch(/^YAML illisible/)
+    expect(ecartes[2]?.motif).toMatch(/^schéma/)
+    expect(refus(journal)).toHaveLength(3)
+    expect(journal.lire().filter((l) => l.type === TYPE_ALERTE)).toHaveLength(3)
+    journal.fermer()
+  })
+  it('sans dossier gestes/ : rien', () => {
+    const dossier = mkdtempSync(join(tmpdir(), 'gestes-'))
+    const journal = new Journal(join(dossier, 'journal.sqlite'))
+    expect(charger(dossier, journal)).toEqual({ actifs: [], ecartes: [] })
+    expect(lireFichiersGestes(dossier)).toEqual([])
+    journal.fermer()
+  })
+})
+
+describe('motifSansCle', () => {
+  it('ne regarde que les lignes activé et retiré : un vérifié ou un proposé après l’activation ne change rien', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    journal.ecrire([
+      { type: TYPE_GESTE_APPRIS, client: CLIENT, objet: GESTE.id, issue: ISSUE_GESTE.verifie },
+    ])
+    expect(motifSansCle(journal, GESTE)).toBeUndefined()
+    expect(charger(dossier, journal).actifs).toHaveLength(1)
+    journal.fermer()
+  })
+})

@@ -89,8 +89,21 @@ export type IssueTraduction = Demande | { sorte: 'precision'; candidats: string[
 export function ecartsTraduction(
   attendu: CasTraduire['attendu'],
   demande: IssueTraduction,
+  appris: readonly string[] = [],
 ): string[] {
   const sortes = Array.isArray(attendu.sorte) ? attendu.sorte : [attendu.sorte]
+  // Un cas étiqueté « demande nouvelle » d'une intention devenue geste appris
+  // passe quand le modèle choisit ce geste : c'est la même demande, promue
+  // (PLAN-PROMOTION.md § 5.4, P14). Ses paramètres se mesurent par les tests du
+  // geste lui-même (lot 3, § 7.1), pas par cette étiquette.
+  if (
+    demande.sorte === 'action' &&
+    appris.includes(demande.action) &&
+    sortes.includes('nouvelle') &&
+    (attendu.intention === undefined || attendu.intention.includes(demande.action))
+  ) {
+    return []
+  }
   if (!sortes.includes(demande.sorte)) {
     const detail =
       demande.sorte === 'action'

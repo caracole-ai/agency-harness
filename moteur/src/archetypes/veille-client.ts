@@ -9,6 +9,9 @@ import { rendreRapport } from './rapport'
 // `pnpm veiller` et le geste `lancer_veille` de la conversation fassent
 // exactement la même chose (PLAN-ESPACES.md § 5.6).
 
+/** Le type des lignes d'alerte du journal : celles de la veille, et celles qu'un geste appris sans clé déclenche. */
+export const TYPE_ALERTE = 'alerte'
+
 export function veilleDuClient<Contexte, Config extends ConfigClient>(
   m: MetierVeiller<Contexte, Config>,
   dossierMetier: string,
@@ -34,7 +37,7 @@ export function veilleDuClient<Contexte, Config extends ConfigClient>(
       donnees: c.notes ? { notes: c.notes } : undefined,
     })),
     ...alertes.map((a) => ({
-      type: 'alerte',
+      type: TYPE_ALERTE,
       client: config.client,
       regle: a.regle,
       objet: a.objet,

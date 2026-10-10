@@ -46,12 +46,13 @@ export interface Action<Session, Params> {
   ecrit: boolean
   /** La phrase de confirmation, rendue par le code. Lève si l'action est impossible pour ce demandeur. */
   reformuler(s: Session, identite: Identite, params: Params): string
+  /** Synchrone pour les gestes codés ; un geste appris lit sa copie dans un processus enfant et rend une promesse (PLAN-PROMOTION.md § 5.3). */
   executer(
     s: Session,
     identite: Identite,
     params: Params,
     maintenant: Temporal.ZonedDateTime,
-  ): Resultat
+  ): Resultat | Promise<Resultat>
 }
 
 export const DESCRIPTION_MAX = 200

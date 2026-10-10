@@ -10,12 +10,12 @@ import {
   TYPE_ECHAPPEE,
   TYPE_OUTIL_ECHAPPEE,
 } from '../echappee/echappee'
+import { DOSSIER_GESTES } from '../gestes/geste-appris'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { Temporal } from '../temps/temporal'
 import {
   aProposer,
-  DOSSIER_GESTES,
   debutFenetre,
   echappeesDe,
   ecrireDossier,

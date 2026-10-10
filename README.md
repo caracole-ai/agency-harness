@@ -53,9 +53,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   appris**, une donnée (paramètres typés, SQL paramétré sur la copie du rôle,
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
-  Lecture seule tant que Lionel n'a pas tranché l'écriture. Lot 0 fait le
-  2026-10-10 (le journal se souvient de chaque échappée) ; lots 1 à 3 à
-  faire.
+  Lecture seule tant que Lionel n'a pas tranché l'écriture. Lots 0 (le journal
+  se souvient de chaque échappée) et 1 (le geste appris, chargé et exécuté)
+  faits le 2026-10-10 ; lots 2 (la fabrication) et 3 (l'atelier, l'activation,
+  l'interface) à faire.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -106,7 +107,15 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
   patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
-  coup sous la clé d'accord. `src/promotion/` (espace 3) compte les
+  coup sous la clé d'accord. `src/gestes/` (la promotion, `PLAN-PROMOTION.md`
+  lot 1) : un **geste appris** est une donnée, `gestes/<intention>.yaml` chez
+  le client (`geste-appris.ts` : schéma fermé, six types de paramètres, SQL
+  paramétré, gabarit rendu par le code, empreinte) ; il ne se charge que si
+  son empreinte est celle de la dernière ligne `geste appris` / `activé` du
+  journal, sinon écarté, `refusé` et alerte G-01 (`charger.ts`, relu à chaque
+  consigne) ; chargé, il devient une action comme les autres, exécutée sans
+  modèle sur la copie du rôle (`action-apprise.ts`), et son intention sort
+  de la liste des demandes nouvelles. `src/promotion/` (espace 3) compte les
   demandes nouvelles par intention (seules les échappées finies proprement :
   réponse au contrôle `ok`, proposition validée ou écrite), écrit le dossier
   de promotion de celle qui revient, requêtes et texte de chaque échappée

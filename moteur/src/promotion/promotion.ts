@@ -5,6 +5,7 @@ import { VALIDEE } from '../approbation/jeton'
 import { ROLES, type Role } from '../conversation/actions'
 import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE } from '../echappee/boucle'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
+import { DOSSIER_GESTES } from '../gestes/geste-appris'
 import type { Journal, Ligne } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import type { Constat } from '../regles/verdict'
@@ -23,9 +24,6 @@ export const TYPE_PROMOTION = 'promotion proposée'
 
 /** Le statut d'une proposition écrite dans les données (remplacement, réaffectation). */
 export const ECRITE = 'écrite'
-
-/** Le dossier des gestes appris, dans le dossier du client (PLAN-PROMOTION.md § 5). */
-export const DOSSIER_GESTES = 'gestes'
 
 export interface IntentionComptee {
   intention: string

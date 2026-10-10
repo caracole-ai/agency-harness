@@ -29,6 +29,9 @@ import {
   type ResultatCas,
   rendreResultats,
 } from '../evals/evals'
+import { actionApprise } from '../gestes/action-apprise'
+import { lireFichiersGestes } from '../gestes/charger'
+import { gesteDe } from '../gestes/geste-appris'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import { cout, type Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
@@ -184,6 +187,23 @@ async function lancer(
 const resultats: ResultatCas[] = []
 if (quoi === 'traduire') {
   const fichier = FichierTraduire.parse(parse(readFileSync(join(EVALS, 'consignes.yaml'), 'utf8')))
+  // Les gestes appris du dossier passé en --client, proposés ou actifs, chargés
+  // par leur fichier sans la clé du journal (la copie d'un cas n'en a pas) : la
+  // passe mesure la liste que le modèle lira, un geste seulement proposé
+  // compris (PLAN-PROMOTION.md § 5.4 et § 7.1). Leur intention sort de la liste (P14).
+  const copieMetier = m.copie
+  const appris = copieMetier
+    ? lireFichiersGestes(source).flatMap((f) => {
+        if (f.erreur !== undefined) console.error(`gestes/${f.fichier} : ${f.erreur}`)
+        return f.contenu && f.contenu.statut !== 'retire'
+          ? [actionApprise(gesteDe(f.contenu), copieMetier)]
+          : []
+      })
+    : []
+  const intentions = m.intentions.filter((i) => !appris.some((a) => a.id === i.id))
+  const apprisIds = appris.map((a) => a.id)
+  if (appris.length > 0)
+    console.log(`Gestes appris chargés : ${appris.map((a) => a.id).join(', ')}`)
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
     const variante = c.variante === undefined ? undefined : fichier.variantes?.[c.variante]
     if (c.variante !== undefined && !variante)
@@ -198,12 +218,13 @@ if (quoi === 'traduire') {
           // Le circuit de la conversation, sans l'exécution : la traduction (la
           // phrase seule), puis le dossier, puis la résolution de la personne.
           const quand = aParis(c.maintenant ?? fichier.maintenant)
-          const actions = actionsDe(m.actions, c.role)
+          const toutes = [...m.actions, ...appris]
+          const actions = actionsDe(toutes, c.role)
           const { demande } = await traduire(
             modele,
             configDe(dossier).modele.effort.traduire,
-            systemeTraduire(c.role, actions, m.intentions),
-            outilsDe(m.actions, c.role),
+            systemeTraduire(c.role, actions, intentions),
+            outilsDe(toutes, c.role),
             c.consigne,
             quand,
             new Map(actions.map((a) => [a.id, schemaMontre(a)])),
@@ -226,7 +247,7 @@ if (quoi === 'traduire') {
                     ? { ...demande, params: r.params }
                     : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
                 })
-          return { ecarts: ecartsTraduction(c.attendu, issue), issue }
+          return { ecarts: ecartsTraduction(c.attendu, issue, apprisIds), issue }
         },
       ),
     )
