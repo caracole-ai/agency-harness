@@ -7,6 +7,44 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-10, midi : `PLAN-PROMOTION.md` lot 2 fait**, branche
+  `promotion/lot-2` partie de `promotion/lot-1`, un commit, **pas poussée**.
+  Le modèle fabrique un geste appris en un appel (`proposer_geste`, le
+  schéma du geste ; relancé une fois sur un échec de forme ou une requête
+  qui lève), le code le vérifie (gabarit sur une copie vide, rejeu de chaque
+  test sur son instantané, aucune valeur en dur venue d'une consigne,
+  description distincte), l'écrit en `gestes/<id>.yaml` (proposé), puis
+  `pnpm promotions` mesure la traduction avec le geste chargé et dit s'il
+  est activable ; le dossier de promotion raconte tout. `pnpm check` vert :
+  321 tests moteur (+40), 115 métier, 15 interface. **Mesuré, GLM-5.3 via
+  GMI, le 2026-10-10** (`evals/erreurs-2026-10-08.md`, « Passe 14 ») :
+  - **le flux complet du critère 1-2 sur une copie** (trois échappées
+    réelles, puis `pnpm promotions`) : fabrication en **un appel, zéro
+    écart, rejeu 3/3**, `gestes/heures_par_agent.yaml` écrit (tableau,
+    `agent` nullable, description qui garde « ou par tous ») ; traduction
+    avec le geste chargé **61/63 (97 %)**, activable (N-1, P-PLA-2, AP-4
+    passent ; R-2 et AP-2 en écart, variance sans lien avec le geste) ;
+    `pnpm evals gestes` sur la copie **6/6**. Résultats :
+    `evals/resultats/2026-10-10-1231-traduire.md`, `…-1209-gestes.md`,
+    `…-1231-gestes.md`. Coût : 0,04 $ la fabrication, 0,15 $ la passe.
+  - **`pnpm evals promotion` (trois intentions, § 8) : 0/3** sur la
+    première passe ; deux gestes justes (`heures_par_agent`,
+    `agents_sans_carte`) écartés au rejeu parce que les réponses de
+    l'échappée disaient plus que la question (heures par vacation, agents
+    à carte expirée « à noter ») ; `compter_vacations` tronqué deux fois
+    (« de nuit » n'est pas un type : l'échec faute de type attendu). Deux
+    bogues de `citations` corrigés (année, jour avec son zéro) ; une
+    troncature ne relance plus. Seconde passe avec le code final : **0/3**
+    encore (GMI a lâché le flux de la fabrication `heures_par_agent` après
+    plusieurs minutes ; les deux autres comme avant). **À trancher par
+    Lionel** : l'échappée répond court, ou le rejeu n'exige que la première
+    phrase (le lot garde la règle du plan).
+  - Appris sur GMI : coupure à 120 s hors flux (524), aucun token compté en
+    flux → la fabrication part en flux avec une borne haute du coût (voir
+    « Lot 2 de la promotion »).
+  Suite : **lot 3** (l'atelier, l'activation, l'interface), sur
+  `promotion/lot-3` partie de `promotion/lot-2` ; puis la relecture
+  indépendante et la fusion (§ 9).
 - **2026-10-10, nuit : `PLAN-PROMOTION.md` lot 1 fait**, branche
   `promotion/lot-1` partie de `promotion/lot-0`, un commit, **pas poussée**.
   Un geste appris est une donnée YAML (`gestes/<id>.yaml`, schéma fermé,
@@ -200,7 +238,34 @@ pas de push (§ 1.2 du plan).
   patron en un appel et sans échappée, P14 dans le système du modèle, D4
   pour un agent, un octet changé → écarté, refusé, alerte, échappée).
   Mesure : voir « Où on en est ».
-- Lots 2 et 3 : à faire, dans l'ordre (§ 9).
+- **Lot 2 (la fabrication)** fait le 2026-10-10, branche `promotion/lot-2`
+  partie de `promotion/lot-1` : `moteur/src/promotion/fabriquer.ts`
+  (nouveau : `GestePropose`, `systemeFabriquer`, `messageFabriquer`,
+  `outilProposerGeste`, `completerGeste`, `verifierGeste`, `rejouerTest`,
+  `ecrireGeste`, `fabriquerGeste` avec la relance P5),
+  `moteur/src/promotion/promouvoir.ts` (nouveau : `promouvoir`, ce que
+  `pnpm promotions` fait d'une intention au seuil ; `compterFabrications`
+  pour le § 8), `moteur/src/promotion/promotion.ts` (`Fabrication`, la
+  section « Geste proposé » du dossier, `promotion proposée` la porte),
+  `moteur/src/evals/traduction.ts` (nouveau : `copieClient`, `jouerCas`,
+  `casDuFichier`, `casDuGeste`, `apprisDuDossier`, `jouerTraduction`,
+  extraits de `cli/evals.ts`), `moteur/src/evals/evals.ts` (`SEUILS`,
+  `FichierGestes`, `FichierPromotions`, `contient` venu de `reponse.ts`),
+  `moteur/src/echappee/reponse.ts` (`citations`, `contient`),
+  `moteur/src/gestes/action-apprise.ts` (`executerGeste`, `liaisonDe`
+  exportés), `moteur/src/gestes/geste-appris.ts` (`TESTS_MIN`),
+  `moteur/src/conversation/actions.ts` (`Intention.ecrit`, P15),
+  `moteur/src/conversation/traduire.ts` (`jourSemaine`),
+  `moteur/src/modele/compteur.ts` (`UsageAppel` + `fabriquer`, `verifier`),
+  `moteur/src/cli/promotions.ts` (le modèle, `--sans-modele`, la passe de
+  traduction, le compte du § 8), `moteur/src/cli/evals.ts` (`gestes`,
+  `promotion`), `moteur/src/index.ts`,
+  `metiers/securite-privee/code/src/conversation.ts` (`ecrit` sur chaque
+  intention), `evals/gestes.yaml` et `evals/promotions.yaml` (nouveaux),
+  `evals/echappees.yaml` (E-15 à E-18). Tests : `fabriquer.test.ts`,
+  `promouvoir.test.ts`, `traduction.test.ts` (nouveaux), `reponse.test.ts`
+  (+2), `traduire.test.ts` (`ecrit`). Mesure : voir « Où on en est ».
+- Lot 3 : à faire (§ 7), puis la relecture indépendante et la fusion (§ 9).
 
 ## `PLAN-ESPACES.md` : l'avancement
 
@@ -445,11 +510,13 @@ piégées, AP-4, et cette sévérité du contrôle des noms.
    instantané, activé par un humain avec une clé. L'échappée tient son
    seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
    commencer. Les choix du § 11 sont tranchés le 2026-10-10 (le patron
-   active ; une relance à la fabrication ; le reste confirmé). **Lot 0 fait
-   le 2026-10-10** sur `promotion/lot-0` (non poussée) : **lancer le lot
-   1** à la prochaine session, sur `promotion/lot-1` partie de
-   `promotion/lot-0` ; relire d'abord « Lot 0 de la promotion » dans « Choix
-   faits faute de consigne ».
+   active ; une relance à la fabrication ; le reste confirmé). **Lots 0, 1
+   et 2 faits le 2026-10-10** sur `promotion/lot-0`, `promotion/lot-1`,
+   `promotion/lot-2` (non poussées, chacune partie de la précédente) :
+   **lancer le lot 3** à la prochaine session, sur `promotion/lot-3` partie
+   de `promotion/lot-2` ; relire d'abord « Lot 2 de la promotion » dans
+   « Choix faits faute de consigne » (l'activation y est déjà cadrée :
+   `activable`, lignes `proposé` et `vérifié`).
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
@@ -558,6 +625,19 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Lot 2 (2026-10-10)** : la borne haute du coût d'une fabrication en flux
+  majore d'environ deux fois (le plafond du mois se ferme plus tôt) ; le
+  rejeu exige chaque nombre et chaque nom de la réponse de l'échappée, et
+  GLM répond souvent plus long que la question (0/3 à l'éval de
+  fabrication, deux gestes justes écartés) ; « activable » ne regarde que
+  le taux de traduction, pas les cas stricts ; les outils `proposer_geste`
+  portent des `record` (`parametres`, `tests[].params`) que le mode strict
+  de l'API d'Anthropic pourrait refuser (GMI l'ignore ; jamais essayé chez
+  Anthropic) ; la passe de traduction de `pnpm promotions` copie le dossier
+  du client une fois par cas (≈ 65 copies, quelques secondes) ; le délai
+  d'appel vaut maintenant `par_demande.secondes` pour la traduction aussi
+  (une panne se voit plus tard qu'avec 60 s) ; `pnpm interface` et `pnpm
+  parler --interactif` ne sont pas rejoués depuis le lot 1.
 - **Coût du mois** (`coutDuMois`) : il compare le mois au début de
   l'horodatage du journal, qui est en UTC (comme le plan le prescrit). Entre
   minuit et 1 h ou 2 h, heure de Paris, le premier jour du mois, un appel
@@ -925,6 +1005,126 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **Le geste de référence des tests vit dans `gestes/geste-appris.exemple.ts`**
   (non exporté par le moteur) : importer un fichier de test en rejoue les cas.
 
+### Lot 2 de la promotion (`PLAN-PROMOTION.md` § 6, 2026-10-10)
+
+- **`fabriquerGeste` vérifie elle-même** (la relance dépend d'un écart
+  d'exécution) et rend trois sortes : `geste` (zéro écart, prêt à écrire),
+  `ecarts` (la proposition lisible et ses écarts de fond) ou `echec` (forme,
+  ou requête qui lève, après relance ; ou moins de trois réponses, sans
+  appel). Le § 6.1 séparait l'appel de la vérification ; `pnpm promotions`
+  ne vérifie pas deux fois.
+- **L'identifiant du geste n'est pas demandé au modèle : c'est
+  l'intention.** P14 retire de la liste l'intention du même id ; un id
+  choisi par le modèle laisserait deux portes.
+- **Le système de fabrication reçoit le schéma des tables** (noms, colonnes,
+  descriptions, sans ligne ni compte : `schemaDesTables`), absent de la
+  liste du § 6.1 : sans lui, `:du` et `:au` ne tombent pas sur la bonne
+  colonne. Rien de nouveau ne part chez le fournisseur : ce schéma est le
+  système de l'échappée. Il reçoit aussi la description de l'intention
+  d'origine (« ou par tous ») : la passe 13 a montré qu'un geste plus étroit
+  laisse des consignes sans mot-clé.
+- **L'effort de la fabrication est `effort.echappee`** (pas de clé de config
+  dédiée : une de plus dans `ConversationSchema` aurait touché toutes les
+  configs). Le plafond par appel est `par_demande.tokens_sortie`, comme le
+  plan le demande.
+- **`contient` = les nombres hors dates et les mots de noms connus du texte
+  montré, moins ce que la consigne porte déjà** : la consigne est une source
+  de l'échappée (« du 5 au 11 octobre » se cite), et le gabarit rend les
+  paramètres à sa façon. Les dates sont exclues pour la même raison. Un
+  texte sans rien à vérifier (« Aucune vacation. ») ne fait pas un test
+  (écart 2), parce que `TestAppris.contient` exige un élément (§ 7.3).
+- **Un paramètre `agent` d'un test est résolu par le niveau 1**
+  (`correspondances`) à partir de ce que le modèle écrit ; zéro ou deux
+  personnes → écart 2. Pour le rôle `agent`, c'est celui qui parle (D4),
+  quoi que le modèle écrive.
+- **Écart 4, les valeurs en dur : les chaînes SQL seulement** (`'…'`, `%` et
+  `_` retirés, deux caractères au moins). Une date ISO et une personne (id
+  ou nom, niveau 1) sont des écarts même hors consigne ; un mot d'une
+  consigne (`'nuit'`) en est un : c'est voulu, un geste qui code la consigne
+  ne répond qu'à elle, et c'est la mesure « faute de type » du § 8. Les
+  nombres (`LIMIT 1`, `* 24`) ne sont pas regardés.
+- **Écart 1 sur la copie vide** : les tables du premier instantané lisible,
+  lignes retirées ; une requête qui lève sur la copie vide arrête la
+  vérification (un seul écart, celui qui relance) : rien d'autre n'a de sens.
+- **Seules les échappées `reponse` vont à la fabrication** (un geste appris
+  lit) ; moins de trois → `echec` sans appel.
+- **`promouvoir.ts` porte l'orchestration** (le § 3 ne la plaçait nulle
+  part) : testable avec le modèle simulé (`promouvoir.test.ts`, ce que le
+  § 6.5 attendait de `promotion.test.ts`). `pnpm promotions` a
+  `--sans-modele` (le dossier seul), pas `--modele simule`.
+- **« Activable » = le taux de traduction seul, pas `bilan.atteint`** : AP-4
+  (cas strict, écart ancien) bloquerait toute activation. Les cas stricts
+  en écart sont écrits au dossier, au terminal et au journal (`vérifié`
+  porte `traduction.atteint` = activable). À relire par Lionel avec AP-4.
+- **Le coût de la passe de traduction va au journal du client en une ligne
+  `appel_modele` / `verifier` agrégée** (objet = le geste, `appels`,
+  `cout_usd`), pour le plafond du mois ; ses appels par cas vivent dans les
+  copies détruites. Son tableau s'écrit à côté du dossier :
+  `promotions/<id>-<date>-traduction.md`.
+- **Une passe de traduction qui échoue ne perd pas le geste écrit** : le
+  dossier dit « passe impossible (…) », non activable ; relancer
+  `pnpm promotions` refabriquerait (le fichier existant est gardé, le nouveau
+  prend la date) : plutôt `pnpm gestes verifier --avec-modele` au lot 3.
+- **Le plafond du mois est respecté avant la fabrication** (sorte
+  `plafond`, aucun appel) ; la passe de traduction ensuite n'est pas bornée
+  par lui (une consigne admise va à son terme, même règle que la
+  conversation).
+- **`evals/traduction.ts` est extrait de `cli/evals.ts`** (copie, porte,
+  trace, traduction et résolution) pour que `pnpm promotions` joue la même
+  passe ; `casDuGeste` lit le moment de chaque test dans son instantané
+  (`horodatage`), le schéma du test ne change pas.
+- **`pnpm evals gestes`** : `gestes.yaml` porte des gestes écrits à la main,
+  posés dans une copie (`gestes/eval-<id>.yaml`, proposé) avec un instantané
+  par test pris sur les données de la copie à `maintenant` pour le rôle du
+  test ; puis tous les gestes de la copie sont rejoués, ceux du `--client`
+  compris. Identifiant de cas `<geste>/<échappée>`.
+- **`pnpm evals promotion`** : le seuil est dans le fichier (0,66 pour
+  « 2/3 ») ; pas de passe de traduction (≈ 0,12 $ par cas, mesurée par
+  `pnpm promotions`) ; la copie passe la porte avec le rôle patron ;
+  `compter_vacations` est attendu en échec faute de type (« de nuit »).
+  Quatre cas d'échappée ajoutés (E-15 à E-18), chiffres à la main.
+- **`Intention.ecrit` est obligatoire** (pas de défaut) ; les deux
+  simulations sont `ecrit: false` mais ne sont pas promouvables (P15) : la
+  fabrication les tentera et échouera sur le fond, c'est la mesure.
+- **`citations` et `contient` vivent dans `echappee/reponse.ts`** ;
+  `present` d'`evals.ts` est remplacé par `contient` (même règle).
+- **`executerGeste` et `liaisonDe`** sont exportés d'`action-apprise.ts` :
+  l'exécution d'un geste et le rejeu d'un test sont le même code.
+- **« null » et « None » écrits en texte** dans `reponse.ligne`,
+  `reponse.tableau` et `tests[].params` se relisent comme `null`, comme pour
+  la traduction (GMI ignore `strict`).
+- **La ligne `promotion proposée` porte `fabrication`** (tout sauf la
+  proposition YAML, qui est au dossier) : le taux de promotion du § 8 se
+  calcule depuis le journal.
+- **Le délai d'un appel au SDK vient de la config** (`par_demande.secondes`,
+  `modeleAnthropic(id, cle, acces, delaiMs)`) : le `timeout: 60_000` codé
+  dans `anthropic.ts` faisait échouer la fabrication (GLM réfléchit plusieurs
+  minutes). Même règle que pour les tokens (2026-10-09).
+- **La fabrication part en flux (SSE)** (`AppelModele.flux: true`, le SDK
+  reconstitue le message ; la traduction, la désignation et l'échappée
+  restent hors flux) : la passerelle Cloudflare de GMI coupe toute réponse
+  non diffusée passée 120 s (erreur 524) ; la fabrication sur la copie n'est
+  passée qu'à la troisième tentative du SDK (366 s), facturée trois fois chez
+  GMI. **Et en flux, GMI ne compte aucun token** : l'adaptateur rend alors
+  une **borne haute** (`usageBorne` : entrée = caractères de la requête / 2,
+  sortie = le plafond demandé), écrite au journal (`usage_borne: true`),
+  portée par `IssueFabrication.usageBorne`, `Fabrication.cout_borne` et le
+  dossier (« au plus x $ »). Jamais sous-compter le plafond du mois ; chez
+  Anthropic le flux porte l'usage et la borne ne se déclenche pas. À relire
+  par Lionel : la borne majore d'environ deux fois (0,07 $ contre 0,04 $
+  mesuré hors flux) ; l'alternative serait l'effort `traduire` (bas) pour
+  tenir sous 120 s hors flux, au prix de la qualité du geste.
+- **Une fabrication « injoignable » (réseau, passerelle, flux lâché par GMI
+  après plusieurs minutes : vu à la seconde passe de l'éval) n'inscrit pas
+  la ligne `promotion proposée`** (`Fabrication.injoignable`) : une panne
+  n'est pas un verdict, le dossier le dit et le prochain `pnpm promotions`
+  réessaie. Les autres échecs (forme, troncature, écarts de fond) inscrivent
+  la ligne : l'intention n'est reproposée qu'à sa prochaine occurrence.
+- **Un refus ou une troncature ne relance pas** : P5 liste « schéma, zéro ou
+  deux outils » et une requête qui lève ; un modèle tronqué à 12 000 tokens
+  (compter_vacations, impossible faute de type) l'était deux fois, pour
+  0,05 $ de plus.
+
 ## Commandes
 
 ```sh
@@ -935,8 +1135,9 @@ pnpm registre:verifier     # couverture, codes cités, veille des textes en reta
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
 pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README
 pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]
-pnpm promotions --client <copie> [--date AAAA-MM-JJ]
-pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
+pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]   # avec modèle : fabrique, vérifie, mesure la traduction (≈ 0,15 $ par intention)
+pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
+pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]
 # Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.
 ```

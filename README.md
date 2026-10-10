@@ -54,9 +54,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
   Lecture seule tant que Lionel n'a pas tranché l'écriture. Lots 0 (le journal
-  se souvient de chaque échappée) et 1 (le geste appris, chargé et exécuté)
-  faits le 2026-10-10 ; lots 2 (la fabrication) et 3 (l'atelier, l'activation,
-  l'interface) à faire.
+  se souvient de chaque échappée), 1 (le geste appris, chargé et exécuté) et 2
+  (la fabrication par le modèle, vérifiée en code, mesurée) faits le
+  2026-10-10 ; lot 3 (l'atelier, l'activation, l'interface) à faire.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -74,8 +74,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   clé d'accord : pas d'écriture sans validation de ce contenu exact au
   journal) et `src/cli/veiller.ts`. Depuis `PLAN-ESPACES.md` :
   `src/modele/` (l'accès au modèle derrière une interface à nous, `Modele` ;
-  l'adaptateur du SDK d'Anthropic, l'adaptateur simulé des tests, le coût
-  d'un appel et le coût du mois lu dans le journal) et
+  l'adaptateur du SDK d'Anthropic, délai lu dans la config, un appel long
+  en flux avec une borne haute du coût quand le fournisseur ne compte pas ;
+  l'adaptateur simulé des tests ; le coût d'un appel et le coût du mois lu
+  dans le journal) et
   `src/conversation/config.ts` (la section `conversation` de la config
   client : modèle, prix, effort, plafonds, seuil de promotion),
   `src/conversation/actions.ts` (la forme d'un geste du quotidien, les rôles
@@ -117,13 +119,25 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   modèle sur la copie du rôle (`action-apprise.ts`), et son intention sort
   de la liste des demandes nouvelles. `src/promotion/` (espace 3) compte les
   demandes nouvelles par intention (seules les échappées finies proprement :
-  réponse au contrôle `ok`, proposition validée ou écrite), écrit le dossier
-  de promotion de celle qui revient, requêtes et texte de chaque échappée
-  relus par son identifiant, et purge les instantanés plus vieux que
-  `conservation_jours` qu'aucun geste appris ne cite (`pnpm promotions`).
-  `src/evals/` : les contrôles binaires des
-  évals (aucun juge LLM), lancées par `pnpm evals` sur les cas écrits à la
-  main dans `evals/` (racine du dépôt).
+  réponse au contrôle `ok`, proposition validée ou écrite), et pour celle qui
+  revient **fabrique le geste** (`PLAN-PROMOTION.md` lot 2) : `fabriquer.ts`,
+  un appel au modèle avec les échappées entières (jamais l'instantané), un
+  outil `proposer_geste` au schéma du geste, relancé une fois sur un échec de
+  forme ou une requête qui lève ; la vérification en code (gabarit sur une
+  copie vide, rejeu de chaque test sur son instantané, aucune valeur en dur
+  venue d'une consigne, description distincte des gestes existants) ;
+  `gestes/<id>.yaml` écrit au statut proposé si zéro écart. `promouvoir.ts`
+  enchaîne pour `pnpm promotions` : hors catalogue ou intention qui écrit,
+  rien n'est tenté ; sinon fabrication, écriture, puis la passe de traduction
+  avec modèle (`consignes.yaml` entier et les tests du geste, le geste
+  chargé) qui dit si le geste est activable ; le dossier de promotion
+  (`promotions/<intention>-<date>.md`, requêtes et texte de chaque échappée
+  relus par son identifiant) raconte tout, et la purge des instantanés plus
+  vieux que `conservation_jours` qu'aucun geste appris ne cite suit.
+  `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
+  par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
+  dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, partagé
+  entre `pnpm evals` et `pnpm promotions`.
   qui revient (`pnpm promotions`).
 - `interface/` — l'interface du patron, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
@@ -222,15 +236,23 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 202
                          # autre point d'accès au même format et la variable qu'il nomme. Le client
                          # fictif désigne GLM-5.3 chez GMI Cloud (GMI_API_KEY), la référence
                          # jusqu'à nouvel ordre (2026-10-08)
-pnpm promotions --client <copie> [--date 2026-10-08]
+pnpm promotions --client <copie> [--date 2026-10-08] [--sans-modele]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
-                         # intention (échappées finies proprement) ; au seuil, écrit
-                         # promotions/<intention>-<date>.md chez le client et l'inscrit au journal ;
-                         # purge echappees/<id>.json passé conservation_jours, sauf ceux qu'un geste
-                         # appris cite. Aucun modèle. Sur une COPIE du client fictif
-pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
-                         # les évals de la conversation (cas dans evals/, copie fraîche par cas) :
-                         # appellent le vrai modèle (≈ 0,3 $ les deux passes avec GLM-5.3) ;
+                         # intention (échappées finies proprement) ; au seuil, le modèle fabrique
+                         # un geste appris (deux appels au plus), le code le vérifie et l'écrit en
+                         # gestes/<id>.yaml (proposé), puis une passe de traduction avec modèle dit
+                         # s'il est activable ; promotions/<intention>-<date>.md raconte tout et
+                         # la ligne « promotion proposée » le porte au journal ; purge
+                         # echappees/<id>.json passé conservation_jours, sauf ceux qu'un geste
+                         # appris cite. ≈ 0,15 $ par intention au seuil avec GLM-5.3 ; exige la
+                         # clé de la config, sauf --sans-modele (le dossier seul, aucun appel).
+                         # Sur une COPIE du client fictif
+pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [--seulement id,id] [--modele simule]
+                         # les évals de la conversation et de la promotion (cas dans evals/,
+                         # copie fraîche par cas) : traduire, echappee et promotion appellent le
+                         # vrai modèle (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la
+                         # fabrication, avec GLM-5.3) ; gestes rejoue les gestes appris sur leurs
+                         # instantanés sans modèle (0 $, seuil 100 %) ;
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,

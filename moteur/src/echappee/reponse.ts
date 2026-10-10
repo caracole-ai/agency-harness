@@ -39,6 +39,40 @@ function motsTrouves(sources: string, mots: string[]): boolean {
   return new RegExp(`(?<![\\p{L}\\p{N}])${suite}(?![\\p{L}\\p{N}])`, 'u').test(sources)
 }
 
+interface DateEcrite {
+  position: number
+  fin: number
+  ecrite: string
+  /** `AAAA-MM-JJ`, ou `-MM-JJ` quand l'année manque. */
+  iso: string
+}
+
+/** Les dates écrites dans un texte, ISO ou `JJ/MM[/AAAA]`, avec leur plage. */
+function datesDe(texte: string): DateEcrite[] {
+  const dates: DateEcrite[] = []
+  for (const m of texte.matchAll(DATE_ISO)) {
+    dates.push({ position: m.index, fin: m.index + m[0].length, ecrite: m[0], iso: m[0] })
+  }
+  for (const m of texte.matchAll(DATE)) {
+    const [ecrite, jour = '', mois = '', annee] = m
+    if (Number(mois) < 1 || Number(mois) > 12 || Number(jour) < 1 || Number(jour) > 31) continue
+    dates.push({
+      position: m.index,
+      fin: m.index + ecrite.length,
+      ecrite,
+      iso: `${annee ?? ''}-${mois.padStart(2, '0')}-${jour.padStart(2, '0')}`,
+    })
+  }
+  return dates
+}
+
+/** Les nombres d'un texte qui ne font pas partie d'une date, tels qu'écrits. */
+function nombresHorsDates(texte: string, dates: DateEcrite[]): RegExpExecArray[] {
+  return [...texte.matchAll(NOMBRE)].filter(
+    (m) => !dates.some((d) => m.index >= d.position && m.index < d.fin),
+  )
+}
+
 function datesEtNombres(
   texte: string,
   sources: string,
@@ -49,20 +83,11 @@ function datesEtNombres(
   const dateTrouvee = (iso: string) => sources.includes(iso) || connues.includes(iso)
   /** L'année d'une date connue n'est pas une quantité : elle se cite. */
   const annees = datesConnues.map((d) => d.slice(0, 4))
-  const masquees: [number, number][] = []
-  for (const m of texte.matchAll(DATE_ISO)) {
-    masquees.push([m.index, m.index + m[0].length])
-    if (!dateTrouvee(m[0])) intrus.push({ position: m.index, texte: m[0] })
+  const dates = datesDe(texte)
+  for (const d of dates) {
+    if (!dateTrouvee(d.iso)) intrus.push({ position: d.position, texte: d.ecrite })
   }
-  for (const m of texte.matchAll(DATE)) {
-    const [ecrite, jour = '', mois = '', annee] = m
-    if (Number(mois) < 1 || Number(mois) > 12 || Number(jour) < 1 || Number(jour) > 31) continue
-    const iso = `${annee ?? ''}-${mois.padStart(2, '0')}-${jour.padStart(2, '0')}`
-    masquees.push([m.index, m.index + ecrite.length])
-    if (!dateTrouvee(iso)) intrus.push({ position: m.index, texte: ecrite })
-  }
-  for (const m of texte.matchAll(NOMBRE)) {
-    if (masquees.some(([debut, fin]) => m.index >= debut && m.index < fin)) continue
+  for (const m of nombresHorsDates(texte, dates)) {
     const point = m[0].replace(',', '.')
     if (annees.includes(point)) continue
     if (!nombreTrouve(sources, [point, point.replace('.', ',')])) {
@@ -124,4 +149,47 @@ export function verifierReponse(
   if (intrus.length === 0) return { ok: true }
   const ordonnes = intrus.sort((a, b) => a.position - b.position).map((i) => i.texte)
   return { ok: false, intrus: [...new Set(ordonnes)] }
+}
+
+/** Ce qui n'est pas une quantité : un identifiant (`V-04`, `A-11`, `D-V-17`), une date avec son heure, une heure (`20:00`, `8h30`), une année (`2026`), un jour écrit avec son zéro (`le 07`). */
+const NON_QUANTITES =
+  /\b[A-Z]+(?:-[A-Z]+)*-\d+\b|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}|\b\d{1,2}:\d{2}\b|\b\d{1,2}h(?:\d{2})?\b|\b(?:19|20)\d{2}\b|\b0\d+\b/g
+
+/**
+ * Ce qu'un texte cite et qu'un rejeu doit reproduire (PLAN-PROMOTION.md § 6.2) :
+ * ses nombres, tels qu'écrits, hors dates, heures et identifiants, et les mots
+ * d'au moins trois lettres des noms connus qu'il cite. Les dates n'en sont
+ * pas : elles sont des paramètres, ou dites par le harnais, et un gabarit les
+ * rend à sa façon ; un identifiant, une heure, une année, un jour écrit avec
+ * son zéro ne sont pas des quantités (vu sur les réponses de GLM, passe 14).
+ */
+export function citations(texte: string, nomsConnus: string[]): string[] {
+  const plages: DateEcrite[] = [
+    ...datesDe(texte),
+    ...[...texte.matchAll(NON_QUANTITES)].map((m) => ({
+      position: m.index,
+      fin: m.index + m[0].length,
+      ecrite: m[0],
+      iso: '',
+    })),
+  ]
+  const nombres = nombresHorsDates(texte, plages).map((m) => m[0])
+  const longs = new Set(
+    nomsConnus.flatMap((nom) =>
+      [...nom.matchAll(MOT)].map((m) => normaliser(m[0])).filter((mot) => MOT_DE_NOM.test(mot)),
+    ),
+  )
+  const noms = [...texte.matchAll(MOT)].map((m) => m[0]).filter((mot) => longs.has(normaliser(mot)))
+  return [...new Set([...nombres, ...noms])]
+}
+
+/**
+ * Un mot attendu se cherche tel quel, sans accents ni casse ; un nombre se
+ * cherche entier (« 4 » n'est pas dans « V-14 », « 16 » pas dans « 16,5 »).
+ */
+export function contient(texte: string, mot: string): boolean {
+  const t = normaliser(texte)
+  const m = normaliser(mot)
+  if (!/^\d+(?:[.,]\d+)?$/.test(m)) return t.includes(m)
+  return new RegExp(`(?<![\\d.,])${m.replace(/[.,]/, '[.,]')}(?![\\d]|[.,]\\d)`).test(t)
 }

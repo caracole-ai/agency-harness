@@ -41,22 +41,51 @@ export const INTENTIONS: Intention[] = [
   {
     id: 'heures_par_agent',
     description: 'les heures faites par un agent, ou par tous, sur une période',
+    ecrit: false,
   },
-  { id: 'compter_vacations', description: 'compter des vacations (de nuit, par site, par agent)' },
-  { id: 'qui_travaille', description: 'qui tient un poste ou un site, un jour donné' },
-  { id: 'agents_disponibles', description: 'les agents sans vacation sur une période' },
+  {
+    id: 'compter_vacations',
+    description: 'compter des vacations (de nuit, par site, par agent)',
+    ecrit: false,
+  },
+  {
+    id: 'qui_travaille',
+    description: 'qui tient un poste ou un site, un jour donné',
+    ecrit: false,
+  },
+  {
+    id: 'agents_disponibles',
+    description: 'les agents sans vacation sur une période',
+    ecrit: false,
+  },
   {
     id: 'agents_sans_carte',
     description: 'les agents dont la carte professionnelle n’est pas renseignée',
+    ecrit: false,
   },
-  { id: 'cartes_expirees', description: 'les agents dont la carte professionnelle est expirée' },
-  { id: 'liberer_un_jour', description: 'libérer un agent de ses vacations d’une journée' },
-  { id: 'reorganiser_semaine', description: 'refaire la semaine d’un agent' },
-  { id: 'reaffecter_vacation', description: 'donner une vacation à un autre agent' },
-  { id: 'simuler_changement_de_site', description: 'et si un agent passait sur un autre site' },
+  {
+    id: 'cartes_expirees',
+    description: 'les agents dont la carte professionnelle est expirée',
+    ecrit: false,
+  },
+  {
+    id: 'liberer_un_jour',
+    description: 'libérer un agent de ses vacations d’une journée',
+    ecrit: true,
+  },
+  { id: 'reorganiser_semaine', description: 'refaire la semaine d’un agent', ecrit: true },
+  { id: 'reaffecter_vacation', description: 'donner une vacation à un autre agent', ecrit: true },
+  // Les deux simulations demandent les règles, pas une requête : elles ne
+  // s'écrivent pas en geste appris, mais elles ne modifient rien (P15).
+  {
+    id: 'simuler_changement_de_site',
+    description: 'et si un agent passait sur un autre site',
+    ecrit: false,
+  },
   {
     id: 'simuler_absence',
     description: 'une absence hypothétique, longue : qui pourrait reprendre les vacations',
+    ecrit: false,
   },
 ]
 

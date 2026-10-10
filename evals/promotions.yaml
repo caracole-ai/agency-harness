@@ -1,0 +1,27 @@
+# Les cas de l'éval de la fabrication (PLAN-PROMOTION.md § 6.4), `pnpm evals
+# promotion --client <dossier>`, avec modèle : un cas = une intention et les
+# cas d'`echappees.yaml` qui la portent. Le lanceur rejoue ces échappées sur
+# une seule copie du client (modèle réel), puis la promotion y fabrique le
+# geste et le vérifie en code (§ 6.2) ; le cas passe si le geste est écrit
+# avec zéro écart. Le rapport compte à part les cas passés après relance, les
+# échecs de forme et les écarts de fond (§ 8).
+#
+# Le seuil est une mesure, pas une promesse (2/3, Lionel, 2026-10-10) : c'est
+# le taux de promotion qui tranche si un type de paramètre ou une forme de
+# réponse de plus s'ajoute. `compter_vacations` est attendu en échec faute de
+# type : « de nuit » n'est pas un paramètre (les six types de P11) ; l'écart
+# nommé est la mesure.
+
+maintenant: "2026-10-10T21:40"
+seuil: 0.66
+
+cas:
+  - id: heures_par_agent
+    intention: heures_par_agent
+    echappees: [E-01, E-02, E-03, E-10]
+  - id: compter_vacations
+    intention: compter_vacations
+    echappees: [E-04, E-15, E-16]
+  - id: agents_sans_carte
+    intention: agents_sans_carte
+    echappees: [E-05, E-17, E-18]

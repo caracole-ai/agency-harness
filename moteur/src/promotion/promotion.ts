@@ -14,13 +14,46 @@ import { dateFr, FUSEAU, Temporal } from '../temps/temporal'
 // Le compteur des demandes nouvelles et la promotion (espace 3) : ce qui
 // revient devient un geste. Les échappées du journal sont comptées par
 // intention ; celle qui atteint le seuil reçoit un dossier de promotion, tout
-// lu dans le journal, pour l'atelier. Seules comptent les échappées finies
-// proprement, dont le journal garde le texte montré et l'instantané : ce
-// sont elles que la fabrication relira et rejouera (PLAN-PROMOTION.md § 4.3,
-// P8, P9). Rien n'est codé ici : le geste, une personne l'écrit
-// (PLAN-ESPACES.md § 8), jusqu'au lot 2.
+// lu dans le journal. Seules comptent les échappées finies proprement, dont
+// le journal garde le texte montré et l'instantané : ce sont elles que la
+// fabrication relit et rejoue (PLAN-PROMOTION.md § 4.3, P8, P9). Le dossier
+// dit ce que la fabrication a donné (§ 6.3) : le geste proposé, vérifié,
+// activable ou non ; ou pourquoi il n'y en a pas, et l'atelier reprend.
 
 export const TYPE_PROMOTION = 'promotion proposée'
+
+/** Ce que la fabrication a donné pour une intention au seuil (PLAN-PROMOTION.md § 6.3), tel que le dossier et le journal le disent. */
+export interface Fabrication {
+  sorte: 'hors_catalogue' | 'attend_lot_4' | 'plafond' | 'echec' | 'ecarts' | 'ecrit'
+  /** Le second appel a eu lieu (P5). */
+  relance: boolean
+  /** `echec` : pourquoi (forme, ou une requête qui lève, après relance). */
+  raison?: string
+  /** `ecarts` : les écarts de fond, en phrases. */
+  ecarts?: string[]
+  rejeu?: { ok: number; total: number }
+  /** `ecarts` : la proposition lisible mais fautive, en YAML, pour l'atelier. */
+  proposition?: string
+  /** `ecrit` : `gestes/<id>.yaml`, relatif au dossier du client, et l'empreinte du geste. */
+  fichier?: string
+  jeton?: string
+  /** `ecrit` : la passe de traduction avec modèle, ou pourquoi elle n'a pas eu lieu. */
+  traduction?: {
+    ok: number
+    total: number
+    taux: number
+    cout_usd: number
+    stricts: string[]
+    erreur?: string
+  }
+  activable?: boolean
+  /** Les appels de la fabrication (la passe de traduction se compte à part). */
+  cout_usd: number
+  /** true : le fournisseur n'a pas compté les tokens (en flux), `cout_usd` est une borne haute. */
+  cout_borne?: true
+  /** `echec` : le modèle n'a pas répondu (panne de transport) ; rien n'est inscrit, le prochain `pnpm promotions` réessaie. */
+  injoignable?: true
+}
 
 /** Le statut d'une proposition écrite dans les données (remplacement, réaffectation). */
 export const ECRITE = 'écrite'
@@ -87,6 +120,85 @@ const A_FAIRE = [
   'Passer `pnpm check`.',
   "Livrer : la mise à jour à distance d'un harnais livré est à concevoir par Lionel (PLAN-ESPACES.md D2).",
 ]
+
+/** Quand le geste est écrit et vérifié : ce qui reste est à l'atelier et au patron (§ 6.3, P6). */
+const A_FAIRE_GESTE = [
+  'Relire le YAML du geste (atelier).',
+  "Activer : le patron, dans l'interface (« Ce que l'outil a appris ») ; ou `pnpm gestes activer <id> --client <dossier> --par <nom>` à l'atelier.",
+  "Livrer : la mise à jour à distance d'un harnais livré est à concevoir par Lionel (PLAN-ESPACES.md D2).",
+]
+
+/** Un taux en pour cent entier. */
+const pourCent = (taux: number) => `${Math.round(taux * 100)} %`
+
+/** La section « Geste proposé » du dossier : ce que la fabrication a donné, en lignes. */
+function sectionGeste(f: Fabrication): string[] {
+  const lignes: string[] = []
+  switch (f.sorte) {
+    case 'hors_catalogue':
+      lignes.push(
+        'Hors du catalogue déclaré : la promotion ne tente que les intentions connues du métier (PLAN-PROMOTION.md P15). À coder à l’atelier si la demande revient.',
+      )
+      break
+    case 'attend_lot_4':
+      lignes.push(
+        'Cette intention écrit dans les données : elle attend l’écriture par un geste appris (PLAN-PROMOTION.md lot 4). Aucun appel au modèle.',
+      )
+      break
+    case 'plafond':
+      lignes.push(
+        'Le plafond d’IA du mois est atteint : fabrication reportée, aucun appel au modèle.',
+      )
+      break
+    case 'echec':
+      lignes.push(
+        `Fabrication échouée : ${(f.raison ?? '?').replace(/\.$/, '')}. ${
+          f.injoignable
+            ? 'Une panne, pas un verdict : rien n’est inscrit au journal, le prochain `pnpm promotions` réessaiera.'
+            : 'À coder à l’atelier.'
+        }`,
+      )
+      break
+    case 'ecarts':
+      lignes.push(
+        `Fabrication relue, écartée par la vérification (rejeu : ${f.rejeu?.ok ?? 0}/${f.rejeu?.total ?? 0}) ; rien d’écrit dans \`gestes/\`. Les écarts :`,
+        '',
+        ...(f.ecarts ?? []).map((e) => `- ${e}`),
+        '',
+        'La proposition du modèle, à relire à l’atelier, jamais activée telle quelle :',
+        '',
+        '```yaml',
+        (f.proposition ?? '').trimEnd(),
+        '```',
+      )
+      break
+    case 'ecrit': {
+      const t = f.traduction
+      const traduction =
+        t === undefined
+          ? 'traduction : non mesurée'
+          : t.erreur !== undefined
+            ? `traduction : passe impossible (${t.erreur})`
+            : `traduction : ${pourCent(t.taux)} (${t.ok}/${t.total}, ${dollars(t.cout_usd)} $)${t.stricts.length > 0 ? ` ; cas stricts en écart : ${t.stricts.join(', ')}` : ''}`
+      lignes.push(
+        `Fichier : \`${f.fichier ?? '?'}\` (statut proposé, empreinte \`${f.jeton ?? '?'}\`).`,
+        '',
+        `Vérification : ${f.rejeu?.ok ?? 0}/${f.rejeu?.total ?? 0} ; ${traduction}.`,
+        '',
+        f.activable
+          ? 'Activable : oui.'
+          : 'Activable : non (la traduction n’atteint pas son seuil, ou n’a pas été mesurée) ; l’atelier regarde.',
+      )
+      break
+    }
+  }
+  lignes.push(
+    '',
+    `Coût de la fabrication : ${f.cout_borne ? 'au plus ' : ''}${dollars(f.cout_usd)} $${f.relance ? ', avec une relance' : ''}${f.cout_borne ? ' (le fournisseur ne compte pas les tokens en flux : borne haute)' : ''}.`,
+    '',
+  )
+  return lignes
+}
 
 /** Les `donnees` d'une ligne, lues comme un objet (vide si absentes ou d'une autre forme). */
 function donneesDe(l: Ligne): Record<string, unknown> {
@@ -274,7 +386,13 @@ function controleDe(e: EchappeeJournalisee): string {
   return `contrôle de la réponse : ${CONTROLE_OK}`
 }
 
-/** Écrit `<dossierClient>/promotions/<intention>-<AAAA-MM-JJ>.md` (crée le dossier), écrit la ligne `promotion proposée` au journal, et rend le chemin. */
+/**
+ * Écrit `<dossierClient>/promotions/<intention>-<AAAA-MM-JJ>.md` (crée le
+ * dossier), écrit la ligne `promotion proposée` au journal, et rend le
+ * chemin. Avec `fabrication`, le dossier gagne sa section « Geste proposé »
+ * et la ligne la porte dans ses `donnees` (§ 6.3) ; une fabrication
+ * `injoignable` n'inscrit pas la ligne : l'intention reste à proposer.
+ */
 export function ecrireDossier(
   dossierClient: string,
   client: string,
@@ -282,6 +400,7 @@ export function ecrireDossier(
   journal: Journal,
   maintenant: Temporal.ZonedDateTime,
   fenetreJours: number,
+  fabrication?: Fabrication,
 ): string {
   const lignes = journal.lire()
   const echappees = echappeesDe(journal, i.intention, debutFenetre(maintenant, fenetreJours))
@@ -348,9 +467,10 @@ export function ecrireDossier(
     '## Cas de test candidats',
     '',
     ...(cas.length === 0 ? ['Aucune proposition validée.', ''] : [AVERTISSEMENT_CAS, '', ...cas]),
+    ...(fabrication ? ['## Geste proposé', '', ...sectionGeste(fabrication)] : []),
     "## À faire à l'atelier",
     '',
-    ...A_FAIRE.map((a) => `- [ ] ${a}`),
+    ...(fabrication?.sorte === 'ecrit' ? A_FAIRE_GESTE : A_FAIRE).map((a) => `- [ ] ${a}`),
     '',
   ].join('\n')
 
@@ -361,6 +481,7 @@ export function ecrireDossier(
     `${nomFichier(i.intention)}-${maintenant.toPlainDate().toString()}.md`,
   )
   writeFileSync(chemin, contenu)
+  if (fabrication?.injoignable) return chemin
   journal.ecrire(
     [
       {
@@ -373,6 +494,7 @@ export function ecrireDossier(
           conversations: i.conversations,
           cout_usd: i.cout_usd,
           dossier: chemin,
+          ...(fabrication ? { fabrication: { ...fabrication, proposition: undefined } } : {}),
         },
       },
     ],

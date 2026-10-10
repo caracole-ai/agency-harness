@@ -28,6 +28,8 @@ export const FORMAT_NOM = /^[a-z][a-z0-9_]*$/
 export const CLES_PERIODE = ['du', 'au'] as const
 export const LIGNE_MAX = 400
 export const VIDE_MAX = 200
+/** Un geste naît avec trois tests au moins : les échappées qui l'ont fait naître (P13). */
+export const TESTS_MIN = 3
 
 export const ParametreAppris = z.strictObject({
   type: z.enum(TYPES_PARAMETRE),
@@ -68,7 +70,7 @@ export const GesteAppris = z.strictObject({
   parametres: z.record(z.string().regex(FORMAT_NOM), ParametreAppris),
   requetes: z.array(RequeteApprise).min(1).max(5),
   reponse: ReponseApprise,
-  tests: z.array(TestAppris).min(3),
+  tests: z.array(TestAppris).min(TESTS_MIN),
   origine: z.strictObject({
     fabrique_le: z.iso.date(),
     modele: z.string(),

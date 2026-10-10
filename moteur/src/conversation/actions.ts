@@ -103,6 +103,8 @@ export interface Intention {
   id: string
   /** Une phrase pour le modèle, en français. */
   description: string
+  /** true : la demande écrit dans les données ; la promotion ne la tente pas avant le lot 4 (PLAN-PROMOTION.md P15). */
+  ecrit: boolean
 }
 
 export const DemandeNouvelle = z.strictObject({
