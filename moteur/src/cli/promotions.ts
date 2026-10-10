@@ -10,15 +10,15 @@
 // geste appris ne cite (P8). `--sans-modele` : le dossier seul, aucun appel.
 // Exige la clé que nomme la config, sauf --sans-modele. Travailler sur une
 // copie du client fictif, jamais sur `exemples/`.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse } from 'yaml'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import type { MetierConversation } from '../conversation/conversation'
-import { bilan, FichierTraduire, rendreResultats, SEUILS } from '../evals/evals'
-import { apprisDuDossier, casDuFichier, casDuGeste, jouerTraduction } from '../evals/traduction'
+import { FichierTraduire } from '../evals/evals'
+import { type BilanTraduction, passeTraduction } from '../evals/traduction'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import { coutDuMois } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
@@ -31,7 +31,7 @@ import {
   purgerInstantanes,
   resumeCout,
 } from '../promotion/promotion'
-import { type BilanTraduction, compterFabrications, promouvoir } from '../promotion/promouvoir'
+import { compterFabrications, promouvoir } from '../promotion/promouvoir'
 import { FUSEAU, Temporal } from '../temps/temporal'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
@@ -104,55 +104,32 @@ try {
     : modeleDepuisConfig(config, process.env)
 
   /** La passe de traduction avec modèle, le geste écrit chargé avec les autres gestes du dossier (§ 6.3, § 7.1) ; son tableau à côté du dossier de promotion. */
-  const traduction = async (geste: Parameters<typeof casDuGeste>[0]): Promise<BilanTraduction> => {
-    const fichier = FichierTraduire.parse(
+  const traduction = async (
+    geste: Parameters<typeof passeTraduction>[2],
+  ): Promise<BilanTraduction> => {
+    const consignes = FichierTraduire.parse(
       parse(readFileSync(join(EVALS, 'consignes.yaml'), 'utf8')),
     )
-    const { appris, erreurs } = apprisDuDossier(m, dossier)
-    for (const e of erreurs) console.error(e)
-    console.log(
-      `  Passe de traduction, gestes appris chargés : ${appris.map((a) => a.id).join(', ')}`,
-    )
-    let appels = 0
-    const resultats = await jouerTraduction(
+    const passe = await passeTraduction(
       m,
       dossier,
-      [...casDuFichier(fichier), ...casDuGeste(geste, dossier)],
-      appris,
+      geste,
+      consignes,
       (c) => modeleDepuisConfig(c, process.env),
-      (r, trace) => {
-        appels += trace.appels.length
-        console.log(
-          `  ${r.id} : ${r.ecarts.length === 0 ? 'ok' : `écart (${r.ecarts.join(' ; ')})`}`,
-        )
+      {
+        date: maintenant.toPlainDate().toString(),
+        surAppris: (ids, erreurs) => {
+          for (const e of erreurs) console.error(e)
+          console.log(`  Passe de traduction, gestes appris chargés : ${ids.join(', ')}`)
+        },
+        surCas: (r) =>
+          console.log(
+            `  ${r.id} : ${r.ecarts.length === 0 ? 'ok' : `écart (${r.ecarts.join(' ; ')})`}`,
+          ),
       },
     )
-    const b = bilan(resultats, SEUILS.traduire)
-    // Le dossier de promotion s'écrit après la passe : son répertoire n'existe pas forcément encore.
-    mkdirSync(join(dossier, 'promotions'), { recursive: true })
-    const chemin = join(
-      dossier,
-      'promotions',
-      `${geste.id}-${maintenant.toPlainDate().toString()}-traduction.md`,
-    )
-    writeFileSync(
-      chemin,
-      rendreResultats(
-        `Traduction avec le geste ${geste.id} chargé — ${maintenant.toPlainDate().toString()}`,
-        modele?.id ?? '',
-        resultats,
-        SEUILS.traduire,
-      ),
-    )
-    console.log(`  Tableau de la passe : ${chemin}`)
-    return {
-      ok: b.ok,
-      total: b.total,
-      taux: b.taux,
-      coutUsd: b.coutUsd,
-      stricts: b.stricts,
-      appels,
-    }
+    console.log(`  Tableau de la passe : ${passe.tableau}`)
+    return passe
   }
 
   const comptees = intentions(journal, debutFenetre(maintenant, jours))

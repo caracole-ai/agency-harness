@@ -17,7 +17,7 @@ main.
 | **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, les premiers interdits codés de la sécurité privée (2026-10-05), et Veiller : `pnpm veiller`, la config client, le journal et le rapport (2026-10-06) ; le remplacement validé par le patron et la délégation (étape 5, 2026-10-06). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
-| **Client** | données, exceptions, savoir tacite, seuils | `clients/<client>/` — **jamais versionné** | ce client seul |
+| **Client** | données, exceptions, savoir tacite, seuils ; et, depuis la promotion, ses gestes appris (`gestes/<intention>.yaml`, des données que le patron active) et les instantanés de ses échappées (`echappees/<id>.json`) | `clients/<client>/` — **jamais versionné** | ce client seul |
 
 Le capital, ce sont les **interdits et les tests**, pas les prompts : un prompt
 se réécrit à chaque changement de modèle, un test reste vrai des années.
@@ -54,9 +54,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
   Lecture seule tant que Lionel n'a pas tranché l'écriture. Lots 0 (le journal
-  se souvient de chaque échappée), 1 (le geste appris, chargé et exécuté) et 2
-  (la fabrication par le modèle, vérifiée en code, mesurée) faits le
-  2026-10-10 ; lot 3 (l'atelier, l'activation, l'interface) à faire.
+  se souvient de chaque échappée), 1 (le geste appris, chargé et exécuté), 2
+  (la fabrication par le modèle, vérifiée en code, mesurée) et 3 (l'atelier
+  `pnpm gestes`, l'activation par le patron dans l'interface) faits le
+  2026-10-10 ; reste la relecture indépendante et la fusion (§ 9), puis le
+  lot 4 (l'écriture) sur décision de Lionel.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -134,19 +136,33 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   (`promotions/<intention>-<date>.md`, requêtes et texte de chaque échappée
   relus par son identifiant) raconte tout, et la purge des instantanés plus
   vieux que `conservation_jours` qu'aucun geste appris ne cite suit.
+  `atelier.ts` (lot 3) est ce que l'atelier et le patron font ensuite d'un
+  geste, par `pnpm gestes` ou par l'interface, aux mêmes exigences : lister
+  (statut, tests, dernière vérification, activable ou pourquoi pas), vérifier
+  (la vérification en code, puis avec `--avec-modele` la passe de traduction
+  qui décide), activer (exige une ligne `vérifié` sans écart et avec modèle
+  sur l'empreinte exacte du fichier ; écrit `statut: actif` et `validation`
+  dans le YAML, puis la ligne `activé` au journal, la clé que le chargement
+  exige), retirer (`statut: retire`, ligne `retiré` : plus chargé dès la
+  consigne suivante).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
-  dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, partagé
-  entre `pnpm evals` et `pnpm promotions`.
-  qui revient (`pnpm promotions`).
+  dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
+  passe de traduction qui décide « activable » (`passeTraduction`), partagée
+  entre `pnpm evals`, `pnpm promotions` et `pnpm gestes verifier`.
 - `interface/` — l'interface du patron, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
   chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
   (`pnpm interface`, sur 127.0.0.1 seulement), `public/` (HTML, CSS et
-  JavaScript sans framework, la charte de `presentation/`). Quatre onglets
-  (à valider, règles, délégations, journal), réservés au patron, et la
-  conversation toujours visible ; l'identité est choisie dans le registre
-  d'accès, pas authentifiée, et la page le dit.
+  JavaScript sans framework, la charte de `presentation/`). Cinq onglets
+  (à valider, règles, délégations, appris, journal), réservés au patron, et
+  la conversation toujours visible ; l'identité est choisie dans le registre
+  d'accès, pas authentifiée, et la page le dit. « Appris » (« Ce que l'outil
+  a appris », `PLAN-PROMOTION.md` § 7.2) montre les gestes appris proposés
+  (activables, ou pourquoi pas), actifs et retirés ; le patron active après
+  une confirmation à l'écran, ou retire avec un motif (`/api/gestes`,
+  `/api/gestes/activer`, `/api/gestes/retirer` ; « par » est son identité
+  vérifiée, jamais un champ du corps).
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -247,6 +263,16 @@ pnpm promotions --client <copie> [--date 2026-10-08] [--sans-modele]
                          # appris cite. ≈ 0,15 $ par intention au seuil avec GLM-5.3 ; exige la
                          # clé de la config, sauf --sans-modele (le dossier seul, aucun appel).
                          # Sur une COPIE du client fictif
+pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]
+                         # l'atelier devant les gestes appris (gestes/*.yaml) : la liste avec la
+                         # dernière vérification et « activable » ; vérifier = gabarit, rejeu des
+                         # tests sur leurs instantanés, valeurs en dur, description (0 $), et avec
+                         # --avec-modele la passe de traduction qui décide (≈ 0,15 $) ; activer
+                         # exige cette passe sans écart sur l'empreinte exacte du fichier et pose
+                         # la clé au journal (--par obligatoire) ; retirer le retire dès la
+                         # consigne suivante. <id> : l'identifiant, ou le nom du fichier quand
+                         # plusieurs le portent. Le patron fait la même chose dans l'interface.
+                         # Sur une COPIE du client fictif
 pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [--seulement id,id] [--modele simule]
                          # les évals de la conversation et de la promotion (cas dans evals/,
                          # copie fraîche par cas) : traduire, echappee et promotion appellent le
@@ -256,7 +282,8 @@ pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [-
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,
-                         # délégations, journal, et la conversation. Exige la clé de la config, sauf
+                         # délégations, appris (activer ou retirer un geste appris), journal, et la
+                         # conversation. Exige la clé de la config, sauf
                          # --modele simule (rejoue --script, un tableau de réponses). Sur une COPIE
 ```
 

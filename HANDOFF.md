@@ -7,6 +7,41 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-10, après-midi : `PLAN-PROMOTION.md` lot 3 fait**, branche
+  `promotion/lot-3` partie de `promotion/lot-2`, un commit, **pas poussée**.
+  L'atelier (`pnpm gestes lister | verifier [--avec-modele] | activer --par
+  | retirer --motif`) et le patron dans l'interface (onglet « Appris » : « Ce
+  que l'outil a appris », proposés activables ou pourquoi pas, actifs,
+  retirés ; activer après une confirmation à l'écran, retirer avec un motif)
+  passent par la même logique (`moteur/src/promotion/atelier.ts`) : activer
+  exige une ligne `vérifié` sans écart et avec modèle sur l'empreinte exacte
+  du fichier, écrit `statut: actif` et `validation` dans le YAML puis la ligne
+  `activé` au journal, la clé que le chargement exige ; retirer retire dès la
+  consigne suivante. Le test d'honnêteté des gestes appris (§ 7.3) tourne
+  dans `pnpm check`. `pnpm check` vert : 334 tests moteur (+13), 119 métier
+  (+4), 20 interface (+5). **Rejoué pour de vrai sur la copie du lot 2**
+  (celle qui porte le geste fabriqué, proposé et vérifié) :
+  - CLI : `lister` (activable) ; `verifier` sans modèle (rejeu 3/3, 0 $,
+    « la passe manque ») ; **`verifier --avec-modele` : 61/63 (97 %),
+    0,11 $ compté exactement** (P-PLA-2 et AP-4 en écart, les deux
+    étiquettes anciennes ; G-1 à G-3 du geste passent), activable ;
+    `activer --par Lionel` ; `pnpm evals gestes` sur la copie **6/6** ;
+    `retirer --motif` ; le journal porte `vérifié` (deux fois), `verifier`,
+    `activé { par: Lionel }`, `retiré`. Résultats :
+    `evals/resultats/2026-10-10-1525-traduire.md`, `…-1530-gestes.md` ;
+    analyse `evals/erreurs-2026-10-08.md`, « Passe 15 ».
+  - Interface (`pnpm interface --modele simule`, pilotée par playwright-cli,
+    captures relues) : l'onglet montre le geste proposé avec « Vérifié le … :
+    aucun écart ; traduction 97 %, seuil atteint » et les boutons ; Activer
+    → « Activer le geste « … » ? » → Oui : la carte passe en « Actifs »,
+    « activé le 10 octobre 2026 par patron », le YAML et la ligne `activé`
+    (`par: patron`) suivent ; Retirer sans motif ne fait rien ; avec motif →
+    « Retirés », ligne `retiré` avec le motif.
+  Écarts au plan et choix : « Lot 3 de la promotion » plus bas (le principal :
+  « postérieure à toute modification du fichier » est tenu par l'empreinte,
+  pas par la date du fichier). **Suite : § 9**, la relecture indépendante de
+  tout le chantier (lots 0 à 3) par un sous-agent en lecture seule, ses
+  corrections, puis la fusion dans `main` et le push.
 - **2026-10-10, midi : `PLAN-PROMOTION.md` lot 2 fait**, branche
   `promotion/lot-2` partie de `promotion/lot-1`, un commit, **pas poussée**.
   Le modèle fabrique un geste appris en un appel (`proposer_geste`, le
@@ -265,7 +300,33 @@ pas de push (§ 1.2 du plan).
   `evals/echappees.yaml` (E-15 à E-18). Tests : `fabriquer.test.ts`,
   `promouvoir.test.ts`, `traduction.test.ts` (nouveaux), `reponse.test.ts`
   (+2), `traduire.test.ts` (`ecrit`). Mesure : voir « Où on en est ».
-- Lot 3 : à faire (§ 7), puis la relecture indépendante et la fusion (§ 9).
+- **Lot 3 (l'atelier, l'activation, l'interface)** fait le 2026-10-10,
+  branche `promotion/lot-3` partie de `promotion/lot-2` :
+  `moteur/src/promotion/atelier.ts` (nouveau : `listerGestes`,
+  `motifNonActivable`, `verifications`, `trouverGeste`, `activerGeste`,
+  `retirerGeste`, `verifierGesteAppris`, `journaliserVerification`,
+  `copieVideDe`, `ErreurAtelier`, `STATUT_LISIBLE`),
+  `moteur/src/cli/gestes.ts` (nouveau : `pnpm gestes lister | verifier
+  [--avec-modele] | activer --par | retirer --motif`),
+  `moteur/src/evals/traduction.ts` (`passeTraduction`, `BilanTraduction`,
+  `DOSSIER_PROMOTIONS` : la passe partagée par `pnpm promotions` et
+  `pnpm gestes verifier`), `moteur/src/promotion/promouvoir.ts` (écrit
+  `vérifié` par `journaliserVerification`), `moteur/src/cli/promotions.ts`
+  (la passe par `passeTraduction`), `moteur/src/gestes/action-apprise.ts`
+  (une erreur de rendu garde `resultats` : l'écart de gabarit est précis),
+  `moteur/src/promotion/fabriquer.ts` (lit ces résultats), `moteur/src/index.ts`,
+  `package.json` (script `gestes`), `interface/src/app.ts` (`/api/gestes`,
+  `/api/gestes/activer`, `/api/gestes/retirer`, patron seul, `ErreurAtelier`
+  en 400), `interface/public/index.html`, `static/app.js`, `static/style.css`
+  (l'onglet « Appris » : proposés, actifs, retirés ; confirmation à l'écran ;
+  motif du retrait), `metiers/securite-privee/code/src/evals.test.ts` (le
+  test d'honnêteté des gestes appris, § 7.3), `README.md`, `PLAN-ESPACES.md`
+  § 8 (renvoi). Tests : `atelier.test.ts` (nouveau, 12), `traduction.test.ts`
+  (+1 : `passeTraduction` sur le modèle simulé), `serveur.test.ts` (+5),
+  `evals.test.ts` du métier (+4). Mesure : voir « Où on en est ».
+- Reste : la relecture indépendante de tout le chantier par un sous-agent en
+  lecture seule, ses corrections, puis la fusion dans `main` (§ 9) ; le lot 4
+  attend une décision de Lionel (§ 10).
 
 ## `PLAN-ESPACES.md` : l'avancement
 
@@ -510,13 +571,14 @@ piégées, AP-4, et cette sévérité du contrôle des noms.
    instantané, activé par un humain avec une clé. L'échappée tient son
    seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
    commencer. Les choix du § 11 sont tranchés le 2026-10-10 (le patron
-   active ; une relance à la fabrication ; le reste confirmé). **Lots 0, 1
-   et 2 faits le 2026-10-10** sur `promotion/lot-0`, `promotion/lot-1`,
-   `promotion/lot-2` (non poussées, chacune partie de la précédente) :
-   **lancer le lot 3** à la prochaine session, sur `promotion/lot-3` partie
-   de `promotion/lot-2` ; relire d'abord « Lot 2 de la promotion » dans
-   « Choix faits faute de consigne » (l'activation y est déjà cadrée :
-   `activable`, lignes `proposé` et `vérifié`).
+   active ; une relance à la fabrication ; le reste confirmé). **Lots 0 à 3
+   faits le 2026-10-10** sur `promotion/lot-0` à `promotion/lot-3` (non
+   poussées, chacune partie de la précédente). **Reste le § 9** : une
+   relecture indépendante de tout le chantier (un sous-agent en lecture
+   seule, comme le 2026-10-08), ses corrections, puis la fusion dans `main`
+   et le push ; et deux décisions de Lionel : la sévérité du rejeu (l'éval de
+   fabrication fait 0/3 parce que GLM répond plus long que la question, voir
+   « Lot 2 de la promotion ») et le lot 4 (l'écriture, § 10).
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
@@ -625,6 +687,19 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Lot 3 (2026-10-10)** : « postérieure à toute modification du fichier »
+  (§ 7.1) est tenu par l'empreinte, pas par la date du fichier (voir « Lot 3
+  de la promotion ») ; l'activation à l'écran est rejouée avec le modèle
+  simulé (aucune consigne réelle n'a suivi dans l'interface : le chargement du
+  geste activé est couvert par `conversation.test.ts` du métier et par
+  `pnpm evals gestes` sur la copie) ; `pnpm gestes verifier --avec-modele`
+  n'a tourné qu'une fois (une passe) ; le test d'honnêteté sur
+  `exemples/client-fictif/gestes/` est vide tant qu'on n'y écrit rien (il
+  garde `evals/gestes.yaml`) ; la navigation au clavier de l'onglet « Appris »
+  et le champ du motif n'ont été vus qu'en capture ; deux fichiers de
+  `gestes/` au même identifiant se départagent par le nom du fichier (la page
+  l'envoie, le CLI le demande) ; le mini-site et la présentation disent
+  toujours « codé à l'atelier » (artefacts de Lionel, § 7.4).
 - **Lot 2 (2026-10-10)** : la borne haute du coût d'une fabrication en flux
   majore d'environ deux fois (le plafond du mois se ferme plus tôt) ; le
   rejeu exige chaque nombre et chaque nom de la réponse de l'échappée, et
@@ -1125,6 +1200,74 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   (compter_vacations, impossible faute de type) l'était deux fois, pour
   0,05 $ de plus.
 
+### Lot 3 de la promotion (`PLAN-PROMOTION.md` § 7, 2026-10-10)
+
+- **La logique vit dans `moteur/src/promotion/atelier.ts`**, pas dans le
+  CLI (le § 3 ne nommait que `cli/gestes.ts`) : l'interface activera aux
+  mêmes exigences (§ 7.2), il faut un seul code. `promouvoir.ts` écrit sa
+  ligne `vérifié` par le même `journaliserVerification` ; `copieVideDe` y a
+  déménagé ; `BilanTraduction` et la passe (`passeTraduction`) sont dans
+  `evals/traduction.ts`, partagés par `pnpm promotions` et
+  `pnpm gestes verifier --avec-modele` (deux CLI, une passe).
+- **« Postérieure à toute modification du fichier » est tenu par
+  l'empreinte, pas par la date du fichier** : la ligne `vérifié` retenue doit
+  porter `jeton === empreinteGeste(geste)` ; un fichier modifié après la
+  vérification a une autre empreinte (hors `statut` et `validation`, qui ne
+  sont pas le geste). La date du fichier aurait été fausse partout : une
+  copie du client (`cpSync`) remet les dates à maintenant, `pnpm promotions
+  --date` écrit des lignes datées d'ailleurs. Écart au plan, assumé.
+- **Ce qui rend activable** : sur l'empreinte exacte, la dernière ligne
+  `vérifié` est sans écart, **et** une ligne `vérifié` sans écart porte une
+  passe de traduction au seuil (`traduction.atteint`). Une vérification en
+  code faite après la passe (`pnpm gestes verifier` sans modèle) ne la périme
+  pas : même contenu, même résultat ; un écart apparu depuis (un instantané
+  perdu) bloque. Sans ça, chaque `verifier` sans modèle aurait coûté une
+  passe à 0,15 $ pour rien.
+- **`<id>` ou nom de fichier** : `trouverGeste` accepte l'identifiant du
+  geste, ou `x.yaml` ; plusieurs fichiers au même identifiant (une
+  refabrication, `<id>-<date>.yaml`) → « nommer le fichier ». Un second
+  fichier ne s'active pas tant qu'un autre est actif pour le même
+  identifiant (deux actions du même id seraient chargées) : le retirer
+  d'abord. La page envoie le nom du fichier.
+- **Activer écrit le fichier avant la ligne au journal** : si la ligne
+  manque (panne), le fichier `actif` sans clé est écarté avec `refusé` et une
+  alerte G-01 au prochain chargement (ça se voit) ; l'inverse aurait laissé
+  une ligne `activé` sans effet, en silence.
+- **`par`** : `--par` obligatoire au CLI (le plan), optionnel pour
+  `retirer` (le plan ne le demandait pas ; écrit dans `donnees` s'il est
+  donné) ; dans l'interface, c'est `identite.role` (`patron`), l'identité
+  vérifiée à la porte, jamais un champ du corps ; `validation.par: patron`
+  dans le YAML, le registre d'accès ne porte pas de nom.
+- **Retirer vaut pour un geste proposé ou actif** (« ce geste, non » se dit
+  avant comme après) ; un geste retiré ne se vérifie plus ; pour le remettre
+  en jeu : `statut: propose` à la main, puis `verifier`, puis `activer` (pas
+  de commande, c'est l'atelier).
+- **Un écart rend la passe inutile** : `verifier --avec-modele` ne lance la
+  passe (0,15 $) que sans écart ; la ligne `vérifié` porte les écarts dans
+  tous les cas, sans `traduction`.
+- **La confirmation de l'interface est dans la page** (« Activer le geste
+  « … » ? », Oui / Annuler), pas un `window.confirm` (qui bloque les
+  navigateurs pilotés et ne se stylise pas) ; le retrait demande son motif
+  dans un champ de la carte. L'onglet « Appris » se charge à l'ouverture et
+  au rafraîchissement, comme le journal, par `/api/gestes` (pas dans
+  `/api/etat`). Le résultat remplace les boutons (« Activé. », « Retiré :
+  … »), puis la liste se recharge.
+- **L'écart de gabarit est devenu précis** (code du lot 2) : quand le rendu
+  levait sur la copie vide (une colonne citée que la requête ne rend pas),
+  `executerGeste` perdait les résultats et `verifierGeste` signalait toutes
+  les colonnes du gabarit, les bonnes comprises (`nom` à côté de `total`).
+  L'erreur de rendu garde maintenant `resultats` ; `fabriquer.test.ts`
+  passait par `toContain`, `atelier.test.ts` exige la liste exacte.
+- **Le test d'honnêteté (§ 7.3)** lit `evals/gestes.yaml` et
+  `exemples/client-fictif/gestes/` (vide, on n'y écrit jamais) ; au-delà du
+  plan il exige que l'identifiant soit une intention du catalogue qui lit
+  (`ecrit: false`, P15) et pas un geste codé (P14), que les agents cités
+  existent, et `agent: null` pour un test du patron, un agent sinon.
+- **`pnpm gestes` n'a pas de `--date`** (le plan n'en donne pas) : l'heure
+  réelle, `validation.le` = aujourd'hui.
+- **Le mini-site et la présentation ne sont pas touchés** (§ 7.4 : avec
+  Lionel, ce sont ses artefacts) ; la phrase juste est celle de P15.
+
 ## Commandes
 
 ```sh
@@ -1138,6 +1281,7 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …
 pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]   # avec modèle : fabrique, vérifie, mesure la traduction (≈ 0,15 $ par intention)
 pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
 pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle
-pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]
+pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]   # l'atelier ; --avec-modele coûte ≈ 0,15 $
+pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]   # onglet « Appris » : le patron active ou retire
 # Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.
 ```

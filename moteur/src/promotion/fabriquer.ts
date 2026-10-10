@@ -452,7 +452,8 @@ export async function verifierGeste(
         erreur: e.erreur,
       })
       colonnes = undefined
-    } else if ('resultats' in e) {
+    } else if (e.resultats) {
+      // Les requêtes ont tourné, même si le rendu a levé : les colonnes se lisent, l'écart sera précis.
       for (const [nom, r] of Object.entries(e.resultats)) {
         if (!('erreur' in r)) colonnes.set(nom, r.colonnes)
       }

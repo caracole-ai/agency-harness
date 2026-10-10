@@ -1,4 +1,12 @@
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { type Action, actionsDe, outilsDe, type Role, schemaMontre } from '../conversation/actions'
@@ -14,6 +22,7 @@ import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   type AppelTrace,
+  bilan,
   CATEGORIE_AGENT_PATRON,
   type CasTraduire,
   ecartsTraduction,
@@ -21,6 +30,8 @@ import {
   type IssueTraduction,
   modeleTrace,
   type ResultatCas,
+  rendreResultats,
+  SEUILS,
   type Variante,
 } from './evals'
 
@@ -270,4 +281,81 @@ export async function jouerTraduction<S>(
     surCas?.(joue.resultat, joue.trace, joue.idModele)
   }
   return resultats
+}
+
+/** Le bilan d'une passe de traduction avec modèle, le geste chargé (PLAN-PROMOTION.md § 6.3, § 7.1). */
+export interface BilanTraduction {
+  ok: number
+  total: number
+  taux: number
+  coutUsd: number
+  stricts: string[]
+  appels: number
+}
+
+/** Le dossier des dossiers de promotion, dans le dossier du client : la passe y laisse son tableau. */
+export const DOSSIER_PROMOTIONS = 'promotions'
+
+/**
+ * La passe qui décide « activable », la même pour `pnpm promotions` et
+ * `pnpm gestes verifier --avec-modele` (§ 6.3, § 7.1) : `consignes.yaml`
+ * entier et les tests du geste, tous les gestes appris du dossier chargés par
+ * leur fichier (celui-ci compris, proposé ou actif). Son tableau s'écrit à
+ * côté du dossier de promotion, `promotions/<id>-<date>-traduction.md`.
+ */
+export async function passeTraduction<S>(
+  m: MetierConversation<S>,
+  dossier: string,
+  geste: GesteAppris,
+  consignes: FichierTraduire,
+  modeleDe: (config: ConfigConversation) => Modele,
+  options: {
+    /** AAAA-MM-JJ, pour le nom du tableau. */
+    date: string
+    surAppris?: (ids: string[], erreurs: string[]) => void
+    surCas?: (resultat: ResultatCas, trace: TraceCas) => void
+  },
+): Promise<BilanTraduction & { idModele: string; tableau: string }> {
+  const { appris, erreurs } = apprisDuDossier(m, dossier)
+  options.surAppris?.(
+    appris.map((a) => a.id),
+    erreurs,
+  )
+  let appels = 0
+  let idModele = ''
+  const resultats = await jouerTraduction(
+    m,
+    dossier,
+    [...casDuFichier(consignes), ...casDuGeste(geste, dossier)],
+    appris,
+    modeleDe,
+    (r, trace, id) => {
+      appels += trace.appels.length
+      idModele = id
+      options.surCas?.(r, trace)
+    },
+  )
+  const b = bilan(resultats, SEUILS.traduire)
+  // Le dossier de promotion s'écrit après la passe : son répertoire n'existe pas forcément encore.
+  mkdirSync(join(dossier, DOSSIER_PROMOTIONS), { recursive: true })
+  const tableau = join(dossier, DOSSIER_PROMOTIONS, `${geste.id}-${options.date}-traduction.md`)
+  writeFileSync(
+    tableau,
+    rendreResultats(
+      `Traduction avec le geste ${geste.id} chargé — ${options.date}`,
+      idModele,
+      resultats,
+      SEUILS.traduire,
+    ),
+  )
+  return {
+    ok: b.ok,
+    total: b.total,
+    taux: b.taux,
+    coutUsd: b.coutUsd,
+    stricts: b.stricts,
+    appels,
+    idModele,
+    tableau,
+  }
 }

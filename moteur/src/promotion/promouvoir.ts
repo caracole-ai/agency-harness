@@ -1,16 +1,13 @@
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { stringify } from 'yaml'
 import { prixDe } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
-import type { TableCopie } from '../echappee/copie'
-import type { Instantane } from '../echappee/echappee'
-import { SEUILS } from '../evals/evals'
+import type { BilanTraduction } from '../evals/traduction'
 import { ISSUE_GESTE, lireFichiersGestes, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { empreinteGeste, type GesteAppris } from '../gestes/geste-appris'
-import { coutDuMois, evenementAppel, plafondAtteint, TYPE_APPEL } from '../modele/compteur'
+import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import { cout, type Modele } from '../modele/modele'
 import type { Temporal } from '../temps/temporal'
+import { copieVideDe, journaliserVerification } from './atelier'
 import { APRES_RELANCE, ecrireGeste, fabriquerGeste } from './fabriquer'
 import {
   debutFenetre,
@@ -27,32 +24,11 @@ import {
 // traduction avec modèle, parce que c'est le patron qui active (P6) : il ne
 // doit voir que du vérifié. Tout est dit au dossier et au journal.
 
-/** Le bilan d'une passe de traduction avec modèle, le geste chargé (§ 6.3, § 7.1). */
-export interface BilanTraduction {
-  ok: number
-  total: number
-  taux: number
-  coutUsd: number
-  stricts: string[]
-  appels: number
-}
-
 export interface OptionsPromotion {
   /** Absent (`--sans-modele`) : le dossier seul, sans fabrication. */
   modele?: Modele
   /** La passe de traduction avec modèle sur le geste écrit ; absente (évals de fabrication), le geste reste proposé, non activable. */
   traduction?: (geste: GesteAppris, fichier: string) => Promise<BilanTraduction>
-}
-
-/** Les tables du premier instantané lisible, sans leurs lignes : la copie vide où le gabarit se vérifie. */
-function copieVideDe(dossierClient: string, instantanes: string[]): TableCopie[] | undefined {
-  for (const relatif of instantanes) {
-    const chemin = join(dossierClient, relatif)
-    if (!existsSync(chemin)) continue
-    const i = JSON.parse(readFileSync(chemin, 'utf8')) as Instantane
-    if (Array.isArray(i.tables)) return i.tables.map((t) => ({ ...t, lignes: [] }))
-  }
-  return undefined
 }
 
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
@@ -235,30 +211,10 @@ async function fabriquer<S>(
     stricts: bilan.stricts,
   }
   // Le taux seul décide (§ 6.3) ; un cas strict en écart se lit au dossier, il ne vient pas du geste.
-  const activable = bilan.taux >= SEUILS.traduire
-  journal.ecrire(
-    [
-      {
-        type: TYPE_APPEL,
-        client,
-        objet: geste.id,
-        issue: 'verifier',
-        donnees: { appels: bilan.appels, modele: modele.id, cout_usd: bilan.coutUsd },
-      },
-      {
-        type: TYPE_GESTE_APPRIS,
-        client,
-        objet: geste.id,
-        issue: ISSUE_GESTE.verifie,
-        donnees: {
-          jeton,
-          ecarts: [],
-          traduction: { taux: bilan.taux, atteint: activable, cout_usd: bilan.coutUsd },
-        },
-      },
-    ],
-    horodatage,
-  )
+  const { activable } = journaliserVerification(journal, client, geste, [], horodatage, {
+    bilan,
+    modele: modele.id,
+  })
   return { ...ecrit, traduction, activable }
 }
 

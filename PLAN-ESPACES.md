@@ -963,6 +963,12 @@ modèle et le résultat du contrôle).
 
 ## 8. Lot 5 — Le compteur et la promotion (espace 3)
 
+> **Remplacé par `PLAN-PROMOTION.md`** (2026-10-09) : le compteur et le
+> dossier de promotion décrits ici (8.1, 8.2) sont faits et restent ; la suite
+> de la promotion (le geste appris, sa fabrication par le modèle, sa
+> vérification en code, son activation par le patron) est là-bas, lots 0 à 3
+> faits le 2026-10-10.
+
 ### 8.1 `moteur/src/promotion/promotion.ts`
 
 ```ts

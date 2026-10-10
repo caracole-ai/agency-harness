@@ -83,10 +83,15 @@ export interface RequeteExecutee {
   erreur?: string
 }
 
-/** Ce qu'une exécution laisse : le texte rendu et ses résultats, ou l'erreur (celle d'une requête nommée, ou du rendu). */
+/** Ce qu'une exécution laisse : le texte rendu et ses résultats, ou l'erreur (celle d'une requête nommée, ou du rendu : les résultats sont là, le gabarit se vérifie dessus). */
 export type ExecutionGeste =
   | { texte: string; requetes: RequeteExecutee[]; resultats: Record<string, ResultatRequete> }
-  | { erreur: string; requete?: string; requetes: RequeteExecutee[] }
+  | {
+      erreur: string
+      requete?: string
+      requetes: RequeteExecutee[]
+      resultats?: Record<string, ResultatRequete>
+    }
 
 /** Les requêtes du geste sur une copie, avec leurs valeurs liées, puis le rendu par le code ; rien d'autre (P2, P3). */
 export async function executerGeste(
@@ -108,7 +113,7 @@ export async function executerGeste(
   try {
     return { texte: rendre(geste, liaison, resultats), requetes, resultats }
   } catch (erreur) {
-    return { erreur: message(erreur), requetes }
+    return { erreur: message(erreur), requetes, resultats }
   }
 }
 

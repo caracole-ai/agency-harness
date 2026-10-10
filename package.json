@@ -18,6 +18,7 @@
     "remplacer": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx metiers/securite-privee/code/src/cli/remplacer.ts",
     "parler": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/parler.ts",
     "promotions": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/promotions.ts",
+    "gestes": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/gestes.ts",
     "evals": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/evals.ts",
     "interface": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx interface/src/serveur.ts",
     "rapport:html": "tsx moteur/src/cli/rapport-html.ts"
