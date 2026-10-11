@@ -12,6 +12,8 @@ export interface ColonneCopie {
   nom: string
   type: 'TEXT' | 'INTEGER' | 'REAL'
   description: string
+  /** Une colonne qui porte le nom d'une personne : sa description dans la copie masquée, où l'identifiant tient lieu de nom (PLAN-PSEUDONYMES.md S2). */
+  masquee?: string
 }
 
 export interface TableCopie {

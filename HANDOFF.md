@@ -7,6 +7,12 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11 : `PLAN-GENERAL.md` phase B (les pseudonymes,
+  `PLAN-PSEUDONYMES.md`) en cours.** Lot 0 fait (`pseudonymes/lot-0`, partie
+  de `main`) : `moteur/src/echappee/pseudonymes.ts`, pur, 22 tests
+  (`formesConnues`, `masquerTexte`, `masquerTables`, `restituer`, `fuites`) ;
+  `ColonneCopie.masquee` (la description d'une colonne de nom dans la copie
+  masquée). Rien de ce que le modèle lit n'a changé.
 - **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
   promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
   des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
@@ -1378,6 +1384,18 @@ Pièges vus pendant la phase :
   clause G4 (b) : 41 000 caractères de réflexion pour `heures_par_agent`.
   Une « réponse tronquée » à la fabrication se lit dans la trace
   (`stop_reason: max_tokens`, `sortie` = `par_demande.tokens_sortie`).
+
+### Phase B du plan général (`PLAN-PSEUDONYMES.md`, 2026-10-11)
+
+- **Lot 0 : la colonne du nom est désignée par le métier**, pas par le
+  moteur : `ColonneCopie.masquee` (la description masquée) au lieu de
+  « `agents.nom` » écrit dans le moteur, qui ne connaît pas les tables d'un
+  métier. Une telle colonne qui garde un nom après le masque (deux
+  personnes au même nom complet) arrête l'échappée : échec fermé.
+- **Lot 0 : `fuites` rend les formes telles qu'écrites, la plus longue
+  seulement** (« Karim Haddad », pas aussi « Karim » et « Haddad ») ; une
+  forme partagée par deux personnes (un prénom) n'est pas masquée et compte
+  comme fuite (§ 4 du plan).
 
 ## Commandes
 

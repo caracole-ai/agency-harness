@@ -130,7 +130,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   laisse au journal son identifiant `E-…`, le rôle, le texte final tel que
   montré et l'instantané de sa copie, `echappees/<id>.json` chez le client,
   pour que la promotion puisse la rejouer ; `requete.ts` lie les paramètres
-  d'un geste appris, `:agent`, jamais collés dans le SQL). `src/archetypes/candidats.ts` expose
+  d'un geste appris, `:agent`, jamais collés dans le SQL ; `pseudonymes.ts`,
+  `PLAN-PSEUDONYMES.md`, masque les noms en identifiants dans ce qui part au
+  modèle, les restitue dans ce qui est montré et mesure une fuite, au mot
+  près). `src/archetypes/candidats.ts` expose
   aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
