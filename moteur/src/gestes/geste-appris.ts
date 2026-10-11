@@ -247,11 +247,14 @@ function ecartsEcriture(
   return ecarts
 }
 
+/** Une vacation à libérer pour laquelle la requête n'a trouvé personne : les données sont lues, il n'y a rien à proposer. */
+export class SansCandidat extends Error {}
+
 /**
  * Les réaffectations qu'un geste qui écrit propose : une par ligne de sa
  * requête `pour_chaque`, lues dans ses deux colonnes. Lève sur une requête
- * absente ou en erreur, une colonne absente, une cellule vide : rien ne
- * s'invente.
+ * absente ou en erreur, une colonne absente, une cellule vide (`SansCandidat`
+ * quand c'est l'agent qui manque) : rien ne s'invente.
  */
 export function reaffectationsDe(
   geste: GesteAppris,
@@ -273,15 +276,11 @@ export function reaffectationsDe(
   return r.lignes.map((ligne, n) => {
     const vacation = ligne[iv]
     const agent = ligne[ia]
-    if (
-      typeof vacation !== 'string' ||
-      vacation === '' ||
-      typeof agent !== 'string' ||
-      agent === ''
-    ) {
-      throw new Error(
-        `la ligne ${n + 1} de « ${m.pour_chaque} » n’a pas de vacation ou pas d’agent`,
-      )
+    if (typeof vacation !== 'string' || vacation === '') {
+      throw new Error(`la ligne ${n + 1} de « ${m.pour_chaque} » n’a pas de vacation`)
+    }
+    if (typeof agent !== 'string' || agent === '') {
+      throw new SansCandidat(`aucun agent trouvé pour ${vacation}`)
     }
     return { vacation, agent }
   })

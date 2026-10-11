@@ -3,7 +3,12 @@ import { z } from 'zod'
 import type { Identite } from '../conversation/actions'
 import type { TableCopie } from '../echappee/copie'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { actionApprise, LECTURE_IMPOSSIBLE, parametresAppris } from './action-apprise'
+import {
+  actionApprise,
+  LECTURE_IMPOSSIBLE,
+  parametresAppris,
+  RIEN_A_PROPOSER,
+} from './action-apprise'
 import { GESTE_ECRIT_EXEMPLE as ECRIT, GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
 
 // Un geste appris comme action : ses paramètres à plat pour le modèle, son
@@ -173,7 +178,7 @@ describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
     expect(r).toMatchObject({ texte: 'Aucune vacation ce jour-là.' })
     expect(r.modifications).toBeUndefined()
   })
-  it('une ligne sans agent : « Je n’ai pas pu lire les données », rien à proposer', async () => {
+  it('une vacation sans agent trouvé : « Je n’ai rien à proposer », rien à proposer', async () => {
     const sans = actionApprise(
       {
         ...ECRIT,
@@ -187,7 +192,7 @@ describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
       () => [PLANNING],
     )
     const r = await sans.executer(null, PATRON, { agent: 'A-1', date: '2026-10-13' }, maintenant)
-    expect(r.texte).toMatch(new RegExp(`^${LECTURE_IMPOSSIBLE} : la ligne 1 de « liberer »`))
+    expect(r.texte).toBe(`${RIEN_A_PROPOSER} : aucun agent trouvé pour V-03`)
     expect(r.modifications).toBeUndefined()
   })
 })

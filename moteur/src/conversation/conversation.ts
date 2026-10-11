@@ -854,6 +854,10 @@ async function executerAttente<S>(
   const action = actionsDe(m.actions, identite.role).find((a) => a.id === demande.action)
   if (!action)
     return { sorte: 'refus', texte: `l'action ${demande.action} n'est pas ouverte à ce rôle` }
+  // Le « oui » d'une action qui propose porte sur sa proposition, jamais sur elle.
+  if (action.propose) {
+    return { sorte: 'refus', texte: `l'action ${demande.action} ne s'exécute pas sur un « oui »` }
+  }
   const params = action.parametres.safeParse(demande.params)
   if (!params.success) return { sorte: 'refus', texte: 'paramètres invalides' }
   return (await executer(action, s, identite, params.data, maintenant)).reponse

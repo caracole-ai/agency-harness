@@ -11,6 +11,7 @@ import {
   type Reaffectation,
   reaffectationsDe,
   rendre,
+  SansCandidat,
 } from './geste-appris'
 
 // Un geste appris devient une action comme les autres (PLAN-PROMOTION.md
@@ -25,6 +26,8 @@ import {
 
 /** Le texte montré quand une requête ou le rendu échoue ; le détail va au journal. */
 export const LECTURE_IMPOSSIBLE = "Je n'ai pas pu lire les données"
+/** Le texte montré quand un geste qui écrit ne trouve personne pour une vacation : les données sont lues, rien n'est proposé. */
+export const RIEN_A_PROPOSER = "Je n'ai rien à proposer"
 
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
 
@@ -104,6 +107,8 @@ export type ExecutionGeste =
   | {
       erreur: string
       requete?: string
+      /** Un geste qui écrit n'a trouvé personne pour une vacation. */
+      sansCandidat?: true
       requetes: RequeteExecutee[]
       resultats?: Record<string, ResultatRequete>
     }
@@ -131,7 +136,12 @@ export async function executerGeste(
       ? { texte, requetes, resultats, reaffectations: reaffectationsDe(geste, resultats) }
       : { texte, requetes, resultats }
   } catch (erreur) {
-    return { erreur: message(erreur), requetes, resultats }
+    return {
+      erreur: message(erreur),
+      ...(erreur instanceof SansCandidat ? { sansCandidat: true as const } : {}),
+      requetes,
+      resultats,
+    }
   }
 }
 
@@ -160,7 +170,7 @@ export function actionApprise<S>(
           const erreur =
             e.requete !== undefined ? `requête « ${e.requete} » : ${e.erreur}` : e.erreur
           return {
-            texte: `${LECTURE_IMPOSSIBLE} : ${erreur}`,
+            texte: `${e.sansCandidat ? RIEN_A_PROPOSER : LECTURE_IMPOSSIBLE} : ${erreur}`,
             donnees: { echappee: null, requetes: e.requetes, erreur },
           }
         }

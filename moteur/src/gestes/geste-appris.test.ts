@@ -7,6 +7,7 @@ import {
   gesteDe,
   reaffectationsDe,
   rendre,
+  SansCandidat,
   verifierGabarit,
 } from './geste-appris'
 import { GESTE_ECRIT_EXEMPLE as ECRIT, GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
@@ -199,6 +200,10 @@ describe('un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
   })
   it('un geste qui lit ne porte pas la clé : les empreintes d’avant restent les mêmes', () => {
     expect(Object.keys(GesteAppris.parse(GESTE))).not.toContain('modifications')
+    // L'empreinte du geste de référence, calculée sur `main` avant la phase C.
+    expect(empreinteGeste(GESTE)).toBe(
+      '65938401b1ee7fe28498e43afc3f5c37da141ad9a472802d7753d83cbfce6e25',
+    )
   })
   it('ouvert à un agent, une requête inconnue, une réponse qui n’est pas son tableau, une colonne absente, un test sans réaffectation : un écart chacun', () => {
     expect(verifierGabarit({ ...ECRIT, roles: ['patron', 'agent'] })).toEqual([
@@ -247,7 +252,10 @@ describe('un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
     ])
     expect(() =>
       reaffectationsDe(ECRIT, { liberer: { ...LIGNES, lignes: [['V-03', null]] } }),
-    ).toThrow('la ligne 1 de « liberer » n’a pas de vacation ou pas d’agent')
+    ).toThrow(new SansCandidat('aucun agent trouvé pour V-03'))
+    expect(() =>
+      reaffectationsDe(ECRIT, { liberer: { ...LIGNES, lignes: [[null, 'A-9']] } }),
+    ).toThrow('la ligne 1 de « liberer » n’a pas de vacation')
     expect(() => reaffectationsDe(ECRIT, { liberer: { ...LIGNES, tronque: true } })).toThrow(
       'rend trop de lignes',
     )

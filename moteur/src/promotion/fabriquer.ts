@@ -295,15 +295,16 @@ export function messageFabriquer(echappees: EchappeeMasquee[]): string {
         `Résultat ${i + 1} :`,
         r.erreur !== undefined ? `erreur : ${r.erreur}` : r.sortie,
       ]),
-      ...(e.verifications ?? []).flatMap((v, i) => [
-        `Vérification ${i + 1} :`,
-        v.modifications,
-        `Résultat de la vérification ${i + 1} :`,
-        v.erreur !== undefined ? `erreur : ${v.erreur}` : v.sortie,
-      ]),
+      // Une réponse : son texte ; une proposition (une intention qui écrit) : ses vérifications, puis ce que le patron a validé.
       ...('texteModele' in e
         ? ['Réponse montrée :', e.texteModele]
         : [
+            ...(e.verifications ?? []).flatMap((v, i) => [
+              `Vérification ${i + 1} :`,
+              v.modifications,
+              `Résultat de la vérification ${i + 1} :`,
+              v.erreur !== undefined ? `erreur : ${v.erreur}` : v.sortie,
+            ]),
             'Réaffectations validées par le patron (vacation → agent) :',
             ...(reaffectationsJournalisees(e) ?? []).map(enLigne),
           ]),
@@ -489,7 +490,7 @@ export function completerGeste(
  * Le rejeu d'un test sur son instantané : le texte rendu et ce qui y manque,
  * ou l'erreur. Pour un geste qui écrit (PLAN-PROMOTION.md § 10), le texte est
  * la liste des réaffectations rendues : chaque vacation du test doit y être
- * (`manque` sinon), et chaque réaffectation rendue doit être une que le
+ * (`manque` sinon : la vacation), et chaque réaffectation rendue doit être une que le
  * patron a validée pour cette vacation, dans ce test ou un autre du geste
  * (`enTrop` sinon, comme une vacation de plus) : le patron qui a validé deux
  * agents pour la même vacation les a acceptés tous les deux.
@@ -527,7 +528,7 @@ export async function rejouerTest(
     const rendues = e.reaffectations
     return {
       texte: rendues.length > 0 ? rendues.map(enLigne).join(', ') : 'aucune réaffectation',
-      manque: attendues.filter((a) => !rendues.some((r) => r.vacation === a.vacation)).map(enLigne),
+      manque: vacations.filter((v) => !rendues.some((r) => r.vacation === v)),
       enTrop: rendues
         .filter(
           (r, i) =>

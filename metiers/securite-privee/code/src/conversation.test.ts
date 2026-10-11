@@ -26,6 +26,7 @@ import {
   TYPE_ECHAPPEE,
   TYPE_GESTE_APPRIS,
   TYPE_PRECISION_ATTENDUE,
+  TYPE_PROPOSITION_REFUSEE,
   traiterConsigne,
   VALIDEE,
 } from '@harnais/moteur'
@@ -1041,5 +1042,59 @@ describe('un geste appris qui écrit : la réaffectation groupée en un appel (P
     )
     expect(sophie.modele.appels[0]?.outils.map((o) => o.name)).not.toContain('liberer_un_jour')
     expect(sophie.r.sorte).toBe('je_ne_sais_pas')
+  })
+})
+
+describe('un geste appris qui écrit, refusé par les règles : rien n’est ouvert (PLAN-PROMOTION.md § 10)', () => {
+  it('Sophie (carte expirée) pour V-03 : la proposition est refusée par le métier, au journal, sans attente', async () => {
+    const geste = FichierGestes.parse(
+      parse(
+        readFileSync(
+          fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
+          'utf8',
+        ),
+      ),
+    ).gestes.find((g) => g.id === 'liberer_un_jour')
+    if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
+    const fautif = {
+      ...geste,
+      requetes: [
+        {
+          nom: 'liberer',
+          sql: "SELECT v.id AS vacation, 'A-3' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date",
+        },
+      ],
+    }
+    const jeton = empreinteGeste(fautif)
+    const s = session((dossier) => {
+      mkdirSync(join(dossier, DOSSIER_GESTES))
+      const fichier: FichierGeste = {
+        ...fautif,
+        statut: 'actif',
+        validation: { par: 'test', le: '2026-10-11', jeton },
+      }
+      writeFileSync(join(dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'), JSON.stringify(fichier))
+    })
+    s.journal.ecrire([
+      {
+        type: TYPE_GESTE_APPRIS,
+        client: s.config.client,
+        objet: fautif.id,
+        issue: ISSUE_GESTE.active,
+        donnees: { jeton, par: 'test' },
+      },
+    ])
+    const { r, conversation } = await tour(
+      s,
+      PATRON,
+      outil('liberer_un_jour', { agent: 'Karim', date: '2026-10-13' }),
+      'Libère le mardi 13 de Karim.',
+    )
+    expect(r.sorte).toBe('je_ne_sais_pas')
+    expect(r.texte).toMatch(/^la réaffectation enfreint .+ \(I-0\d\)/)
+    const types = lignes(s, conversation).map((l) => l.type)
+    expect(types).toContain(TYPE_PROPOSITION_REFUSEE)
+    expect(types).not.toContain('confirmation_attendue')
+    expect(planningDe(s)).toContain('V-03;A-1;')
   })
 })

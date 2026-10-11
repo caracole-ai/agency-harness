@@ -718,7 +718,7 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
       await rejouerTest(g, { ...t3, params: { agent: 'A-1', date: '2026-10-20' } }, dossier),
     ).toEqual({
       texte: 'aucune réaffectation',
-      manque: ['V-02 → A-2'],
+      manque: ['V-02'],
       enTrop: [],
     })
     const { ecarts, rejeu } = await verifierGeste(g, {
@@ -732,5 +732,80 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
     expect(ecarts.map((e) => e.texte)).toContain(
       'E-1 : le rejeu propose « V-01 → A-1 », jamais validé (rendu : « V-01 → A-1 »)',
     )
+  })
+})
+
+describe('le message de fabrication, selon que l’intention lit ou écrit', () => {
+  const base = {
+    echappee: 'E-1',
+    conversation: 'C-1',
+    horodatage: '2026-10-10T19:40:00Z',
+    role: 'patron' as const,
+    consigne: 'x',
+    consigneModele: 'Libère le mardi 13 de A-1.',
+    intention: 'liberer_un_jour',
+    requetes: [],
+    verifications: [
+      { modifications: '[{"vacation":"V-03","agent":"A-9"}]', sortie: 'aucun constat' },
+    ],
+    texte: 'x',
+    instantane: 'echappees/E-1.json',
+  }
+  it('une proposition : ses vérifications, puis les réaffectations validées', () => {
+    const m = messageFabriquer([
+      {
+        ...base,
+        issue: 'proposition',
+        modifications: [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }],
+      },
+    ])
+    expect(m).toContain('Vérification 1 :')
+    expect(m).toContain('Réaffectations validées par le patron (vacation → agent) :\nV-03 → A-9')
+  })
+  it('une réponse : le message d’avant la phase C, sans les vérifications', () => {
+    const m = messageFabriquer([{ ...base, issue: 'reponse', texteModele: 'A-1 : 24 heures.' }])
+    expect(m).not.toContain('Vérification')
+    expect(m).toContain('Réponse montrée :\nA-1 : 24 heures.')
+  })
+  it('une même vacation rendue deux fois : en trop', async () => {
+    const dossier = dossierAvecInstantanes()
+    const g: GesteAppris = {
+      id: 'liberer_un_jour',
+      description: 'libérer un agent de ses vacations d’un jour',
+      roles: ['patron'],
+      parametres: {
+        agent: { type: 'agent', description: "l'agent" },
+        date: { type: 'date', description: 'le jour' },
+      },
+      requetes: [
+        {
+          nom: 'liberer',
+          sql: "SELECT v.id AS vacation, 'A-2' AS agent FROM vacations v, agents a WHERE v.agent = :agent AND v.jour = :date AND a.id IN ('A-1', 'A-2')",
+        },
+      ],
+      modifications: {
+        pour_chaque: 'liberer',
+        reaffecter: { vacation: 'vacation', agent: 'agent' },
+      },
+      reponse: { ligne: null, tableau: 'liberer', vide: 'Rien.' },
+      tests: ['E-1', 'E-2', 'E-3'].map((echappee) => ({
+        echappee,
+        consigne: 'Libère Karim.',
+        role: 'patron' as const,
+        agent: null,
+        params: { agent: 'A-1', date: '2026-10-07' },
+        instantane: 'echappees/E-1.json',
+        contient: [],
+        modifications: [{ vacation: 'V-01', agent: 'A-2' }],
+      })),
+      origine: ORIGINE,
+    }
+    const [t1] = g.tests
+    if (!t1) throw new Error('fixture')
+    expect(await rejouerTest(g, t1, dossier)).toEqual({
+      texte: 'V-01 → A-2, V-01 → A-2',
+      manque: [],
+      enTrop: ['V-01 → A-2'],
+    })
   })
 })
