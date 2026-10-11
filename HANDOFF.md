@@ -28,7 +28,13 @@ fichiers qu'il cite, si.
   `texte_modele` (`EchappeeMasquee`), une échappée d'avant les pseudonymes
   n'est pas fabricable (« échappée antérieure aux pseudonymes ») ; le système
   de la fabrication dit que l'identifiant tient lieu de nom et que le geste
-  rend `agents.nom`. Sa passe réelle est notée avec le lot 3.
+  rend `agents.nom`. Sa passe réelle est notée avec le lot 3. Lot 3 fait
+  (`pseudonymes/lot-3`) : la fuite se mesure en code sur chaque cas avec
+  modèle (`textesEnvoyes`, `fuiteDe` dans `evals.ts`, calculée par
+  `jouerCas` sur les agents de la copie ; la consigne telle qu'écrite est
+  permise à la traduction, rien à l'échappée ni à la fabrication) ; colonne
+  « Fuite » et ligne de total dans `evals/resultats/`, seuil 0 compté dans
+  « seuil atteint ».
 - **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
   promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
   des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
@@ -1408,6 +1414,20 @@ Pièges vus pendant la phase :
   « `agents.nom` » écrit dans le moteur, qui ne connaît pas les tables d'un
   métier. Une telle colonne qui garde un nom après le masque (deux
   personnes au même nom complet) arrête l'échappée : échec fermé.
+- **Lot 3 : ce qui compte comme « envoyé »** : les systèmes et le contenu
+  des messages de l'utilisateur (consigne, résultats d'outils, relances),
+  pas ce que le modèle a écrit (sa réflexion peut dire « le plus petit »,
+  et « Petit » est un nom du client fictif). Un nom que le modèle inventerait
+  sans fuite est impossible ; une fuite, elle, est dans ce qui est envoyé.
+- **Lot 3 : la traduction a un permis** : les formes de nom que la consigne
+  porte telle qu'écrite (la traduction la reçoit ainsi depuis le 08/10, ce
+  plan ne la touche pas). Tout autre nom envoyé est une fuite, ceux que
+  `designer` montre au niveau 2 compris.
+- **Lot 3 : la fuite entre dans « seuil atteint »** du tableau et du
+  lanceur ; pas dans la décision « activable » de `pnpm promotions`, qui lit
+  le taux et les cas stricts de la passe de traduction (inchangé).
+  `modeleTrace` garde aussi `systemes` (chaque système distinct), pour
+  mesurer l'échappée et la fabrication d'un même cas.
 - **Lot 2 : une échappée d'avant les pseudonymes est écartée, pas toute la
   fabrication** : la fabrication se fait avec les échappées masquées si elles
   sont au moins trois ; sinon l'échec dit « échappée antérieure aux

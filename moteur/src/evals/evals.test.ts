@@ -2,9 +2,18 @@ import { describe, expect, it } from 'vitest'
 import type { IssueEchappee } from '../echappee/boucle'
 import { USAGE_NUL } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
-import { bilan, ecartsEchappee, ecartsTraduction, modeleTrace, rendreResultats } from './evals'
+import {
+  bilan,
+  ecartsEchappee,
+  ecartsTraduction,
+  fuiteDe,
+  modeleTrace,
+  rendreResultats,
+  textesEnvoyes,
+} from './evals'
 
-// Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9).
+// Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9) ;
+// la fuite, en code aussi (PLAN-PSEUDONYMES.md § 7).
 
 describe('ecartsTraduction', () => {
   const absence = {
@@ -241,5 +250,65 @@ describe('modeleTrace', () => {
     expect(m.appels).toHaveLength(2)
     expect(m.appels[0]?.reponse?.message.stop_reason).toBe('end_turn')
     expect(m.appels[1]?.erreur).toBe('script simulé épuisé')
+  })
+})
+
+describe('la fuite (PLAN-PSEUDONYMES.md § 7)', () => {
+  // Des noms synthétiques, aucune donnée du client fictif.
+  const PERSONNES = [
+    { id: 'P-1', nom: 'Aïcha Traoré' },
+    { id: 'P-2', nom: 'Alicia Martin' },
+  ]
+  it('ce qui est envoyé : les systèmes et les messages de l’utilisateur, résultats d’outils compris ; pas ce que le modèle écrit', async () => {
+    const m = modeleTrace(modeleSimule([{ texte: 'un' }, { texte: 'deux' }]))
+    const appel = (systeme: string, messages: Parameters<typeof m.appeler>[0]['messages']) =>
+      m.appeler({ systeme, messages, outils: [], effort: 'low', maxTokens: 10, unSeulOutil: true })
+    await appel('échappée', [{ role: 'user', content: 'Combien pour P-1 ?' }])
+    await appel('fabrication', [
+      { role: 'user', content: 'Combien pour P-1 ?' },
+      { role: 'assistant', content: [{ type: 'text', text: 'Alicia, je pense' }] },
+      {
+        role: 'user',
+        content: [
+          { type: 'tool_result', tool_use_id: 't', content: 'nom | heures\nAïcha Traoré | 12' },
+        ],
+      },
+    ])
+    const textes = textesEnvoyes(m)
+    expect(m.systemes).toEqual(['échappée', 'fabrication'])
+    expect(textes).toContain('nom | heures\nAïcha Traoré | 12')
+    expect(textes).not.toContain('Alicia, je pense')
+    expect(fuiteDe(textes, PERSONNES)).toEqual(['Aïcha Traoré'])
+  })
+  it('la consigne telle qu’écrite est permise à la traduction ; un autre nom du fichier, non', () => {
+    const textes = [
+      '<consigne>Aicha ne vient pas</consigne>',
+      'P-1 — Aïcha Traoré\nP-2 — Alicia Martin',
+    ]
+    expect(fuiteDe(textes, PERSONNES, 'Aicha ne vient pas')).toEqual([
+      'Aïcha Traoré',
+      'Alicia Martin',
+    ])
+    expect(fuiteDe(['Combien pour P-1 ?'], PERSONNES)).toEqual([])
+  })
+  it('le bilan compte les cas en fuite, le seuil est 0 ; le tableau a sa colonne', () => {
+    const r = (id: string, fuite?: string[]) => ({
+      id,
+      ecarts: [],
+      coutUsd: 0,
+      strict: false,
+      ...(fuite ? { fuite } : {}),
+    })
+    expect(bilan([r('A', []), r('B', ['Aïcha'])], 0.5)).toMatchObject({
+      taux: 1,
+      fuites: ['B'],
+      atteint: false,
+    })
+    const texte = rendreResultats('Évals', 'simulé', [r('A', []), r('B', ['Aïcha'])], 0.5)
+    expect(texte).toContain('Fuite : 1 cas sur 2 (seuil 0) : B.')
+    expect(texte).toContain('| Cas | Issue | Fuite | Coût ($) |')
+    expect(texte).toContain('| A | ok | 0 | 0.0000 |')
+    expect(texte).toContain('| B | ok | Aïcha | 0.0000 |')
+    expect(rendreResultats('Évals', 'simulé', [r('A')], 0.5)).not.toContain('Fuite')
   })
 })

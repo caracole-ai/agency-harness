@@ -308,7 +308,10 @@ pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [-
                          # copie fraîche par cas) : traduire, echappee et promotion appellent le
                          # vrai modèle (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la
                          # fabrication, avec GLM-5.3) ; gestes rejoue les gestes appris sur leurs
-                         # instantanés sans modèle (0 $, seuil 100 %) ;
+                         # instantanés sans modèle (0 $, seuil 100 %) ; chaque cas avec modèle a
+                         # sa colonne « fuite » : les noms du fichier des agents partis au modèle,
+                         # comptés en code (la consigne telle qu'écrite permise à la traduction),
+                         # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,

@@ -8,7 +8,9 @@
 // modèle : exige la clé que nomme la config (ANTHROPIC_API_KEY sans `acces`)
 // et coûte (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la fabrication, avec
 // GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
-// vérifier le câblage (tous les cas finissent en écart).
+// vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
+// porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du fichier des agents
+// partis au modèle, colonne du tableau, seuil 0.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -112,7 +114,10 @@ const garder = (r: ResultatCas, trace: unknown, id?: string) => {
     join(dossierTraces, `${r.id.replace(/\//g, '_')}.json`),
     JSON.stringify(trace, null, 2),
   )
-  console.log(`${r.id} : ${r.ecarts.length === 0 ? 'ok' : `écart (${r.ecarts.join(' ; ')})`}`)
+  const fuite = r.fuite && r.fuite.length > 0 ? ` ; fuite : ${r.fuite.join(', ')}` : ''
+  console.log(
+    `${r.id} : ${r.ecarts.length === 0 ? 'ok' : `écart (${r.ecarts.join(' ; ')})`}${fuite}`,
+  )
 }
 
 const resultats: ResultatCas[] = []
@@ -338,7 +343,7 @@ writeFileSync(
   ].join('\n'),
 )
 console.log(
-  `\n${b.ok}/${b.total} (${Math.round(b.taux * 100)} %, seuil ${Math.round(seuil * 100)} %), coût ${b.coutUsd.toFixed(4)} $${b.stricts.length > 0 ? ` ; cas stricts en écart : ${b.stricts.join(', ')}` : ''}`,
+  `\n${b.ok}/${b.total} (${Math.round(b.taux * 100)} %, seuil ${Math.round(seuil * 100)} %), fuite ${b.fuites.length} cas (seuil 0), coût ${b.coutUsd.toFixed(4)} $${b.stricts.length > 0 ? ` ; cas stricts en écart : ${b.stricts.join(', ')}` : ''}`,
 )
 if (quoi === 'promotion') for (const l of compterFabrications(fabrications)) console.log(l)
 console.log(
