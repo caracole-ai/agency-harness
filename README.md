@@ -90,15 +90,16 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   Quatre lots ; amendé le 2026-10-11 (§ 0 : au laboratoire, l'abonnement
   claude.ai par le binaire `claude`). Phase D de `PLAN-GENERAL.md`, session
   D1 : lots 0 (config de l'agence, carte, mémoire) et 1 (la ronde, `pnpm
-  ronde`, `pnpm evals ronde`) faits le 2026-10-11, branche `general/d-ronde`,
-  pas fusionnée ; la session D2 fait le chantier, la nuit, la relecture et la
-  fusion.
+  ronde`, `pnpm evals ronde`) faits le 2026-10-11, branche `general/d-ronde` ;
+  session D2 : lot 2 (le chantier, `pnpm chantier`, la fusion et le retrait
+  dans le clone de la nuit) fait le 2026-10-11.
 - `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
   secret) : le modèle de chaque rôle (ronde, plan, implémentation, relecture)
   et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
   `anthropic` : la clé d'API, avant la finalisation), les prix relus dans la
-  doc d'Anthropic, les bornes de la ronde et du chantier, les outils et les
-  chemins autorisés au chantier.
+  doc d'Anthropic, les bornes de la ronde et du chantier, le clone de la nuit
+  (`depot_nuit`, `PLAN-GENERAL.md` G3), les règles d'outils (bornées à
+  l'arbre de travail : `Write(./**)`) et les chemins autorisés au chantier.
 - `memoire/` — la mémoire de la nuit (`PLAN-RONDE.md` R10), écrite par le
   code : `INDEX.md` (une ligne par événement), `rondes/`, `chantiers/`,
   `CONVENTIONS.md` (on y ajoute, on n'en retire jamais), `MESURES.md`. Aucun
@@ -113,6 +114,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   ronde, le plan, l'implémentation et la relecture (`PLAN-RONDE.md` R6) :
   les bandes et qui y écrit, ce qu'est un geste, les deux étages, ce qu'un
   modèle ne fait jamais, ce qui mérite une mission, comment finir.
+- `methode/chantier.md` — le système ajouté au plan, à l'implémentation et à
+  la relecture d'un chantier (`PLAN-RONDE.md` § 6.4) : où écrire et où
+  jamais, les conventions du dépôt, ce qu'est un geste (trois cas de
+  traduction, un test par règle ; un geste qui écrit rend des `Modification`
+  et passe par la proposition), et les trois sections de fin.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -234,8 +240,21 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   fichiers chez le client, la ligne au journal et la mémoire ; rien ne part si
   un nom partirait. `src/chantier/claude.ts` lance le binaire `claude -p`
   (préflight, ligne de commande, délai mural, JSON lu par un schéma) ; la
-  ronde s'en sert isolée (`--tools ""`, `--setting-sources ""`, ni MCP ni
-  session), le chantier (lot 2) s'en servira.
+  ronde s'en sert isolée (`--setting-sources ""`, aucun outil, ni MCP ni
+  session), le chantier avec les réglages de l'arbre seulement
+  (`--setting-sources project` : ni les hooks ni le `CLAUDE.md` de
+  l'utilisateur). Le chantier (`PLAN-RONDE.md` § 6, `PLAN-GENERAL.md` G1 à
+  G3) : `mission.ts` (la mission de la ronde, la décision en code :
+  promotion en cours, question pour l'atelier, écartée ou retirée ; ce qui
+  part au modèle, par types), `arbre.ts` (le clone de la nuit vérifié, un
+  `git worktree` par mission, le commit ; jamais merge ni push), `garde.ts`
+  (le diff dans la bande, la mémoire en ajout seul aux conventions, aucun
+  test retiré ni tu, `lignes_max`, les cas de traduction des gestes
+  nouveaux), `fusion.ts` (les huit conditions de G1, `git merge --no-ff`
+  dans `main` du clone, l'étiquette, le push, la mémoire commise à part ; le
+  retrait par `git revert -m 1` ; le seul module qui fusionne ou pousse),
+  `chantier.ts` (plan → implémentation → garde → `pnpm check` → relecture →
+  une reprise au plus → honnêteté → dossier → mémoire → fusion).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
   dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
@@ -398,6 +417,23 @@ pnpm ronde --verifier-modeles
                          # `claude` : ANTHROPIC_API_KEY doit être absente, le coût est « estimé
                          # par le binaire » (≈ 0,2 à 0,4 $ par ronde sur Fable 5.1).
                          # --verifier-modeles : un appel minuscule à chaque modèle de l'agence.
+pnpm chantier --mission <copie>/rondes/2026-10-10/<id>.yaml [--sans-modele] [--refaire]
+                         # le chantier d'une mission (PLAN-RONDE.md § 6) : décidé en code
+                         # (promotion en cours, question pour l'atelier, écartée : aucun appel),
+                         # puis, dans un arbre de travail du clone de la nuit (agence.yaml :
+                         # depot_nuit, jamais l'arbre courant ni un arbre sale), Fable planifie,
+                         # Opus code dans la bande métier, le code garde le diff et rejoue
+                         # pnpm check, Fable relit (une reprise au plus sur un bloquant), le
+                         # code mesure l'honnêteté (trois cas par geste nouveau, pnpm evals
+                         # traduire avec le modèle du quotidien : exige sa clé) ; dossier
+                         # <copie>/chantiers/<id>.md, memoire/ du clone, et fusion --no-ff dans
+                         # main du clone + étiquette chantier/<id> + push si les huit conditions
+                         # de G1 sont vertes. Déjà tentée : rien, sauf --refaire. --sans-modele :
+                         # la décision et ce que le plan recevrait, aucun appel ni git.
+pnpm chantier retirer <id> --motif "<texte>" --client <copie>
+                         # G2 : git revert -m 1 de la fusion sur main du clone, push, la mémoire
+                         # (motif, intentions : la ronde ne la repropose pas, même sous un autre
+                         # nom), la ligne « retiré » au journal du client.
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,

@@ -28,11 +28,13 @@ export interface LancementClaude {
   schemaJson?: unknown
   delaiMs: number
   /**
-   * true : ni réglages (donc ni hooks ni `CLAUDE.md` de l'utilisateur), ni
-   * serveur MCP, ni session gardée ; ce que le modèle lit est ce qu'on lui
-   * donne. La ronde l'exige (R2).
+   * Les réglages chargés ; dans les deux cas, ni serveur MCP ni session
+   * gardée. `aucun` : ni réglages, ni hooks, ni `CLAUDE.md` ; ce que le modèle
+   * lit est ce qu'on lui donne (la ronde, R2). `projet` : ceux de l'arbre
+   * seulement, son `CLAUDE.md` compris, jamais ceux de l'utilisateur (ni ses
+   * hooks ni son `CLAUDE.md`) : le chantier (§ 4.2). Absent : ceux du binaire.
    */
-  isole?: boolean
+  reglages?: 'aucun' | 'projet'
 }
 
 export interface IssueClaude {
@@ -120,8 +122,13 @@ export function argumentsClaude(l: LancementClaude): string[] {
     ...(l.toursMax !== undefined ? ['--max-turns', String(l.toursMax)] : []),
     ...(l.budgetUsd !== undefined ? ['--max-budget-usd', String(l.budgetUsd)] : []),
     ...(l.schemaJson !== undefined ? ['--json-schema', JSON.stringify(l.schemaJson)] : []),
-    ...(l.isole
-      ? ['--setting-sources', '', '--strict-mcp-config', '--no-session-persistence']
+    ...(l.reglages !== undefined
+      ? [
+          '--setting-sources',
+          l.reglages === 'projet' ? 'project' : '',
+          '--strict-mcp-config',
+          '--no-session-persistence',
+        ]
       : []),
   ]
 }

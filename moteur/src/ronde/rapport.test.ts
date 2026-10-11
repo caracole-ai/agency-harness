@@ -61,7 +61,11 @@ const rapport = (missions: MissionRonde[], r: Partial<RapportDeRonde> = {}): Rap
   rien_a_signaler: missions.length === 0,
   ...r,
 })
-const config = { missionsMax: 3, retirees: ['retiree'], personnes: PERSONNES_ESSAI }
+const config = {
+  missionsMax: 3,
+  retirees: [{ id: 'retiree', intentions: ['qui_travaille'] }],
+  personnes: PERSONNES_ESSAI,
+}
 const verifier = (r: RapportDeRonde) => revalider(r, RESUME, CATALOGUE, config)
 
 describe('revalider (R3)', () => {
@@ -113,6 +117,14 @@ describe('revalider (R3)', () => {
       const r = verifier(rapport([mission({ id })]))
       expect(r).toMatchObject({ sorte: 'accepte', missions: [{ statut: STATUTS_MISSION.ecartee }] })
     }
+  })
+
+  it('une mission retirée sous un autre nom (mêmes intentions) : écartée (G2)', () => {
+    const r = verifier(
+      rapport([mission({ id: 'qui_tient', intentions: ['qui_travaille'], echappees: [] })]),
+    )
+    expect(r).toMatchObject({ sorte: 'accepte', missions: [{ statut: STATUTS_MISSION.ecartee }] })
+    expect(r.sorte === 'accepte' && r.missions[0]?.raison).toMatch(/retirée/)
   })
 
   it('le même travail sous un autre nom (mêmes intentions qu’une mission ouverte) : écarté', () => {

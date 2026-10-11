@@ -11,6 +11,7 @@ import {
   chantiersCitant,
   DOSSIER_MEMOIRE,
   ecrireChantier,
+  ecrireRetrait,
   ecrireRonde,
   interdits,
   lireIndex,
@@ -187,7 +188,42 @@ describe('écrire et relire la mémoire', () => {
       },
       personnes,
     )
-    expect(missionsRetirees(r)).toEqual(['heures_cumulees'])
+    expect(missionsRetirees(r)).toEqual([{ id: 'heures_cumulees', intentions: [] }])
+  })
+
+  it('un retrait garde ses intentions : la ronde ne repropose pas le même travail sous un autre nom', () => {
+    const r = racine()
+    ecrireRetrait(
+      r,
+      {
+        date: '2026-10-14',
+        client: CLIENT,
+        id: 'etat_des_cartes',
+        titre: 'Les cartes ; en un geste',
+        intentions: ['agents_sans_carte', 'cartes_expirees'],
+        motif: 'doublon de voir_echeances',
+      },
+      personnes,
+    )
+    expect(missionsRetirees(r)).toEqual([
+      { id: 'etat_des_cartes', intentions: ['agents_sans_carte', 'cartes_expirees'] },
+    ])
+    expect(lireIndex(r)[0]?.issue).toBe('retiré : doublon de voir_echeances')
+    expect(() =>
+      ecrireRetrait(
+        r,
+        {
+          date: '2026-10-14',
+          client: CLIENT,
+          id: 'x',
+          titre: 't',
+          intentions: [],
+          motif: 'Octave',
+        },
+        personnes,
+      ),
+    ).not.toThrow()
+    expect(readFileSync(join(r, DOSSIER_MEMOIRE, 'INDEX.md'), 'utf8')).not.toContain('Octave')
   })
 })
 

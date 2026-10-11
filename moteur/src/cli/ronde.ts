@@ -66,7 +66,7 @@ if (values['verifier-modeles']) {
           outils: [],
           cwd: vide,
           delaiMs: agence.ronde.delai_secondes * 1000,
-          isole: true,
+          reglages: 'aucun',
         },
         agence,
         process.env,

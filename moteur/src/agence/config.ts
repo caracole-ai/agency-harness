@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
-import { join } from 'node:path'
+import { homedir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { z } from 'zod'
 import { chargerConfig } from '../config'
 import { VARIABLE_CLE_ANTHROPIC } from '../conversation/config'
@@ -45,6 +46,7 @@ export const AgenceSchema = z.strictObject({
   }),
   prix_par_million_usd: z.record(z.string().min(1), Prix),
   claude: z.strictObject({ binaire: z.string().min(1) }),
+  depot_nuit: z.string().min(1),
   ronde: z.strictObject({
     missions_max: entier(),
     comptes_jours: entier(),
@@ -59,6 +61,8 @@ export const AgenceSchema = z.strictObject({
     lignes_max: entier(),
     delai_secondes: entier(),
     outils_autorises: z.array(z.string().min(1)).min(1),
+    outils_lecture: z.array(z.string().min(1)).min(1),
+    evals_client: z.string().min(1),
     chemins_autorises: z.array(z.string().min(1)).min(1),
   }),
 })
@@ -82,6 +86,12 @@ export function chargerAgence(racine: string): Agence {
   }
   return agence
 }
+
+/** Le chemin du clone de la nuit (G3) : `~/` est le dossier de l'utilisateur, un chemin relatif part de la racine. */
+export const cheminDepotNuit = (agence: Pick<Agence, 'depot_nuit'>, racine: string): string =>
+  agence.depot_nuit.startsWith('~/')
+    ? join(homedir(), agence.depot_nuit.slice(2))
+    : resolve(racine, agence.depot_nuit)
 
 /** Les prix d'un modèle de l'agence, dans les noms du moteur ; lève s'il n'en a pas. */
 export function prixAgence(agence: Agence, modele: string): PrixModele {

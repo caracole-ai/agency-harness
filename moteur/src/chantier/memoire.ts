@@ -75,6 +75,18 @@ export function nettoyer(texte: string, personnes: Designable[]): string {
     : '(texte retiré : il citait un nom ou un identifiant)'
 }
 
+/** Un texte de plusieurs lignes : chaque ligne qui porte un nom ou un identifiant est remplacée par une mention qui le dit. */
+export function nettoyerLignes(texte: string, personnes: Designable[]): string {
+  return texte
+    .split('\n')
+    .map((l) =>
+      interdits(l, personnes).length === 0
+        ? l
+        : '(ligne retirée : elle citait un nom ou un identifiant)',
+    )
+    .join('\n')
+}
+
 /** Lève si le texte porte un nom ou un identifiant : rien n'est écrit (échec fermé). */
 function exigerPropre(texte: string, personnes: Designable[], ou: string): void {
   const trouves = interdits(texte, personnes)
@@ -285,11 +297,53 @@ export function lireConventions(racine: string): string {
   return existsSync(chemin) ? readFileSync(chemin, 'utf8') : ''
 }
 
-/** Les identifiants de mission retirés (G2) : la ronde ne les repropose jamais. */
-export const missionsRetirees = (racine: string): string[] =>
+/** Une mission retirée (G2) : son identifiant et ses intentions, car la ronde donne au même travail un autre nom d'une nuit à l'autre. */
+export interface MissionRetiree {
+  id: string
+  intentions: string[]
+}
+
+/** La fin du titre d'une ligne `retrait` : les intentions de la mission. */
+const INTENTIONS_RETRAIT = / ; intentions : ([a-z0-9_, ]*)$/
+
+/** Ajoute la ligne `retrait` d'une mission défaite (G2), ses intentions comprises. */
+export function ecrireRetrait(
+  racine: string,
+  r: {
+    date: string
+    client: string
+    id: string
+    titre: string
+    intentions: string[]
+    motif: string
+  },
+  personnes: Designable[],
+): void {
+  ajouterIndex(
+    racine,
+    {
+      date: r.date,
+      client: r.client,
+      sorte: 'retrait',
+      id: r.id,
+      titre: `${nettoyer(r.titre, personnes).replaceAll(';', ',')} ; intentions : ${r.intentions.join(', ')}`,
+      issue: `retiré : ${nettoyer(r.motif, personnes)}`,
+    },
+    personnes,
+  )
+}
+
+/** Les missions retirées (G2) : la ronde ne les repropose jamais, ni sous un autre nom. */
+export const missionsRetirees = (racine: string): MissionRetiree[] =>
   lireIndex(racine)
     .filter((e) => e.sorte === 'retrait')
-    .map((e) => e.id)
+    .map((e) => ({
+      id: e.id,
+      intentions: (INTENTIONS_RETRAIT.exec(e.titre)?.[1] ?? '')
+        .split(',')
+        .map((i) => i.trim())
+        .filter((i) => i.length > 0),
+    }))
 
 /** Ce que la ronde lit de la mémoire (R10), pour un client : sans le nom d'aucun client. */
 export interface MemoirePourRonde {
@@ -298,7 +352,7 @@ export interface MemoirePourRonde {
   conventions: string
   /** Les rondes de ce client des derniers jours, avant aujourd'hui. */
   rondes: string[]
-  retirees: string[]
+  retirees: MissionRetiree[]
 }
 
 export function pourRonde(
@@ -335,6 +389,21 @@ export function pourRonde(
     conventions: lireConventions(racine),
     rondes,
     retirees: missionsRetirees(racine),
+  }
+}
+
+/** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du client, les conventions, les chantiers qui citent ses intentions. */
+export function pourChantier(
+  racine: string,
+  mots: string[],
+  indexLignes: number,
+): { index: string[]; conventions: string; chantiers: string[] } {
+  return {
+    index: lireIndex(racine)
+      .slice(-indexLignes)
+      .map((e) => [e.date, e.sorte, e.id, e.titre, e.issue].join(SEP)),
+    conventions: lireConventions(racine),
+    chantiers: chantiersCitant(racine, mots),
   }
 }
 

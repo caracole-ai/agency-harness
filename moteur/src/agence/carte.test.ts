@@ -21,3 +21,20 @@ describe('methode/architecture-pour-modeles.md', () => {
     expect(carte).toContain('Non vérifié, risque')
   })
 })
+
+// PLAN-RONDE.md § 6.4 : le système ajouté au chantier, de même.
+describe('methode/chantier.md', () => {
+  const methode = readFileSync(join(RACINE_DEPOT, 'methode', 'chantier.md'), 'utf8')
+
+  it('ne porte aucun nom ni identifiant du client fictif', () => {
+    expect(interdits(methode, personnesFictives())).toEqual([])
+  })
+
+  it('dit où écrire, qu’un geste qui écrit rend des Modification, et les trois sections de fin', () => {
+    expect(methode).toContain('bande métier')
+    expect(methode).toContain('`Modification`')
+    for (const s of ['## Vérifié', '## Non vérifié, risque', "## Ce que j'ai appris"]) {
+      expect(methode).toContain(s)
+    }
+  })
+})

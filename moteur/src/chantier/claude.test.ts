@@ -56,7 +56,7 @@ const lancement = (x: Partial<LancementClaude> = {}): LancementClaude => ({
   cwd: dossier,
   schemaJson: { type: 'object' },
   delaiMs: 10_000,
-  isole: true,
+  reglages: 'aucun',
   ...x,
 })
 
@@ -73,7 +73,7 @@ describe('argumentsClaude', () => {
     expect(a).toContain('--no-session-persistence')
   })
 
-  it('le chantier : les outils par nom, les règles par --allowedTools, les bornes', () => {
+  it('le chantier : les outils par nom, les règles par --allowedTools, les bornes, les réglages du projet', () => {
     const a = argumentsClaude(
       lancement({
         outils: ['Read', 'Bash(pnpm check)', 'Bash(git diff*)'],
@@ -83,7 +83,7 @@ describe('argumentsClaude', () => {
         toursMax: 60,
         budgetUsd: 10,
         schemaJson: undefined,
-        isole: false,
+        reglages: 'projet',
       }),
     )
     expect(a[a.indexOf('--tools') + 1]).toBe('Read,Bash')
@@ -94,7 +94,9 @@ describe('argumentsClaude', () => {
     ])
     expect(a).toEqual(expect.arrayContaining(['--max-turns', '60', '--max-budget-usd', '10']))
     expect(a).not.toContain('--json-schema')
-    expect(a).not.toContain('--setting-sources')
+    // Les réglages de l'arbre seulement : ni hooks ni CLAUDE.md de l'utilisateur.
+    expect(a[a.indexOf('--setting-sources') + 1]).toBe('project')
+    expect(a).toContain('--strict-mcp-config')
   })
 })
 

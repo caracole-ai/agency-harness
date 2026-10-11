@@ -7,6 +7,14 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11, nuit : phase D, session D2 en cours** (branche
+  `general/d-ronde`). Lot 2 fait : le chantier (`pnpm chantier --mission
+  [--sans-modele] [--refaire]`, `pnpm chantier retirer <id> --motif
+  --client`), `moteur/src/chantier/{mission,arbre,garde,fusion,chantier}.ts`,
+  `methode/chantier.md`, `agence.yaml: depot_nuit`, tests en simulé (G1 :
+  une fusion sous huit conditions vertes, un refus par condition rouge ; G2 :
+  un retrait qui défait ; R11 : `fusion.ts` refuse hors du clone). Les choix
+  et les mesures réelles : « Phase D, session D2 », plus bas.
 - **2026-10-11, nuit : phase D, session D1 faite (lots 0 et 1 de
   `PLAN-RONDE.md`)**, branche `general/d-ronde` partie de `main`, deux
   commits (`Ronde, lot 0 : …`, `Ronde, lot 1 : …`), **pas poussée, pas

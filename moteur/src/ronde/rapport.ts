@@ -1,6 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
-import { interdits } from '../chantier/memoire'
+import { interdits, type MissionRetiree } from '../chantier/memoire'
 import { FORMAT_INTENTION, schemaJson } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
 import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, type Resume } from './resume'
@@ -113,14 +113,15 @@ export type Revalidation =
 
 /**
  * Les règles de R3, en code. `retirees` : les missions retirées (mémoire,
- * G2) ; `personnes` : toutes celles du client, pour qu'aucune consigne-type
- * ne porte un nom ou un identifiant.
+ * G2), reconnues par leur identifiant ou par leurs intentions ; `personnes` :
+ * toutes celles du client, pour qu'aucune consigne-type ne porte un nom ou un
+ * identifiant.
  */
 export function revalider(
   rapport: RapportDeRonde,
   resume: Resume,
   catalogue: Catalogue,
-  config: { missionsMax: number; retirees: string[]; personnes: Designable[] },
+  config: { missionsMax: number; retirees: MissionRetiree[]; personnes: Designable[] },
 ): Revalidation {
   const ecarts: string[] = []
   const vues = new Set(
@@ -163,8 +164,11 @@ export function revalider(
       statut: STATUTS_MISSION.ecartee,
       raison,
     })
-    if (config.retirees.includes(m.id))
-      return ecartee('mission retirée (mémoire) : jamais reproposée')
+    // Retirée sous ce nom ou sous un autre : les mêmes intentions (G2).
+    const retiree = config.retirees.find(
+      (r) => r.id === m.id || memesIntentions(r.intentions, m.intentions),
+    )
+    if (retiree) return ecartee(`mission retirée (mémoire, ${retiree.id}) : jamais reproposée`)
     if (ouvertes.has(m.id)) return ecartee('mission déjà ouverte par une ronde précédente')
     // Le même travail sous un autre nom : les mêmes intentions qu'une mission ouverte.
     const meme = catalogue.missions_ouvertes.find((o) =>

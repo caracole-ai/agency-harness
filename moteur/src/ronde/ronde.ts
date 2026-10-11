@@ -291,7 +291,7 @@ export function appelRonde(agence: Agence, env: Record<string, string | undefine
             cwd: vide,
             schemaJson: schemaJsonRapport(missionsMax),
             delaiMs,
-            isole: true,
+            reglages: 'aucun',
           },
           agence,
           env,
