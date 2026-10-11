@@ -7,6 +7,122 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11, nuit : phase D faite (session D2 : lots 2 et 3 de
+  `PLAN-RONDE.md`, relecture indépendante, corrections), `general/d-ronde`
+  fusionnée dans `main` (`--no-ff`) et poussée.** `pnpm check` vert : 514
+  tests moteur, 131 métier, 20 interface.
+  - Lot 2, le chantier : `pnpm chantier --mission [--sans-modele]
+    [--refaire]`, `pnpm chantier retirer <id> --motif --client` ;
+    `moteur/src/chantier/{mission,arbre,garde,fusion,chantier}.ts`,
+    `methode/chantier.md`, `agence.yaml: depot_nuit`, `chemins_interdits`,
+    `outils_lecture`, `evals_client`. Les huit conditions de G1 en code,
+    `git merge --no-ff` dans `main` **du clone de la nuit** seulement
+    (étiquette `chantier/<id>`, push), la mémoire commise à part, le retrait
+    par `git revert -m 1` ; `fusion.ts` est le seul module qui fusionne ou
+    pousse, et refuse hors du clone (R11). Lot 3, la nuit : `pnpm nuit
+    --client [--date]` (clone remis à `origin/main` avant tout appel,
+    promotions → ronde → au plus une mission, la ligne de `MESURES.md`,
+    idempotente) ; la ligne cron dans le README, rien d'installé.
+  - **En simulé** (binaire `claude` simulé, git réel sur trois dépôts
+    jetables) : G1 rejoué (huit vertes → fusion ; un refus pour chaque
+    condition rouge), G2 (un retrait qui défait), R11, aucun merge ni push
+    hors de `fusion.ts`, un push refusé qui laisse le clone propre.
+  - **Pour de vrai** (Fable 5.1 et Opus 5.5 par le binaire, abonnement,
+    **coûts estimés par le binaire** ; GLM-5.3 via GMI pour le quotidien et
+    la condition 4 ; un clone de la nuit dont `origin` est un dépôt nu
+    **local** du scratchpad) : **2/2 fusionnés** — `simuler_absence` → un
+    geste codé (seconde passe, après une correction du harnais), et la
+    factorisation `agents_sans_carte` + `cartes_expirees` (la mission de la
+    ronde de D1, recopiée : la ronde de cette nuit l'a seulement notée) ;
+    `pnpm chantier retirer` sur la factorisation, et **la ronde suivante ne
+    la repropose pas, trois fois sur trois** ; la chaîne G4 de bout en bout
+    sur `heures_par_agent` (fabrication GLM tronquée → atelier → mission de
+    la ronde → chantier → **refusé pour une raison écrite** : traduction
+    94 %, seuil 95 %) ; une mission `ecrit` sur `liberer_un_jour` au seuil →
+    « promotion en cours », aucun appel ; un clone sale arrête la nuit
+    avant tout appel ; la nuit relancée ne refait rien. 6 à 9,2 $ estimés
+    par chantier (le plan coûte plus que l'implémentation), 14 à 28 min ;
+    ≈ 30 $ estimés en tout. Analyse : passe 20 de
+    `evals/erreurs-2026-10-08.md`.
+  - **Relecture indépendante** (sous-agent, lecture seule) : un bloquant
+    (les contrôles I-01…I-20 dans la bande : `chemins_interdits`), huit
+    importants, dont sept corrigés (test mis en commentaire, cas d'éval
+    réécrits, borne de la nuit relancée, identifiants d'agent dans la
+    mission, clone laissé sale après un échec, commandes `git diff*` hors de
+    l'arbre, ronde échouée « déjà faite ») et un noté (le retrait relit la
+    mission chez le client). Trois défauts de plus trouvés dans les passes
+    réelles, corrigés (`pnpm -s` rendait muet le check imbriqué, les cas en
+    écart non nommés, la mission retirée encore « ouverte »).
+  - **Les deux gestes fusionnés vivent dans le clone du laboratoire, pas dans
+    `main` du projet** (leur `origin` était un dépôt nu du scratchpad, comme
+    la consigne l'exige ; disparu avec la session) : les reprendre est à
+    Lionel. Leurs dossiers et leur mémoire aussi ; la mémoire du dépôt ne
+    porte que les rondes de D1.
+  - **Rappel : la bascule de l'abonnement vers la clé d'API (`acces:
+    anthropic`) doit avoir lieu avant la finalisation, au plus tard avant la
+    phase E** ; la date est à Lionel. Le chantier n'a qu'un chemin, le
+    binaire : sous la clé, `ANTHROPIC_API_KEY` présente et `acces: claude`
+    refusent, il faudra que le préflight du chantier l'accepte (le binaire
+    lit la clé en `-p`) ; à faire et à mesurer ce jour-là.
+  - Mini-site (https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52) et
+    présentation (https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2) relus :
+    « construit le 11/10 » pour la ronde et le chantier, le discours de
+    `PLAN-RONDE.md` § 10.8, rien de plus (les comptes de tests et de cas n'y
+    sont pas repris). **Prochaine : la phase E** (`PLAN-GENERAL.md`), après la
+    bascule vers la clé.
+- **2026-10-11, nuit : phase D, session D1 faite (lots 0 et 1 de
+  `PLAN-RONDE.md`)**, branche `general/d-ronde` partie de `main`, deux
+  commits (`Ronde, lot 0 : …`, `Ronde, lot 1 : …`), **pas poussée, pas
+  fusionnée** : la session D2 fait les lots 2 et 3, la relecture
+  indépendante et la fusion (`SESSION-D.md`). `pnpm check` vert : 460 tests
+  moteur (+62), 131 métier, 20 interface.
+  - Lot 0 : `agence.yaml` (les quatre rôles en `acces: claude` ; prix Fable
+    5.1 et Opus 5.5 relus le 2026-10-11 dans la doc d'Anthropic),
+    `moteur/src/agence/config.ts` (schéma strict, préflight au moment de
+    l'appel : `ANTHROPIC_API_KEY` absente et `claude auth status` connecté,
+    sinon refus qui le dit), `methode/architecture-pour-modeles.md` et son
+    test, `memoire/` et `moteur/src/chantier/memoire.ts` (R10) avec le test de
+    fuite sur tout `memoire/`.
+  - Lot 1 : `moteur/src/ronde/` (`resume.ts`, `rapport.ts`, `ronde.ts`),
+    `moteur/src/chantier/claude.ts` (`lancerClaude`, `--json-schema`,
+    `--tools ""`), `pnpm ronde --client --date [--depuis] [--refaire]
+    [--sans-modele] [--verifier-modeles]`, `pnpm evals ronde`
+    (`evals/rondes.yaml`, journaux fixés dans `evals/rondes/`, étiquettes en
+    **brouillon**).
+  - **Le critère, avec Fable 5.1 par le binaire (abonnement), coût estimé par
+    le binaire** : sur une copie du client fictif dont le journal porte 20
+    consignes réelles des 9 et 10 octobre (`pnpm parler`, GLM-5.3 via GMI :
+    `pnpm evals echappee` ne remplit pas le journal de la source, voir
+    « Phase D, session D1 »), `pnpm ronde --date 2026-10-10` écrit
+    `rondes/2026-10-10.md`, `.json`, `rondes/2026-10-10/<id>.yaml`, une ligne
+    `ronde` au journal avec des comptes seulement (`fenetre`, `conversations`,
+    `demandes`, `missions`, `cout_usd`, `cout_estime`, `fuite`) ; fuite 0 ;
+    `--sans-modele` montre le résumé sans appel ; relancée, « déjà faite » ;
+    `--refaire` refait. **Trois passes réelles** : 0,28 $, 0,23 $, 0,37 $ ;
+    les trois désignent **la même mission** (une `factorisation` de
+    `agents_sans_carte` et `cartes_expirees`, en lisant que le patron a lancé
+    `voir_echeances` trois fois juste après), sous trois noms différents ;
+    `heures_par_agent` et `simuler_absence`, au seuil, dites « promotion en
+    cours » par le modèle lui-même. Une quatrième passe sur le code final
+    (après les corrections ci-dessous) : la même mission, 0,13 $. Analyse :
+    passe 19 de `evals/erreurs-2026-10-08.md`.
+  - **`pnpm evals ronde`, trois passes : 3/3, 3/3, 2/3, fuite 0, 0,19 à
+    0,34 $ la passe (estimé) — brouillon, pas une mesure** (étiquettes de la
+    session ; Lionel les remplace). L'écart (R-2, passe 3) : le modèle
+    s'abstient de la factorisation, « vues une fois chacune, trop tôt », ce
+    que dit la carte : l'étiquette du brouillon est discutable.
+  - Trois défauts trouvés dans les traces des passes réelles, corrigés : une
+    ronde refaite relisait ses passes du jour dans l'index de la mémoire ; le
+    même travail sous trois noms n'aurait pas été reconnu comme « déjà
+    ouvert » (désormais aussi par les intentions) ; l'éval lisait la mémoire
+    du dépôt (une passe écartée pour ça).
+  - `pnpm ronde --verifier-modeles` : `claude-fable-5-1` et `claude-opus-5-5`
+    répondent par le binaire (≈ 0,01 $ chacun, estimé).
+  - **Rappel : la bascule de l'abonnement vers la clé d'API (`acces:
+    anthropic`) doit avoir lieu avant la finalisation, au plus tard avant la
+    phase E** ; la date est à Lionel. Le chemin `acces: anthropic` de la ronde
+    est codé et typé, jamais appelé.
+  - Suite : la session D2 (faite, ci-dessus).
 - **2026-10-11, soir : la phase D est prête, pas commencée.** `PLAN-RONDE.md`
   gagne un § 0 (amendements de Lionel après la phase C) : (a) au
   laboratoire, l'accès aux modèles d'Anthropic passe par **l'abonnement
@@ -854,6 +970,70 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Phase D, D2, la condition 4 est bruitée au seuil** : GLM tient la
+  traduction entre 95 et 97 % ; un geste qui ajoute des cas la fait basculer
+  sur un ou deux cas, sur **une seule passe** (G1 n'en demande qu'une) :
+  `heures_par_agent` refusé à 94 %, les deux autres fusionnés à 97 et 98 %.
+  Le rouvrir est à Lionel.
+- **D2, le code d'un test s'exécute avec les droits de l'utilisateur** : la
+  garde juge le diff après coup ; un test écrit par le modèle tourne dans
+  `pnpm check` avant (règles d'outils bornées à l'arbre, commandes exactes,
+  mais pas de bac à sable). À trancher avant un chantier sur une machine qui
+  porte des données réelles.
+- **D2, le budget par mission est presque atteint** : 9,16 $ estimés pour 10 $
+  (la factorisation) ; le plan seul coûte 3,8 à 4,7 $. Un chantier plus gros
+  s'arrêterait au budget (condition 6 rouge).
+- **D2, la bande ne voit pas les effets hors d'elle** : la factorisation
+  retirait deux intentions qu'un cas de `evals/promotions.yaml` attend (vu
+  par la relecture, en remarque) ; le chantier ne peut pas corriger ce
+  fichier, et rien ne le rejoue avant la fusion.
+- **D2, le retrait relit la mission chez le client** (`rondes/<date>/<id>.yaml`)
+  pour ses intentions : un `pnpm ronde --refaire` de cette date l'efface, et
+  `retirer` ne trouve plus la mission (constat de la relecture, noté).
+- **D2, un échec en route laisse le clone propre, mais une question pour
+  l'atelier ou un chantier échoué (panne, préflight) n'écrit rien dans
+  `memoire/`** (le dossier et le journal, oui) : R10 dit « tout ».
+- **D2, `pnpm ronde` à la main écrit la mémoire dans l'arbre courant**, la
+  nuit dans le clone : deux mémoires possibles tant qu'un humain lance la
+  ronde à la main (choix de D1 gardé).
+- **D2, le statut d'une mission chez le client ne suit pas le chantier**
+  (« à faire » après une fusion ou un refus) : la ronde le lit dans la
+  mémoire ; la nuit, par la branche.
+- **D2, deux « à corriger » de relecture restent sur les branches fusionnées
+  du clone** (un `split('/')[0]` sans garde dans `voir_echeances`, une
+  convention à préciser) : seuls les `bloquant` arrêtent la fusion (G1).
+- **D2, `git log` passé par RTK masque les commits de fusion** (vu sur le
+  clone) : `rtk proxy git log --graph` pour vérifier une fusion.
+
+- **Phase D, D1, les étiquettes de `pnpm evals ronde` sont un brouillon** :
+  écrites par la session avant les passes, sur trois journaux seulement (deux
+  « rien à signaler ») ; le résultat n'est pas une mesure. À Lionel :
+  relire chaque résumé (`pnpm ronde --sans-modele` sur une copie qui porte le
+  journal fixé), écrire ses missions, `etiquettes: lionel`, relancer.
+- **Phase D, D1, le coût d'une ronde** est « estimé par le binaire »
+  (0,23 à 0,37 $ sur Fable 5.1 pour une journée de 15 demandes), le double
+  de l'estimation du plan (≈ 6 000 tokens en entrée, 1 500 en sortie,
+  ≈ 0,14 $ aux prix de Fable) ; non mesuré sous la clé. Que `--effort high`
+  soit honoré en `-p` n'est pas vérifié.
+- **Phase D, D1, le chemin `acces: anthropic` de la ronde** (couche modèle,
+  outil strict, `assertEnv`) est codé et typé, jamais appelé ; le schéma du
+  rapport en mode strict chez Anthropic non plus.
+- **Phase D, D1, une mission retirée sous un autre nom** : la ronde écarte
+  une mission retirée par son identifiant seul (l'index de la mémoire ne
+  garde que lui) ; les trois passes ont nommé le même travail de trois façons.
+  Les missions ouvertes, elles, sont aussi écartées par leurs intentions. À
+  faire au lot 2 : la ligne `retrait` garde les intentions.
+- **Phase D, D1, la ronde ne voit pas les consignes des gestes** (R2) : elle
+  a deviné que `voir_echeances`, lancé trois fois juste après deux questions
+  sur les cartes, servait mal (deux des trois consignes demandaient les
+  habilitations électriques qui expirent et le recyclage SSIAP ; la
+  traduction les a envoyées au geste des échéances, qui rend toutes les
+  échéances) ; une demande mal servie par un geste n'est visible que par une
+  telle coïncidence.
+- **Phase D, D1, les journaux fixés portent des noms fictifs** (consignes
+  telles qu'écrites, textes montrés) : versionnés, comme `evals/echappees.yaml`
+  ; aucun ne part (fuite 0, mesurée avant l'appel).
+
 - **Phase C, aucune fabrication réelle d'un geste qui écrit n'a abouti**
   (6 sur 6 tronquées au plafond de la config) : le chemin « fabriqué,
   vérifié, écrit » d'une intention qui écrit n'est prouvé qu'en simulé
@@ -1700,7 +1880,92 @@ Pièges vus pendant la phase :
 - **`attend_lot_4`** disparaît de `Fabrication` (plus jamais produit) ; le
   compteur du § 8 dit « Non tentées (hors catalogue, plafond) ».
 
-Pièges vus pendant la phase :
+### Phase D, session D1 (`PLAN-RONDE.md` lots 0 et 1, 2026-10-11)
+
+Choix faits faute de consigne :
+
+- **`agence.yaml` porte en config ce que le plan écrit en prose** : le binaire
+  (`claude.binaire`), le délai mural de la ronde et du chantier, la sortie de
+  l'appel sous `acces: anthropic` (`ronde.tokens_sortie`), les 30 jours des
+  comptes, les 60 lignes d'index et les 7 jours de rondes que la ronde relit
+  (R10), `lignes_max` (G1, 600) ; `memoire/**` est dans
+  `chemins_autorises` (R10 : « dans les chemins autorisés du chantier »).
+  `depot_nuit` (G3) n'y est pas encore : le lot 2 l'ajoute.
+- **La ronde par le binaire est isolée** : `--system-prompt` (remplace celui
+  de Claude Code), `--tools ""`, `--setting-sources ""` (ni hooks ni
+  `CLAUDE.md` de l'utilisateur), `--strict-mcp-config`,
+  `--no-session-persistence`, dans un dossier temporaire vide. Vérifié par une
+  sonde : le modèle ne reçoit ni `CLAUDE.md` ni hook ; le binaire ajoute une
+  section d'environnement et un rappel qui porte l'adresse du compte (rien du
+  client). `--bare` est exclu : il exige la clé d'API.
+- **Le résumé se fait par demande, pas par conversation** (une ligne
+  `consigne` ou `echappee`) : un geste se montre sans consigne, ses
+  paramètres réduits à une date, un nombre, `<personne>` ou `<texte>` ; un
+  geste précédé de « vous parlez de qui ? » se compte à la réponse ; un « je
+  ne sais pas » montre sa consigne masquée par `masquerConsigne` (cachée si
+  elle reste ambiguë), jamais la raison du modèle ; un refus, le fait seul ;
+  un abandon, la catégorie de son motif (`MOTIFS_ABANDON`, exportés de
+  `boucle.ts`, mêmes chaînes), jamais le texte du modèle. Le coût du mois est
+  compté jusqu'à la date de la ronde (`coutDuMois` lisait tout le mois).
+- **`resumerJournal(journal, fenetre, personnes, comptes)`**, et le
+  catalogue à part (`construireCatalogue` dans `ronde.ts`) : il lit le métier
+  et le dossier du client. L'état de promotion d'une intention se lit dans
+  le journal jusqu'à la date : au seuil (échappées finies proprement sur la
+  fenêtre de la promotion) ou déjà proposée → « promotion en cours » ; la
+  dernière fabrication échouée (hors panne) ou écartée → « à coder à
+  l'atelier ». La ronde du critère tourne **sans** `pnpm promotions` avant
+  (c'est `pnpm nuit`, lot 3, qui les enchaîne) : `simuler_absence`, au seuil
+  sans dossier, est « promotion en cours ».
+- **La revalidation** : une faute du modèle (échappée hors fenêtre,
+  consigne-type avec identifiant ou nom, trop de missions, « rien à
+  signaler » incohérent, deux fois le même identifiant) refuse tout le
+  rapport (§ 5.2) ; l'état du catalogue écarte une mission en le disant
+  (mission retirée, déjà ouverte, identifiant d'un geste existant, intention
+  avec un geste actif, **mêmes intentions qu'une mission ouverte** : les
+  trois passes ont donné trois noms au même travail) ; « promotion en
+  cours » quand **toutes** les intentions de la mission sont au seuil (une
+  factorisation dont une seule l'est reste un chantier).
+- **Le coût de la ronde n'est pas une ligne `appel_modele`** : il est à
+  l'agence, pas au plafond du client (§ 2) ; il est dans la ligne `ronde`.
+- **La fuite se mesure avant l'appel** : si un nom partirait, rien ne part
+  (« refusée avant tout appel ») ; la colonne vaut donc 0 dès qu'un appel a
+  eu lieu.
+- **La mémoire** : la colonne « client » de l'index porte le nom du client
+  (pour Lionel) ; la ronde ne relit que les lignes de son client, sans cette
+  colonne, **d'avant le jour** (une ronde refaite relisait ses propres passes
+  du jour : vu aux passes 2 et 3, corrigé), et les rondes des 7 derniers
+  jours sans le nom du client dans le titre. Les trois passes réelles du
+  critère ont écrit `memoire/` dans le dépôt (trois lignes d'index, un
+  fichier de ronde) : gardées et commises, ce sont de vrais événements du
+  laboratoire.
+- **Le journal du critère** : `pnpm evals echappee` joue chaque cas sur une
+  copie fraîche qu'il efface, le journal de la source reste vide. Remplacé
+  par 24 consignes réelles (`pnpm parler`, GLM-5.3 via GMI, ≈ 0,3 $) sur deux
+  copies : 5 le 9, 15 le 10 (copie A), 4 gestes seuls le 11 (copie C).
+- **Les journaux fixés** (`evals/rondes/journal-a.json`, `journal-c.json`)
+  sont ces deux journaux, sans les lignes `outil_echappee` (les résultats de
+  requête) ; ils gardent les consignes et les textes montrés (noms fictifs)
+  pour que l'éval prouve qu'ils ne partent pas. `pnpm evals ronde` les rejoue
+  sur une copie fraîche, sans lire ni écrire `memoire/` ; ne compte que les missions
+  « à faire » ou « question pour l'atelier » ; précision et rappel, pas de
+  seuil.
+- **`memoire.ts` porte déjà `ecrireChantier`, `ajouterConvention`,
+  `ajouterMesure`, `chantiersCitant`** (R10 les met au lot 0) ; le lot 2 s'en
+  sert. Deux aides de test vivent dans `src/` : `agence/fictif.ts` (les
+  personnes du client fictif) et `ronde/essai.ts` (un métier et un journal
+  d'essai).
+
+Pièges vus pendant la session :
+
+- **Ici, `claude` est un relais de cmux** (`/var/folders/…/cmux-cli-shims/claude`)
+  ; `claude auth status` rend bien le JSON attendu.
+- **`--tools` prend des noms d'outils** (`Read,Bash`), les règles
+  (`Bash(pnpm check)`) vont dans `--allowedTools` : `argumentsClaude` fait la
+  différence (le chantier en aura besoin).
+- **Un dossier client sans `config.yaml`** fait échouer `faireRonde` (elle y
+  lit le métier pour les fichiers de mission).
+
+Pièges vus pendant la phase C :
 
 - **`npx biome check --write` passé par RTK** répond « No issues found » sans
   rien écrire : formater par `rtk proxy pnpm format`.
@@ -1710,6 +1975,103 @@ Pièges vus pendant la phase :
   --role agent --agent A-11 --consigne "Oui, je prends la réaffectation
   R-…"`), qui devient `repondre_reaffectation`, puis il confirme son « oui »
   (`--confirmer … --oui`) : deux commandes, comme le patron.
+
+### Phase D, session D2 (`PLAN-RONDE.md` lots 2 et 3, 2026-10-11)
+
+Choix faits faute de consigne :
+
+- **Les réglages du binaire au chantier : `--setting-sources project`**
+  (`LancementClaude.reglages`, qui remplace `isole` : `aucun` pour la ronde,
+  `projet` pour le chantier). Sondé le 2026-10-11 dans un dépôt d'essai qui
+  porte un `CLAUDE.md` témoin : avec `project`, le `CLAUDE.md` de l'arbre est
+  lu, ni celui de l'utilisateur ni ses hooks (RTK, `SessionStart`, Stop) ; le
+  témoin inverse (`user,project`) lit bien le `CLAUDE.md` de l'utilisateur.
+  Le dépôt n'a pas de `CLAUDE.md` à sa racine aujourd'hui.
+- **Les règles d'outils, bornées à l'arbre** : `Read(./**)`, `Edit(./**)`,
+  `Write(./**)`, `Glob(./**)`, `Grep(./**)`. Sondé : un `Write` nu, permis,
+  écrit **n'importe où sur la machine** ; `Write(./**)` refuse hors du
+  dossier, `Read(./**)` aussi, et un arbre sous `.claude/worktrees/` reste
+  écrivable. Les commandes sont **exactes** (`Bash(pnpm check)`,
+  `Bash(pnpm test)`, `Bash(git diff)`, `Bash(git diff main...HEAD)`,
+  `Bash(git status)` ; la relecture : `Bash(git log --oneline main..HEAD)`) :
+  `git diff*` permettait `--no-index` ou `--output=` hors de l'arbre
+  (relecture). Reste vrai : un test écrit par le modèle est du code qui
+  s'exécute avec les droits de l'utilisateur (`pnpm check`) ; la garde ne
+  juge que le diff.
+- **`chemins_interdits`** (`agence.yaml`, appliqué avant les chemins
+  autorisés) : `controles.ts`, `echeances.ts` et `connecteurs/**` du métier.
+  Les contrôles I-01…I-20 et I-17 vivent dans `metiers/*/code/src/`, que la
+  bande autorise : sans cette liste, seul le prompt les protégeait
+  (bloquant de la relecture).
+- **Le plan rend une sortie structurée** (`faisable`, `raison`, `plan`) au
+  lieu d'écrire `PLAN-CHANTIER.md` dans l'arbre : ce fichier serait dans le
+  diff, hors de la bande. Le plan va au dossier et au message de
+  l'implémentation.
+- **La mémoire se commet à part, après la fusion** (« Mémoire : chantier
+  <id> fusionné ») : un `git revert -m 1` de la fusion ne la défait pas. Une
+  ligne ajoutée à `CONVENTIONS.md` par la branche, elle, part avec un
+  retrait. La ligne `retrait` garde les intentions en fin de titre
+  (`… ; intentions : a, b`) ; `missionsRetirees` les relit, `revalider` et
+  `decider` écartent par identifiant **ou** par intentions.
+- **La condition 4 lit le taux** (ok/total ≥ seuil, comme « activable » dans
+  `atelier.ts`) et non le code de sortie de `pnpm evals traduire`, qui
+  échoue dès qu'un cas a une fuite : la fuite connue du niveau 2 de la
+  désignation (point laissé à Lionel) l'aurait rendue rouge à jamais. La
+  fuite et les cas en écart sont écrits dans la mesure.
+- **Les cas d'éval existants sont des tests** (condition 2) : aucun ne
+  disparaît ni ne change, sauf une demande nouvelle (`sorte: nouvelle`) qui
+  devient l'action d'un geste nouveau de la branche, sa consigne et son
+  rôle intacts (une factorisation sert désormais la demande). Un test mis
+  en commentaire ne compte plus.
+- **L'ordre** : garde et `pnpm check` rejoué ; s'ils sont rouges, ni
+  relecture ni passe de traduction (on ne paie pas pour relire un diff
+  refusé) ; la passe de traduction (GLM, ≈ 0,12 $) une seule fois, après la
+  relecture.
+- **`pnpm chantier retirer` exige `--client`** : la mémoire ne garde aucun
+  chemin de client, et la ligne `retiré` va au journal du client.
+- **La nuit** : `pnpm promotions` en sous-processus (la commande existe,
+  inchangée) ; la ronde dans le processus, avec le clone pour racine (sa
+  mémoire va dans le clone, commise et poussée par `publierMemoire`, seul
+  push hors chantier, dans `fusion.ts`) ; le chantier prend les missions de
+  toutes les dates, statut « à faire » ou « promotion en cours » (redécidée
+  sur le catalogue du jour : § 0.b, une fabrication échouée depuis la ronde
+  ouvre le chantier) ; une décision sans appel ne compte pas dans la borne ;
+  la borne compte aussi les chantiers déjà tentés à cette date (lignes
+  `chantier` au journal qui ont un coût estimé : une nuit relancée ne prend
+  pas une deuxième mission).
+- **Les arbres de chantier** sont exclus par `.git/info/exclude` du clone
+  (écrit par le code), pas par le `.gitignore` du dépôt.
+- **Un échec en route** (fusion en conflit, push refusé, retrait en
+  conflit) remet le clone à l'état d'avant (`restaurer` dans `fusion.ts` :
+  abandon, `reset --hard` sur le commit d'avant, `clean` de `memoire/`,
+  étiquette ôtée), sur le clone vérifié seulement : sinon toutes les nuits
+  suivantes s'arrêteraient sur un clone sale.
+- **Une ronde échouée n'est pas « déjà faite »** : relancée, elle se refait.
+- **Les processus enfants du chantier** (pnpm, le binaire `claude`)
+  reçoivent l'environnement sans les variables `npm_*` du script parent
+  (`envEnfant`) : voir les pièges.
+- **`--sans-modele`** écrit `chantiers/<id>.sans-modele.md`, jamais par-dessus
+  le dossier d'un chantier fait. **`--refaire`** retire l'arbre et le
+  rouvre sur la branche telle qu'elle est (le travail d'avant reste).
+- Le commit du modèle porte `Co-Authored-By: <modèle> <noreply@anthropic.com>`.
+- **Pour le critère réel**, `agence.yaml: depot_nuit` (valeur commise :
+  `~/harnais-nuit`, l'exemple de G3) a pointé le temps du critère sur un
+  clone du scratchpad dont `origin` est un dépôt nu du scratchpad (créé
+  depuis `97d12d7`), puis a été restauré.
+
+Pièges vus pendant la session :
+
+- **`pnpm -s chantier` rend muet le `pnpm check` imbriqué** : le `-s` passe
+  `npm_config_loglevel=silent` à tous les processus enfants ; le check du
+  modèle et celui du code sortaient en code 1 sans afficher le test en
+  échec, et le modèle n'a pas pu le corriger (`simuler_absence`, première
+  passe). Corrigé (`envEnfant`) ; lancer `pnpm chantier`, `pnpm nuit` sans
+  `-s` reste le plus sûr.
+- **zsh ne découpe pas une variable non citée** (`$ligne` passé comme un
+  seul argument) ; `read` avec `IFS` tabulation fond deux tabulations de
+  suite (un champ vide disparaît).
+- **Le plan coûte plus que l'implémentation** : Fable relit le dépôt (30 à
+  46 tours, ≈ 3,8 $ estimés) avant qu'Opus écrive (≈ 1,2 à 2,3 $).
 
 ## Commandes
 
@@ -1726,5 +2088,11 @@ pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulem
 pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle
 pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]   # l'atelier ; --avec-modele coûte ≈ 0,15 $
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]   # onglet « Appris » : le patron active ou retire
+pnpm ronde --client <copie> --date AAAA-MM-JJ [--depuis …] [--refaire] [--sans-modele]   # la ronde de nuit (agence.yaml ; sous acces: claude, ANTHROPIC_API_KEY absente, coût estimé par le binaire)
+pnpm ronde --verifier-modeles   # un appel minuscule à chaque modèle de l'agence
+pnpm evals ronde --client exemples/client-fictif [--seulement R-2] [--modele simule]   # journaux fixés, étiquettes en brouillon : « brouillon, pas une mesure »
+pnpm chantier --mission <copie>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire]   # le chantier, dans le clone de la nuit (agence.yaml: depot_nuit) ; fusion si les huit conditions de G1 sont vertes ; ≈ 6 à 9 $ estimés par le binaire
+pnpm chantier retirer <id> --motif "<texte>" --client <copie>   # G2 : git revert -m 1 de la fusion, push, mémoire, journal
+pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # clone remis à origin/main, promotions → ronde → au plus une mission ; idempotente ; jamais lancer avec `pnpm -s`
 # Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.
 ```

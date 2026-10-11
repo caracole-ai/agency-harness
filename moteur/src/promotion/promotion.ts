@@ -239,7 +239,7 @@ export const debutFenetre = (maintenant: Temporal.ZonedDateTime, jours: number) 
 const estRole = (r: unknown): r is Role => ROLES.includes(r as Role)
 
 /** La suite donnée à la proposition d'une conversation : lue sur les objets (`R-…`) qui la citent. */
-function suiteDe(lignes: Ligne[], conversation: string): string {
+export function suiteDe(lignes: Ligne[], conversation: string): string {
   const objets = new Set(
     lignes
       .filter((l) => l.objet !== null && donneesDe(l).conversation === conversation)

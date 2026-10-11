@@ -1,4 +1,4 @@
-// pnpm evals traduire|echappee|gestes|promotion --client <dossier> [--seulement id,id] [--modele simule]
+// pnpm evals traduire|echappee|gestes|promotion|ronde --client <dossier> [--seulement id,id] [--modele simule]
 // Les évals de la conversation (PLAN-ESPACES.md § 9) et de la promotion
 // (PLAN-PROMOTION.md § 6.4) : chaque cas, écrit à la main dans `evals/`,
 // tourne sur une copie fraîche du client (ou sur une variante dérivée de lui,
@@ -10,24 +10,36 @@
 // GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
 // vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
 // porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du fichier des agents
-// partis au modèle, colonne du tableau, seuil 0.
+// partis au modèle, colonne du tableau, seuil 0. `ronde` (PLAN-RONDE.md § 5.4)
+// rejoue les journaux fixés d'`evals/rondes.yaml` sur une copie et lance la
+// ronde avec le modèle d'`agence.yaml` (sous acces: claude, l'abonnement : le
+// coût est estimé par le binaire), sans rien écrire dans `memoire/` ; tant que
+// les étiquettes sont un brouillon, le résultat aussi.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse, stringify } from 'yaml'
+import { z } from 'zod'
+import { chargerAgence } from '../agence/config'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { avecSession, type MetierConversation } from '../conversation/conversation'
 import { ecrireInstantane } from '../echappee/echappee'
 import {
+  type BilanRonde,
   bilan,
+  type Etiquettes,
   ecartsEchappee,
+  ecartsRonde,
   FichierEchappee,
   FichierGestes,
   FichierPromotions,
+  FichierRondes,
   FichierTraduire,
+  LigneFixee,
   type ResultatCas,
   rendreResultats,
+  rendreRonde,
   SEUILS,
 } from '../evals/evals'
 import {
@@ -49,11 +61,13 @@ import { chargerPersonnes, recevoir } from '../personnes/personnes'
 import { rejouerTest } from '../promotion/fabriquer'
 import { aProposer, debutFenetre, type Fabrication, intentions } from '../promotion/promotion'
 import { compterFabrications, promouvoir } from '../promotion/promouvoir'
+import { STATUTS_MISSION } from '../ronde/rapport'
+import { type AppelRonde, faireRonde, ISSUES_RONDE } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const EVALS = join(RACINE, 'evals')
-const QUOIS = ['traduire', 'echappee', 'gestes', 'promotion'] as const
+const QUOIS = ['traduire', 'echappee', 'gestes', 'promotion', 'ronde'] as const
 type Quoi = (typeof QUOIS)[number]
 
 const { values, positionals } = parseArgs({
@@ -84,10 +98,12 @@ const module = (await import(
 if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
 const m = module.CONVERSATION
 const avecModele = quoi !== 'gestes'
+// La ronde n'appelle pas le modèle du client : celui de l'agence, préflight au moment de l'appel.
+const avecModeleClient = avecModele && quoi !== 'ronde'
 
 // La clé se vérifie au démarrage, sur une copie (ouvrir écrit un journal),
 // pas au premier cas : une variable absente arrête tout.
-if (avecModele && values.modele === undefined) {
+if (avecModeleClient && values.modele === undefined) {
   const essai = copieClient(source)
   try {
     modeleDepuisConfig(configDuDossier(m, essai), process.env)
@@ -123,7 +139,10 @@ const garder = (r: ResultatCas, trace: unknown, id?: string) => {
 const resultats: ResultatCas[] = []
 /** Pour le § 8, sur une passe `promotion` : ce que chaque fabrication a donné. */
 const fabrications: Fabrication[] = []
-let seuil: number = quoi === 'promotion' ? 0 : SEUILS[quoi]
+let seuil: number = quoi === 'promotion' || quoi === 'ronde' ? 0 : SEUILS[quoi]
+/** Pour une passe `ronde` : le bilan de chaque cas, et les étiquettes. */
+const rondes: (ResultatCas & { bilan: BilanRonde; estime: boolean })[] = []
+let etiquettes: Etiquettes = 'brouillon'
 
 if (quoi === 'traduire') {
   const fichier = FichierTraduire.parse(parse(readFileSync(join(EVALS, 'consignes.yaml'), 'utf8')))
@@ -238,6 +257,85 @@ if (quoi === 'traduire') {
   } finally {
     rmSync(dossier, { recursive: true, force: true })
   }
+} else if (quoi === 'ronde') {
+  const fichier = FichierRondes.parse(parse(readFileSync(join(EVALS, 'rondes.yaml'), 'utf8')))
+  etiquettes = fichier.etiquettes
+  const agence = chargerAgence(RACINE)
+  idModele =
+    values.modele === 'simule'
+      ? 'simulé'
+      : `${agence.modeles.ronde.modele} (acces: ${agence.modeles.ronde.acces})`
+  const simule: AppelRonde = async () => ({
+    ok: true,
+    sortie: { observations: [], missions: [], rien_a_signaler: true },
+    cout_usd: 0,
+    estime: false,
+  })
+  for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
+    const nom = fichier.journaux[c.journal]
+    if (!nom) throw new Error(`${c.id} : journal fixé inconnu : ${c.journal}`)
+    const lignes = z.array(LigneFixee).parse(JSON.parse(readFileSync(join(EVALS, nom), 'utf8')))
+    const dossier = copieClient(source)
+    try {
+      const { journal } = m.ouvrirJournal(dossier)
+      try {
+        for (const { horodatage, ...e } of lignes) journal.ecrire([e], horodatage)
+      } finally {
+        journal.fermer()
+      }
+      const r = await faireRonde(m, {
+        racine: RACINE,
+        dossierClient: dossier,
+        date: Temporal.PlainDate.from(c.date),
+        ...(c.depuis ? { depuis: Temporal.PlainDate.from(c.depuis) } : {}),
+        agence,
+        env: process.env,
+        memoire: false,
+        ...(values.modele === 'simule' ? { appel: simule } : {}),
+      })
+      if (r.sorte !== 'faite') throw new Error(`${c.id} : ronde ${r.sorte}`)
+      const proposees = r.missions
+        .filter(
+          (x) => x.statut === STATUTS_MISSION.a_faire || x.statut === STATUTS_MISSION.question,
+        )
+        .map((x) => ({
+          id: x.mission.id,
+          sorte: x.mission.sorte,
+          intentions: x.mission.intentions,
+          echappees: x.mission.echappees,
+        }))
+      const b = ecartsRonde(c.attendu, r.issue, proposees, [
+        ISSUES_RONDE.echouee,
+        ISSUES_RONDE.refusee,
+        ISSUES_RONDE.fuite,
+      ])
+      const resultat = {
+        id: c.id,
+        ecarts: b.ecarts,
+        coutUsd: r.cout_usd,
+        strict: false,
+        fuite: r.fuite,
+        bilan: b,
+        estime: r.estime,
+      }
+      rondes.push(resultat)
+      resultats.push(resultat)
+      garder(resultat, {
+        id: c.id,
+        systeme: r.systeme,
+        message: r.message,
+        issue: r.issue,
+        raison: r.raison,
+        rapport: r.rapport,
+        missions: r.missions,
+        ecarts: r.ecarts,
+        fuite: r.fuite,
+        cout_usd: r.cout_usd,
+      })
+    } finally {
+      rmSync(dossier, { recursive: true, force: true })
+    }
+  }
 } else {
   // La fabrication, avec modèle (§ 6.4) : un cas = une intention et les cas
   // d'`echappees.yaml` qui la portent ; rejoués sur une seule copie, puis la
@@ -345,6 +443,25 @@ const TITRES: Record<Quoi, string> = {
   echappee: "de l'échappée",
   gestes: 'du rejeu des gestes appris',
   promotion: 'de la fabrication',
+  ronde: 'de la ronde',
+}
+if (quoi === 'ronde') {
+  writeFileSync(
+    chemin,
+    rendreRonde(`Évals ${TITRES[quoi]} — ${tampon}`, idModele, etiquettes, rondes),
+  )
+  const justes = rondes.reduce((s, r) => s + r.bilan.justes, 0)
+  const proposees = rondes.reduce((s, r) => s + r.bilan.proposees, 0)
+  const trouvees = rondes.reduce((s, r) => s + r.bilan.trouvees, 0)
+  const attendues = rondes.reduce((s, r) => s + r.bilan.attendues, 0)
+  console.log(
+    `\nPrécision ${justes}/${proposees}, rappel ${trouvees}/${attendues}, fuite ${b.fuites.length} cas (seuil 0), coût ${b.coutUsd.toFixed(4)} $${rondes.some((r) => r.estime) ? ' (estimé par le binaire)' : ''}.`,
+  )
+  if (etiquettes === 'brouillon')
+    console.log('Étiquettes en brouillon : brouillon, pas une mesure.')
+  console.log(`Résultats : ${chemin}\nTraces : ${dossierTraces}`)
+  if (b.fuites.length > 0) process.exitCode = 1
+  process.exit()
 }
 writeFileSync(
   chemin,

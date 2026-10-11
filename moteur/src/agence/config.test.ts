@@ -1,0 +1,111 @@
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
+import { parse, stringify } from 'yaml'
+import {
+  assertEnv,
+  chargerAgence,
+  type Executer,
+  FICHIER_AGENCE,
+  preflight,
+  prixAgence,
+} from './config'
+
+// PLAN-RONDE.md § 4.1 : le schéma strict d'agence.yaml, et le préflight au
+// moment de l'appel (§ 0.a), jamais au chargement.
+
+const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
+const brut = () =>
+  parse(readFileSync(join(RACINE, FICHIER_AGENCE), 'utf8')) as Record<string, unknown>
+
+/** Une racine temporaire qui porte un agence.yaml donné. */
+function racineAvec(contenu: unknown): string {
+  const d = mkdtempSync(join(tmpdir(), 'agence-'))
+  writeFileSync(join(d, FICHIER_AGENCE), stringify(contenu))
+  return d
+}
+
+const statut =
+  (sortie: unknown, code = 0): Executer =>
+  () => ({
+    code,
+    sortie: JSON.stringify(sortie),
+    erreur: '',
+  })
+
+describe('agence.yaml', () => {
+  it("celui du dépôt se charge : les quatre rôles sous l'abonnement", () => {
+    const a = chargerAgence(RACINE)
+    expect(a.modeles.ronde.acces).toBe('claude')
+    expect(a.modeles.chantier.implementation.acces).toBe('claude')
+    expect(prixAgence(a, a.modeles.ronde.modele).sortie).toBeGreaterThan(0)
+  })
+
+  it('un champ inconnu refuse', () => {
+    expect(() => chargerAgence(racineAvec({ ...brut(), inconnu: 1 }))).toThrow(/invalide/)
+  })
+
+  it('un réglage manquant refuse', () => {
+    const { ronde: _ronde, ...sans } = brut()
+    expect(() => chargerAgence(racineAvec(sans))).toThrow(/invalide/)
+  })
+
+  it('un modèle sous acces: anthropic sans prix refuse', () => {
+    const a = brut() as { modeles: { ronde: Record<string, unknown> } }
+    a.modeles.ronde = { acces: 'anthropic', modele: 'modele-sans-prix', effort: 'high' }
+    expect(() => chargerAgence(racineAvec(a))).toThrow(/aucun prix/)
+  })
+
+  it("le chargement n'exige aucune variable d'environnement", () => {
+    const a = brut() as { modeles: { ronde: Record<string, unknown> } }
+    a.modeles.ronde = { ...a.modeles.ronde, acces: 'anthropic' }
+    expect(() => chargerAgence(racineAvec(a))).not.toThrow()
+  })
+})
+
+describe('préflight (§ 0.a)', () => {
+  const agence = { claude: { binaire: 'claude' } }
+
+  it('acces: claude, connecté, sans clé : passe', () => {
+    expect(
+      preflight('claude', agence, {}, statut({ loggedIn: true, authMethod: 'claude.ai' })),
+    ).toEqual({})
+  })
+
+  it("acces: claude refuse si ANTHROPIC_API_KEY est dans l'environnement, avant d'appeler le binaire", () => {
+    let appele = false
+    const executer: Executer = () => {
+      appele = true
+      return { code: 0, sortie: '{"loggedIn":true}', erreur: '' }
+    }
+    expect(() => preflight('claude', agence, { ANTHROPIC_API_KEY: 'x' }, executer)).toThrow(
+      /ANTHROPIC_API_KEY est dans l'environnement/,
+    )
+    expect(appele).toBe(false)
+  })
+
+  it("acces: claude refuse si le binaire n'est pas connecté", () => {
+    expect(() => preflight('claude', agence, {}, statut({ loggedIn: false }))).toThrow(
+      /pas connecté/,
+    )
+  })
+
+  it('acces: claude refuse si le binaire échoue ou parle mal', () => {
+    expect(() => preflight('claude', agence, {}, statut({}, 1))).toThrow(/a échoué/)
+    expect(() =>
+      preflight('claude', agence, {}, () => ({ code: 0, sortie: 'pas du json', erreur: '' })),
+    ).toThrow(/illisible/)
+  })
+
+  it('acces: anthropic exige la clé, au moment de l’appel seulement', () => {
+    expect(() => preflight('anthropic', agence, {})).toThrow(/ANTHROPIC_API_KEY absente/)
+    expect(preflight('anthropic', agence, { ANTHROPIC_API_KEY: 'k' })).toEqual({ cle: 'k' })
+  })
+
+  it('assertEnv refuse une variable vide', () => {
+    expect(() => assertEnv('X', { X: '' })).toThrow(/X absente/)
+    expect(assertEnv('X', { X: 'v' })).toBe('v')
+  })
+})

@@ -1,0 +1,68 @@
+# La config de l'agence (PLAN-RONDE.md § 4.1, R7 ; amendée par son § 0.a) :
+# les modèles de la ronde et du chantier, leurs prix, les bornes. Sans secret.
+# Le quotidien d'un client (traduction, échappée, fabrication d'un geste
+# appris) ne passe pas par ici : sa config désigne son modèle (GLM-5.3).
+#
+# acces: claude    = l'abonnement claude.ai, par le binaire `claude` : le
+#                    laboratoire, jusqu'à la finalisation (§ 0.a). Préflight :
+#                    `claude auth status` connecté, ANTHROPIC_API_KEY absente.
+#                    Le coût est celui que le binaire rapporte : « estimé par
+#                    le binaire », jamais « mesuré ».
+# acces: anthropic = la clé d'API de l'agence (ANTHROPIC_API_KEY), le mode de
+#                    PLAN-GENERAL.md G10. La bascule doit avoir lieu avant la
+#                    finalisation, au plus tard avant la phase E ; tout se
+#                    mesure à nouveau ce jour-là.
+modeles:
+  ronde: { acces: claude, modele: claude-fable-5-1, effort: high }
+  chantier:
+    plan: { acces: claude, modele: claude-fable-5-1, effort: high }
+    implementation: { acces: claude, modele: claude-opus-5-5, effort: high }
+    revue: { acces: claude, modele: claude-fable-5-1, effort: high }
+
+# Dollars par million de tokens, relus dans la doc d'Anthropic le 2026-10-11
+# (platform.claude.com/docs/en/about-claude/pricing ; écriture de cache à 5 min).
+# Servent à l'estimation sous acces: anthropic ; sous acces: claude, le
+# binaire rapporte son propre coût.
+prix_par_million_usd:
+  claude-fable-5-1: { entree: 10, sortie: 50, cache_ecrit: 12.5, cache_lu: 0.25 }
+  claude-opus-5-5: { entree: 4, sortie: 20, cache_ecrit: 5, cache_lu: 0.2 }
+
+# Le binaire de Claude Code (acces: claude) : son nom, ou un chemin.
+claude:
+  binaire: claude
+
+# Le clone de la nuit (PLAN-GENERAL.md G3, PLAN-RONDE.md R11) : un clone du
+# dépôt réservé à la nuit, jamais l'arbre d'un humain ; `pnpm nuit` le remet à
+# `origin/main` au début de chaque nuit, les chantiers en sont des arbres de
+# travail, la fusion et le push se font là. `~/` : le dossier de l'utilisateur.
+depot_nuit: ~/harnais-nuit
+
+ronde:
+  # Au plus tant de missions par ronde (R3).
+  missions_max: 3
+  # Les comptes du résumé, sur tant de jours glissants (PLAN-RONDE.md § 10.5).
+  comptes_jours: 30
+  # La sortie de l'appel (acces: anthropic), et le délai mural de l'appel.
+  tokens_sortie: 16000
+  delai_secondes: 600
+  # Ce que la ronde lit de la mémoire (R10).
+  memoire: { index_lignes: 60, rondes_jours: 7 }
+
+chantier:
+  missions_max_par_nuit: 1
+  tours_max: 60
+  budget_usd_par_mission: 10
+  # Au-delà, la mission devait être découpée : « question pour l'atelier » (G1, condition 7).
+  lignes_max: 600
+  delai_secondes: 3600
+  # Les règles d'outils de l'implémentation, bornées à l'arbre de travail
+  # (`./**` : un `Write` nu écrit partout sur la machine, sondé le 2026-10-11) ;
+  # le plan et la relecture n'ont que `outils_lecture`.
+  # Les commandes, exactes : `git diff*` permettrait `--no-index` ou `--output=` hors de l'arbre.
+  outils_autorises: ["Read(./**)", "Edit(./**)", "Write(./**)", "Glob(./**)", "Grep(./**)", "Bash(pnpm check)", "Bash(pnpm test)", "Bash(git diff)", "Bash(git diff main...HEAD)", "Bash(git status)"]
+  outils_lecture: ["Read(./**)", "Glob(./**)", "Grep(./**)", "Bash(git diff main...HEAD)", "Bash(git log --oneline main..HEAD)", "Bash(git status)"]
+  # Le client des évals de traduction que le code rejoue dans l'arbre (G1, condition 4), relatif à l'arbre.
+  evals_client: exemples/client-fictif
+  chemins_autorises: ["metiers/*/code/src/**", "evals/consignes.yaml", "evals/gestes.yaml", "metiers/*/fiche.md", "memoire/**"]
+  # Jamais, même dans la bande : les contrôles des règles (I-01…I-20, les échéances d'I-17) et l'accès aux données du client.
+  chemins_interdits: ["metiers/*/code/src/controles.ts", "metiers/*/code/src/echeances.ts", "metiers/*/code/src/connecteurs/**"]

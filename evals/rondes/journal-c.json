@@ -1,0 +1,176 @@
+[
+  {
+    "horodatage": "2026-10-11T06:00:00Z",
+    "type": "appel_modele",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T0800-3b33",
+    "issue": "traduire",
+    "donnees": {
+      "tour": 1,
+      "modele": "zai-org/GLM-5.3",
+      "usage": {
+        "entree": 98,
+        "sortie": 113,
+        "cacheEcrit": 0,
+        "cacheLu": 2304
+      },
+      "cout_usd": 0.001233,
+      "duree_ms": 2965,
+      "stop_reason": "tool_use"
+    }
+  },
+  {
+    "horodatage": "2026-10-11T06:00:00Z",
+    "type": "consigne",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T0800-3b33",
+    "issue": "action",
+    "motif": "Montre-moi le planning de demain.",
+    "donnees": {
+      "identite": {
+        "role": "patron"
+      },
+      "demande": {
+        "sorte": "action",
+        "action": "voir_planning",
+        "params": {
+          "agent": null,
+          "du": "2026-10-12",
+          "au": "2026-10-12"
+        }
+      },
+      "params": {
+        "agent": null,
+        "du": "2026-10-12",
+        "au": "2026-10-12"
+      }
+    }
+  },
+  {
+    "horodatage": "2026-10-11T07:00:00Z",
+    "type": "appel_modele",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T0900-fac6",
+    "issue": "traduire",
+    "donnees": {
+      "tour": 1,
+      "modele": "zai-org/GLM-5.3",
+      "usage": {
+        "entree": 99,
+        "sortie": 76,
+        "cacheEcrit": 0,
+        "cacheLu": 2304
+      },
+      "cout_usd": 0.001072,
+      "duree_ms": 2466,
+      "stop_reason": "tool_use"
+    }
+  },
+  {
+    "horodatage": "2026-10-11T07:00:00Z",
+    "type": "consigne",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T0900-fac6",
+    "issue": "action",
+    "motif": "Quelles sont les échéances à venir ?",
+    "donnees": {
+      "identite": {
+        "role": "patron"
+      },
+      "demande": {
+        "sorte": "action",
+        "action": "voir_echeances",
+        "params": {}
+      },
+      "params": {}
+    }
+  },
+  {
+    "horodatage": "2026-10-11T08:00:00Z",
+    "type": "appel_modele",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T1000-d39d",
+    "issue": "traduire",
+    "donnees": {
+      "tour": 1,
+      "modele": "zai-org/GLM-5.3",
+      "usage": {
+        "entree": 181,
+        "sortie": 26,
+        "cacheEcrit": 0,
+        "cacheLu": 2048
+      },
+      "cout_usd": 0.0009,
+      "duree_ms": 2019,
+      "stop_reason": "tool_use"
+    }
+  },
+  {
+    "horodatage": "2026-10-11T08:00:00Z",
+    "type": "consigne",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T1000-d39d",
+    "issue": "action",
+    "motif": "Quels sont mes titres ?",
+    "donnees": {
+      "identite": {
+        "role": "agent",
+        "agent": "A-2"
+      },
+      "demande": {
+        "sorte": "action",
+        "action": "mes_titres",
+        "params": {}
+      },
+      "params": {}
+    }
+  },
+  {
+    "horodatage": "2026-10-11T09:00:00Z",
+    "type": "appel_modele",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T1100-6cb6",
+    "issue": "traduire",
+    "donnees": {
+      "tour": 1,
+      "modele": "zai-org/GLM-5.3",
+      "usage": {
+        "entree": 183,
+        "sortie": 2355,
+        "cacheEcrit": 0,
+        "cacheLu": 2048
+      },
+      "cout_usd": 0.011151,
+      "duree_ms": 34793,
+      "stop_reason": "tool_use"
+    }
+  },
+  {
+    "horodatage": "2026-10-11T09:00:00Z",
+    "type": "consigne",
+    "client": "client fictif (sécurité privée)",
+    "objet": "C-20261011T1100-6cb6",
+    "issue": "action",
+    "motif": "Montre-moi mon planning de la semaine.",
+    "donnees": {
+      "identite": {
+        "role": "agent",
+        "agent": "A-4"
+      },
+      "demande": {
+        "sorte": "action",
+        "action": "voir_planning",
+        "params": {
+          "agent": null,
+          "du": "2026-10-12",
+          "au": "2026-10-18"
+        }
+      },
+      "params": {
+        "agent": null,
+        "du": "2026-10-12",
+        "au": "2026-10-18"
+      }
+    }
+  }
+]
