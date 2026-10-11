@@ -54,6 +54,28 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
   Lecture seule tant que Lionel n'a pas tranché l'écriture. Pas commencé.
+- `PLAN-GENERAL.md` — **le grand plan** (2026-10-10, rien codé) : où on en
+  est, les décisions G1 à G11 (fusion automatique sous huit conditions en
+  code, retrait, clone de la nuit, mémoire dans le dépôt, fabrication,
+  écriture, identité, journal chaîné, authentification, sauvegarde,
+  livraison signée et tirée, veille et canal, modèles, topologie), et les
+  phases A à I dans l'ordre. Écrit pour Claude Opus 5.5 en effort élevé,
+  sans décision à prendre ; il appelle les plans ci-dessous.
+- `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10, rien codé) :
+  le fournisseur ne reçoit plus aucun nom de salarié, même dans l'échappée et
+  la fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
+  est masquée par la désignation existante, le code restitue, la fuite se
+  mesure en code à chaque passe (seuil 0). Quatre lots.
+- `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
+  rien codé) : chaque nuit un modèle lit un résumé fait en code de ce qui a
+  été demandé (jamais une donnée) et désigne des missions ; le chantier fait
+  coder un geste par Claude Code en mode non interactif, dans un arbre de
+  travail à part, bande métier seulement (garde en code), relu par un autre
+  modèle ; `agence.yaml` : Fable 5.1 planifie et relit, Opus 5.5 code, GLM
+  reste au quotidien. La fusion est automatique sous les conditions de
+  `PLAN-GENERAL.md` G1, dans le clone de la nuit, avec retrait ; la mémoire
+  de la nuit est dans `memoire/` (R10). Dépend du lot 1 des pseudonymes.
+  Quatre lots.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
