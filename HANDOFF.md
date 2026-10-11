@@ -36,9 +36,14 @@ fichiers qu'il cite, si.
   présentation (version 23) reprend la diapositive 6 (espace 3), la
   diapositive 10 (le modèle fabrique, le code vérifie par rejeu, le patron
   active ; l'atelier pour le reste) et la 12 (la promotion existe). Restent
-  « décidés » les pseudonymes et la ronde. Non repris (hors du « décidé →
-  construit ») : « 74 cas d'évals » (il y en a 82 depuis le lot 2) et « la
-  passe 3 avec GLM » dans la diapositive 12. **Prochaine : la phase B**
+  « décidés » les pseudonymes et la ronde. À la demande de Lionel, ensuite :
+  « 82 cas d'évals » partout (60 consignes, 18 échappées, 3 fabrications, 1
+  rejeu ; 78 phrases à relire), la passe 3 (faite le 09/10) retirée de ce qui
+  reste, les mesures à jour (97 % et 53/54), et une diapositive 11 nouvelle
+  (« D'une demande nouvelle à un geste, pas à pas », neuf étapes animées :
+  échappée, contrôle, journal et instantané, compte, fabrication,
+  vérification, activation, le geste, l'atelier) ; présentation version 24,
+  13 diapositives ; mini-site version 14. **Prochaine : la phase B**
   (`PLAN-PSEUDONYMES.md`), dans une autre session.
 - **2026-10-10, nuit : `PLAN-GENERAL.md`, le grand plan, écrit ; rien
   codé.** Lionel a tranché contre la fusion humaine : la chaîne ronde →
