@@ -165,6 +165,10 @@ describe('masquerTables', () => {
     ]
     expect(() => masquerTables([AGENTS], jumeaux)).toThrow(/garde un nom/)
   })
+  it('un nom de moins de trois lettres : la colonne du nom arrête tout aussi', () => {
+    const court = { ...AGENTS, lignes: [{ id: 'P-1', nom: 'Li', ssiap: null }] }
+    expect(() => masquerTables([court], [{ id: 'P-1', nom: 'Li' }])).toThrow(/garde un nom/)
+  })
 })
 
 describe('masquerConsigne (S3)', () => {
@@ -197,6 +201,11 @@ describe('masquerConsigne (S3)', () => {
     expect(masquerConsigne('Combien d’heures a fait Bidule ?', EQUIPE)).toEqual({
       texte: 'Combien d’heures a fait Bidule ?',
     })
+  })
+  it('une réponse donnée ne touche pas un nom complet déjà masqué', () => {
+    expect(
+      masquerConsigne('Compare Karim Haddad et Karim', EQUIPE, [{ mention: 'Karim', id: 'P-6' }]),
+    ).toEqual({ texte: 'Compare P-5 et P-6' })
   })
   it('les réponses déjà données remplacent la mention, au mot près', () => {
     expect(

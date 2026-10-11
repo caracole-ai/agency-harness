@@ -114,19 +114,18 @@ function noms(texte: string, sources: string, nomsConnus: string[], intrus: Intr
       }
       continue
     }
-    // Un nom sans mot de 3 lettres (un identifiant) n'est cité qu'en entier.
+    // Un nom sans mot de 3 lettres (un identifiant, `A-4`) n'est cité qu'en
+    // entier et tel qu'écrit, tiret compris : « il y a 4 » n'est pas A-4
+    // (PLAN-PSEUDONYMES.md S4, les identifiants tiennent lieu de noms).
     if (mots.length === 0) continue
-    for (let i = 0; i + mots.length <= motsDuTexte.length; i++) {
-      const suite = motsDuTexte.slice(i, i + mots.length)
-      const [premier] = suite
-      const dernier = suite.at(-1)
-      if (!premier || !dernier || suite.some((m, j) => m.normal !== mots[j])) continue
-      if (!motsTrouves(sources, mots)) {
-        intrus.push({
-          position: premier.position,
-          texte: texte.slice(premier.position, dernier.fin),
-        })
-      }
+    const entier = () =>
+      new RegExp(
+        `(?<![\\p{L}\\p{N}-])${echapper(normaliser(nom))}(?![\\p{N}]|-[\\p{L}\\p{N}])`,
+        'gu',
+      )
+    for (const m of normaliser(texte).matchAll(entier())) {
+      if (!entier().test(sources))
+        intrus.push({ position: m.index, texte: texte.slice(m.index, m.index + m[0].length) })
     }
   }
 }

@@ -69,11 +69,13 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   phases A à I dans l'ordre. Écrit pour Claude Opus 5.5 en effort élevé,
   sans décision à prendre ; il appelle les plans ci-dessous.
 - `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10 ; phase B de
-  `PLAN-GENERAL.md`, en cours le 2026-10-11, voir `HANDOFF.md`) :
-  le fournisseur ne reçoit plus aucun nom de salarié, même dans l'échappée et
-  la fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
+  `PLAN-GENERAL.md`, faite le 2026-10-11, voir `HANDOFF.md`) :
+  le fournisseur ne reçoit plus aucun nom de salarié dans l'échappée ni la
+  fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
   est masquée par la désignation existante, le code restitue, la fuite se
-  mesure en code à chaque passe (seuil 0). Quatre lots.
+  mesure en code à chaque passe (seuil 0). Quatre lots. Reste hors du plan :
+  la traduction, qui reçoit la phrase telle qu'écrite, et son niveau 2
+  (`designer`), qui montre au modèle jusqu'à trois noms proches à départager.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   rien codé) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -111,7 +113,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `patron` et `agent`, les outils stricts envoyés au modèle et les deux
   méta-outils), `src/conversation/traduire.ts` (une consigne → une action,
   une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
-  modèle ne reçoit que la phrase, sans aucun nom ni poste du client),
+  modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
+  niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
+  de la mention à départager),
   `src/personnes/personnes.ts` (le registre d'accès, `personnes.yaml` dans le
   dossier du client : qui peut parler, avec quel rôle, vérifié avant toute
   ouverture du dossier), `src/conversation/designation.ts` (la personne

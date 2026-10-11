@@ -1414,6 +1414,19 @@ Pièges vus pendant la phase :
   « `agents.nom` » écrit dans le moteur, qui ne connaît pas les tables d'un
   métier. Une telle colonne qui garde un nom après le masque (deux
   personnes au même nom complet) arrête l'échappée : échec fermé.
+- **Relecture indépendante des lots 0 à 3** (sous-agent, lecture seule ;
+  aucun bloquant) : corrigés en un commit : l'intention d'une demande
+  nouvelle, écrite par la traduction, part masquée (`disponibilite_karim`
+  aurait envoyé « karim ») ; une réponse à « vous parlez de qui ? »
+  s'applique après le masque des formes sûres (« Karim Haddad et Karim »,
+  réponse « Karim Benali », ne devient plus « P-6 Haddad ») ; une colonne
+  de nom doit devenir exactement un identifiant (un nom de moins de trois
+  lettres partait en clair). Plus, trouvé par la passe réelle (E-04) : le
+  contrôle prenait « il y a 4 » pour l'identifiant A-4 (suite de mots) et
+  retirait une réponse juste ; un identifiant se cite désormais tel
+  qu'écrit, tiret compris (`reponse.ts`). Gardés comme risques (plus bas) :
+  `designer`, les mots courants qui sont des noms, une question qui
+  reviendrait sur un mot à majuscule proche d'un nom.
 - **Lot 3 : ce qui compte comme « envoyé »** : les systèmes et le contenu
   des messages de l'utilisateur (consigne, résultats d'outils, relances),
   pas ce que le modèle a écrit (sa réflexion peut dire « le plus petit »,

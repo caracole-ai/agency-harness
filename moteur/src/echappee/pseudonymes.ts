@@ -138,12 +138,13 @@ export function fuites(texte: string, personnes: Designable[]): string[] {
 /**
  * La copie masquée : chaque cellule `TEXT` de chaque table passe
  * `masquerTexte`. Une colonne qui porte le nom d'une personne (`masquee`)
- * prend sa description masquée, et une cellule qui garde un nom après le
- * masque (deux personnes au même nom complet) arrête tout : rien ne part. Ne
- * modifie pas l'entrée.
+ * prend sa description masquée, et chacune de ses cellules doit devenir un
+ * identifiant : sinon (deux personnes au même nom complet, un nom de moins de
+ * trois lettres) tout s'arrête, rien ne part. Ne modifie pas l'entrée.
  */
 export function masquerTables(tables: TableCopie[], personnes: Designable[]): TableCopie[] {
   const compilees = compiler(personnes)
+  const ids = new Set(personnes.map((p) => p.id))
   return tables.map((table) => {
     const textes = table.colonnes.filter((c) => c.type === 'TEXT')
     return {
@@ -157,7 +158,7 @@ export function masquerTables(tables: TableCopie[], personnes: Designable[]): Ta
           const v = ligne[c.nom]
           if (typeof v !== 'string') continue
           const m = masquerAvec(v, compilees)
-          if (c.masquee !== undefined && fuitesAvec(m, compilees).length > 0) {
+          if (c.masquee !== undefined && !ids.has(m)) {
             throw new Error(
               `copie : la colonne ${table.nom}.${c.nom} garde un nom après le masque (deux personnes au même nom ?)`,
             )
@@ -201,9 +202,9 @@ const debutDePhrase = (texte: string, position: number) =>
   /^$|[.!?…:;]$/u.test(texte.slice(0, position).replace(/[\s«"“(]+$/u, ''))
 
 /**
- * La consigne telle qu'elle part à l'échappée (S3) : les précisions déjà
- * données remplacées par leur identifiant, puis chaque forme sûre d'un nom
- * (niveau 1). Rend aussi, s'il y en a une, la première mention à faire
+ * La consigne telle qu'elle part à l'échappée (S3) : chaque forme sûre d'un
+ * nom (niveau 1), puis les précisions déjà données (la mention, là où le
+ * masque l'a laissée) remplacées par leur identifiant. Rend aussi, s'il y en a une, la première mention à faire
  * préciser avant tout appel : une forme que plusieurs personnes partagent
  * (un prénom), ou un mot à majuscule initiale qui ressemble à un nom (niveau 2,
  * `proches`). Un mot seul en tête de phrase n'est pas comparé : « Parmi »
@@ -214,13 +215,12 @@ export function masquerConsigne(
   personnes: Designable[],
   precisions: Precision[] = [],
 ): { texte: string; precision?: { mention: string; candidats: Designable[] } } {
-  let texte = consigne
+  const compilees = compiler(personnes)
+  let texte = masquerAvec(consigne, compilees)
   for (const p of precisions) {
     const motif = new RegExp(`(?<![\\p{L}\\p{N}])${echapper(p.mention)}(?![\\p{L}\\p{N}])`, 'gu')
     texte = texte.replace(motif, p.id)
   }
-  const compilees = compiler(personnes)
-  texte = masquerAvec(texte, compilees)
   const partagee = trouver(texte, compilees).find((t) => t.forme.ids.length > 1)
   if (partagee) {
     return {

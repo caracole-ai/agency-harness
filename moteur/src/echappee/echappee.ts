@@ -199,6 +199,8 @@ export async function echappee<Modif>(
   }
 
   const consigneModele = masquerConsigne(consigne, metier.toutes, precisions).texte
+  // L'intention, écrite par la traduction pour une demande nouvelle, peut porter un nom (`disponibilite_karim`).
+  const intentionModele = masquerTexte(intention, metier.toutes)
   const masquer = (texte: string) => masquerTexte(texte, metier.toutes)
   let copie: ReturnType<typeof creerCopie> | undefined
   let instantane: string | undefined
@@ -224,7 +226,7 @@ export async function echappee<Modif>(
         metier.outils.proposer,
       ),
       consigneModele,
-      intention,
+      intentionModele,
       maintenant,
       {
         ...metier.outils,

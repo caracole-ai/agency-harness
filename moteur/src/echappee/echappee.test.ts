@@ -306,6 +306,47 @@ describe('aucun nom ne part au modèle (PLAN-PSEUDONYMES.md § 5.4)', () => {
     expect(e.consigne_modele).toBe('Combien d’heures a fait A-9 ?')
   })
 
+  it('une intention nouvelle qui porte un nom part masquée ; le journal garde celle d’origine', async () => {
+    const dossier = mkdtempSync(join(tmpdir(), 'echappee-'))
+    const journal = new Journal(join(dossier, 'journal.sqlite'))
+    const modele = modeleSimule([repondre('Rien.')])
+    await echappee(
+      {
+        client: 'fictif',
+        dossierClient: dossier,
+        conversation: 'C-int',
+        journal,
+        config: CONFIG,
+        identite: PATRON,
+        quiParle: 'le patron',
+      },
+      {
+        tables: tablesPour(PATRON),
+        outils: {
+          schemaModifications: z.array(Modif),
+          verifier: () => ({ constats: [], description: '' }),
+          decrire: () => '',
+          nomRegle: (id) => id,
+          proposer: true,
+        },
+        regles: [],
+        preferences: 'aucune',
+        personnes: PERSONNES,
+        toutes: PERSONNES,
+      },
+      'Quand Karim Haddad est-il libre ?',
+      'disponibilite_karim',
+      maintenant,
+      modele,
+    )
+    const envoye = JSON.stringify(modele.appels[0]?.messages)
+    expect(envoye).toContain('(intention : disponibilite_A-9)')
+    expect(fuites(envoye, PERSONNES)).toEqual([])
+    const ligne = journal.historique('C-int').find((l) => l.type === TYPE_ECHAPPEE)
+    expect(JSON.parse(ligne?.donnees ?? '{}').intention).toBe('disponibilite_karim')
+    journal.fermer()
+  })
+
   it('une réponse à « vous parlez de qui ? » remplace la mention par l’identifiant choisi', async () => {
     const { appels, lignes, donnees } = await echapper(
       PATRON,
