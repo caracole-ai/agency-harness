@@ -7,6 +7,22 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11, soir : la phase D est prête, pas commencée.** `PLAN-RONDE.md`
+  gagne un § 0 (amendements de Lionel après la phase C) : (a) au
+  laboratoire, l'accès aux modèles d'Anthropic passe par **l'abonnement
+  claude.ai et le binaire `claude`** (`acces: claude`, la ronde aussi, par
+  `--json-schema`), avec un préflight qui refuse si `ANTHROPIC_API_KEY` est
+  dans l'environnement ; **la bascule vers la clé d'API (G10) doit avoir
+  lieu avant la finalisation, au plus tard avant la phase E** ; (b) une
+  mission qui écrit n'« attend » plus le lot 4 (« promotion en cours », ou
+  le chantier) ; (c) les étiquettes de `pnpm evals ronde` : un brouillon de
+  la session, puis celles de Lionel. `PLAN-GENERAL.md` G10 et phase D le
+  disent aussi. Les consignes des deux sessions (D1 : lots 0 et 1 ; D2 :
+  lots 2 et 3, relecture, fusion) sont dans `SESSION-D.md`. Présentation en
+  version 28 : une diapositive de plus (« Quand aucun geste ne correspond :
+  l'échappée de bout en bout », 15 étapes, après le circuit), et le mot
+  « outil » réservé aux tableurs de la PME : pour le modèle, « formulaire »
+  (ce qu'il remplit) et « accès » (ce qu'il n'a pas).
 - **2026-10-11 : `PLAN-GENERAL.md` phase C faite (l'écriture par un geste
   appris, `PLAN-PROMOTION.md` § 10, G5), branche `general/c-ecriture`,
   fusionnée dans `main` et poussée.** Un geste appris peut porter
