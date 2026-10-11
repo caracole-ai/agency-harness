@@ -7,6 +7,36 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11 : `PLAN-GENERAL.md` phase B faite, les pseudonymes
+  (`PLAN-PSEUDONYMES.md`, lots 0 à 3) fusionnés dans `main` et poussés.**
+  L'échappée et la fabrication ne reçoivent plus aucun nom de salarié :
+  `moteur/src/echappee/pseudonymes.ts` (masquer, restituer, mesurer, au mot
+  près) ; la consigne, la copie, les sorties de `verifier` et l'intention
+  partent masquées (l'identifiant tient lieu de nom), `quiParle` dit
+  « l'agent A-2 », le contrôle se fait sur les identifiants, le code restitue
+  les noms dans ce qui est montré, le journal garde `consigne_modele` et
+  `texte_modele` ; une demande nouvelle du patron qui nomme quelqu'un
+  d'ambigu reçoit « Vous parlez de qui ? » avant tout appel ; la fabrication
+  lit les versions masquées (une échappée d'avant n'est pas fabricable) ;
+  chaque cas d'éval avec modèle porte sa **fuite**, colonne et seuil 0. Une
+  branche par lot (`pseudonymes/lot-0` … `lot-3`), un commit par lot, plus un
+  commit de corrections (relecture indépendante : aucun bloquant ; et E-04).
+  `pnpm check` vert : 382 tests moteur, 125 métier, 20 interface. **Mesuré,
+  GLM-5.3 via GMI** (analyse : passe 17 de `evals/erreurs-2026-10-08.md`) :
+  - **fuite 0** sur toutes les traces de l'échappée (cinq passes, 90 cas) et
+    de la fabrication (trois passes) ;
+  - **traduction 57/60, fuite 1 cas (R-2)** : le niveau 2 (`designer`, la
+    traduction du 08/10, hors du plan) montre au modèle les noms proches ;
+  - **échappée sur le code final : 51/54, 39/42 sur les 14 cas d'origine :
+    sous le seuil de G4 (41/42)** : deux troncatures au plafond de la config
+    sur des propositions (E-08, E-13) et E-11 (« 0 heure » écrit pour une
+    somme `null`, retiré à raison) ; E-04 était un défaut du harnais, corrigé ;
+  - **fabrication 0/3, 1/3, 1/3 (2/9)**, comme avant (phase A : 2/9) ;
+  - tokens d'entrée d'une échappée : −3,5 %.
+  Fin de phase (§ 0.7) : le mini-site et la présentation disent les
+  pseudonymes construits (voir « Phase B » plus bas). **Prochaine : la
+  phase C** (`PLAN-PROMOTION.md` § 10, l'écriture par un geste appris), dans
+  une autre session.
 - **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
   promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
   des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
@@ -756,6 +786,35 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Phase B, l'échappée sous son seuil** : 39/42 sur les 14 cas d'origine
+  avec les pseudonymes (G4 : 41/42). Trois troncatures au plafond de la
+  config sur 20 propositions, aucune sur les six passes d'avant : plausible
+  que raisonner sur des identifiants allonge la réflexion de GLM, pas
+  prouvé. À remesurer sur plus de passes ; relever
+  `par_demande.tokens_sortie` est un réglage du client, à Lionel.
+- **Phase B, `designer` envoie des noms** : au niveau 2 de la traduction
+  (une faute de frappe), le modèle voit jusqu'à trois noms complets
+  (« A-11 — Aïcha Traoré »). La décision du 08/10 le voulait ; celle du
+  10/10 (« le fournisseur ne reçoit jamais le nom d'un salarié ») le
+  contredit. La colonne « fuite » de `pnpm evals traduire` le montre (R-2) :
+  à trancher par Lionel (garder, ou poser la question au lieu d'appeler).
+- **Phase B, un mot courant qui est un nom** (« Petit », « Pierre »,
+  « Marchand ») est masqué dans une consigne et une cellule : « le petit
+  chantier » part en « le A-13 chantier ». Sans fuite, mais une réponse peut
+  en souffrir ; aucun cas des évals ne le montre.
+- **Phase B, une question qui reviendrait** : un mot à majuscule proche
+  d'un nom (un site, un poste) déclenche « Vous parlez de qui ? » à chaque
+  fois ; une réponse hors des candidats est une nouvelle consigne. Aucune des
+  78 consignes des évals ne le déclenche ; risque de structure.
+- **Phase B, un nom mal écrit en tête de phrase** (« Kareem a fait… ») passe
+  tel quel au modèle : `fuites` ne le voit pas (ce n'est pas une forme
+  connue). Mesurable seulement par une étiquette.
+- **Phase B, un agent qui nomme un collègue** lit « A-1 » dans la réponse
+  (l'identifiant, jamais un nom qu'il n'a pas écrit) ; E-11 montre que le
+  modèle peut alors interroger la copie et écrire « 0 heure ».
+- **Phase B, le piège E-14** ne se lit que si le modèle lit un site (le
+  piège est passé du nom de A-3 au site de la Ronde cynophile).
+
 - **Lot 3 (2026-10-10)** : « postérieure à toute modification du fichier »
   (§ 7.1) est tenu par l'empreinte, pas par la date du fichier (voir « Lot 3
   de la promotion ») ; l'activation à l'écran est rejouée avec le modèle
@@ -1378,6 +1437,97 @@ Pièges vus pendant la phase :
   clause G4 (b) : 41 000 caractères de réflexion pour `heures_par_agent`.
   Une « réponse tronquée » à la fabrication se lit dans la trace
   (`stop_reason: max_tokens`, `sortie` = `par_demande.tokens_sortie`).
+
+### Phase B du plan général (`PLAN-PSEUDONYMES.md`, 2026-10-11)
+
+- **Lot 0 : la colonne du nom est désignée par le métier**, pas par le
+  moteur : `ColonneCopie.masquee` (la description masquée) au lieu de
+  « `agents.nom` » écrit dans le moteur, qui ne connaît pas les tables d'un
+  métier. Une telle colonne qui garde un nom après le masque (deux
+  personnes au même nom complet) arrête l'échappée : échec fermé.
+- **Relecture indépendante des lots 0 à 3** (sous-agent, lecture seule ;
+  aucun bloquant) : corrigés en un commit : l'intention d'une demande
+  nouvelle, écrite par la traduction, part masquée (`disponibilite_karim`
+  aurait envoyé « karim ») ; une réponse à « vous parlez de qui ? »
+  s'applique après le masque des formes sûres (« Karim Haddad et Karim »,
+  réponse « Karim Benali », ne devient plus « P-6 Haddad ») ; une colonne
+  de nom doit devenir exactement un identifiant (un nom de moins de trois
+  lettres partait en clair). Plus, trouvé par la passe réelle (E-04) : le
+  contrôle prenait « il y a 4 » pour l'identifiant A-4 (suite de mots) et
+  retirait une réponse juste ; un identifiant se cite désormais tel
+  qu'écrit, tiret compris (`reponse.ts`). Gardés comme risques (plus bas) :
+  `designer`, les mots courants qui sont des noms, une question qui
+  reviendrait sur un mot à majuscule proche d'un nom.
+- **Fusion malgré l'échappée sous son seuil** (39/42, G4 : 41/42) : la
+  phase n'a pas de règle pour ce cas. Fusionné quand même : la fuite, le
+  but du plan, est à 0 ; deux des trois écarts sont des troncatures au
+  plafond de la config (que la session ne peut pas relever :
+  `exemples/client-fictif/` ne s'écrit pas), le troisième est un résumé
+  retiré à raison ; la ronde (phase D) dépend du lot 1. Le mini-site ne dit
+  pas « 41 sur 42 » pour l'échappée avec pseudonymes.
+- **Passes** : une d'échappée après le lot 1 (code d'alors), puis trois sur
+  le code final (après la relecture et E-04) ; une de traduction ; trois de
+  fabrication (la première avec le code du lot 2, les deux autres du lot 3 :
+  le contrôle corrigé ensuite ne change pas la fabrication). 1,48 $.
+- **Lot 3 : ce qui compte comme « envoyé »** : les systèmes et le contenu
+  des messages de l'utilisateur (consigne, résultats d'outils, relances),
+  pas ce que le modèle a écrit (sa réflexion peut dire « le plus petit »,
+  et « Petit » est un nom du client fictif). Un nom que le modèle inventerait
+  sans fuite est impossible ; une fuite, elle, est dans ce qui est envoyé.
+- **Lot 3 : la traduction a un permis** : les formes de nom que la consigne
+  porte telle qu'écrite (la traduction la reçoit ainsi depuis le 08/10, ce
+  plan ne la touche pas). Tout autre nom envoyé est une fuite, ceux que
+  `designer` montre au niveau 2 compris.
+- **Lot 3 : la fuite entre dans « seuil atteint »** du tableau et du
+  lanceur ; pas dans la décision « activable » de `pnpm promotions`, qui lit
+  le taux et les cas stricts de la passe de traduction (inchangé).
+  `modeleTrace` garde aussi `systemes` (chaque système distinct), pour
+  mesurer l'échappée et la fabrication d'un même cas.
+- **Lot 2 : une échappée d'avant les pseudonymes est écartée, pas toute la
+  fabrication** : la fabrication se fait avec les échappées masquées si elles
+  sont au moins trois ; sinon l'échec dit « échappée antérieure aux
+  pseudonymes » et les identifiants écartés. `completerGeste` ne change pas :
+  il acceptait déjà un identifiant pour un paramètre `agent`.
+- **Lot 2 : une phrase de plus au système de la fabrication** (« une
+  personne est écrite par son identifiant (A-1), qui tient lieu de son nom
+  ; … le geste rend agents.nom ») : sans elle, le modèle qui lit « A-1 a fait
+  24 h » rendrait l'identifiant, et le rejeu (texte montré, vrais noms)
+  échouerait.
+- **Lot 1 : un agent masque aussi le nom d'un collègue** (S7 l'emporte sur
+  « une autre reste » du § 5.3) : la consigne et la copie se masquent avec
+  **toutes** les personnes du client (`EchappeeDuMetier.toutes`), sinon E-11
+  (un agent demande les heures de Karim) enverrait « Karim » et la fuite ne
+  serait pas à 0. La restitution et le contrôle n'utilisent que les
+  personnes visibles du rôle : un agent lit « A-1 » s'il demande un collègue,
+  jamais un nom qu'il n'a pas écrit ; et il n'a jamais de question « vous
+  parlez de qui ? » (elle lui montrerait des collègues, D4).
+- **Lot 1 : ce qui déclenche la question avant l'échappée** : une forme que
+  plusieurs personnes partagent (un prénom), ou une suite de mots à
+  majuscule initiale qui ressemble à un nom (`proches`, une à trois
+  personnes : le critère 2 du plan en a une), sauf un mot seul en tête de
+  phrase (« Parmi » ressemble à « Karim »). Vérifié sur les 78 consignes des
+  évals avec les noms du client fictif : aucune question à tort. Un nom mal
+  écrit en tête de phrase (« Kareem a fait… ») passe tel quel : fuite
+  résiduelle, mesurable seulement par une étiquette.
+- **Lot 1 : `EchappeeDuMetier.nomsConnus` disparaît**, remplacé par
+  `personnes` (visibles) et `toutes` ; le moteur en tire les identifiants
+  pour le contrôle. `Echappee` gagne un dernier paramètre optionnel,
+  `precisions` (les réponses déjà données), que les évals n'emploient pas.
+- **Lot 1 : le piège des évals de l'échappée change de cellule** (le site de
+  la Ronde cynophile, `postes.csv`, au lieu du nom de A-3) : un nom ne part
+  plus au modèle, le piège n'aurait plus été lu, et la restitution aurait
+  montré le nom piégé au patron (E-14 en écart sans faute du modèle). Seule
+  cellule de texte libre qui reste en clair (S6) : les activités de la carte
+  sont une énumération. E-14 (cartes expirées) ne lit le piège que si le
+  modèle lit un site.
+- **Lot 1 : les constats d'une proposition restent masqués au journal**
+  (ceux que le modèle a lus) ; le texte et le résumé montrés sont restitués.
+  `texte_modele` n'est écrit que pour une réponse et un abandon (le texte
+  d'une proposition est rendu par le code du métier, noms compris).
+- **Lot 0 : `fuites` rend les formes telles qu'écrites, la plus longue
+  seulement** (« Karim Haddad », pas aussi « Karim » et « Haddad ») ; une
+  forme partagée par deux personnes (un prénom) n'est pas masquée et compte
+  comme fuite (§ 4 du plan).
 
 ## Commandes
 

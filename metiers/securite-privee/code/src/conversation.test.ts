@@ -642,6 +642,145 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
   })
 })
 
+describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l’échappée (PLAN-PSEUDONYMES.md S3)', () => {
+  const nouvelle: Scripte = {
+    outil: 'demande_nouvelle',
+    entree: { intention: 'heures_par_agent', resume: 'x' },
+  }
+  const heures: Scripte = {
+    outil: 'requete',
+    entree: {
+      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent",
+    },
+  }
+  const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+  /** Ce que l'échappée a envoyé : tout appel après la traduction. */
+  const echappe = (appels: { messages: unknown }[]) => appels.map((a) => JSON.stringify(a.messages))
+  const appelsEchappee = (s: Session, conversation: string) =>
+    lignes(s, conversation).filter((l) => l.type === TYPE_APPEL && l.issue === 'echappee')
+  const echappeeDe = (s: Session, conversation: string) => {
+    const l = lignes(s, conversation).find((x) => x.type === TYPE_ECHAPPEE)
+    return { motif: l?.motif, donnees: JSON.parse(l?.donnees ?? '{}') }
+  }
+
+  it('une correspondance sûre : l’identifiant part, le nom revient dans la réponse', async () => {
+    const s = session()
+    const consigne = "Combien d'heures a fait Karim cette semaine ?"
+    const { r, modele, conversation } = await tour(
+      s,
+      PATRON,
+      [nouvelle, heures, repondre('A-1 a fait 24 heures.')],
+      consigne,
+    )
+    expect(r).toEqual({ sorte: 'resultat', texte: 'Karim Haddad a fait 24 heures.' })
+    const [, ...apres] = echappe(modele.appels)
+    expect(apres.length).toBe(2)
+    for (const m of apres) expect(m).not.toContain('Karim')
+    expect(apres[0]).toContain("Combien d'heures a fait A-1 cette semaine ?")
+    expect(echappeeDe(s, conversation)).toMatchObject({
+      motif: consigne,
+      donnees: {
+        consigne_modele: "Combien d'heures a fait A-1 cette semaine ?",
+        texte_modele: 'A-1 a fait 24 heures.',
+        texte: 'Karim Haddad a fait 24 heures.',
+      },
+    })
+  })
+
+  it('un nom proche : la question avant tout appel d’échappée ; « 1 » relance la demande avec l’identifiant', async () => {
+    const s = session()
+    const consigne = "Combien d'heures a fait Kareem cette semaine ?"
+    const premier = await tour(s, PATRON, [nouvelle], consigne)
+    expect(premier.r).toEqual({
+      sorte: 'precision',
+      texte: 'Vous parlez de qui : Karim Haddad ?',
+      candidats: [{ id: 'A-1', nom: 'Karim Haddad' }],
+    })
+    expect(premier.modele.appels).toHaveLength(1)
+    expect(appelsEchappee(s, premier.conversation)).toEqual([])
+    expect(lignes(s, premier.conversation).at(-1)?.type).toBe(TYPE_PRECISION_ATTENDUE)
+
+    const reponse = await tour(
+      s,
+      PATRON,
+      [heures, repondre('A-1 a fait 24 heures.')],
+      '1',
+      premier.conversation,
+    )
+    expect(reponse.r).toEqual({ sorte: 'resultat', texte: 'Karim Haddad a fait 24 heures.' })
+    expect(reponse.modele.appels).toHaveLength(2)
+    expect(echappe(reponse.modele.appels)[0]).toContain(
+      "Combien d'heures a fait A-1 cette semaine ?",
+    )
+    for (const m of echappe(reponse.modele.appels)) expect(m).not.toContain('Kareem')
+    expect(echappeeDe(s, premier.conversation)).toMatchObject({
+      motif: consigne,
+      donnees: { consigne_modele: "Combien d'heures a fait A-1 cette semaine ?" },
+    })
+    const consignes = lignes(s, premier.conversation).filter((l) => l.type === 'consigne')
+    expect(consignes.map((l) => l.issue)).toEqual(['nouvelle', 'precision'])
+  })
+
+  it('un prénom que deux agents partagent : la question, puis le nom répondu', async () => {
+    const s = session((dossier) => {
+      const agents = join(dossier, 'agents.csv')
+      writeFileSync(
+        agents,
+        `${readFileSync(agents, 'utf8').trimEnd()}\nA-14;Aïcha Mansouri;surveillance-humaine;2023-03-01;2028-02-29;;oui;oui;;;;;;;;;;\n`,
+      )
+    })
+    const premier = await tour(s, PATRON, [nouvelle], "Combien d'heures a fait Aïcha ?")
+    expect(premier.r).toMatchObject({
+      sorte: 'precision',
+      texte: 'Vous parlez de qui : Aïcha Traoré ou Aïcha Mansouri ?',
+    })
+    const reponse = await tour(
+      s,
+      PATRON,
+      [repondre('A-14 : aucune heure.')],
+      'Mansouri',
+      premier.conversation,
+    )
+    expect(reponse.r).toEqual({ sorte: 'resultat', texte: 'Aïcha Mansouri : aucune heure.' })
+    expect(echappe(reponse.modele.appels)[0]).toContain("Combien d'heures a fait A-14 ?")
+  })
+
+  it('aucune correspondance : le mot passe tel quel, sans question', async () => {
+    const s = session()
+    const { r, modele } = await tour(
+      s,
+      PATRON,
+      [nouvelle, repondre('Personne ne s’appelle ainsi.')],
+      "Combien d'heures a fait Bidule ?",
+    )
+    expect(r.sorte).toBe('resultat')
+    expect(echappe(modele.appels)[1]).toContain("Combien d'heures a fait Bidule ?")
+  })
+
+  it('un agent qui nomme un collègue : ni question ni nom ; il ne lit que ses données', async () => {
+    const s = session()
+    const { r, modele, conversation } = await tour(
+      s,
+      agent('A-2'),
+      [nouvelle, heures, repondre('Je ne vois que tes heures : A-2, 16 heures.')],
+      "Combien d'heures a fait Karim cette semaine ?",
+    )
+    expect(r).toEqual({
+      sorte: 'resultat',
+      texte: 'Je ne vois que tes heures : Julien Lefèvre, 16 heures.',
+    })
+    const [, ...apres] = echappe(modele.appels)
+    for (const m of apres) {
+      expect(m).not.toContain('Karim')
+      expect(m).not.toContain('Julien')
+    }
+    expect(modele.appels[1]?.systeme).toContain("Tu travailles pour l'agent A-2 ")
+    expect(echappeeDe(s, conversation).donnees.consigne_modele).toBe(
+      "Combien d'heures a fait A-1 cette semaine ?",
+    )
+  })
+})
+
 describe('un geste appris, chargé et exécuté (PLAN-PROMOTION.md § 5.5)', async () => {
   // Semaine du 05/10 au 11/10 : Julien (A-2) 16 h, Sophie (A-3) 12 h.
   const DU = '2026-10-05'

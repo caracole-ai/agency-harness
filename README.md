@@ -68,11 +68,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   livraison signée et tirée, veille et canal, modèles, topologie), et les
   phases A à I dans l'ordre. Écrit pour Claude Opus 5.5 en effort élevé,
   sans décision à prendre ; il appelle les plans ci-dessous.
-- `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10, rien codé) :
-  le fournisseur ne reçoit plus aucun nom de salarié, même dans l'échappée et
-  la fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
+- `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10 ; phase B de
+  `PLAN-GENERAL.md`, faite le 2026-10-11, voir `HANDOFF.md`) :
+  le fournisseur ne reçoit plus aucun nom de salarié dans l'échappée ni la
+  fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
   est masquée par la désignation existante, le code restitue, la fuite se
-  mesure en code à chaque passe (seuil 0). Quatre lots.
+  mesure en code à chaque passe (seuil 0). Quatre lots. Reste hors du plan :
+  la traduction, qui reçoit la phrase telle qu'écrite, et son niveau 2
+  (`designer`), qui montre au modèle jusqu'à trois noms proches à départager.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   rien codé) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -110,13 +113,17 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `patron` et `agent`, les outils stricts envoyés au modèle et les deux
   méta-outils), `src/conversation/traduire.ts` (une consigne → une action,
   une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
-  modèle ne reçoit que la phrase, sans aucun nom ni poste du client),
+  modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
+  niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
+  de la mention à départager),
   `src/personnes/personnes.ts` (le registre d'accès, `personnes.yaml` dans le
   dossier du client : qui peut parler, avec quel rôle, vérifié avant toute
   ouverture du dossier), `src/conversation/designation.ts` (la personne
   qu'une mention désigne : le code décide si c'est sûr, sinon une liste
   courte que le modèle départage, sinon une question au demandeur),
   `src/conversation/conversation.ts` (le déroulé d'un tour : la porte,
+  une demande nouvelle du patron qui nomme quelqu'un d'ambigu reçoit
+  « Vous parlez de qui ? » avant tout appel d'échappée ;
   plafond du mois et traduction sur le journal seul, puis le dossier, la
   personne nommée, exécution ou confirmation par « oui » à la
   reformulation, tout au journal), `src/cli/parler.ts` et
@@ -130,7 +137,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   laisse au journal son identifiant `E-…`, le rôle, le texte final tel que
   montré et l'instantané de sa copie, `echappees/<id>.json` chez le client,
   pour que la promotion puisse la rejouer ; `requete.ts` lie les paramètres
-  d'un geste appris, `:agent`, jamais collés dans le SQL). `src/archetypes/candidats.ts` expose
+  d'un geste appris, `:agent`, jamais collés dans le SQL ; `pseudonymes.ts`,
+  `PLAN-PSEUDONYMES.md`, masque les noms en identifiants dans ce qui part au
+  modèle, les restitue dans ce qui est montré et mesure une fuite, au mot
+  près). `src/archetypes/candidats.ts` expose
   aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
@@ -302,7 +312,10 @@ pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [-
                          # copie fraîche par cas) : traduire, echappee et promotion appellent le
                          # vrai modèle (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la
                          # fabrication, avec GLM-5.3) ; gestes rejoue les gestes appris sur leurs
-                         # instantanés sans modèle (0 $, seuil 100 %) ;
+                         # instantanés sans modèle (0 $, seuil 100 %) ; chaque cas avec modèle a
+                         # sa colonne « fuite » : les noms du fichier des agents partis au modèle,
+                         # comptés en code (la consigne telle qu'écrite permise à la traduction),
+                         # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,

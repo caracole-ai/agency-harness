@@ -37,7 +37,13 @@ export function tablesPour(
       description: `les agents de sécurité de l'entreprise et leurs titres. ${INCONNU}`,
       colonnes: [
         { nom: 'id', type: 'TEXT', description: "l'identifiant de l'agent (A-1)" },
-        { nom: 'nom', type: 'TEXT', description: 'prénom et nom' },
+        {
+          nom: 'nom',
+          type: 'TEXT',
+          description: 'prénom et nom',
+          // Dans la copie de l'échappée, le nom ne part pas (PLAN-PSEUDONYMES.md S2).
+          masquee: "l'identifiant de l'agent, qui tient lieu de nom",
+        },
         {
           nom: 'carte_activites',
           type: 'TEXT',

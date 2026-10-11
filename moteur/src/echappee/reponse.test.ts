@@ -92,6 +92,15 @@ describe('verifierReponse', () => {
       intrus: ['P-2', '2'],
     })
   })
+  it('un identifiant se cite tel qu’écrit : « il y a 4 » n’est pas A-4, « A-41 » pas A-4', () => {
+    const noms = ['A-4', 'A-1']
+    expect(verifierReponse('Il y a 4 vacations de nuit.', ['nb\n4'], noms)).toEqual({ ok: true })
+    expect(verifierReponse('A-41 et a-1 : 4.', ['a-1 | 4\nA-41'], noms)).toEqual({ ok: true })
+    expect(verifierReponse('A-4 a 4 vacations.', ['nb\n4'], noms)).toEqual({
+      ok: false,
+      intrus: ['A-4'],
+    })
+  })
 })
 
 describe('citations et contient (la promotion, PLAN-PROMOTION.md § 6.2)', () => {

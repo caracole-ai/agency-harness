@@ -1,15 +1,19 @@
 import { z } from 'zod'
 import { ROLES } from '../conversation/actions'
+import { type Designable, normaliserNom } from '../conversation/designation'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
+import { fuites } from '../echappee/pseudonymes'
 import { contient } from '../echappee/reponse'
 import { GesteAppris } from '../gestes/geste-appris'
 import type { AppelModele, Modele, ReponseModele } from '../modele/modele'
 
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : des cas écrits à la
 // main, des vérifications binaires en code, aucun juge. Ce fichier lit les
-// cas et dit, pour chacun, ses écarts à l'attendu ; `cli/evals.ts` appelle le
-// modèle, garde les traces et écrit le tableau des résultats.
+// cas et dit, pour chacun, ses écarts à l'attendu et sa fuite (un nom du
+// fichier des agents parti au modèle, PLAN-PSEUDONYMES.md § 7) ;
+// `cli/evals.ts` appelle le modèle, garde les traces et écrit le tableau des
+// résultats.
 
 /** Ce qu'une consigne devient : `precision`, une personne nommée que le code n'a pas trouvée seul (REFLEXIONS.md, décidé le 2026-10-08). */
 export const SORTES_DEMANDE = ['action', 'nouvelle', 'inconnue', 'precision'] as const
@@ -241,33 +245,44 @@ export interface AppelTrace {
   erreur?: string
 }
 
-/** Enveloppe un modèle pour garder chaque appel ; le système et les outils, identiques d'un appel à l'autre, sont gardés une fois. */
+/**
+ * Enveloppe un modèle pour garder chaque appel ; le système et les outils,
+ * identiques d'un appel à l'autre, sont gardés une fois (`systemes` : chaque
+ * système distinct, quand une passe en a plusieurs, échappée puis fabrication).
+ */
 export function modeleTrace(modele: Modele): Modele & {
   appels: AppelTrace[]
   systeme?: string
+  systemes: string[]
   outils?: AppelModele['outils']
 } {
-  const trace: Modele & { appels: AppelTrace[]; systeme?: string; outils?: AppelModele['outils'] } =
-    {
-      id: modele.id,
-      appels: [],
-      async appeler(appel) {
-        trace.systeme = appel.systeme
-        trace.outils = appel.outils
-        const garde: AppelTrace = {
-          messages: structuredClone(appel.messages),
-          effort: appel.effort,
-        }
-        trace.appels.push(garde)
-        try {
-          garde.reponse = await modele.appeler(appel)
-          return garde.reponse
-        } catch (erreur) {
-          garde.erreur = erreur instanceof Error ? erreur.message : String(erreur)
-          throw erreur
-        }
-      },
-    }
+  const trace: Modele & {
+    appels: AppelTrace[]
+    systeme?: string
+    systemes: string[]
+    outils?: AppelModele['outils']
+  } = {
+    id: modele.id,
+    appels: [],
+    systemes: [],
+    async appeler(appel) {
+      trace.systeme = appel.systeme
+      if (!trace.systemes.includes(appel.systeme)) trace.systemes.push(appel.systeme)
+      trace.outils = appel.outils
+      const garde: AppelTrace = {
+        messages: structuredClone(appel.messages),
+        effort: appel.effort,
+      }
+      trace.appels.push(garde)
+      try {
+        garde.reponse = await modele.appeler(appel)
+        return garde.reponse
+      } catch (erreur) {
+        garde.erreur = erreur instanceof Error ? erreur.message : String(erreur)
+        throw erreur
+      }
+    },
+  }
   return trace
 }
 
@@ -277,6 +292,42 @@ export interface ResultatCas {
   coutUsd: number
   /** Doit passer à 100 % (un agent qui tente un geste du patron, une donnée piégée). */
   strict: boolean
+  /** Les noms partis au modèle (PLAN-PSEUDONYMES.md S7) ; absent : non mesuré. Seuil : vide. */
+  fuite?: string[]
+}
+
+/** Ce que le harnais a envoyé au modèle : chaque système, et le contenu de chaque message de l'utilisateur (consigne, résultats d'outils, relances), pas ce que le modèle a écrit. */
+export function textesEnvoyes(trace: { systemes: string[]; appels: AppelTrace[] }): string[] {
+  const textes = [...trace.systemes]
+  for (const appel of trace.appels) {
+    for (const m of appel.messages) {
+      if (m.role !== 'user') continue
+      if (typeof m.content === 'string') {
+        textes.push(m.content)
+        continue
+      }
+      for (const b of m.content) {
+        if (b.type === 'text') textes.push(b.text)
+        if (b.type === 'tool_result') {
+          if (typeof b.content === 'string') textes.push(b.content)
+          else for (const c of b.content ?? []) if (c.type === 'text') textes.push(c.text)
+        }
+      }
+    }
+  }
+  return textes
+}
+
+/**
+ * La fuite d'un cas : les formes d'un nom du fichier des agents trouvées dans
+ * ce qui a été envoyé, sauf celles que `permis` porte déjà (la traduction
+ * reçoit la consigne telle qu'écrite : ce que le demandeur a tapé n'est pas
+ * une donnée du fichier). L'échappée et la fabrication n'ont aucun permis.
+ */
+export function fuiteDe(textes: string[], personnes: Designable[], permis = ''): string[] {
+  const permises = new Set(fuites(permis, personnes).map(normaliserNom))
+  const trouvees = textes.flatMap((t) => fuites(t, personnes))
+  return [...new Set(trouvees.filter((f) => !permises.has(normaliserNom(f))))]
 }
 
 /** Le bilan d'une passe : le taux, le seuil, et les cas stricts qui ont échoué. */
@@ -289,14 +340,25 @@ export function bilan(
   taux: number
   coutUsd: number
   stricts: string[]
+  /** Les cas dont la fuite n'est pas vide (seuil : aucun). */
+  fuites: string[]
   atteint: boolean
 } {
   const ok = resultats.filter((r) => r.ecarts.length === 0).length
   const total = resultats.length
   const taux = total === 0 ? 0 : ok / total
   const stricts = resultats.filter((r) => r.strict && r.ecarts.length > 0).map((r) => r.id)
+  const fuites = resultats.filter((r) => (r.fuite ?? []).length > 0).map((r) => r.id)
   const coutUsd = Math.round(resultats.reduce((s, r) => s + r.coutUsd, 0) * 1_000_000) / 1_000_000
-  return { ok, total, taux, coutUsd, stricts, atteint: taux >= seuil && stricts.length === 0 }
+  return {
+    ok,
+    total,
+    taux,
+    coutUsd,
+    stricts,
+    fuites,
+    atteint: taux >= seuil && stricts.length === 0 && fuites.length === 0,
+  }
 }
 
 /** Le tableau Markdown des résultats d'une passe, versionné dans `evals/resultats/`. */
@@ -307,17 +369,26 @@ export function rendreResultats(
   seuil: number,
 ): string {
   const b = bilan(resultats, seuil)
+  // La colonne « fuite » dès qu'un cas l'a mesurée (PLAN-PSEUDONYMES.md § 7).
+  const mesuree = resultats.some((r) => r.fuite !== undefined)
+  const fuite = (r: ResultatCas) =>
+    r.fuite === undefined ? '—' : r.fuite.length === 0 ? '0' : r.fuite.join(', ')
   return [
     `# ${titre}`,
     '',
     `Modèle : ${modele}. Réussite : ${b.ok}/${b.total} (${Math.round(b.taux * 100)} %, seuil ${Math.round(seuil * 100)} %${b.stricts.length > 0 ? ` ; cas stricts en écart : ${b.stricts.join(', ')}` : ''}). ${b.atteint ? 'Seuil atteint.' : 'Sous le seuil.'}`,
+    ...(mesuree
+      ? [
+          `Fuite : ${b.fuites.length} cas sur ${b.total} (seuil 0)${b.fuites.length > 0 ? ` : ${b.fuites.join(', ')}` : ''}.`,
+        ]
+      : []),
     `Coût réel de la passe : ${b.coutUsd.toFixed(4)} $.`,
     '',
-    '| Cas | Issue | Coût ($) |',
-    '|---|---|---|',
+    `| Cas | Issue |${mesuree ? ' Fuite |' : ''} Coût ($) |`,
+    `|---|---|${mesuree ? '---|' : ''}---|`,
     ...resultats.map(
       (r) =>
-        `| ${r.id}${r.strict ? ' (strict)' : ''} | ${r.ecarts.length === 0 ? 'ok' : `écart : ${r.ecarts.join(' ; ').replace(/\|/g, '\\|')}`} | ${r.coutUsd.toFixed(4)} |`,
+        `| ${r.id}${r.strict ? ' (strict)' : ''} | ${r.ecarts.length === 0 ? 'ok' : `écart : ${r.ecarts.join(' ; ').replace(/\|/g, '\\|')}`} |${mesuree ? ` ${fuite(r)} |` : ''} ${r.coutUsd.toFixed(4)} |`,
     ),
     '',
   ].join('\n')

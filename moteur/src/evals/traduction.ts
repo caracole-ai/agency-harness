@@ -27,11 +27,13 @@ import {
   type CasTraduire,
   ecartsTraduction,
   type FichierTraduire,
+  fuiteDe,
   type IssueTraduction,
   modeleTrace,
   type ResultatCas,
   rendreResultats,
   SEUILS,
+  textesEnvoyes,
   type Variante,
 } from './evals'
 
@@ -39,7 +41,9 @@ import {
 // § 9) : ce que `pnpm evals` fait, partagé avec `pnpm promotions`, qui
 // mesure la traduction avec le geste fabriqué chargé avant que le patron
 // puisse l'activer (PLAN-PROMOTION.md § 6.3, § 7.1). Chaque cas tourne sur sa
-// copie, passe la porte, garde sa trace ; la vérification est en code.
+// copie, passe la porte, garde sa trace ; la vérification est en code, la
+// fuite aussi : aucun nom des agents de la copie dans ce qui part au modèle
+// (PLAN-PSEUDONYMES.md § 7).
 
 /** Un cas de traduction prêt à jouer : du fichier `consignes.yaml`, ou des tests d'un geste appris. */
 export interface CasTraduction {
@@ -57,11 +61,14 @@ export interface CasTraduction {
 export interface TraceCas {
   id: string
   systeme?: string
+  /** Chaque système distinct, quand le cas en a plusieurs (échappées puis fabrication). */
+  systemes?: string[]
   outils?: unknown
   appels: AppelTrace[]
   issue: unknown
   ecarts: string[]
   coutUsd: number
+  fuite?: string[]
 }
 
 /** Une copie fraîche du client ; `piege` (ou une variante) remplace une chaîne dans un de ses fichiers. */
@@ -94,7 +101,9 @@ export const aParis = (s: string) => Temporal.PlainDateTime.from(s).toZonedDateT
 /**
  * Lance un cas sur sa copie (l'identité du cas passe d'abord la porte ; le
  * cas ouvre lui-même la session, après la traduction), garde sa trace, rend
- * son résultat et l'identifiant du modèle qui a joué.
+ * son résultat, sa fuite et l'identifiant du modèle qui a joué. `permis` :
+ * ce qui, envoyé, n'est pas une fuite (la consigne telle qu'écrite, pour la
+ * traduction).
  */
 export async function jouerCas<S>(
   m: MetierConversation<S>,
@@ -105,7 +114,7 @@ export async function jouerCas<S>(
     dossier: string,
     modele: Modele,
     identite: IdentiteVerifiee,
-  ) => Promise<{ ecarts: string[]; issue: unknown }>,
+  ) => Promise<{ ecarts: string[]; issue: unknown; permis?: string }>,
 ): Promise<{ resultat: ResultatCas; trace: TraceCas; idModele: string }> {
   const dossier = copieClient(source, cas.piege)
   const accueil = recevoir(chargerPersonnes(dossier), {
@@ -125,11 +134,28 @@ export async function jouerCas<S>(
   const modele = modeleTrace(modeleDe(config))
   let ecarts: string[]
   let issue: unknown
+  let permis: string | undefined
+  let fuite: string[]
   try {
-    ;({ ecarts, issue } = await jouer(dossier, modele, accueil.identite))
-  } catch (erreur) {
-    ecarts = [`exception : ${(erreur as Error).message}`]
-    issue = undefined
+    try {
+      ;({ ecarts, issue, permis } = await jouer(dossier, modele, accueil.identite))
+    } catch (erreur) {
+      ecarts = [`exception : ${(erreur as Error).message}`]
+      issue = undefined
+    }
+    // Tous les agents de la copie (le patron les voit tous), variante comprise ;
+    // une fuite qu'on ne peut pas mesurer compte comme une fuite.
+    try {
+      const personnes = await avecSession(
+        m,
+        dossier,
+        accueil.identite,
+        (s) => m.vocabulaire(s, { role: 'patron' }).agents,
+      )
+      fuite = fuiteDe(textesEnvoyes(modele), personnes, permis)
+    } catch (erreur) {
+      fuite = [`non mesurée : ${(erreur as Error).message}`]
+    }
   } finally {
     rmSync(dossier, { recursive: true, force: true })
   }
@@ -139,15 +165,17 @@ export async function jouerCas<S>(
     0,
   )
   return {
-    resultat: { id: cas.id, ecarts, coutUsd, strict: cas.strict },
+    resultat: { id: cas.id, ecarts, coutUsd, strict: cas.strict, fuite },
     trace: {
       id: cas.id,
       ...(modele.systeme !== undefined ? { systeme: modele.systeme } : {}),
+      ...(modele.systemes.length > 1 ? { systemes: modele.systemes } : {}),
       ...(modele.outils !== undefined ? { outils: modele.outils } : {}),
       appels: modele.appels,
       issue,
       ecarts,
       coutUsd,
+      fuite,
     },
     idModele: modele.id,
   }
@@ -275,7 +303,8 @@ export async function jouerTraduction<S>(
                 ? { ...demande, params: r.params }
                 : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
             })
-      return { ecarts: ecartsTraduction(c.attendu, issue, apprisIds), issue }
+      // La traduction reçoit la phrase telle qu'écrite : les noms qu'elle porte ne sont pas une fuite.
+      return { ecarts: ecartsTraduction(c.attendu, issue, apprisIds), issue, permis: c.consigne }
     })
     resultats.push(joue.resultat)
     surCas?.(joue.resultat, joue.trace, joue.idModele)
