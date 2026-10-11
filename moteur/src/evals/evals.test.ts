@@ -36,6 +36,24 @@ describe('ecartsTraduction', () => {
     }
     expect(ecartsTraduction(v, { ...v })).toEqual([])
   })
+  it('une demande nouvelle attendue, devenue geste appris : l’action du même nom passe, une autre non', () => {
+    const attendu = { sorte: 'nouvelle' as const, intention: ['heures_par_agent'] }
+    const heures = {
+      sorte: 'action' as const,
+      action: 'heures_par_agent',
+      params: { agent: 'A-2', du: '2026-10-05', au: '2026-10-11' },
+    }
+    expect(ecartsTraduction(attendu, heures, ['heures_par_agent'])).toEqual([])
+    expect(ecartsTraduction(attendu, heures)).toEqual([
+      'sorte action heures_par_agent, attendu nouvelle',
+    ])
+    expect(
+      ecartsTraduction(attendu, { ...heures, action: 'compter_vacations' }, ['compter_vacations']),
+    ).toEqual(['sorte action compter_vacations, attendu nouvelle'])
+    expect(
+      ecartsTraduction({ sorte: 'action', action: 'voir_planning' }, heures, ['heures_par_agent']),
+    ).toEqual(['action heures_par_agent, attendu voir_planning'])
+  })
   it('une autre sorte est un écart ; une liste de sortes en accepte plusieurs', () => {
     expect(ecartsTraduction({ sorte: 'inconnue' }, absence)).toEqual([
       'sorte action gerer_absence, attendu inconnue',

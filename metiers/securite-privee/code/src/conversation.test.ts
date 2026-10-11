@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,15 +6,24 @@ import {
   accueillir,
   chargerPersonnes,
   confirmer,
+  DOSSIER_GESTES,
+  empreinteGeste,
   FICHIER_PERSONNES,
+  type FichierGeste,
+  gesteDe,
   type Identite,
   type IdentiteVerifiee,
+  ISSUE_GESTE,
   messageConsigne,
   modeleSimule,
+  REGLE_SANS_HUMAIN,
   recevoir,
   type Scripte,
   TYPE_ACCES_REFUSE,
+  TYPE_ALERTE,
   TYPE_APPEL,
+  TYPE_ECHAPPEE,
+  TYPE_GESTE_APPRIS,
   TYPE_PRECISION_ATTENDUE,
   traiterConsigne,
 } from '@harnais/moteur'
@@ -103,10 +112,10 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
     expect(r.texte).toMatch(/^Valider Julien Lefèvre \(A-2\) pour V-17/)
     expect(r.texte).toMatch(/\(oui \/ non\)$/)
   })
-  it('une empreinte fausse, ou un autre demandeur : refus, et l’attente reste', () => {
-    const faux = confirmer(CONVERSATION, s, PATRON, conversation, 'faux', true, maintenant)
+  it('une empreinte fausse, ou un autre demandeur : refus, et l’attente reste', async () => {
+    const faux = await confirmer(CONVERSATION, s, PATRON, conversation, 'faux', true, maintenant)
     expect(faux.sorte).toBe('refus')
-    const autre = confirmer(
+    const autre = await confirmer(
       CONVERSATION,
       s,
       agent('A-2'),
@@ -117,11 +126,27 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
     )
     expect(autre.sorte).toBe('refus')
   })
-  it('« oui » exécute ; la même confirmation une seconde fois est refusée', () => {
-    const oui = confirmer(CONVERSATION, s, PATRON, conversation, r.empreinte, true, maintenant)
+  it('« oui » exécute ; la même confirmation une seconde fois est refusée', async () => {
+    const oui = await confirmer(
+      CONVERSATION,
+      s,
+      PATRON,
+      conversation,
+      r.empreinte,
+      true,
+      maintenant,
+    )
     expect(oui.sorte).toBe('resultat')
     expect(oui.texte).toContain("Message envoyé à l'agent")
-    const encore = confirmer(CONVERSATION, s, PATRON, conversation, r.empreinte, true, maintenant)
+    const encore = await confirmer(
+      CONVERSATION,
+      s,
+      PATRON,
+      conversation,
+      r.empreinte,
+      true,
+      maintenant,
+    )
     expect(encore).toEqual({
       sorte: 'refus',
       texte: 'aucune confirmation en attente pour ce contenu',
@@ -143,7 +168,7 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
     await tour(s2, PATRON, outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }))
     const v = await tour(s2, PATRON, valider)
     if (v.r.sorte !== 'confirmation') throw new Error(`sorte ${v.r.sorte}`)
-    const non = confirmer(
+    const non = await confirmer(
       CONVERSATION,
       s2,
       PATRON,
@@ -238,7 +263,9 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
     const { r } = await tour(s, fantome, outil('mes_titres', {}))
     expect(r.sorte).toBe('refus')
     expect(r.texte).toMatch(/A-99/)
-    expect(confirmer(CONVERSATION, s, fantome, 'C-x', 'e', true, maintenant).sorte).toBe('refus')
+    expect((await confirmer(CONVERSATION, s, fantome, 'C-x', 'e', true, maintenant)).sorte).toBe(
+      'refus',
+    )
   })
 })
 
@@ -295,8 +322,16 @@ describe('une demande nouvelle jusqu’au planning : proposition, validation, ac
     expect(r.texte).toMatch(/V-07 — autres possibles : .+/)
     expect(r.texte).toMatch(/Valider \? \(oui \/ non\)$/)
   })
-  it('le oui du patron valide et demande son accord à Mehdi', () => {
-    const oui = confirmer(CONVERSATION, s, PATRON, conversation, r.empreinte, true, maintenant)
+  it('le oui du patron valide et demande son accord à Mehdi', async () => {
+    const oui = await confirmer(
+      CONVERSATION,
+      s,
+      PATRON,
+      conversation,
+      r.empreinte,
+      true,
+      maintenant,
+    )
     expect(oui.sorte).toBe('resultat')
     expect(oui.texte).toMatch(/^Validé\. Message envoyé à 1 agent\(s\) : « Mehdi, peux-tu prendre/)
   })
@@ -309,7 +344,7 @@ describe('une demande nouvelle jusqu’au planning : proposition, validation, ac
     )
     if (mehdi.r.sorte !== 'confirmation') throw new Error(`sorte ${mehdi.r.sorte}`)
     expect(mehdi.r.texte).toMatch(/^Tu confirmes : OUI pour V-07/)
-    const fin = confirmer(
+    const fin = await confirmer(
       CONVERSATION,
       s,
       agent('A-9'),
@@ -395,7 +430,7 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
     )
     if (julien.r.sorte !== 'confirmation') throw new Error(julien.r.sorte)
     expect(julien.r.texte).not.toContain('Aïcha')
-    const non = confirmer(
+    const non = await confirmer(
       CONVERSATION,
       s,
       agent('A-2'),
@@ -411,7 +446,7 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
       outil('repondre_sollicitation', { demande: 'D-V-17', accepte: false }),
     )
     if (julien2.r.sorte !== 'confirmation') throw new Error(julien2.r.sorte)
-    const dit = confirmer(
+    const dit = await confirmer(
       CONVERSATION,
       s,
       agent('A-2'),
@@ -604,5 +639,151 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
       'Le planning de Laura début décembre',
     )
     expect(r).toEqual({ sorte: 'resultat', texte: 'Aucune vacation pour Laura Petit.' })
+  })
+})
+
+describe('un geste appris, chargé et exécuté (PLAN-PROMOTION.md § 5.5)', async () => {
+  // Semaine du 05/10 au 11/10 : Julien (A-2) 16 h, Sophie (A-3) 12 h.
+  const DU = '2026-10-05'
+  const AU = '2026-10-11'
+  const GESTE: FichierGeste = {
+    id: 'heures_par_agent',
+    description: 'les heures faites par un agent sur une période',
+    roles: ['patron', 'agent'],
+    parametres: {
+      agent: {
+        type: 'agent',
+        description: "l'agent, tel qu'il est écrit dans la consigne ; null pour celui qui parle",
+      },
+      periode: { type: 'periode', description: 'la période demandée' },
+    },
+    requetes: [
+      {
+        nom: 'heures',
+        sql: 'SELECT a.nom AS nom, COALESCE(SUM(v.heures), 0) AS heures FROM agents a LEFT JOIN vacations v ON v.agent = a.id AND v.jour BETWEEN :du AND :au WHERE a.id = :agent GROUP BY a.id',
+      },
+    ],
+    reponse: {
+      ligne: '{{heures.nom}} : {{heures.heures}} heures du {{du}} au {{au}}.',
+      tableau: null,
+      vide: 'Aucune vacation sur cette période.',
+    },
+    tests: [
+      {
+        echappee: 'E-1',
+        consigne: 'Combien d’heures Julien a-t-il fait du 5 au 11 octobre ?',
+        role: 'patron',
+        agent: null,
+        params: { agent: 'A-2', du: DU, au: AU },
+        instantane: 'echappees/E-1.json',
+        contient: ['16'],
+      },
+      {
+        echappee: 'E-2',
+        consigne: 'Combien d’heures a fait Sophie cette semaine ?',
+        role: 'patron',
+        agent: null,
+        params: { agent: 'A-3', du: DU, au: AU },
+        instantane: 'echappees/E-2.json',
+        contient: ['12'],
+      },
+      {
+        echappee: 'E-3',
+        consigne: 'Combien d’heures j’ai fait cette semaine ?',
+        role: 'agent',
+        agent: 'A-3',
+        params: { agent: 'A-3', du: DU, au: AU },
+        instantane: 'echappees/E-3.json',
+        contient: ['12'],
+      },
+    ],
+    origine: { fabrique_le: '2026-10-10', modele: 'simulé', cout_usd: 0, conversations: [] },
+    statut: 'actif',
+  }
+  const jeton = empreinteGeste(gesteDe(GESTE))
+  const fichier = (dossier: string) => join(dossier, DOSSIER_GESTES, 'heures_par_agent.yaml')
+  // YAML lit le JSON : le fichier s'écrit sans dépendre d'un sérialiseur.
+  const ecrireGeste = (dossier: string, g: FichierGeste) =>
+    writeFileSync(fichier(dossier), JSON.stringify(g))
+  const s = session((dossier) => {
+    mkdirSync(join(dossier, DOSSIER_GESTES))
+    ecrireGeste(dossier, { ...GESTE, validation: { par: 'test', le: '2026-10-10', jeton } })
+  })
+  s.journal.ecrire([
+    {
+      type: TYPE_GESTE_APPRIS,
+      client: s.config.client,
+      objet: GESTE.id,
+      issue: ISSUE_GESTE.active,
+      donnees: { jeton, par: 'test' },
+    },
+  ])
+  const demander = (agent: string | null) => outil('heures_par_agent', { agent, du: DU, au: AU })
+  const consigne = 'Combien d’heures Julien a-t-il fait du 5 au 11 octobre ?'
+  const { r, conversation, modele } = await tour(s, PATRON, demander('Julien'), consigne)
+
+  it('le patron obtient « 16 », rendu par le code, avec un seul appel au modèle et sans échappée', () => {
+    expect(r.sorte).toBe('resultat')
+    expect(r.texte).toBe(`Julien Lefèvre : 16 heures du ${DU} au ${AU}.`)
+    const appels = lignes(s, conversation).filter((l) => l.type === TYPE_APPEL)
+    expect(appels).toHaveLength(1)
+    expect(appels[0]?.issue).toBe('traduire')
+    expect(lignes(s, conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toEqual([])
+    const consigneLigne = lignes(s, conversation).find((l) => l.type === 'consigne')
+    expect(JSON.parse(consigneLigne?.donnees ?? '{}').resultat).toEqual({
+      echappee: null,
+      requetes: [{ nom: 'heures', sql: GESTE.requetes[0]?.sql, lignes: 1 }],
+    })
+  })
+  it('le modèle voit le geste comme une action, et plus comme une intention (P14)', () => {
+    const systeme = modele.appels[0]?.systeme ?? ''
+    expect(systeme).toContain(`heures_par_agent : ${GESTE.description}`)
+    expect(systeme).not.toContain('les heures faites par un agent, ou par tous, sur une période')
+    const outilAppris = modele.appels[0]?.outils.find((o) => o.name === 'heures_par_agent')
+    expect(Object.keys(outilAppris?.input_schema.properties ?? {})).toEqual(['agent', 'du', 'au'])
+    // Un seul outil du nom du geste, et la demande nouvelle reste offerte pour le reste.
+    const noms = modele.appels[0]?.outils.map((o) => o.name) ?? []
+    expect(noms.filter((n) => n === 'heures_par_agent')).toHaveLength(1)
+    expect(noms).toContain('demande_nouvelle')
+  })
+  it('un agent ne voit que ses lignes (D4) : ses heures à lui, et personne d’autre', async () => {
+    const sophie = await tour(s, agent('A-3'), demander(null))
+    expect(sophie.r.sorte).toBe('resultat')
+    expect(sophie.r.texte).toBe(`Sophie Marchand : 12 heures du ${DU} au ${AU}.`)
+    const autre = await tour(s, agent('A-3'), demander('Julien'))
+    expect(autre.r.sorte).toBe('refus')
+    expect(autre.r.texte).toMatch(/toi-même/)
+  })
+  it('un octet changé dans le YAML : le geste est écarté, refusé au journal avec une alerte, la consigne repart en échappée', async () => {
+    ecrireGeste(s.dossier, { ...GESTE, description: 'les heures d’un agent' })
+    const apres = await tour(
+      s,
+      PATRON,
+      [
+        {
+          outil: 'demande_nouvelle',
+          entree: { intention: 'heures_par_agent', resume: 'les heures de Julien' },
+        },
+        { outil: 'repondre', entree: { texte: 'Je ne sais pas.' } },
+      ],
+      consigne,
+    )
+    expect(apres.r.sorte).toBe('resultat')
+    expect(lignes(s, apres.conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toHaveLength(1)
+    expect(apres.modele.appels[0]?.systeme).toContain(
+      'heures_par_agent : les heures faites par un agent, ou par tous, sur une période',
+    )
+    expect(apres.modele.appels[0]?.outils.map((o) => o.name)).not.toContain('heures_par_agent')
+    const refus = s.journal
+      .historique(GESTE.id)
+      .filter((l) => l.type === TYPE_GESTE_APPRIS)
+      .at(-1)
+    expect(refus?.issue).toBe(ISSUE_GESTE.refuse)
+    expect(refus?.motif).toBe('empreinte différente')
+    const alerte = s.journal
+      .historique(GESTE.id)
+      .filter((l) => l.type === TYPE_ALERTE)
+      .at(-1)
+    expect(alerte?.regle).toBe(REGLE_SANS_HUMAIN)
   })
 })

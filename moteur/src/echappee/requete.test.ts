@@ -1,9 +1,10 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { creerCopie, type TableCopie } from './copie'
-import { executerRequete, LIGNES_MAX, rendreResultat, SQL_MAX } from './requete'
+import { executerRequete, LIGNES_MAX, parametresNommes, rendreResultat, SQL_MAX } from './requete'
 
 // L'outil `requete` : les lectures passent, tout le reste revient en erreur,
-// et la copie reste intacte (PLAN-ESPACES.md § 6.8).
+// et la copie reste intacte (PLAN-ESPACES.md § 6.8). Les paramètres d'un geste
+// appris sont liés, jamais collés dans le SQL (PLAN-PROMOTION.md § 4.5).
 
 const TABLES: TableCopie[] = [
   {
@@ -112,12 +113,61 @@ describe('executerRequete : lectures', () => {
   })
 })
 
+describe('executerRequete : paramètres liés', () => {
+  const PAR_ID = 'SELECT id, nom FROM agents WHERE id = :agent'
+  it('`:agent` est lié à la valeur, avec une clé nue (Node 22.22)', async () => {
+    expect(await executerRequete(copie, PAR_ID, { agent: 'A-2' })).toEqual({
+      colonnes: ['id', 'nom'],
+      lignes: [['A-2', 'Thomas Girard']],
+      tronque: false,
+    })
+  })
+  it('un paramètre nommé dans la requête et absent des paramètres → erreur, pas null en silence', async () => {
+    expect(await executerRequete(copie, PAR_ID, {})).toEqual({
+      erreur: expect.stringMatching(/« agent ».*sans valeur/),
+    })
+  })
+  it('une clé que la requête ne nomme pas est tolérée : un geste passe tous ses paramètres', async () => {
+    expect(
+      await executerRequete(copie, PAR_ID, { agent: 'A-1', du: '2026-10-05', au: '2026-10-11' }),
+    ).toMatchObject({ lignes: [['A-1', 'Mehdi Saïdi']] })
+  })
+  it("un paramètre qui contient « '; DROP » est une valeur, pas du SQL", async () => {
+    const avant = await executerRequete(copie, TEMOIN)
+    expect(await executerRequete(copie, PAR_ID, { agent: "'; DROP TABLE agents" })).toEqual({
+      colonnes: ['id', 'nom'],
+      lignes: [],
+      tronque: false,
+    })
+    expect(await executerRequete(copie, TEMOIN)).toEqual(avant)
+  })
+  it('null et nombre se lient aussi', async () => {
+    expect(
+      await executerRequete(copie, 'SELECT :n AS n, :rien AS rien', { n: 16, rien: null }),
+    ).toEqual({ colonnes: ['n', 'rien'], lignes: [[16, null]], tronque: false })
+  })
+  it('sans paramètres, rien ne change : une requête sans `:nom` passe comme avant', async () => {
+    expect(await executerRequete(copie, TEMOIN)).toEqual(await executerRequete(copie, TEMOIN, {}))
+  })
+})
+
+describe('parametresNommes', () => {
+  it('lit `:agent`, `@du` et `$au`, une fois chacun, hors chaînes et identifiants entre guillemets', () => {
+    expect(
+      parametresNommes(
+        `SELECT "a:b", ':pas_un', :agent, @du, $au FROM t WHERE x = :agent AND h = '08:00'`,
+      ),
+    ).toEqual(['agent', 'du', 'au'])
+  })
+})
+
 describe('executerRequete : le temps', () => {
   it('une récursion sans fin sous un agrégat est arrêtée au délai, sans figer le processus', async () => {
     const debut = Date.now()
     const r = await executerRequete(
       copie,
       'WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t) SELECT count(*) FROM t',
+      undefined,
       300,
     )
     expect(r).toEqual({ erreur: expect.stringMatching(/^requête arrêtée/) })

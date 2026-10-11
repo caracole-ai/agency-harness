@@ -1,6 +1,9 @@
 import { empreinte } from '../approbation/jeton'
+import type { TableCopie } from '../echappee/copie'
 import type { Echappee } from '../echappee/echappee'
 import { verifierReponse } from '../echappee/reponse'
+import { actionApprise } from '../gestes/action-apprise'
+import { chargerGestesAppris } from '../gestes/charger'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
@@ -89,6 +92,12 @@ export interface MetierConversation<Session> {
   echappee?: Echappee<Session>
   /** Absente, une proposition de l'échappée est montrée sans pouvoir être écrite. */
   proposition?: PropositionMetier<Session>
+  /**
+   * La copie des données à l'échelle du rôle, celle que l'échappée lit : un
+   * geste appris la lit aussi (PLAN-PROMOTION.md § 5.4). Absente, aucun geste
+   * appris n'est chargé.
+   */
+  copie?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => TableCopie[]
 }
 
 /** Comment le métier écrit une proposition de l'échappée : validée par le patron, acceptée par les agents (PLAN-ESPACES.md § 7.2). */
@@ -258,11 +267,16 @@ export async function traiterConsigne<S>(
   return avecSession(m, dossier, tour.identite, (s) => apresLeDossier(m, s, modele, tour, avant))
 }
 
-/** Ce qui se décide sur le journal seul : une réponse déjà, une demande traduite, ou la réponse à une question en attente. */
-type Avant =
+/** Ce qui se décide sur le journal seul : une réponse déjà, une demande traduite, ou la réponse à une question en attente ; avec les gestes appris chargés pour ce tour. */
+type Avant<S> =
   | { sorte: 'reponse'; reponse: Reponse }
-  | { sorte: 'traduite'; demande: Demande }
-  | { sorte: 'precisee'; precision: PrecisionAttendue; choix: Designable }
+  | { sorte: 'traduite'; demande: Demande; appris: Action<S, unknown>[] }
+  | {
+      sorte: 'precisee'
+      precision: PrecisionAttendue
+      choix: Designable
+      appris: Action<S, unknown>[]
+    }
 
 /** La question en attente dans cette conversation, posée à ce demandeur et pas encore suivie d'une autre de ses consignes. */
 function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | undefined {
@@ -290,7 +304,7 @@ async function avantLeDossier<S>(
   dossier: string,
   modele: Modele,
   tour: Tour,
-): Promise<Avant> {
+): Promise<Avant<S>> {
   const { client, journal, config } = m.ouvrirJournal(dossier)
   const ici: Cible = { client, journal }
   try {
@@ -302,19 +316,33 @@ async function avantLeDossier<S>(
       return { sorte: 'reponse', reponse: { sorte: 'refus', texte } }
     }
 
+    // Les gestes appris, relus à chaque consigne (P7) : ils viennent après les
+    // gestes codés dans la liste que le modèle lit, et leur intention sort de
+    // celle des demandes nouvelles (P14).
+    const copie = m.copie
+    const appris: Action<S, unknown>[] = copie
+      ? chargerGestesAppris(
+          dossier,
+          { ...ici, codes: m.actions.map((a) => a.id) },
+          tour.maintenant.toInstant().toString(),
+        ).actifs.map((g) => actionApprise(g, copie))
+      : []
+
     const attendue = precisionEnAttente(journal, tour)
     const choix = attendue ? choisirParmi(tour.consigne, attendue.candidats) : undefined
-    if (attendue && choix) return { sorte: 'precisee', precision: attendue, choix }
+    if (attendue && choix) return { sorte: 'precisee', precision: attendue, choix, appris }
 
     const role = tour.identite.role
-    const actions = actionsDe(m.actions, role)
+    const toutes = [...m.actions, ...appris]
+    const actions = actionsDe(toutes, role)
+    const intentions = m.intentions.filter((i) => !appris.some((a) => a.id === i.id))
     let traduite: Awaited<ReturnType<typeof traduire>>
     try {
       traduite = await traduire(
         modele,
         config.modele.effort.traduire,
-        systemeTraduire(role, actions, m.intentions),
-        outilsDe(m.actions, role),
+        systemeTraduire(role, actions, intentions),
+        outilsDe(toutes, role),
         tour.consigne,
         tour.maintenant,
         new Map(actions.map((a) => [a.id, schemaMontre(a)])),
@@ -332,7 +360,7 @@ async function avantLeDossier<S>(
     ecrire(ici, tour, [
       evenementAppel(client, tour.conversation, 'traduire', 1, traduite.reponse, prixDe(config)),
     ])
-    return { sorte: 'traduite', demande: traduite.demande }
+    return { sorte: 'traduite', demande: traduite.demande, appris }
   } finally {
     journal.fermer()
   }
@@ -344,7 +372,7 @@ async function apresLeDossier<S>(
   s: S,
   modele: Modele,
   tour: Tour,
-  avant: Exclude<Avant, { sorte: 'reponse' }>,
+  avant: Exclude<Avant<S>, { sorte: 'reponse' }>,
 ): Promise<Reponse> {
   const ici = cibleDe(m, s)
   const refuser = (texte: string, donnees: Record<string, unknown> = {}): Reponse => {
@@ -358,7 +386,7 @@ async function apresLeDossier<S>(
     return refuser(message(erreur))
   }
 
-  const actions = actionsDe(m.actions, tour.identite.role)
+  const actions = actionsDe([...m.actions, ...avant.appris], tour.identite.role)
   if (avant.sorte === 'precisee') {
     const { precision, choix } = avant
     const action = actions.find((a) => a.id === precision.action)
@@ -605,9 +633,16 @@ async function agir<S>(
   }
   const params = lus.data as Record<string, unknown>
   if (!action.ecrit) {
-    const fait = executer(action, s, tour.identite, params, tour.maintenant)
-    ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, params, ...erreurDe(fait) })])
-    return fait
+    const fait = await executer(action, s, tour.identite, params, tour.maintenant)
+    ecrire(ici, tour, [
+      ligneConsigne(tour, issue, {
+        demande,
+        params,
+        ...erreurDe(fait.reponse),
+        ...(fait.donnees !== undefined ? { resultat: fait.donnees } : {}),
+      }),
+    ])
+    return fait.reponse
   }
   let texte: string
   try {
@@ -641,23 +676,24 @@ async function agir<S>(
 /** Le message d'un refus, à garder au journal. */
 const erreurDe = (r: Reponse) => (r.sorte === 'refus' ? { erreur: r.texte } : {})
 
-/** Exécute une action ; ses messages d'erreur sont écrits pour le client, ils sont rendus tels quels. */
-function executer<S>(
+/** Exécute une action ; ses messages d'erreur sont écrits pour le client, ils sont rendus tels quels. Ce qui a servi au texte (`donnees`) va au journal. */
+async function executer<S>(
   action: Action<S, unknown>,
   s: S,
   identite: Identite,
   params: unknown,
   maintenant: Temporal.ZonedDateTime,
-): Reponse {
+): Promise<{ reponse: Reponse; donnees?: unknown }> {
   try {
-    return { sorte: 'resultat', texte: action.executer(s, identite, params, maintenant).texte }
+    const { texte, donnees } = await action.executer(s, identite, params, maintenant)
+    return { reponse: { sorte: 'resultat', texte }, ...(donnees !== undefined ? { donnees } : {}) }
   } catch (erreur) {
-    return { sorte: 'refus', texte: message(erreur) }
+    return { reponse: { sorte: 'refus', texte: message(erreur) } }
   }
 }
 
 /** La réponse à une confirmation en attente : la dernière de la conversation, du même demandeur, au même contenu. Le demandeur doit encore exister dans les données. */
-export function confirmer<S>(
+export async function confirmer<S>(
   m: MetierConversation<S>,
   s: S,
   identite: IdentiteVerifiee,
@@ -665,7 +701,7 @@ export function confirmer<S>(
   empreinteRecue: string,
   oui: boolean,
   maintenant: Temporal.ZonedDateTime,
-): Reponse {
+): Promise<Reponse> {
   try {
     m.verifierIdentite(s, identite)
   } catch (erreur) {
@@ -690,7 +726,7 @@ export function confirmer<S>(
   }
   const r: Reponse = !oui
     ? { sorte: 'resultat', texte: "D'accord, rien n'est fait." }
-    : executerAttente(m, s, identite, attente.demande, maintenant)
+    : await executerAttente(m, s, identite, attente.demande, maintenant)
   ecrire(cibleDe(m, s), tour, [
     {
       type: TYPE_CONFIRMATION,
@@ -702,14 +738,14 @@ export function confirmer<S>(
   return r
 }
 
-/** Ce qu'un « oui » déclenche : l'action reformulée, ou la validation d'une proposition. */
-function executerAttente<S>(
+/** Ce qu'un « oui » déclenche : l'action reformulée (un geste codé : un geste appris ne demande jamais de « oui »), ou la validation d'une proposition. */
+async function executerAttente<S>(
   m: MetierConversation<S>,
   s: S,
   identite: Identite,
   demande: Attente['demande'],
   maintenant: Temporal.ZonedDateTime,
-): Reponse {
+): Promise<Reponse> {
   if (demande.sorte === 'reaffectation') {
     if (!m.proposition) return { sorte: 'refus', texte: "ce métier n'écrit pas de proposition" }
     try {
@@ -723,5 +759,5 @@ function executerAttente<S>(
     return { sorte: 'refus', texte: `l'action ${demande.action} n'est pas ouverte à ce rôle` }
   const params = action.parametres.safeParse(demande.params)
   if (!params.success) return { sorte: 'refus', texte: 'paramètres invalides' }
-  return executer(action, s, identite, params.data, maintenant)
+  return (await executer(action, s, identite, params.data, maintenant)).reponse
 }

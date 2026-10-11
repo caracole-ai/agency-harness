@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type ConfigConversation, VARIABLE_CLE_ANTHROPIC } from '../conversation/config'
-import type { Modele } from './modele'
+import type { Modele, UsageModele } from './modele'
 
 // L'adaptateur du SDK officiel d'Anthropic (PLAN-ESPACES.md § 4.2). Un appel,
 // rien d'autre : pas de `thinking` (toujours actif sur ce modèle, réglé par
@@ -14,19 +14,30 @@ export interface AccesModele {
   bearer: boolean
 }
 
-export function modeleAnthropic(id: string, cle: string, acces?: AccesModele): Modele {
+/**
+ * @param delaiMs le temps laissé à un appel avant que le SDK ne l'abandonne :
+ * celui de la demande dans la config (`plafonds.par_demande.secondes`), jamais
+ * un nombre en dur (un 60 s codé ici faisait échouer la fabrication d'un geste
+ * appris, dont la réflexion dépasse la minute : 2026-10-10).
+ */
+export function modeleAnthropic(
+  id: string,
+  cle: string,
+  acces: AccesModele | undefined,
+  delaiMs: number,
+): Modele {
   const client = new Anthropic({
     ...(acces ? { baseURL: acces.url } : {}),
     // En Bearer, aucune `x-api-key` : le SDK la lirait sinon dans l'environnement.
     ...(acces?.bearer ? { apiKey: null, authToken: cle } : { apiKey: cle }),
-    timeout: 60_000,
+    timeout: delaiMs,
     maxRetries: 2,
   })
   return {
     id,
     async appeler(appel) {
       const debut = Date.now()
-      const message = await client.messages.create({
+      const params: Anthropic.MessageCreateParamsNonStreaming = {
         model: id,
         max_tokens: appel.maxTokens,
         system: [{ type: 'text', text: appel.systeme, cache_control: { type: 'ephemeral' } }],
@@ -36,18 +47,37 @@ export function modeleAnthropic(id: string, cle: string, acces?: AccesModele): M
           ? { type: 'auto', disable_parallel_tool_use: true }
           : { type: 'auto' },
         output_config: { effort: appel.effort },
-      })
-      return {
-        message,
-        usage: {
-          entree: message.usage.input_tokens,
-          sortie: message.usage.output_tokens,
-          cacheEcrit: message.usage.cache_creation_input_tokens ?? 0,
-          cacheLu: message.usage.cache_read_input_tokens ?? 0,
-        },
-        dureeMs: Date.now() - debut,
       }
+      // En flux, le SDK reconstitue le message entier : le reste du moteur ne voit pas la différence.
+      const message = appel.flux
+        ? await client.messages.stream(params).finalMessage()
+        : await client.messages.create(params)
+      const usage = {
+        entree: message.usage.input_tokens,
+        sortie: message.usage.output_tokens,
+        cacheEcrit: message.usage.cache_creation_input_tokens ?? 0,
+        cacheLu: message.usage.cache_read_input_tokens ?? 0,
+      }
+      const dureeMs = Date.now() - debut
+      // Un fournisseur qui ne compte pas en flux (GMI, 2026-10-10) rend tout à
+      // zéro : le coût serait nul, le plafond du mois ne verrait rien. On
+      // majore : la requête entière à un token pour deux caractères, la sortie
+      // au plafond demandé.
+      if (appel.flux && usage.entree === 0 && usage.sortie === 0) {
+        return { message, usage: usageBorne(params, appel.maxTokens), dureeMs, usageBorne: true }
+      }
+      return { message, usage, dureeMs }
     },
+  }
+}
+
+/** La borne haute d'un usage non compté : deux caractères par token en entrée (large pour du français), le plafond en sortie. */
+export function usageBorne(requete: unknown, maxTokens: number): UsageModele {
+  return {
+    entree: Math.ceil(JSON.stringify(requete).length / 2),
+    sortie: maxTokens,
+    cacheEcrit: 0,
+    cacheLu: 0,
   }
 }
 
@@ -69,5 +99,6 @@ export function modeleDepuisConfig(
     config.modele.id,
     cle,
     acces ? { url: acces.url, bearer: acces.authentification === 'bearer' } : undefined,
+    config.plafonds.par_demande.secondes * 1000,
   )
 }

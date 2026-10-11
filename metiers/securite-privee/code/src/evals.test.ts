@@ -4,8 +4,13 @@ import {
   CATEGORIE_AGENT_PATRON,
   DESCRIPTION_MAX,
   FichierEchappee,
+  FichierGestes,
   FichierTraduire,
   FORMAT_INTENTION,
+  type GesteAppris,
+  gesteDe,
+  lireFichiersGestes,
+  TESTS_MIN,
 } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
@@ -14,12 +19,16 @@ import { INTENTIONS } from './conversation'
 
 // Les fichiers d'étiquettes des évals (`evals/`) se lisent et couvrent ce que
 // le plan exige (PLAN-ESPACES.md § 9.1) : sans appel au modèle, cette garde
-// tourne dans `pnpm check`.
+// tourne dans `pnpm check`. Les gestes appris (de l'éval de rejeu, et ceux du
+// client fictif s'il en a) passent le même test d'honnêteté que les gestes
+// codés (PLAN-PROMOTION.md § 7.3, P13).
 
 const evals = fileURLToPath(new URL('../../../../evals', import.meta.url))
+const fictif = fileURLToPath(new URL('../../../../exemples/client-fictif', import.meta.url))
 const traduire = FichierTraduire.parse(parse(readFileSync(`${evals}/consignes.yaml`, 'utf8')))
 const echappee = FichierEchappee.parse(parse(readFileSync(`${evals}/echappees.yaml`, 'utf8')))
 const sortes = (a: { sorte: string | string[] }) => (Array.isArray(a.sorte) ? a.sorte : [a.sorte])
+const agentsFictif = readFileSync(`${fictif}/agents.csv`, 'utf8')
 
 describe('les consignes de l’éval de traduction', () => {
   it('au moins 40, aux identifiants uniques', () => {
@@ -57,12 +66,58 @@ describe('les consignes de l’éval de traduction', () => {
     }
   })
   it('les agents nommés existent au client fictif', () => {
-    const agents = readFileSync(
-      fileURLToPath(new URL('../../../../exemples/client-fictif/agents.csv', import.meta.url)),
-      'utf8',
-    )
     for (const c of traduire.cas.filter((x) => x.agent))
-      expect(agents, c.id).toContain(`${c.agent};`)
+      expect(agentsFictif, c.id).toContain(`${c.agent};`)
+  })
+})
+
+describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
+  const gestes: GesteAppris[] = [
+    ...FichierGestes.parse(parse(readFileSync(`${evals}/gestes.yaml`, 'utf8'))).gestes,
+    ...lireFichiersGestes(fictif).flatMap((f) => {
+      expect(f.erreur, f.fichier).toBeUndefined()
+      return f.contenu ? [gesteDe(f.contenu)] : []
+    }),
+  ]
+  it('au moins un à l’éval de rejeu', () => {
+    expect(gestes.length).toBeGreaterThanOrEqual(1)
+  })
+  it('chacun a au moins trois tests, de rôles qu’il ouvre, aux échappées distinctes, chacun avec de quoi vérifier', () => {
+    for (const g of gestes) {
+      expect(g.tests.length, g.id).toBeGreaterThanOrEqual(TESTS_MIN)
+      expect(new Set(g.tests.map((t) => t.echappee)).size, g.id).toBe(g.tests.length)
+      for (const t of g.tests) {
+        expect(g.roles, `${g.id} ${t.echappee} (${t.role})`).toContain(t.role)
+        expect(t.contient.length, `${g.id} ${t.echappee}`).toBeGreaterThan(0)
+        expect(
+          t.role === 'agent' ? t.agent !== null : t.agent === null,
+          `${g.id} ${t.echappee}`,
+        ).toBe(true)
+      }
+    }
+  })
+  it('sa description tient en 200 caractères ; son identifiant est une intention du catalogue qui lit, jamais un geste codé (P14, P15)', () => {
+    for (const g of gestes) {
+      expect(g.description.length, g.id).toBeLessThanOrEqual(DESCRIPTION_MAX)
+      const intention = INTENTIONS.find((i) => i.id === g.id)
+      expect(intention, g.id).toBeDefined()
+      expect(intention?.ecrit, g.id).toBe(false)
+      expect(
+        ACTIONS.map((a) => a.id),
+        g.id,
+      ).not.toContain(g.id)
+    }
+  })
+  it('les agents de ses tests existent au client fictif', () => {
+    for (const g of gestes) {
+      for (const t of g.tests) {
+        for (const id of [t.agent, ...Object.values(t.params)].filter(
+          (v): v is string => typeof v === 'string' && /^A-\d+$/.test(v),
+        )) {
+          expect(agentsFictif, `${g.id} ${t.echappee}`).toContain(`${id};`)
+        }
+      }
+    }
   })
 })
 

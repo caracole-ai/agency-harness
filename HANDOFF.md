@@ -7,6 +7,32 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
+  promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
+  des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
+  importants, six mineurs), corrigés en un commit (`456582c`) : la relance de
+  la fabrication répond à chaque `tool_use` par un `tool_result` (sinon 400
+  chez Anthropic, déguisé en « injoignable ») ; le rejeu ne trouve plus un
+  nombre attendu dans une date (« 12 » dans « 2026-10-12 » laissait passer
+  une réponse fausse) ; une ligne `retiré` ne vaut que pour son empreinte
+  (retirer un doublon proposé ne tue plus le geste actif) ; les compteurs du
+  § 8 par nombre d'appels ; gabarit mal formé refusé ; `copieClient` filtre
+  sur le chemin relatif ; un geste appris à l'identifiant d'un geste codé est
+  écarté au chargement ; `test.instantane` ni absolu ni `..` ; une assertion
+  vide remplacée. A2 (`86bac1b`) : G4, les deux clauses ; **mesuré, GLM-5.3
+  via GMI** : `pnpm evals echappee` trois passes **53/54** (18 cas depuis le
+  lot 2 ; **41/42** sur les 14 d'avant, le seuil de G4) ; `pnpm evals
+  promotion` trois passes **1/3, 1/3, 0/3 : objectif 2/3 non atteint**
+  (troncatures au plafond `par_demande.tokens_sortie` de la config, la
+  réflexion de la fabrication s'allongeant avec la clause (b) ; l'échappée
+  ajoute encore du détail dans 7 réponses sur 21). Analyse : passe 16 de
+  `evals/erreurs-2026-10-08.md`. Par G4, une fabrication qui échoue finit à
+  l'atelier, et la ronde s'en saisira (phase D). A3 : `promotion/lot-3`
+  fusionnée dans `main` (`--no-ff`), poussée ; `pnpm check` vert sur `main`
+  (341 tests moteur, 119 métier, 20 interface). Choix faits faute de
+  consigne : « Phase A du plan général » plus bas. **Reste de la fin de
+  phase** : la relecture du mini-site et de la présentation (§ 0.7). **Puis
+  la phase B** (`PLAN-PSEUDONYMES.md`), dans une autre session.
 - **2026-10-10, nuit : `PLAN-GENERAL.md`, le grand plan, écrit ; rien
   codé.** Lionel a tranché contre la fusion humaine : la chaîne ronde →
   chantier → fusion → livraison est automatique, sous conditions en code
@@ -21,9 +47,8 @@ fichiers qu'il cite, si.
   → E (la nuit en continu, dix nuits d'observation) → F (sécurités) → G
   (veille, canal) → H (livraison) ; I = ce qui reste aux humains. **À
   exécuter par Claude Opus 5.5, effort élevé. A0 (commiter les plans sur
-  `main` et pousser) est fait le 2026-10-11 ; commencer par A1.** Les lots
-  0 à 3 de la promotion sont sur les branches `promotion/lot-0` à `lot-3`,
-  non poussées, pas encore fusionnées (phase A). Le mini-site dit tout cela
+  `main` et pousser) est fait le 2026-10-11 ; la phase A aussi (ligne
+  précédente).** Le mini-site dit tout cela
   comme décidé, pas construit. La présentation (diapositive 10) n'est pas
   reprise.
 - **2026-10-10, soir : deux plans écrits, rien codé.** `PLAN-PSEUDONYMES.md`
@@ -41,6 +66,122 @@ fichiers qu'il cite, si.
   dans `REFLEXIONS.md`. Le mini-site « Le harnais en clair » dit ces
   décisions comme décidées, pas construites. Dépendance : la ronde lit
   `consigne_modele`, écrit par le lot 1 des pseudonymes.
+- **2026-10-10, après-midi : `PLAN-PROMOTION.md` lot 3 fait**, branche
+  `promotion/lot-3` partie de `promotion/lot-2`, un commit, **pas poussée**.
+  L'atelier (`pnpm gestes lister | verifier [--avec-modele] | activer --par
+  | retirer --motif`) et le patron dans l'interface (onglet « Appris » : « Ce
+  que l'outil a appris », proposés activables ou pourquoi pas, actifs,
+  retirés ; activer après une confirmation à l'écran, retirer avec un motif)
+  passent par la même logique (`moteur/src/promotion/atelier.ts`) : activer
+  exige une ligne `vérifié` sans écart et avec modèle sur l'empreinte exacte
+  du fichier, écrit `statut: actif` et `validation` dans le YAML puis la ligne
+  `activé` au journal, la clé que le chargement exige ; retirer retire dès la
+  consigne suivante. Le test d'honnêteté des gestes appris (§ 7.3) tourne
+  dans `pnpm check`. `pnpm check` vert : 334 tests moteur (+13), 119 métier
+  (+4), 20 interface (+5). **Rejoué pour de vrai sur la copie du lot 2**
+  (celle qui porte le geste fabriqué, proposé et vérifié) :
+  - CLI : `lister` (activable) ; `verifier` sans modèle (rejeu 3/3, 0 $,
+    « la passe manque ») ; **`verifier --avec-modele` : 61/63 (97 %),
+    0,11 $ compté exactement** (P-PLA-2 et AP-4 en écart, les deux
+    étiquettes anciennes ; G-1 à G-3 du geste passent), activable ;
+    `activer --par Lionel` ; `pnpm evals gestes` sur la copie **6/6** ;
+    `retirer --motif` ; le journal porte `vérifié` (deux fois), `verifier`,
+    `activé { par: Lionel }`, `retiré`. Résultats :
+    `evals/resultats/2026-10-10-1525-traduire.md`, `…-1530-gestes.md` ;
+    analyse `evals/erreurs-2026-10-08.md`, « Passe 15 ».
+  - Interface (`pnpm interface --modele simule`, pilotée par playwright-cli,
+    captures relues) : l'onglet montre le geste proposé avec « Vérifié le … :
+    aucun écart ; traduction 97 %, seuil atteint » et les boutons ; Activer
+    → « Activer le geste « … » ? » → Oui : la carte passe en « Actifs »,
+    « activé le 10 octobre 2026 par patron », le YAML et la ligne `activé`
+    (`par: patron`) suivent ; Retirer sans motif ne fait rien ; avec motif →
+    « Retirés », ligne `retiré` avec le motif.
+  Écarts au plan et choix : « Lot 3 de la promotion » plus bas (le principal :
+  « postérieure à toute modification du fichier » est tenu par l'empreinte,
+  pas par la date du fichier). **Suite : § 9**, la relecture indépendante de
+  tout le chantier (lots 0 à 3) par un sous-agent en lecture seule, ses
+  corrections, puis la fusion dans `main` et le push.
+- **2026-10-10, midi : `PLAN-PROMOTION.md` lot 2 fait**, branche
+  `promotion/lot-2` partie de `promotion/lot-1`, un commit, **pas poussée**.
+  Le modèle fabrique un geste appris en un appel (`proposer_geste`, le
+  schéma du geste ; relancé une fois sur un échec de forme ou une requête
+  qui lève), le code le vérifie (gabarit sur une copie vide, rejeu de chaque
+  test sur son instantané, aucune valeur en dur venue d'une consigne,
+  description distincte), l'écrit en `gestes/<id>.yaml` (proposé), puis
+  `pnpm promotions` mesure la traduction avec le geste chargé et dit s'il
+  est activable ; le dossier de promotion raconte tout. `pnpm check` vert :
+  321 tests moteur (+40), 115 métier, 15 interface. **Mesuré, GLM-5.3 via
+  GMI, le 2026-10-10** (`evals/erreurs-2026-10-08.md`, « Passe 14 ») :
+  - **le flux complet du critère 1-2 sur une copie** (trois échappées
+    réelles, puis `pnpm promotions`) : fabrication en **un appel, zéro
+    écart, rejeu 3/3**, `gestes/heures_par_agent.yaml` écrit (tableau,
+    `agent` nullable, description qui garde « ou par tous ») ; traduction
+    avec le geste chargé **61/63 (97 %)**, activable (N-1, P-PLA-2, AP-4
+    passent ; R-2 et AP-2 en écart, variance sans lien avec le geste) ;
+    `pnpm evals gestes` sur la copie **6/6**. Résultats :
+    `evals/resultats/2026-10-10-1231-traduire.md`, `…-1209-gestes.md`,
+    `…-1231-gestes.md`. Coût : 0,04 $ la fabrication, 0,15 $ la passe.
+  - **`pnpm evals promotion` (trois intentions, § 8) : 0/3** sur la
+    première passe ; deux gestes justes (`heures_par_agent`,
+    `agents_sans_carte`) écartés au rejeu parce que les réponses de
+    l'échappée disaient plus que la question (heures par vacation, agents
+    à carte expirée « à noter ») ; `compter_vacations` tronqué deux fois
+    (« de nuit » n'est pas un type : l'échec faute de type attendu). Deux
+    bogues de `citations` corrigés (année, jour avec son zéro) ; une
+    troncature ne relance plus. Seconde passe avec le code final : **0/3**
+    encore (GMI a lâché le flux de la fabrication `heures_par_agent` après
+    plusieurs minutes ; les deux autres comme avant). **À trancher par
+    Lionel** : l'échappée répond court, ou le rejeu n'exige que la première
+    phrase (le lot garde la règle du plan).
+  - Appris sur GMI : coupure à 120 s hors flux (524), aucun token compté en
+    flux → la fabrication part en flux avec une borne haute du coût (voir
+    « Lot 2 de la promotion »).
+  Suite : **lot 3** (l'atelier, l'activation, l'interface), sur
+  `promotion/lot-3` partie de `promotion/lot-2` ; puis la relecture
+  indépendante et la fusion (§ 9).
+- **2026-10-10, nuit : `PLAN-PROMOTION.md` lot 1 fait**, branche
+  `promotion/lot-1` partie de `promotion/lot-0`, un commit, **pas poussée**.
+  Un geste appris est une donnée YAML (`gestes/<id>.yaml`, schéma fermé,
+  six types de paramètres, SQL paramétré, gabarit rendu par le code) qui ne
+  se charge que par sa clé (empreinte = dernière ligne `geste appris` /
+  `activé` du journal, sinon écarté, `refusé`, alerte G-01), relue à chaque
+  consigne ; chargé, c'est une action comme les autres, exécutée sans modèle
+  sur la copie du rôle, et son intention sort de la liste des demandes
+  nouvelles (P14). `pnpm check` vert : 281 tests moteur (+28), 115 métier
+  (+4), 15 interface. **Mesuré, une passe réelle** (GLM-5.3 via GMI, le
+  2026-10-10 à 02:47, 0,12 $) : `pnpm evals traduire` sur une copie du
+  client fictif avec un `heures_par_agent.yaml` écrit à la main et activé :
+  **57/60 (95 %)**, `evals/resultats/2026-10-10-0247-traduire.md`, analyse
+  dans `evals/erreurs-2026-10-08.md` (« Passe 13 »). Le seuil numérique est
+  atteint, mais le lanceur dit « sous le seuil » à cause du cas strict AP-4,
+  écart ancien qui attend Lionel. N-2 (« Combien d'heures a fait Karim
+  cette semaine ? ») choisit **le geste appris avec ses paramètres typés**
+  (`agent: Karim, du: 2026-10-05, au: 2026-10-11`) : c'est le critère 4 du
+  plan avec le vrai modèle. N-1 (« Qui a le moins d'heures ? ») part en
+  demande nouvelle `moins_heures` : la description du geste écrit à la main
+  (« les heures faites par un agent ») ne couvre pas « qui a le moins »,
+  que l'intention remplacée couvrait (« ou par tous ») ; une question de
+  description pour la fabrication (lot 2), pas un défaut du chargement.
+  Les choix pris faute de consigne : « Lot 1 de la promotion » plus bas.
+  Suite : **lot 2** (la fabrication), sur `promotion/lot-2` partie de
+  `promotion/lot-1`.
+- **2026-10-10, nuit : `PLAN-PROMOTION.md` lot 0 fait**, branche
+  `promotion/lot-0` partie de `main` (`dd13bdc`, le plan relu et commité,
+  poussé), un commit, **pas poussée**. Le journal se souvient de chaque
+  échappée : identifiant `E-…` sur ses lignes, rôle et agent, texte final
+  tel que montré, instantané de la copie dans `echappees/<id>.json` chez le
+  client ; `executerRequete` lie des paramètres nommés (`:agent`) ; le
+  compteur ne compte que les échappées finies proprement (P9) et relit
+  chaque échappée par son identifiant ; `pnpm promotions` purge les
+  instantanés passé `conversation.promotion.conservation_jours` (90, dans le
+  schéma et chez le client fictif) sauf ceux qu'un `gestes/*.yaml` cite.
+  `pnpm check` vert : 253 tests moteur (+20), 111 métier, 15 interface.
+  **Rien de ce que le modèle lit n'a changé** (système, outils, requête sans
+  paramètre : identiques) ; la passe `pnpm evals echappee` que le § 8
+  demande après le lot 0 **n'est pas refaite** (pas de clé dans la session),
+  ne pas écrire « mesuré ». Les choix pris faute de consigne sont listés
+  plus bas (« Lot 0 de la promotion »). Suite : **lot 1** (le geste appris,
+  chargé et exécuté), sur `promotion/lot-1` partie de `promotion/lot-0`.
 - **2026-10-10 : `PLAN-PROMOTION.md` relu avec l'article Codemode, les
   choix du § 11 tranchés par Lionel, prêt à commencer au lot 0.** Ce qui
   a changé dans le plan : P6 (**le patron active dans l'interface**,
@@ -139,6 +280,114 @@ fichiers qu'il cite, si.
 **Phases de `PLAN.md` faites (0 à 5)** : registre, calendrier juridique,
 contrôles I-01 à I-05 (I-05 en partie) et I-20, Veiller (`pnpm veiller`), le
 remplacement validé par le patron et la délégation (`pnpm remplacer`).
+
+## `PLAN-PROMOTION.md` : l'avancement
+
+Un lot = une branche `promotion/lot-N` partie de la précédente = un commit,
+pas de push (§ 1.2 du plan). **Les quatre lots, la relecture indépendante et
+G4 sont fusionnés dans `main` et poussés le 2026-10-11** (`PLAN-GENERAL.md`
+phase A, qui lève l'interdiction de pousser).
+
+- **Lot 0 (le journal se souvient de l'échappée)** fait le 2026-10-10,
+  branche `promotion/lot-0` : `moteur/src/echappee/requete.ts`
+  (`executerRequete(copie, sql, parametres?, delaiMs?)`, paramètres liés,
+  `parametresNommes`), `moteur/src/echappee/echappee.ts` (`CadreEchappee`
+  gagne `dossierClient` et `identite` ; `idEchappee` dans
+  `conversation/id.ts` ; `ecrireInstantane`, `cheminInstantane`,
+  `DOSSIER_ECHAPPEES` ; lignes `outil_echappee` et `echappee` avec
+  `donnees.echappee`, la ligne `echappee` avec `role`, `agent?`, `texte`,
+  `instantane`), `moteur/src/promotion/promotion.ts` (`intentions` ne
+  compte que les échappées finies proprement, `echappeesDe`,
+  `EchappeeJournalisee`, `debutFenetre`, `purgerInstantanes`,
+  `DOSSIER_GESTES` ; `ecrireDossier` relit chaque échappée par son
+  identifiant), `moteur/src/cli/promotions.ts` (purge),
+  `moteur/src/conversation/config.ts` (`conservation_jours`, défaut 90),
+  `moteur/src/echappee/boucle.ts` (`CONTROLE_OK`, constante seule),
+  `metiers/securite-privee/code/src/conversation.ts` (passe `s.dossier`
+  et `identite`), `exemples/client-fictif/config.yaml`. Tests :
+  `requete.test.ts` (+7), `echappee.test.ts` (nouveau, moteur, simulé),
+  `promotion.test.ts` (jeu refait : abandon, résumé retiré, proposition
+  sans suite et ligne d'avant le lot 0 ne comptent pas ; `echappeesDe`
+  sépare deux échappées d'une conversation ; la purge épargne l'instantané
+  cité), `config.test.ts`. Pas de passe réelle (voir « Où on en est »).
+- **Lot 1 (le geste appris, chargé et exécuté)** fait le 2026-10-10,
+  branche `promotion/lot-1` partie de `promotion/lot-0` :
+  `moteur/src/gestes/geste-appris.ts` (schéma `GesteAppris`, `FichierGeste`
+  avec `statut` et `validation`, six types de paramètres, `clesDe`,
+  `verifierGabarit`, `rendre`, `empreinteGeste`, `DOSSIER_GESTES`),
+  `moteur/src/gestes/charger.ts` (`lireFichiersGestes`, `motifSansCle`,
+  `chargerGestesAppris` : la clé P7, `refusé` et alerte G-01,
+  `TYPE_GESTE_APPRIS`, `ISSUE_GESTE`), `moteur/src/gestes/action-apprise.ts`
+  (`parametresAppris`, `actionApprise` : exécution sans modèle sur la copie
+  du rôle, D4), `moteur/src/conversation/actions.ts` (`Action.executer`
+  rend `Resultat | Promise<Resultat>`), `moteur/src/conversation/conversation.ts`
+  (`MetierConversation.copie?`, gestes appris chargés avant la traduction,
+  intentions filtrées (P14), `await`, `confirmer` asynchrone, `resultat`
+  sur la ligne `consigne`), `moteur/src/cli/evals.ts` et
+  `moteur/src/evals/evals.ts` (gestes appris chargés par fichier,
+  `ecartsTraduction(…, appris)`), `moteur/src/archetypes/veille-client.ts`
+  (`TYPE_ALERTE`), `moteur/src/index.ts`,
+  `metiers/securite-privee/code/src/conversation.ts` (`copie: tablesPour`).
+  Tests : `geste-appris.test.ts`, `charger.test.ts`, `action-apprise.test.ts`
+  (nouveaux, moteur ; geste de référence dans `geste-appris.exemple.ts`),
+  `evals.test.ts` (+1), `conversation.test.ts` du métier (+4 : « 16 » pour le
+  patron en un appel et sans échappée, P14 dans le système du modèle, D4
+  pour un agent, un octet changé → écarté, refusé, alerte, échappée).
+  Mesure : voir « Où on en est ».
+- **Lot 2 (la fabrication)** fait le 2026-10-10, branche `promotion/lot-2`
+  partie de `promotion/lot-1` : `moteur/src/promotion/fabriquer.ts`
+  (nouveau : `GestePropose`, `systemeFabriquer`, `messageFabriquer`,
+  `outilProposerGeste`, `completerGeste`, `verifierGeste`, `rejouerTest`,
+  `ecrireGeste`, `fabriquerGeste` avec la relance P5),
+  `moteur/src/promotion/promouvoir.ts` (nouveau : `promouvoir`, ce que
+  `pnpm promotions` fait d'une intention au seuil ; `compterFabrications`
+  pour le § 8), `moteur/src/promotion/promotion.ts` (`Fabrication`, la
+  section « Geste proposé » du dossier, `promotion proposée` la porte),
+  `moteur/src/evals/traduction.ts` (nouveau : `copieClient`, `jouerCas`,
+  `casDuFichier`, `casDuGeste`, `apprisDuDossier`, `jouerTraduction`,
+  extraits de `cli/evals.ts`), `moteur/src/evals/evals.ts` (`SEUILS`,
+  `FichierGestes`, `FichierPromotions`, `contient` venu de `reponse.ts`),
+  `moteur/src/echappee/reponse.ts` (`citations`, `contient`),
+  `moteur/src/gestes/action-apprise.ts` (`executerGeste`, `liaisonDe`
+  exportés), `moteur/src/gestes/geste-appris.ts` (`TESTS_MIN`),
+  `moteur/src/conversation/actions.ts` (`Intention.ecrit`, P15),
+  `moteur/src/conversation/traduire.ts` (`jourSemaine`),
+  `moteur/src/modele/compteur.ts` (`UsageAppel` + `fabriquer`, `verifier`),
+  `moteur/src/cli/promotions.ts` (le modèle, `--sans-modele`, la passe de
+  traduction, le compte du § 8), `moteur/src/cli/evals.ts` (`gestes`,
+  `promotion`), `moteur/src/index.ts`,
+  `metiers/securite-privee/code/src/conversation.ts` (`ecrit` sur chaque
+  intention), `evals/gestes.yaml` et `evals/promotions.yaml` (nouveaux),
+  `evals/echappees.yaml` (E-15 à E-18). Tests : `fabriquer.test.ts`,
+  `promouvoir.test.ts`, `traduction.test.ts` (nouveaux), `reponse.test.ts`
+  (+2), `traduire.test.ts` (`ecrit`). Mesure : voir « Où on en est ».
+- **Lot 3 (l'atelier, l'activation, l'interface)** fait le 2026-10-10,
+  branche `promotion/lot-3` partie de `promotion/lot-2` :
+  `moteur/src/promotion/atelier.ts` (nouveau : `listerGestes`,
+  `motifNonActivable`, `verifications`, `trouverGeste`, `activerGeste`,
+  `retirerGeste`, `verifierGesteAppris`, `journaliserVerification`,
+  `copieVideDe`, `ErreurAtelier`, `STATUT_LISIBLE`),
+  `moteur/src/cli/gestes.ts` (nouveau : `pnpm gestes lister | verifier
+  [--avec-modele] | activer --par | retirer --motif`),
+  `moteur/src/evals/traduction.ts` (`passeTraduction`, `BilanTraduction`,
+  `DOSSIER_PROMOTIONS` : la passe partagée par `pnpm promotions` et
+  `pnpm gestes verifier`), `moteur/src/promotion/promouvoir.ts` (écrit
+  `vérifié` par `journaliserVerification`), `moteur/src/cli/promotions.ts`
+  (la passe par `passeTraduction`), `moteur/src/gestes/action-apprise.ts`
+  (une erreur de rendu garde `resultats` : l'écart de gabarit est précis),
+  `moteur/src/promotion/fabriquer.ts` (lit ces résultats), `moteur/src/index.ts`,
+  `package.json` (script `gestes`), `interface/src/app.ts` (`/api/gestes`,
+  `/api/gestes/activer`, `/api/gestes/retirer`, patron seul, `ErreurAtelier`
+  en 400), `interface/public/index.html`, `static/app.js`, `static/style.css`
+  (l'onglet « Appris » : proposés, actifs, retirés ; confirmation à l'écran ;
+  motif du retrait), `metiers/securite-privee/code/src/evals.test.ts` (le
+  test d'honnêteté des gestes appris, § 7.3), `README.md`, `PLAN-ESPACES.md`
+  § 8 (renvoi). Tests : `atelier.test.ts` (nouveau, 12), `traduction.test.ts`
+  (+1 : `passeTraduction` sur le modèle simulé), `serveur.test.ts` (+5),
+  `evals.test.ts` du métier (+4). Mesure : voir « Où on en est ».
+- Relecture indépendante, corrections et fusion (§ 9) : faites le
+  2026-10-11 (`PLAN-GENERAL.md` A1 à A3). Le lot 4 (l'écriture) est tranché
+  par G5 : c'est la phase C du grand plan.
 
 ## `PLAN-ESPACES.md` : l'avancement
 
@@ -383,8 +632,12 @@ piégées, AP-4, et cette sévérité du contrôle des noms.
    instantané, activé par un humain avec une clé. L'échappée tient son
    seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
    commencer. Les choix du § 11 sont tranchés le 2026-10-10 (le patron
-   active ; une relance à la fabrication ; le reste confirmé) : **lancer le
-   lot 0** à la prochaine session, sur une branche `promotion/lot-0`.
+   active ; une relance à la fabrication ; le reste confirmé). **Lots 0 à 3
+   faits le 2026-10-10, relus, corrigés et fusionnés dans `main` le
+   2026-10-11** (`PLAN-GENERAL.md` phase A). Les deux décisions qui
+   restaient sont prises par le grand plan : le rejeu reste strict et
+   l'échappée est priée de répondre court (G4, mesuré : passe 16) ; le
+   lot 4 se fait (G5, phase C).
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
@@ -493,6 +746,32 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Lot 3 (2026-10-10)** : « postérieure à toute modification du fichier »
+  (§ 7.1) est tenu par l'empreinte, pas par la date du fichier (voir « Lot 3
+  de la promotion ») ; l'activation à l'écran est rejouée avec le modèle
+  simulé (aucune consigne réelle n'a suivi dans l'interface : le chargement du
+  geste activé est couvert par `conversation.test.ts` du métier et par
+  `pnpm evals gestes` sur la copie) ; `pnpm gestes verifier --avec-modele`
+  n'a tourné qu'une fois (une passe) ; le test d'honnêteté sur
+  `exemples/client-fictif/gestes/` est vide tant qu'on n'y écrit rien (il
+  garde `evals/gestes.yaml`) ; la navigation au clavier de l'onglet « Appris »
+  et le champ du motif n'ont été vus qu'en capture ; deux fichiers de
+  `gestes/` au même identifiant se départagent par le nom du fichier (la page
+  l'envoie, le CLI le demande) ; le mini-site et la présentation disent
+  toujours « codé à l'atelier » (artefacts de Lionel, § 7.4).
+- **Lot 2 (2026-10-10)** : la borne haute du coût d'une fabrication en flux
+  majore d'environ deux fois (le plafond du mois se ferme plus tôt) ; le
+  rejeu exige chaque nombre et chaque nom de la réponse de l'échappée, et
+  GLM répond souvent plus long que la question (0/3 à l'éval de
+  fabrication, deux gestes justes écartés) ; « activable » ne regarde que
+  le taux de traduction, pas les cas stricts ; les outils `proposer_geste`
+  portent des `record` (`parametres`, `tests[].params`) que le mode strict
+  de l'API d'Anthropic pourrait refuser (GMI l'ignore ; jamais essayé chez
+  Anthropic) ; la passe de traduction de `pnpm promotions` copie le dossier
+  du client une fois par cas (≈ 65 copies, quelques secondes) ; le délai
+  d'appel vaut maintenant `par_demande.secondes` pour la traduction aussi
+  (une panne se voit plus tard qu'avec 60 s) ; `pnpm interface` et `pnpm
+  parler --interactif` ne sont pas rejoués depuis le lot 1.
 - **Coût du mois** (`coutDuMois`) : il compare le mois au début de
   l'horodatage du journal, qui est en UTC (comme le plan le prescrit). Entre
   minuit et 1 h ou 2 h, heure de Paris, le premier jour du mois, un appel
@@ -753,6 +1032,343 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   demandes nouvelles connues, rendu dans le système de la traduction après
   la règle `demande_nouvelle`.
 
+### Lot 0 de la promotion (`PLAN-PROMOTION.md` § 4, 2026-10-10)
+
+- **Les paramètres partent au processus enfant par l'entrée standard, en
+  JSON, avec le SQL** (le § 4.1 disait « par `argv` ») : c'est le canal que
+  `requete.ts` utilisait déjà pour le chemin, le SQL et la borne ; l'essentiel
+  tient, ils ne sont jamais collés dans le SQL. SQLite les lie
+  (`iterate(parametres)`), les clés nues (`agent` pour `:agent`) passent sur
+  Node 22.22 (testé).
+- **Un paramètre nommé dans la requête et absent des paramètres est
+  refusé** (`{ erreur }`) : `node:sqlite` n'expose pas les noms des
+  paramètres d'une requête préparée, ils sont lus par une expression
+  régulière sur le SQL **hors chaînes et identifiants entre guillemets**
+  (`parametresNommes`, `:`, `@` et `$`). Une clé que la requête ne nomme pas
+  est tolérée (`setAllowUnknownNamedParameters`) : un geste passe tous ses
+  paramètres à chacune de ses requêtes. **Sans paramètres, rien ne change**
+  pour l'échappée (pas de vérification, même chemin qu'avant).
+- **`CONTROLE_OK = 'ok'` ajouté dans `boucle.ts`** (le type et la valeur
+  rendue, rien d'autre) : `promotion.ts` compare à la constante, pas à une
+  chaîne écrite deux fois.
+- **La purge est câblée dans `pnpm promotions` dès le lot 0** (le § 3 place
+  `cli/promotions.ts` au lot 2) : P8 dit que c'est cette commande qui
+  purge, et une fonction sans appelant serait du code mort.
+- **`EchappeeJournalisee` porte aussi `issue`, `modifications?` et
+  `constats?`** (absents du § 4.3) : le dossier de promotion en a besoin
+  (« proposition », les modifications, le contrôle) et la fabrication du lot
+  2 saura ce qu'elle relit.
+- **Le chemin de l'instantané est relatif au dossier du client**
+  (`echappees/<id>.json`), au journal comme dans le fichier de geste à
+  venir (`TestAppris.instantane`, § 5.1) : le dossier peut se déplacer.
+- **Une ligne `echappee` d'avant le lot 0** (sans `echappee`, `texte`,
+  `instantane`, `role`) **ne compte plus** pour le seuil et n'entre pas au
+  dossier : sans instantané, rien ne se rejoue. Le journal du client fictif
+  n'en a aucune (alertes, constats, veilles seulement).
+- **La suite d'une proposition se lit par conversation** (comme avant,
+  `suiteDe`), pas par échappée : deux propositions dans la même conversation
+  partagent leur suite. Cas non rencontré ; à affiner si la fabrication y
+  bute.
+- **`ecrireDossier` calcule le début de la fenêtre** depuis `maintenant` et
+  `fenetreJours` (`debutFenetre`, partagé avec le CLI), au lieu de retrouver
+  les lignes par `conversations` et `occurrences` : c'est `echappeesDe` qui
+  les donne, et chaque requête est celle de son échappée.
+- **Un abandon n'a pas de `texte`** au journal (le texte montré, « Je n'y
+  arrive pas : … », est rendu par `conversation.ts`) ; son instantané est
+  écrit quand même, avant la boucle, et la ligne le cite.
+- **La purge ne touche qu'aux fichiers que le journal cite** : un fichier
+  d'`echappees/` que nulle ligne `echappee` ne nomme reste là. Les dates
+  sont celles du journal (heure de Paris), pas celles du système de
+  fichiers.
+
+### Lot 1 de la promotion (`PLAN-PROMOTION.md` § 5, 2026-10-10)
+
+- **`verifierGabarit` est statique au chargement** : les références du
+  gabarit (requête, paramètre), une forme de réponse et une seule, une
+  période au plus et `du`, `au` réservés, des noms de requêtes uniques,
+  chaque `:param` d'un SQL déclaré — sans exécuter de requête. Le § 5.1
+  lisait les colonnes sur une copie vide à chaque chargement (cinq
+  processus enfants par consigne). Avec `colonnes` en second argument, il
+  vérifie aussi les colonnes : c'est le lot 2 (`verifierGeste`, copie vide)
+  qui les lui donnera. À l'exécution, une colonne absente rend « Je n'ai pas
+  pu lire les données : … », détail au journal ; un geste n'est activé
+  qu'après rejeu sur ses instantanés, qui l'aurait vu.
+- **Le paramètre `agent` est `z.string().nullable()`**, pas `/^A-\d+$/`
+  (§ 5.3) : le format des identifiants est au métier, et la résolution des
+  personnes du moteur garantit un identifiant connu (ou null). Pour le rôle
+  `agent`, il vaut toujours celui qui parle (D4), quel que soit le paramètre
+  reçu.
+- **Un fichier `propose` ou `retire` n'est ni chargé ni signalé** (son état
+  normal). Un fichier `actif` sans clé (jamais activé, empreinte différente,
+  retiré), illisible ou au gabarit faux est écarté, `refusé` au journal
+  (objet = l'id, ou le nom du fichier s'il ne se lit pas) et alerte G-01 —
+  **à chaque consigne** tant que le fichier reste là : voulu, ça doit se voir.
+- **La clé se lit sur les lignes `activé` et `retiré` seulement**
+  (`motifSansCle`) : une ligne `refusé`, `vérifié` ou `proposé` postérieure
+  ne la défait pas ; un fichier altéré puis rétabli se recharge.
+- **`chargerGestesAppris(dossierClient, { client, journal }, horodatage)`** :
+  le client et l'horodatage du tour servent aux lignes du journal (le § 5.2
+  ne les passait pas).
+- **`MetierConversation.copie` est facultatif** comme `echappee` : absent,
+  aucun geste appris n'est chargé.
+- **`confirmer` devient asynchrone** (avec `executerAttente`) :
+  `Action.executer` rend une promesse pour un geste appris, et `confirmer`
+  exécute une action après un « oui » ; le CLI et l'interface passaient déjà
+  par `avecSession`, seuls les tests ont gagné un `await`. Un geste appris
+  ne demande jamais de « oui » (`ecrit: false`).
+- **La ligne `consigne` d'une action porte `resultat`** (= `Resultat.donnees`
+  quand il existe) : le commentaire de `Resultat.donnees` disait « va au
+  journal » sans que rien ne l'écrive. Pour un geste appris : ses requêtes
+  (nom, SQL, lignes) ou son erreur. Les gestes codés qui rendent `donnees`
+  (`statut`, `demande`) y sont aussi désormais.
+- **`DOSSIER_GESTES` vit dans `gestes/geste-appris.ts`** (le lot 0 l'avait mis
+  dans `promotion.ts`) : `charger.ts` en a besoin, et `promotion.ts`
+  importera `gestes/` au lot 2.
+- **`parametresDe` s'appelle `parametresAppris`** : `regles/verdict.ts`
+  exporte déjà `parametresDe`, et deux `export *` du même nom s'annulent à
+  l'exécution (le métier a perdu son registre le temps de le comprendre).
+- **`TYPE_ALERTE = 'alerte'`** ajouté dans `archetypes/veille-client.ts` (la
+  veille l'écrivait en dur).
+- **Les évals de traduction chargent les gestes `propose` et `actif`** du
+  dossier `--client` **par leur fichier, sans la clé** : la copie d'un cas
+  n'a pas de journal, et le § 7.1 mesurera un geste seulement proposé. **Une
+  étiquette `nouvelle` d'une intention devenue geste appris passe quand le
+  modèle choisit ce geste** (`ecartsTraduction(…, appris)`) : N-1 et N-2
+  sont étiquetés `heures_par_agent` en demande nouvelle ; les paramètres se
+  mesureront par les tests du geste (lot 3, P13).
+- **Le geste de référence des tests vit dans `gestes/geste-appris.exemple.ts`**
+  (non exporté par le moteur) : importer un fichier de test en rejoue les cas.
+
+### Lot 2 de la promotion (`PLAN-PROMOTION.md` § 6, 2026-10-10)
+
+- **`fabriquerGeste` vérifie elle-même** (la relance dépend d'un écart
+  d'exécution) et rend trois sortes : `geste` (zéro écart, prêt à écrire),
+  `ecarts` (la proposition lisible et ses écarts de fond) ou `echec` (forme,
+  ou requête qui lève, après relance ; ou moins de trois réponses, sans
+  appel). Le § 6.1 séparait l'appel de la vérification ; `pnpm promotions`
+  ne vérifie pas deux fois.
+- **L'identifiant du geste n'est pas demandé au modèle : c'est
+  l'intention.** P14 retire de la liste l'intention du même id ; un id
+  choisi par le modèle laisserait deux portes.
+- **Le système de fabrication reçoit le schéma des tables** (noms, colonnes,
+  descriptions, sans ligne ni compte : `schemaDesTables`), absent de la
+  liste du § 6.1 : sans lui, `:du` et `:au` ne tombent pas sur la bonne
+  colonne. Rien de nouveau ne part chez le fournisseur : ce schéma est le
+  système de l'échappée. Il reçoit aussi la description de l'intention
+  d'origine (« ou par tous ») : la passe 13 a montré qu'un geste plus étroit
+  laisse des consignes sans mot-clé.
+- **L'effort de la fabrication est `effort.echappee`** (pas de clé de config
+  dédiée : une de plus dans `ConversationSchema` aurait touché toutes les
+  configs). Le plafond par appel est `par_demande.tokens_sortie`, comme le
+  plan le demande.
+- **`contient` = les nombres hors dates et les mots de noms connus du texte
+  montré, moins ce que la consigne porte déjà** : la consigne est une source
+  de l'échappée (« du 5 au 11 octobre » se cite), et le gabarit rend les
+  paramètres à sa façon. Les dates sont exclues pour la même raison. Un
+  texte sans rien à vérifier (« Aucune vacation. ») ne fait pas un test
+  (écart 2), parce que `TestAppris.contient` exige un élément (§ 7.3).
+- **Un paramètre `agent` d'un test est résolu par le niveau 1**
+  (`correspondances`) à partir de ce que le modèle écrit ; zéro ou deux
+  personnes → écart 2. Pour le rôle `agent`, c'est celui qui parle (D4),
+  quoi que le modèle écrive.
+- **Écart 4, les valeurs en dur : les chaînes SQL seulement** (`'…'`, `%` et
+  `_` retirés, deux caractères au moins). Une date ISO et une personne (id
+  ou nom, niveau 1) sont des écarts même hors consigne ; un mot d'une
+  consigne (`'nuit'`) en est un : c'est voulu, un geste qui code la consigne
+  ne répond qu'à elle, et c'est la mesure « faute de type » du § 8. Les
+  nombres (`LIMIT 1`, `* 24`) ne sont pas regardés.
+- **Écart 1 sur la copie vide** : les tables du premier instantané lisible,
+  lignes retirées ; une requête qui lève sur la copie vide arrête la
+  vérification (un seul écart, celui qui relance) : rien d'autre n'a de sens.
+- **Seules les échappées `reponse` vont à la fabrication** (un geste appris
+  lit) ; moins de trois → `echec` sans appel.
+- **`promouvoir.ts` porte l'orchestration** (le § 3 ne la plaçait nulle
+  part) : testable avec le modèle simulé (`promouvoir.test.ts`, ce que le
+  § 6.5 attendait de `promotion.test.ts`). `pnpm promotions` a
+  `--sans-modele` (le dossier seul), pas `--modele simule`.
+- **« Activable » = le taux de traduction seul, pas `bilan.atteint`** : AP-4
+  (cas strict, écart ancien) bloquerait toute activation. Les cas stricts
+  en écart sont écrits au dossier, au terminal et au journal (`vérifié`
+  porte `traduction.atteint` = activable). À relire par Lionel avec AP-4.
+- **Le coût de la passe de traduction va au journal du client en une ligne
+  `appel_modele` / `verifier` agrégée** (objet = le geste, `appels`,
+  `cout_usd`), pour le plafond du mois ; ses appels par cas vivent dans les
+  copies détruites. Son tableau s'écrit à côté du dossier :
+  `promotions/<id>-<date>-traduction.md`.
+- **Une passe de traduction qui échoue ne perd pas le geste écrit** : le
+  dossier dit « passe impossible (…) », non activable ; relancer
+  `pnpm promotions` refabriquerait (le fichier existant est gardé, le nouveau
+  prend la date) : plutôt `pnpm gestes verifier --avec-modele` au lot 3.
+- **Le plafond du mois est respecté avant la fabrication** (sorte
+  `plafond`, aucun appel) ; la passe de traduction ensuite n'est pas bornée
+  par lui (une consigne admise va à son terme, même règle que la
+  conversation).
+- **`evals/traduction.ts` est extrait de `cli/evals.ts`** (copie, porte,
+  trace, traduction et résolution) pour que `pnpm promotions` joue la même
+  passe ; `casDuGeste` lit le moment de chaque test dans son instantané
+  (`horodatage`), le schéma du test ne change pas.
+- **`pnpm evals gestes`** : `gestes.yaml` porte des gestes écrits à la main,
+  posés dans une copie (`gestes/eval-<id>.yaml`, proposé) avec un instantané
+  par test pris sur les données de la copie à `maintenant` pour le rôle du
+  test ; puis tous les gestes de la copie sont rejoués, ceux du `--client`
+  compris. Identifiant de cas `<geste>/<échappée>`.
+- **`pnpm evals promotion`** : le seuil est dans le fichier (0,66 pour
+  « 2/3 ») ; pas de passe de traduction (≈ 0,12 $ par cas, mesurée par
+  `pnpm promotions`) ; la copie passe la porte avec le rôle patron ;
+  `compter_vacations` est attendu en échec faute de type (« de nuit »).
+  Quatre cas d'échappée ajoutés (E-15 à E-18), chiffres à la main.
+- **`Intention.ecrit` est obligatoire** (pas de défaut) ; les deux
+  simulations sont `ecrit: false` mais ne sont pas promouvables (P15) : la
+  fabrication les tentera et échouera sur le fond, c'est la mesure.
+- **`citations` et `contient` vivent dans `echappee/reponse.ts`** ;
+  `present` d'`evals.ts` est remplacé par `contient` (même règle).
+- **`executerGeste` et `liaisonDe`** sont exportés d'`action-apprise.ts` :
+  l'exécution d'un geste et le rejeu d'un test sont le même code.
+- **« null » et « None » écrits en texte** dans `reponse.ligne`,
+  `reponse.tableau` et `tests[].params` se relisent comme `null`, comme pour
+  la traduction (GMI ignore `strict`).
+- **La ligne `promotion proposée` porte `fabrication`** (tout sauf la
+  proposition YAML, qui est au dossier) : le taux de promotion du § 8 se
+  calcule depuis le journal.
+- **Le délai d'un appel au SDK vient de la config** (`par_demande.secondes`,
+  `modeleAnthropic(id, cle, acces, delaiMs)`) : le `timeout: 60_000` codé
+  dans `anthropic.ts` faisait échouer la fabrication (GLM réfléchit plusieurs
+  minutes). Même règle que pour les tokens (2026-10-09).
+- **La fabrication part en flux (SSE)** (`AppelModele.flux: true`, le SDK
+  reconstitue le message ; la traduction, la désignation et l'échappée
+  restent hors flux) : la passerelle Cloudflare de GMI coupe toute réponse
+  non diffusée passée 120 s (erreur 524) ; la fabrication sur la copie n'est
+  passée qu'à la troisième tentative du SDK (366 s), facturée trois fois chez
+  GMI. **Et en flux, GMI ne compte aucun token** : l'adaptateur rend alors
+  une **borne haute** (`usageBorne` : entrée = caractères de la requête / 2,
+  sortie = le plafond demandé), écrite au journal (`usage_borne: true`),
+  portée par `IssueFabrication.usageBorne`, `Fabrication.cout_borne` et le
+  dossier (« au plus x $ »). Jamais sous-compter le plafond du mois ; chez
+  Anthropic le flux porte l'usage et la borne ne se déclenche pas. À relire
+  par Lionel : la borne majore d'environ deux fois (0,07 $ contre 0,04 $
+  mesuré hors flux) ; l'alternative serait l'effort `traduire` (bas) pour
+  tenir sous 120 s hors flux, au prix de la qualité du geste.
+- **Une fabrication « injoignable » (réseau, passerelle, flux lâché par GMI
+  après plusieurs minutes : vu à la seconde passe de l'éval) n'inscrit pas
+  la ligne `promotion proposée`** (`Fabrication.injoignable`) : une panne
+  n'est pas un verdict, le dossier le dit et le prochain `pnpm promotions`
+  réessaie. Les autres échecs (forme, troncature, écarts de fond) inscrivent
+  la ligne : l'intention n'est reproposée qu'à sa prochaine occurrence.
+- **Un refus ou une troncature ne relance pas** : P5 liste « schéma, zéro ou
+  deux outils » et une requête qui lève ; un modèle tronqué à 12 000 tokens
+  (compter_vacations, impossible faute de type) l'était deux fois, pour
+  0,05 $ de plus.
+
+### Lot 3 de la promotion (`PLAN-PROMOTION.md` § 7, 2026-10-10)
+
+- **La logique vit dans `moteur/src/promotion/atelier.ts`**, pas dans le
+  CLI (le § 3 ne nommait que `cli/gestes.ts`) : l'interface activera aux
+  mêmes exigences (§ 7.2), il faut un seul code. `promouvoir.ts` écrit sa
+  ligne `vérifié` par le même `journaliserVerification` ; `copieVideDe` y a
+  déménagé ; `BilanTraduction` et la passe (`passeTraduction`) sont dans
+  `evals/traduction.ts`, partagés par `pnpm promotions` et
+  `pnpm gestes verifier --avec-modele` (deux CLI, une passe).
+- **« Postérieure à toute modification du fichier » est tenu par
+  l'empreinte, pas par la date du fichier** : la ligne `vérifié` retenue doit
+  porter `jeton === empreinteGeste(geste)` ; un fichier modifié après la
+  vérification a une autre empreinte (hors `statut` et `validation`, qui ne
+  sont pas le geste). La date du fichier aurait été fausse partout : une
+  copie du client (`cpSync`) remet les dates à maintenant, `pnpm promotions
+  --date` écrit des lignes datées d'ailleurs. Écart au plan, assumé.
+- **Ce qui rend activable** : sur l'empreinte exacte, la dernière ligne
+  `vérifié` est sans écart, **et** une ligne `vérifié` sans écart porte une
+  passe de traduction au seuil (`traduction.atteint`). Une vérification en
+  code faite après la passe (`pnpm gestes verifier` sans modèle) ne la périme
+  pas : même contenu, même résultat ; un écart apparu depuis (un instantané
+  perdu) bloque. Sans ça, chaque `verifier` sans modèle aurait coûté une
+  passe à 0,15 $ pour rien.
+- **`<id>` ou nom de fichier** : `trouverGeste` accepte l'identifiant du
+  geste, ou `x.yaml` ; plusieurs fichiers au même identifiant (une
+  refabrication, `<id>-<date>.yaml`) → « nommer le fichier ». Un second
+  fichier ne s'active pas tant qu'un autre est actif pour le même
+  identifiant (deux actions du même id seraient chargées) : le retirer
+  d'abord. La page envoie le nom du fichier.
+- **Activer écrit le fichier avant la ligne au journal** : si la ligne
+  manque (panne), le fichier `actif` sans clé est écarté avec `refusé` et une
+  alerte G-01 au prochain chargement (ça se voit) ; l'inverse aurait laissé
+  une ligne `activé` sans effet, en silence.
+- **`par`** : `--par` obligatoire au CLI (le plan), optionnel pour
+  `retirer` (le plan ne le demandait pas ; écrit dans `donnees` s'il est
+  donné) ; dans l'interface, c'est `identite.role` (`patron`), l'identité
+  vérifiée à la porte, jamais un champ du corps ; `validation.par: patron`
+  dans le YAML, le registre d'accès ne porte pas de nom.
+- **Retirer vaut pour un geste proposé ou actif** (« ce geste, non » se dit
+  avant comme après) ; un geste retiré ne se vérifie plus ; pour le remettre
+  en jeu : `statut: propose` à la main, puis `verifier`, puis `activer` (pas
+  de commande, c'est l'atelier).
+- **Un écart rend la passe inutile** : `verifier --avec-modele` ne lance la
+  passe (0,15 $) que sans écart ; la ligne `vérifié` porte les écarts dans
+  tous les cas, sans `traduction`.
+- **La confirmation de l'interface est dans la page** (« Activer le geste
+  « … » ? », Oui / Annuler), pas un `window.confirm` (qui bloque les
+  navigateurs pilotés et ne se stylise pas) ; le retrait demande son motif
+  dans un champ de la carte. L'onglet « Appris » se charge à l'ouverture et
+  au rafraîchissement, comme le journal, par `/api/gestes` (pas dans
+  `/api/etat`). Le résultat remplace les boutons (« Activé. », « Retiré :
+  … »), puis la liste se recharge.
+- **L'écart de gabarit est devenu précis** (code du lot 2) : quand le rendu
+  levait sur la copie vide (une colonne citée que la requête ne rend pas),
+  `executerGeste` perdait les résultats et `verifierGeste` signalait toutes
+  les colonnes du gabarit, les bonnes comprises (`nom` à côté de `total`).
+  L'erreur de rendu garde maintenant `resultats` ; `fabriquer.test.ts`
+  passait par `toContain`, `atelier.test.ts` exige la liste exacte.
+- **Le test d'honnêteté (§ 7.3)** lit `evals/gestes.yaml` et
+  `exemples/client-fictif/gestes/` (vide, on n'y écrit jamais) ; au-delà du
+  plan il exige que l'identifiant soit une intention du catalogue qui lit
+  (`ecrit: false`, P15) et pas un geste codé (P14), que les agents cités
+  existent, et `agent: null` pour un test du patron, un agent sinon.
+- **`pnpm gestes` n'a pas de `--date`** (le plan n'en donne pas) : l'heure
+  réelle, `validation.le` = aujourd'hui.
+- **Le mini-site et la présentation ne sont pas touchés** (§ 7.4 : avec
+  Lionel, ce sont ses artefacts) ; la phrase juste est celle de P15.
+
+### Phase A du plan général (`PLAN-GENERAL.md` § 3, 2026-10-11)
+
+- **« Le dossier le dit » pour `compter_vacations`** : un champ
+  `impossible: <motif>` sur le cas dans `evals/promotions.yaml` (schéma
+  `CasPromotion`), que le lanceur écrit en tête des écarts du résultat
+  (« impossible par construction : … »). Le cas compte toujours dans le
+  dénominateur (3) : l'objectif 2/3 suppose donc les deux autres.
+- **Le seuil de l'échappée** : « 41/42 » valait pour 14 cas sur trois
+  passes ; le lot 2 en a ajouté 4 (E-15 à E-18). Lu comme « au plus un écart
+  sur trois passes » : 53/54 sur les 18, 41/42 sur les 14 d'origine.
+- **Trois passes de promotion au lieu d'une** : la première (1/3) ne
+  suffisait pas à conclure (la règle des passes 7 à 12 : jamais sur une
+  passe). 0,64 $ en tout.
+- **Relecture A1, défaut 7b non corrigé** : le test « sans modèle : aucun
+  appel » (`promouvoir.test.ts`) ne passe pas de simulé qui compte ses
+  appels, parce que sans modèle passé l'appel est impossible par le type ;
+  le test vérifie déjà le journal (aucune ligne `appel`) et `gestes/` absent.
+- **`contient` masque les plages qui ne sont pas des quantités** (dates,
+  heures, identifiants, années), exactement celles que `citations` écarte :
+  symétrique, et plus strict (un geste qui rendrait « 16h » collé ne passe
+  plus « 16 »). Une ligne `retiré` sans jeton (aucune n'existe hors des
+  tests : `retirerGeste` l'écrit toujours) ne compte plus.
+- **L'identifiant d'un geste codé** est refusé au chargement (écarté,
+  `refusé`, alerte G-01), pas à l'activation : l'échec reste fermé et un
+  seul endroit le garde.
+- **La clé GMI** : absente de l'environnement, extraite du transcript du
+  2026-10-08 vers un fichier 600 du scratchpad, comme la mémoire du projet
+  le dit ; jamais affichée.
+- **Les branches `promotion/lot-0` à `lot-3`** ne sont pas supprimées :
+  elles ne contiennent plus rien que `main` n'ait (le critère), et
+  supprimer une branche est un geste que les garde-fous laissent à Lionel.
+
+Pièges vus pendant la phase :
+
+- **`npx vitest run` passé par RTK écrit `moteur/.vitest/json/output.json`**,
+  que `biome check .` refuse ensuite (format) : le supprimer, ou lancer
+  vitest par `rtk proxy`.
+- **La fabrication de GLM touche le plafond de la config** depuis la
+  clause G4 (b) : 41 000 caractères de réflexion pour `heures_par_agent`.
+  Une « réponse tronquée » à la fabrication se lit dans la trace
+  (`stop_reason: max_tokens`, `sortie` = `par_demande.tokens_sortie`).
+
 ## Commandes
 
 ```sh
@@ -763,8 +1379,10 @@ pnpm registre:verifier     # couverture, codes cités, veille des textes en reta
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
 pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README
 pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]
-pnpm promotions --client <copie> [--date AAAA-MM-JJ]
-pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
-pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]
+pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]   # avec modèle : fabrique, vérifie, mesure la traduction (≈ 0,15 $ par intention)
+pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
+pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle
+pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]   # l'atelier ; --avec-modele coûte ≈ 0,15 $
+pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]   # onglet « Appris » : le patron active ou retire
 # Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.
 ```

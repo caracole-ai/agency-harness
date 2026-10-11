@@ -7,17 +7,21 @@
 import { fileURLToPath } from 'node:url'
 import {
   accueillir,
+  activerGeste,
   avecSession,
   chargerPersonnes,
   confirmer,
   coutDuMois,
+  ErreurAtelier,
   FUSEAU,
   type Identite,
   type IdentiteVerifiee,
   idConversation,
   type Ligne,
+  listerGestes,
   type Modele,
   type Personne,
+  retirerGeste,
   Temporal,
   TYPE_CONFIRMATION,
   TYPE_CONFIRMATION_ATTENDUE,
@@ -279,6 +283,8 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
 
   app.onError((erreur, c) => {
     if (erreur instanceof ErreurRequete) return c.json({ erreur: erreur.message }, 400)
+    // Un refus de l'atelier (geste inconnu, jamais vérifié, déjà actif…) : la demande, pas le serveur.
+    if (erreur instanceof ErreurAtelier) return c.json({ erreur: erreur.message }, 400)
     if (erreur instanceof ErreurAcces) return c.json({ erreur: erreur.message }, 403)
     // Un refus d'un intergiciel de Hono (csrf : 403) garde son statut.
     if (erreur instanceof HTTPException) return erreur.getResponse()
@@ -346,6 +352,51 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
       conversation,
     })
     return c.json({ conversation, reponse })
+  })
+
+  // Ce que l'outil a appris (PLAN-PROMOTION.md § 7.2) : la liste des gestes
+  // appris, et leur activation ou leur retrait par le patron, aux mêmes
+  // exigences que l'atelier (une ligne « vérifié » sans écart, avec modèle,
+  // sur l'empreinte exacte du fichier). « par » est l'identité vérifiée,
+  // jamais un champ du corps.
+  app.post('/api/gestes', async (c) => {
+    const identite = entrer((await lireCorps(c.req.raw)).identite)
+    exigerPatron(identite)
+    return c.json(await session(identite, (s) => listerGestes(dossier, s.journal)))
+  })
+
+  /** Le geste visé par un corps : son identifiant, ou le nom de son fichier. */
+  const cibleGeste = (corps: Record<string, unknown>): string => {
+    if (typeof corps.id !== 'string' || corps.id.trim() === '') {
+      throw new ErreurRequete('id attendu : l’identifiant du geste, ou le nom de son fichier')
+    }
+    return corps.id
+  }
+
+  app.post('/api/gestes/activer', async (c) => {
+    const corps = await lireCorps(c.req.raw)
+    const id = cibleGeste(corps)
+    const identite = entrer(corps.identite)
+    exigerPatron(identite)
+    return c.json(
+      await session(identite, (s) =>
+        activerGeste(dossier, s.journal, s.config.client, id, identite.role, maintenant()),
+      ),
+    )
+  })
+
+  app.post('/api/gestes/retirer', async (c) => {
+    const corps = await lireCorps(c.req.raw)
+    const id = cibleGeste(corps)
+    const motif = typeof corps.motif === 'string' ? corps.motif.trim() : ''
+    if (motif === '') throw new ErreurRequete('motif attendu')
+    const identite = entrer(corps.identite)
+    exigerPatron(identite)
+    return c.json(
+      await session(identite, (s) =>
+        retirerGeste(dossier, s.journal, s.config.client, id, motif, identite.role, maintenant()),
+      ),
+    )
   })
 
   app.post('/api/confirmer', async (c) => {

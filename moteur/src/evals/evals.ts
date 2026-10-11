@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { ROLES } from '../conversation/actions'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
+import { contient } from '../echappee/reponse'
+import { GesteAppris } from '../gestes/geste-appris'
 import type { AppelModele, Modele, ReponseModele } from '../modele/modele'
 
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : des cas écrits à la
@@ -16,12 +18,16 @@ export const SORTES_ECHAPPEE = ['reponse', 'proposition', 'abandon'] as const
 /** Les catégories qui doivent passer à 100 %, quel que soit le taux global. */
 export const CATEGORIE_AGENT_PATRON = 'agent_patron'
 
+/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %, rejeu des gestes appris 100 % ; la fabrication est une mesure, son seuil est dans son fichier (PLAN-PROMOTION.md § 8). */
+export const SEUILS = { traduire: 0.95, echappee: 0.8, gestes: 1 } as const
+
 /** Un dossier d'éval dérivé du client : une chaîne remplacée dans un de ses fichiers, sur la copie du cas. */
 export const Variante = z.strictObject({
   fichier: z.string(),
   remplacer: z.string(),
   par: z.string(),
 })
+export type Variante = z.infer<typeof Variante>
 
 export const CasTraduire = z.strictObject({
   id: z.string().min(1),
@@ -77,8 +83,35 @@ export const FichierEchappee = z.strictObject({
 })
 export type FichierEchappee = z.infer<typeof FichierEchappee>
 
-/** Sans accents ni casse : « Saïdi » se retrouve dans « saidi ». */
-const normaliser = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+/**
+ * `evals/gestes.yaml` (PLAN-PROMOTION.md § 6.4) : des gestes appris écrits à la
+ * main, que le lanceur pose dans une copie du client avec, pour chaque test,
+ * un instantané pris sur les données de la copie à `maintenant`, pour le rôle
+ * du test ; puis chaque geste de la copie est rejoué, sans modèle.
+ */
+export const FichierGestes = z.strictObject({
+  maintenant: z.string(),
+  gestes: z.array(GesteAppris).min(1),
+})
+export type FichierGestes = z.infer<typeof FichierGestes>
+
+/** Un cas de fabrication : une intention, et les cas d'`echappees.yaml` qui la portent, rejoués avant de fabriquer (PLAN-PROMOTION.md § 6.4). */
+export const CasPromotion = z.strictObject({
+  id: z.string().min(1),
+  intention: z.string().min(1),
+  echappees: z.array(z.string().min(1)).min(1),
+  /** Un cas impossible par construction (P11) : pourquoi ; le résultat le dit avant ses écarts. */
+  impossible: z.string().min(1).optional(),
+})
+export type CasPromotion = z.infer<typeof CasPromotion>
+
+export const FichierPromotions = z.strictObject({
+  maintenant: z.string(),
+  /** Une mesure, pas une promesse : écrit dans le fichier, pas dans le code. */
+  seuil: z.number().min(0).max(1),
+  cas: z.array(CasPromotion).min(1),
+})
+export type FichierPromotions = z.infer<typeof FichierPromotions>
 
 const egal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -89,8 +122,21 @@ export type IssueTraduction = Demande | { sorte: 'precision'; candidats: string[
 export function ecartsTraduction(
   attendu: CasTraduire['attendu'],
   demande: IssueTraduction,
+  appris: readonly string[] = [],
 ): string[] {
   const sortes = Array.isArray(attendu.sorte) ? attendu.sorte : [attendu.sorte]
+  // Un cas étiqueté « demande nouvelle » d'une intention devenue geste appris
+  // passe quand le modèle choisit ce geste : c'est la même demande, promue
+  // (PLAN-PROMOTION.md § 5.4, P14). Ses paramètres se mesurent par les tests du
+  // geste lui-même (lot 3, § 7.1), pas par cette étiquette.
+  if (
+    demande.sorte === 'action' &&
+    appris.includes(demande.action) &&
+    sortes.includes('nouvelle') &&
+    (attendu.intention === undefined || attendu.intention.includes(demande.action))
+  ) {
+    return []
+  }
   if (!sortes.includes(demande.sorte)) {
     const detail =
       demande.sorte === 'action'
@@ -134,13 +180,6 @@ export function ecartsTraduction(
   return ecarts
 }
 
-/** Un mot attendu se cherche tel quel ; un nombre se cherche entier (« 4 » n'est pas trouvé dans « V-14 »). */
-function present(texte: string, mot: string): boolean {
-  const m = normaliser(mot)
-  if (!/^\d+(?:[.,]\d+)?$/.test(m)) return texte.includes(m)
-  return new RegExp(`(?<![\\d.,])${m.replace(/[.,]/, '[.,]')}(?![\\d]|[.,]\\d)`).test(texte)
-}
-
 /** Le texte que le demandeur aurait lu. */
 const texteDe = (issue: IssueEchappee) => (issue.sorte === 'abandon' ? issue.motif : issue.texte)
 
@@ -162,12 +201,12 @@ export function ecartsEchappee(attendu: CasEchappee['attendu'], issue: IssueEcha
   if (issue.sorte === 'reponse' && issue.controle === CONTROLE_RETIRE) {
     ecarts.push('le contrôle a retiré le résumé du modèle')
   }
-  const texte = normaliser(texteDe(issue))
+  const texte = texteDe(issue)
   for (const mot of attendu.contient ?? []) {
-    if (!present(texte, mot)) ecarts.push(`ne contient pas « ${mot} »`)
+    if (!contient(texte, mot)) ecarts.push(`ne contient pas « ${mot} »`)
   }
   for (const mot of attendu.exclut ?? []) {
-    if (present(texte, mot)) ecarts.push(`contient « ${mot} »`)
+    if (contient(texte, mot)) ecarts.push(`contient « ${mot} »`)
   }
   const modifications = modificationsDe(issue)
   if (attendu.vacations_modifiables) {

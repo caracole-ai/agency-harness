@@ -2,20 +2,54 @@ import { createServer, type IncomingHttpHeaders } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { afterAll, describe, expect, it } from 'vitest'
 import type { ConfigConversation } from '../conversation/config'
-import { modeleAnthropic, modeleDepuisConfig } from './anthropic'
+import { modeleAnthropic, modeleDepuisConfig, usageBorne } from './anthropic'
 
 // L'adaptateur vers un autre point d'accès au format Anthropic (GMI Cloud…) :
 // l'adresse, la clé en Bearer, la variable nommée par la config. Un petit
 // serveur local tient lieu de fournisseur : aucun appel réseau.
 
 const recues: { url: string | undefined; entetes: IncomingHttpHeaders; corps: unknown }[] = []
+/** Un plafond de tokens qui fait rendre au serveur local un usage à zéro (un fournisseur qui ne compte pas en flux). */
+const SANS_USAGE = 17
 const serveur = createServer((req, res) => {
   let corps = ''
   req.on('data', (d: Buffer) => {
     corps += d.toString('utf8')
   })
   req.on('end', () => {
-    recues.push({ url: req.url, entetes: req.headers, corps: JSON.parse(corps) })
+    const lu = JSON.parse(corps) as { stream?: boolean; max_tokens?: number }
+    const sortie = lu.max_tokens === SANS_USAGE ? 0 : 3
+    const entree = lu.max_tokens === SANS_USAGE ? 0 : 12
+    recues.push({ url: req.url, entetes: req.headers, corps: lu })
+    if (lu.stream) {
+      // En flux : les événements SSE que le SDK reconstitue en un message.
+      res.setHeader('content-type', 'text/event-stream')
+      const evenement = (type: string, donnees: Record<string, unknown>) =>
+        res.write(`event: ${type}\ndata: ${JSON.stringify({ type, ...donnees })}\n\n`)
+      evenement('message_start', {
+        message: {
+          id: 'msg_flux',
+          type: 'message',
+          role: 'assistant',
+          model: 'zai-org/GLM-5.3',
+          content: [],
+          stop_reason: null,
+          stop_sequence: null,
+          usage: { input_tokens: entree, output_tokens: 0 },
+        },
+      })
+      evenement('content_block_start', { index: 0, content_block: { type: 'text', text: '' } })
+      evenement('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'bon' } })
+      evenement('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'jour' } })
+      evenement('content_block_stop', { index: 0 })
+      evenement('message_delta', {
+        delta: { stop_reason: 'end_turn', stop_sequence: null },
+        usage: { output_tokens: sortie },
+      })
+      evenement('message_stop', {})
+      res.end()
+      return
+    }
     res.setHeader('content-type', 'application/json')
     res.end(
       JSON.stringify({
@@ -52,12 +86,12 @@ const config = (acces?: ConfigConversation['modele']['acces']): ConfigConversati
     ...(acces ? { acces } : {}),
   },
   plafonds: { par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }, par_mois_usd: 30 },
-  promotion: { occurrences: 3, jours: 30 },
+  promotion: { occurrences: 3, jours: 30, conservation_jours: 90 },
 })
 
 describe('un autre point d’accès au format Anthropic', () => {
   it('la clé part en Bearer, sans x-api-key, vers l’adresse donnée ; l’usage sans cache vaut zéro', async () => {
-    const m = modeleAnthropic('zai-org/GLM-5.3', 'cle-de-test', { url, bearer: true })
+    const m = modeleAnthropic('zai-org/GLM-5.3', 'cle-de-test', { url, bearer: true }, 120_000)
     const r = await m.appeler(appel)
     const derniere = recues.at(-1)
     expect(derniere?.url).toBe('/v1/messages')
@@ -72,9 +106,34 @@ describe('un autre point d’accès au format Anthropic', () => {
     expect(r.message.model).toBe('zai-org/GLM-5.3')
   })
   it('sans Bearer, la clé part en x-api-key', async () => {
-    await modeleAnthropic('m', 'cle-x', { url, bearer: false }).appeler(appel)
+    await modeleAnthropic('m', 'cle-x', { url, bearer: false }, 120_000).appeler(appel)
     expect(recues.at(-1)?.entetes['x-api-key']).toBe('cle-x')
     expect(recues.at(-1)?.entetes.authorization).toBeUndefined()
+  })
+  it('en flux, la réponse est demandée en SSE et reconstituée en un message entier, usage compris', async () => {
+    const m = modeleAnthropic('zai-org/GLM-5.3', 'cle-de-test', { url, bearer: true }, 120_000)
+    const r = await m.appeler({ ...appel, flux: true })
+    expect(recues.at(-1)?.corps).toMatchObject({ stream: true, max_tokens: 16 })
+    expect(r.message.content).toMatchObject([{ type: 'text', text: 'bonjour' }])
+    expect(r.message.stop_reason).toBe('end_turn')
+    expect(r.usage).toEqual({ entree: 12, sortie: 3, cacheEcrit: 0, cacheLu: 0 })
+    expect(r.usageBorne).toBeUndefined()
+  })
+  it('en flux, un fournisseur qui ne compte pas (tout à zéro) : l’usage devient une borne haute, dite comme telle', async () => {
+    const m = modeleAnthropic('zai-org/GLM-5.3', 'cle-de-test', { url, bearer: true }, 120_000)
+    // Le serveur local rend un usage nul quand le plafond demandé vaut SANS_USAGE.
+    const r = await m.appeler({ ...appel, flux: true, maxTokens: SANS_USAGE })
+    expect(r.usageBorne).toBe(true)
+    expect(r.usage.sortie).toBe(SANS_USAGE)
+    const longueur = JSON.stringify(recues.at(-1)?.corps).length
+    expect(r.usage.entree).toBeGreaterThanOrEqual(Math.ceil(longueur / 2) - 20)
+    expect(r.usage.entree).toBeLessThanOrEqual(Math.ceil(longueur / 2) + 20)
+    expect(usageBorne({ a: 'bonjour' }, 7)).toEqual({
+      entree: 8,
+      sortie: 7,
+      cacheEcrit: 0,
+      cacheLu: 0,
+    })
   })
 })
 

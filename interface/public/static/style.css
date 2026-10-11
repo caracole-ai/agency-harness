@@ -525,6 +525,12 @@ textarea {
 .pastille--doute {
   border-style: dashed;
 }
+/* Actif : l'humain a engagé, en aplat marine comme son oui. */
+.pastille--humain {
+  color: var(--on-human);
+  background: var(--human);
+  border-color: var(--human);
+}
 
 /* ---------- les boutons ---------- */
 .actions {
@@ -590,6 +596,26 @@ textarea {
   font-size: 0.66rem;
   color: var(--fg-faint);
   margin-top: 0.75rem;
+}
+/* Un champ d'une ligne dans une carte (le motif d'un retrait), au trait du champ de consigne. */
+.champ {
+  flex: 1;
+  min-width: 12rem;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--fg);
+  font-size: 0.875rem;
+}
+.champ::placeholder {
+  color: var(--fg-faint);
+}
+.question {
+  margin: 0;
+  color: var(--fg);
+  font-weight: 500;
 }
 
 /* ---------- les règles ---------- */

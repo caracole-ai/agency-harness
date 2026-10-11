@@ -7,6 +7,9 @@ const API = {
   journal: '/api/journal?limite=200',
   consigne: '/api/consigne',
   confirmer: '/api/confirmer',
+  gestes: '/api/gestes',
+  activerGeste: '/api/gestes/activer',
+  retirerGeste: '/api/gestes/retirer',
 }
 const FUSEAU = 'Europe/Paris'
 const PATRON = { role: 'patron' }
@@ -43,6 +46,13 @@ const SORTES = {
 const TYPES_LISIBLES = {
   appel_modele: 'appel au modèle',
   confirmation_attendue: 'confirmation attendue',
+}
+
+/** Les statuts d'un geste appris (moteur/src/gestes/geste-appris.ts), et leur pastille. */
+const STATUTS_GESTE = {
+  propose: { libelle: 'Proposé', classe: 'pastille--outil' },
+  actif: { libelle: 'Actif', classe: 'pastille--humain' },
+  retire: { libelle: 'Retiré', classe: '' },
 }
 
 const ici = {
@@ -132,6 +142,7 @@ const mural = (texte) => formatMural.format(new Date(`${texte}:00Z`))
 
 const dollars = (n) =>
   `${n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: n > 0 && n < 0.1 ? 4 : 2 })} $`
+const pourCent = (taux) => `${Math.round(taux * 100)} %`
 
 const jour = (iso) =>
   new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeZone: 'UTC' }).format(
@@ -538,9 +549,183 @@ function motif(l) {
   return l.motif ?? ''
 }
 
+// ---------- ce que l'outil a appris ----------
+
+/** La liste des gestes appris passe la porte au nom de la personne choisie : réservée au patron, comme le journal. */
+async function chargerGestes() {
+  const zone = $('appris')
+  if (!zone.querySelector('.liste, .vide'))
+    zone.replaceChildren(el('p', { classe: 'chargement', texte: 'Chargement…' }))
+  let gestes
+  try {
+    gestes = await appeler(API.gestes, { identite: ici.identite })
+  } catch (erreur) {
+    zone.replaceChildren(
+      erreur.statut === 403
+        ? reserveBloc(erreur.message)
+        : erreurBloc(erreur.message, chargerGestes),
+    )
+    return
+  }
+  rendreGestes(gestes)
+}
+
+function rendreGestes(gestes) {
+  const groupes = [
+    [
+      'Proposés par l’outil',
+      'propose',
+      'Aucun geste proposé. ',
+      'Quand une demande nouvelle revient, l’outil fabrique un geste, le vérifie, puis vous le propose ici.',
+    ],
+    ['Actifs', 'actif', 'Aucun geste actif. ', 'Un geste actif répond seul, sans appel à l’IA.'],
+    [
+      'Retirés',
+      'retire',
+      'Aucun geste retiré. ',
+      'Un geste retiré ne répond plus dès la consigne suivante.',
+    ],
+  ]
+  const zone = []
+  for (const [titre, statut, vide, suite] of groupes) {
+    zone.push(el('h3', { texte: titre }))
+    const liste = gestes.filter((g) => g.statut === statut)
+    zone.push(
+      liste.length === 0
+        ? el('p', { classe: 'vide' }, el('b', { texte: vide }), suite)
+        : el('ul', { classe: 'liste' }, ...liste.map(carteGeste)),
+    )
+  }
+  const illisibles = gestes.filter((g) => g.erreur)
+  if (illisibles.length > 0) {
+    zone.push(
+      el('h3', { texte: 'Illisibles' }),
+      el(
+        'ul',
+        { classe: 'liste' },
+        ...illisibles.map((g) =>
+          el(
+            'li',
+            { classe: 'carte' },
+            el(
+              'div',
+              { classe: 'carte__meta' },
+              el('span', { classe: 'carte__titre', texte: g.fichier }),
+            ),
+            el('p', { classe: 'texte', texte: g.erreur }),
+          ),
+        ),
+      ),
+    )
+  }
+  $('appris').replaceChildren(...zone)
+}
+
+/** Ce que la dernière vérification de ce fichier a donné, en une phrase. */
+function verificationDe(g) {
+  const v = g.verification
+  if (!v) return 'Jamais vérifié sur cette version du fichier.'
+  const ecarts = v.ecarts.length === 0 ? 'aucun écart' : `${v.ecarts.length} écart(s)`
+  const traduction = v.traduction
+    ? `traduction ${pourCent(v.traduction.taux)}, ${v.traduction.atteint ? 'seuil atteint' : 'sous le seuil'}`
+    : 'sans passe avec modèle'
+  return `Vérifié le ${instant(v.horodatage)} : ${ecarts} ; ${traduction}.`
+}
+
+function carteGeste(g) {
+  const statut = STATUTS_GESTE[g.statut]
+  return el(
+    'li',
+    { classe: `carte${g.activable ? ' carte--attente' : ''}` },
+    el(
+      'div',
+      { classe: 'carte__meta' },
+      el('span', { classe: 'carte__titre', texte: g.id }),
+      el('span', { classe: `pastille ${statut.classe}`, texte: statut.libelle }),
+      el('span', { texte: `${g.tests} tests` }),
+      el('span', { texte: `fabriqué le ${jour(g.fabriqueLe)}` }),
+      g.validation
+        ? el('span', { texte: `activé le ${jour(g.validation.le)} par ${g.validation.par}` })
+        : null,
+    ),
+    el('p', { classe: 'texte', texte: g.description }),
+    el('p', { classe: 'carte__suite texte', texte: verificationDe(g) }),
+    g.statut === 'propose' && !g.activable
+      ? el('p', { classe: 'carte__suite', texte: `Pas encore activable : ${g.motif}.` })
+      : null,
+    g.statut === 'retire' ? null : zoneGeste(g),
+  )
+}
+
+/** Activer (après une confirmation à l'écran : une activation engage) ou retirer (avec un motif) ; le résultat remplace les boutons. */
+function zoneGeste(g) {
+  const zone = el('div', { classe: 'actions' })
+  const bouton = (classe, texte, onclick) =>
+    el('button', { classe: `bouton ${classe} bouton--petit`, type: 'button', texte, onclick })
+  const montrer = (...enfants) => zone.replaceChildren(...enfants.filter(Boolean))
+  const fini = (texte) => {
+    montrer(el('p', { classe: 'repondu', texte }))
+    chargerGestes()
+    rafraichir()
+  }
+  const echec = (erreur) => {
+    initial()
+    zone.prepend(el('p', { classe: 'texte', role: 'alert', texte: erreur.message }))
+  }
+  const initial = () =>
+    montrer(
+      g.activable ? bouton('bouton--oui', 'Activer', confirmer) : null,
+      bouton('bouton--non', 'Retirer', demanderMotif),
+    )
+  function confirmer() {
+    montrer(
+      el('p', { classe: 'question', texte: `Activer le geste « ${g.description} » ?` }),
+      bouton('bouton--oui', 'Oui, activer', async () => {
+        try {
+          await appeler(API.activerGeste, { identite: ici.identite, id: g.fichier })
+          fini('Activé.')
+        } catch (erreur) {
+          echec(erreur)
+        }
+      }),
+      bouton('bouton--non', 'Annuler', initial),
+    )
+  }
+  function demanderMotif() {
+    const champ = el('input', {
+      classe: 'champ',
+      type: 'text',
+      placeholder: 'Pourquoi retirer ce geste ?',
+      'aria-label': 'Motif du retrait',
+      maxlength: 200,
+    })
+    montrer(
+      champ,
+      bouton('bouton--non', 'Retirer', async () => {
+        const motif = champ.value.trim()
+        if (motif === '') {
+          champ.focus()
+          return
+        }
+        try {
+          await appeler(API.retirerGeste, { identite: ici.identite, id: g.fichier, motif })
+          fini(`Retiré : ${motif}`)
+        } catch (erreur) {
+          echec(erreur)
+        }
+      }),
+      bouton('bouton--outil', 'Annuler', initial),
+    )
+    champ.focus()
+  }
+  initial()
+  return zone
+}
+
 function rafraichir() {
   chargerEtat()
   if (ici.onglet === 'journal') chargerJournal()
+  if (ici.onglet === 'appris') chargerGestes()
 }
 
 // ---------- les onglets ----------
@@ -555,6 +740,7 @@ function ouvrirOnglet(vue, focus = false) {
     $(b.getAttribute('aria-controls')).hidden = !actif
   }
   if (vue === 'journal') chargerJournal()
+  if (vue === 'appris') chargerGestes()
 }
 
 // ---------- la conversation ----------
@@ -826,6 +1012,7 @@ function demarrer() {
     })
   }
   $('rafraichir-journal').addEventListener('click', chargerJournal)
+  $('rafraichir-appris').addEventListener('click', chargerGestes)
   $('identite').addEventListener('change', (e) => {
     const v = e.target.value
     changerIdentite(v === 'patron' ? PATRON : { role: 'agent', agent: v.slice('agent:'.length) })

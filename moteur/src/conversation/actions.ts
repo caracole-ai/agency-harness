@@ -46,12 +46,13 @@ export interface Action<Session, Params> {
   ecrit: boolean
   /** La phrase de confirmation, rendue par le code. Lève si l'action est impossible pour ce demandeur. */
   reformuler(s: Session, identite: Identite, params: Params): string
+  /** Synchrone pour les gestes codés ; un geste appris lit sa copie dans un processus enfant et rend une promesse (PLAN-PROMOTION.md § 5.3). */
   executer(
     s: Session,
     identite: Identite,
     params: Params,
     maintenant: Temporal.ZonedDateTime,
-  ): Resultat
+  ): Resultat | Promise<Resultat>
 }
 
 export const DESCRIPTION_MAX = 200
@@ -102,6 +103,8 @@ export interface Intention {
   id: string
   /** Une phrase pour le modèle, en français. */
   description: string
+  /** true : la demande écrit dans les données ; la promotion ne la tente pas avant le lot 4 (PLAN-PROMOTION.md P15). */
+  ecrit: boolean
 }
 
 export const DemandeNouvelle = z.strictObject({

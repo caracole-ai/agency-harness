@@ -1,0 +1,55 @@
+# Les gestes appris écrits à la main pour l'éval de rejeu (PLAN-PROMOTION.md
+# § 6.4), `pnpm evals gestes --client <dossier>`, sans modèle, seuil 100 %.
+# Le lanceur pose chaque geste dans une copie du client (`gestes/eval-<id>.yaml`,
+# statut proposé) et, pour chaque test, un instantané pris sur les données de
+# la copie à `maintenant`, pour le rôle du test ; puis rejoue chaque geste de
+# la copie (ceux du dossier passé en --client compris) sur ses instantanés.
+#
+# Chiffres à la main (client fictif, semaine du lundi 05/10 au dimanche 11/10,
+# par jour de début, `planning.csv`) : Karim (A-1) V-01 + V-02 = 24 h ;
+# Julien (A-2) V-04 12 h + V-05 4 h = 16 h ; Sophie (A-3) V-06 = 12 h.
+# Écrit le 2026-10-10, jamais recopié d'une sortie du modèle.
+
+maintenant: "2026-10-10T21:40"
+
+gestes:
+  - id: heures_par_agent
+    description: les heures faites par un agent sur une période, ou par celui qui parle
+    roles: [patron, agent]
+    parametres:
+      agent:
+        type: agent
+        description: "l'agent, tel qu'il est écrit dans la consigne ; null pour celui qui parle"
+      periode:
+        type: periode
+        description: la période demandée
+    requetes:
+      - nom: heures
+        sql: SELECT a.nom AS nom, COALESCE(SUM(v.heures), 0) AS heures FROM agents a LEFT JOIN vacations v ON v.agent = a.id AND v.jour BETWEEN :du AND :au WHERE a.id = :agent GROUP BY a.id
+    reponse:
+      ligne: "{{heures.nom}} : {{heures.heures}} heures du {{du}} au {{au}}."
+      tableau: null
+      vide: Aucune vacation sur cette période.
+    tests:
+      - echappee: E-eval-heures-1
+        consigne: "Combien d'heures Karim a-t-il fait cette semaine ?"
+        role: patron
+        agent: null
+        params: { agent: A-1, du: "2026-10-05", au: "2026-10-11" }
+        instantane: echappees/E-eval-heures-1.json
+        contient: ["24", Haddad]
+      - echappee: E-eval-heures-2
+        consigne: "Combien d'heures Julien a-t-il fait du 5 au 11 octobre ?"
+        role: patron
+        agent: null
+        params: { agent: A-2, du: "2026-10-05", au: "2026-10-11" }
+        instantane: echappees/E-eval-heures-2.json
+        contient: ["16", Lefèvre]
+      - echappee: E-eval-heures-3
+        consigne: "Combien d'heures j'ai fait cette semaine ?"
+        role: agent
+        agent: A-3
+        params: { agent: A-3, du: "2026-10-05", au: "2026-10-11" }
+        instantane: echappees/E-eval-heures-3.json
+        contient: ["12", Marchand]
+    origine: { fabrique_le: "2026-10-10", modele: à la main, cout_usd: 0, conversations: [] }

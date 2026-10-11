@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { verifierReponse } from './reponse'
+import { citations, contient, verifierReponse } from './reponse'
 
 // Le contrôle de la réponse : chaque nombre, chaque date et chaque nom connu
 // cité vient des sorties d'outils (PLAN-ESPACES.md § 6.8).
@@ -91,5 +91,35 @@ describe('verifierReponse', () => {
       ok: false,
       intrus: ['P-2', '2'],
     })
+  })
+})
+
+describe('citations et contient (la promotion, PLAN-PROMOTION.md § 6.2)', () => {
+  it('citations : les nombres hors dates tels qu’écrits, les mots de nom connus cités, sans doublon', () => {
+    expect(
+      citations('Julien Lefèvre : 16 h (16,5 avec la pause) le 11/10 et le 2026-10-12.', NOMS),
+    ).toEqual(['16', '16,5', 'Julien', 'Lefèvre'])
+    expect(citations('Aucune vacation.', NOMS)).toEqual([])
+    expect(citations('karim et saidi', NOMS)).toEqual(['karim', 'saidi'])
+  })
+  it('citations : un identifiant, une heure, une date avec son heure ne sont pas des quantités', () => {
+    expect(
+      citations(
+        'Julien Lefèvre (A-2) : 16 heures sur 2 vacations du 5 au 11 octobre 2026, V-04 (du 07 à 20:00 au 08 à 08:00, 12 h) et V-05 (de 16:00 à 20:00, 4 h), puis D-V-17 à 8h30.',
+        NOMS,
+      ),
+    ).toEqual(['16', '2', '5', '11', '12', '4', 'Julien', 'Lefèvre'])
+  })
+  it('contient : un mot sans accents ni casse, un nombre entier seulement', () => {
+    expect(contient('Mehdi Saïdi : 16 heures', 'saidi')).toBe(true)
+    expect(contient('V-14, le 14/10', '4')).toBe(false)
+    expect(contient('4 vacations de nuit.', '4')).toBe(true)
+    expect(contient('Julien : 16,5 h', '16')).toBe(false)
+    expect(contient('Julien : 16,5 h', '16.5')).toBe(true)
+    // Un nombre attendu ne se trouve pas dans une date, une heure ou un identifiant.
+    expect(contient('9 heures du 2026-10-12 au 2026-10-18.', '12')).toBe(false)
+    expect(contient('9 heures du 12/10 au 18/10.', '12')).toBe(false)
+    expect(contient('Karim, V-11, de 20:00 à 08:00', '11')).toBe(false)
+    expect(contient('12 heures du 2026-10-12 au 2026-10-18.', '12')).toBe(true)
   })
 })

@@ -56,6 +56,9 @@ export const MAX_TOKENS_TRADUIRE = 4096
 
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 
+/** Le jour de la semaine, en mots : « samedi ». */
+export const jourSemaine = (maintenant: Temporal.ZonedDateTime) => JOURS[maintenant.dayOfWeek - 1]
+
 /** Qui parle, en mots, pour l'échappée (qui lit les données) : « le patron », « l'agent Julien Lefèvre (A-2) ». */
 export function quiParle(identite: Identite, agents: { id: string; nom: string }[]): string {
   if (identite.role === 'patron') return 'le patron'
@@ -95,7 +98,7 @@ const deux = (n: number) => String(n).padStart(2, '0')
 /** Le message : la date du moment, puis la consigne entre ses balises. */
 export function messageConsigne(consigne: string, maintenant: Temporal.ZonedDateTime): string {
   const date = `${maintenant.year}-${deux(maintenant.month)}-${deux(maintenant.day)}T${deux(maintenant.hour)}:${deux(maintenant.minute)}`
-  return `Maintenant : ${date} (${JOURS[maintenant.dayOfWeek - 1]}).\n<consigne>${consigne}</consigne>`
+  return `Maintenant : ${date} (${jourSemaine(maintenant)}).\n<consigne>${consigne}</consigne>`
 }
 
 /**

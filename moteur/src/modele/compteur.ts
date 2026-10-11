@@ -7,8 +7,13 @@ import { cout, type PrixModele, type ReponseModele } from './modele'
 
 export const TYPE_APPEL = 'appel_modele'
 
-/** Ce qui a demandé l'appel : traduire une consigne, désigner la personne qu'elle nomme (REFLEXIONS.md, décidé le 2026-10-08), ou une échappée. */
-export type UsageAppel = 'traduire' | 'designer' | 'echappee'
+/**
+ * Ce qui a demandé l'appel : traduire une consigne, désigner la personne
+ * qu'elle nomme (REFLEXIONS.md, décidé le 2026-10-08), une échappée ; ou, pour
+ * la promotion, fabriquer un geste appris et vérifier sa traduction
+ * (PLAN-PROMOTION.md § 6.3).
+ */
+export type UsageAppel = 'traduire' | 'designer' | 'echappee' | 'fabriquer' | 'verifier'
 
 /** Les appels d'un mois `AAAA-MM`, lus dans les lignes `appel_modele` du journal. */
 export function coutDuMois(journal: Journal, mois: string): { usd: number; appels: number } {
@@ -47,6 +52,8 @@ export function evenementAppel(
       modele: reponse.message.model,
       usage: reponse.usage,
       cout_usd: cout(reponse.usage, prix),
+      // Le fournisseur n'a pas compté : l'usage et le coût sont une borne haute.
+      ...(reponse.usageBorne ? { usage_borne: true } : {}),
       duree_ms: reponse.dureeMs,
       stop_reason: reponse.message.stop_reason,
     },

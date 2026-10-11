@@ -48,7 +48,9 @@ const ACTIONS: Action<null, unknown>[] = [
     executer: () => ({ texte: '' }),
   },
 ]
-const INTENTIONS = [{ id: 'heures_par_agent', description: 'les heures faites par un agent' }]
+const INTENTIONS = [
+  { id: 'heures_par_agent', description: 'les heures faites par un agent', ecrit: false },
+]
 const maintenant = Temporal.PlainDateTime.from('2026-10-10T21:40').toZonedDateTime(FUSEAU)
 const actions = actionsDe(ACTIONS, 'patron')
 const systeme = systemeTraduire('patron', actions, INTENTIONS)
