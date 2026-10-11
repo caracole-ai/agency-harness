@@ -348,6 +348,7 @@ describe('verifierGeste et rejouerTest', () => {
     expect(await rejouerTest(g, t1, dossier)).toEqual({
       texte: 'Karim Haddad : 24 heures du 2026-10-05 au 2026-10-11.',
       manque: [],
+      enTrop: [],
     })
     expect(await rejouerTest(g, { ...t1, contient: ['24', '99'] }, dossier)).toMatchObject({
       manque: ['99'],
@@ -355,7 +356,11 @@ describe('verifierGeste et rejouerTest', () => {
     // L'agent : sa copie n'a que ses lignes, et c'est lui qui est lié (D4).
     expect(
       await rejouerTest(g, { ...t3, params: { ...t3.params, agent: 'A-1' } }, dossier),
-    ).toEqual({ texte: 'Sophie Marchand : 12 heures du 2026-10-05 au 2026-10-11.', manque: [] })
+    ).toEqual({
+      texte: 'Sophie Marchand : 12 heures du 2026-10-05 au 2026-10-11.',
+      manque: [],
+      enTrop: [],
+    })
     expect(await rejouerTest(g, { ...t1, instantane: 'echappees/E-0.json' }, dossier)).toEqual({
       erreur: 'instantané absent : echappees/E-0.json',
     })
@@ -652,5 +657,80 @@ describe('fabriquerGeste', () => {
     })
     expect(c.modele.appels).toHaveLength(0)
     expect(existsSync(join(dossier, 'gestes'))).toBe(false)
+  })
+})
+
+describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
+  const sql = (agent: string) =>
+    `SELECT v.id AS vacation, '${agent}' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date`
+  const test = (echappee: string, date: string, vacation: string, agent: string) => ({
+    echappee,
+    consigne: 'Libère Karim.',
+    role: 'patron' as const,
+    agent: null,
+    params: { agent: 'A-1', date },
+    instantane: `echappees/${echappee}.json`,
+    contient: [],
+    modifications: [{ vacation, agent }],
+  })
+  // Le patron a validé V-01 pour Julien (A-2) puis pour Sophie (A-3) : les deux lui conviennent.
+  const ecrit = (agent: string): GesteAppris => ({
+    id: 'liberer_un_jour',
+    description: 'libérer un agent de ses vacations d’un jour',
+    roles: ['patron'],
+    parametres: {
+      agent: { type: 'agent', description: "l'agent" },
+      date: { type: 'date', description: 'le jour' },
+    },
+    requetes: [{ nom: 'liberer', sql: sql(agent) }],
+    modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'vacation', agent: 'agent' } },
+    reponse: { ligne: null, tableau: 'liberer', vide: 'Rien.' },
+    tests: [
+      test('E-1', '2026-10-07', 'V-01', 'A-2'),
+      test('E-2', '2026-10-07', 'V-01', 'A-3'),
+      test('E-2', '2026-10-09', 'V-02', 'A-2'),
+    ],
+    origine: ORIGINE,
+  })
+  it('un agent que le patron a validé pour cette vacation, dans ce test ou un autre : rien ne manque, rien de trop', async () => {
+    const dossier = dossierAvecInstantanes()
+    const g = ecrit('A-3')
+    const [t1, t2] = g.tests
+    if (!t1 || !t2) throw new Error('fixture')
+    expect(await rejouerTest(g, t1, dossier)).toEqual({
+      texte: 'V-01 → A-3',
+      manque: [],
+      enTrop: [],
+    })
+    expect(await rejouerTest(g, t2, dossier)).toMatchObject({ manque: [], enTrop: [] })
+  })
+  it('un agent jamais validé pour cette vacation, une vacation absente : écarts, et la vérification le dit', async () => {
+    const dossier = dossierAvecInstantanes()
+    const g = ecrit('A-1')
+    const [t1, , t3] = g.tests
+    if (!t1 || !t3) throw new Error('fixture')
+    expect(await rejouerTest(g, t1, dossier)).toEqual({
+      texte: 'V-01 → A-1',
+      manque: [],
+      enTrop: ['V-01 → A-1'],
+    })
+    expect(
+      await rejouerTest(g, { ...t3, params: { agent: 'A-1', date: '2026-10-20' } }, dossier),
+    ).toEqual({
+      texte: 'aucune réaffectation',
+      manque: ['V-02 → A-2'],
+      enTrop: [],
+    })
+    const { ecarts, rejeu } = await verifierGeste(g, {
+      dossierClient: dossier,
+      copieVide: COPIE_VIDE,
+      consignes: [],
+      personnes: PERSONNES,
+      gestesExistants: GESTES_EXISTANTS,
+    })
+    expect(rejeu).toEqual({ ok: 0, total: 3 })
+    expect(ecarts.map((e) => e.texte)).toContain(
+      'E-1 : le rejeu propose « V-01 → A-1 », jamais validé (rendu : « V-01 → A-1 »)',
+    )
   })
 })

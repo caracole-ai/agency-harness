@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { parse } from 'yaml'
 import { VALIDEE } from '../approbation/jeton'
 import { ROLES, type Role } from '../conversation/actions'
-import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE } from '../echappee/boucle'
+import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE, OUTIL_VERIFIER } from '../echappee/boucle'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
 import type { Journal, Ligne } from '../journal/journal'
@@ -24,7 +24,7 @@ export const TYPE_PROMOTION = 'promotion proposée'
 
 /** Ce que la fabrication a donné pour une intention au seuil (PLAN-PROMOTION.md § 6.3), tel que le dossier et le journal le disent. */
 export interface Fabrication {
-  sorte: 'hors_catalogue' | 'attend_lot_4' | 'plafond' | 'echec' | 'ecarts' | 'ecrit'
+  sorte: 'hors_catalogue' | 'plafond' | 'echec' | 'ecarts' | 'ecrit'
   /** Le second appel a eu lieu (P5). */
   relance: boolean
   /** Les appels au modèle qui ont répondu : 0 (pas tentée, ou panne au premier), 1, ou 2 (relance). */
@@ -81,6 +81,8 @@ export interface EchappeeJournalisee {
   issue: 'reponse' | 'proposition'
   /** Les requêtes de cette échappée, dans l'ordre des tours, erreurs comprises mais marquées. */
   requetes: { sql: string; sortie: string; erreur?: string }[]
+  /** Les vérifications d'une proposition, dans l'ordre : les modifications essayées et ce que les règles en ont dit, tels que le modèle les a lus (masqués). */
+  verifications?: { modifications: string; sortie: string; erreur?: string }[]
   modifications?: unknown[]
   constats?: Constat[]
   /** Le texte final tel que montré. */
@@ -145,11 +147,6 @@ function sectionGeste(f: Fabrication): string[] {
     case 'hors_catalogue':
       lignes.push(
         'Hors du catalogue déclaré : la promotion ne tente que les intentions connues du métier (PLAN-PROMOTION.md P15). À coder à l’atelier si la demande revient.',
-      )
-      break
-    case 'attend_lot_4':
-      lignes.push(
-        'Cette intention écrit dans les données : elle attend l’écriture par un geste appris (PLAN-PROMOTION.md lot 4). Aucun appel au modèle.',
       )
       break
     case 'plafond':
@@ -280,23 +277,31 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
         suiteDe(lignes, l.objet) !== SUITE_NON_VALIDEE
   if (!propre) return undefined
   const id = d.echappee
-  const requetes = lignes
-    .filter(
-      (o) =>
-        o.type === TYPE_OUTIL_ECHAPPEE && o.issue === OUTIL_REQUETE && donneesDe(o).echappee === id,
+  const outils = (nom: string) =>
+    lignes.filter(
+      (o) => o.type === TYPE_OUTIL_ECHAPPEE && o.issue === nom && donneesDe(o).echappee === id,
     )
-    .flatMap((o) => {
-      const { entree, sortie, erreur } = donneesDe(o)
-      const sql = (entree as { sql?: unknown } | undefined)?.sql
-      if (typeof sql !== 'string') return []
-      return [
-        {
-          sql,
-          sortie: typeof sortie === 'string' ? sortie : '',
-          ...(typeof erreur === 'string' ? { erreur } : {}),
-        },
-      ]
-    })
+  const verifications = outils(OUTIL_VERIFIER).map((o) => {
+    const { entree, sortie, erreur } = donneesDe(o)
+    const modifications = (entree as { modifications?: unknown } | undefined)?.modifications
+    return {
+      modifications: JSON.stringify(modifications ?? null),
+      sortie: typeof sortie === 'string' ? sortie : '',
+      ...(typeof erreur === 'string' ? { erreur } : {}),
+    }
+  })
+  const requetes = outils(OUTIL_REQUETE).flatMap((o) => {
+    const { entree, sortie, erreur } = donneesDe(o)
+    const sql = (entree as { sql?: unknown } | undefined)?.sql
+    if (typeof sql !== 'string') return []
+    return [
+      {
+        sql,
+        sortie: typeof sortie === 'string' ? sortie : '',
+        ...(typeof erreur === 'string' ? { erreur } : {}),
+      },
+    ]
+  })
   return {
     echappee: id,
     conversation: l.objet,
@@ -307,6 +312,7 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
     intention: d.intention,
     issue: l.issue as EchappeeJournalisee['issue'],
     requetes,
+    ...(verifications.length > 0 ? { verifications } : {}),
     ...(d.modifications !== undefined ? { modifications: d.modifications } : {}),
     ...(d.constats !== undefined ? { constats: d.constats } : {}),
     texte: d.texte,

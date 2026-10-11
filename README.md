@@ -53,15 +53,17 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   appris**, une donnée (paramètres typés, SQL paramétré sur la copie du rôle,
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
-  Lecture seule jusqu'au lot 4 (l'écriture, tranchée par G5). Lots 0 (le journal
+  Lots 0 (le journal
   se souvient de chaque échappée), 1 (le geste appris, chargé et exécuté), 2
   (la fabrication par le modèle, vérifiée en code, mesurée) et 3 (l'atelier
   `pnpm gestes`, l'activation par le patron dans l'interface) faits le
   2026-10-10, relus par un sous-agent indépendant, corrigés et fusionnés
   dans `main` le 2026-10-11 (`PLAN-GENERAL.md` phase A) ; le lot 4
-  (l'écriture) est la phase C du grand plan.
-- `PLAN-GENERAL.md` — **le grand plan** (2026-10-10 ; phase A faite le
-  2026-10-11, prochaine : B) : où on en
+  (l'écriture : un geste appris qui propose des réaffectations, traitées
+  comme une proposition d'échappée) fait le 2026-10-11, phase C du grand
+  plan (G5).
+- `PLAN-GENERAL.md` — **le grand plan** (2026-10-10 ; phases A, B et C
+  faites le 2026-10-11, prochaine : D) : où on en
   est, les décisions G1 à G11 (fusion automatique sous huit conditions en
   code, retrait, clone de la nuit, mémoire dans le dépôt, fabrication,
   écriture, identité, journal chaîné, authentification, sauvegarde,
@@ -153,7 +155,13 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   journal, sinon écarté, `refusé` et alerte G-01 (`charger.ts`, relu à chaque
   consigne) ; chargé, il devient une action comme les autres, exécutée sans
   modèle sur la copie du rôle (`action-apprise.ts`), et son intention sort
-  de la liste des demandes nouvelles. `src/promotion/` (espace 3) compte les
+  de la liste des demandes nouvelles. Un geste appris qui **écrit**
+  (`PLAN-PROMOTION.md` § 10) porte `modifications { pour_chaque, reaffecter }`
+  (une réaffectation par ligne d'une de ses requêtes) et n'est ouvert qu'au
+  patron : exécuté sans modèle, il ne fait que calculer ses réaffectations,
+  que la conversation traite exactement comme une proposition d'échappée
+  (contrôles du métier, « oui » du patron, « oui » de chaque agent, clé sur
+  la liste exacte). `src/promotion/` (espace 3) compte les
   demandes nouvelles par intention (seules les échappées finies proprement :
   réponse au contrôle `ok`, proposition validée ou écrite), et pour celle qui
   revient **fabrique le geste** (`PLAN-PROMOTION.md` lot 2) : `fabriquer.ts`,
@@ -162,9 +170,13 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   forme ou une requête qui lève ; la vérification en code (gabarit sur une
   copie vide, rejeu de chaque test sur son instantané, aucune valeur en dur
   venue d'une consigne, description distincte des gestes existants) ;
-  `gestes/<id>.yaml` écrit au statut proposé si zéro écart. `promouvoir.ts`
-  enchaîne pour `pnpm promotions` : hors catalogue ou intention qui écrit,
-  rien n'est tenté ; sinon fabrication, écriture, puis la passe de traduction
+  `gestes/<id>.yaml` écrit au statut proposé si zéro écart. Une intention qui
+  écrit se fabrique depuis ses propositions validées par le patron (les
+  consignes masquées, les requêtes, les vérifications, les réaffectations en
+  identifiants) ; son rejeu compare les réaffectations, pas un texte : les
+  mêmes vacations, chacune à un agent que le patron a validé pour elle.
+  `promouvoir.ts` enchaîne pour `pnpm promotions` : hors catalogue, rien
+  n'est tenté ; sinon fabrication, écriture, puis la passe de traduction
   avec modèle (`consignes.yaml` entier et les tests du geste, le geste
   chargé) qui dit si le geste est activable ; le dossier de promotion
   (`promotions/<intention>-<date>.md`, requêtes et texte de chaque échappée
@@ -289,7 +301,8 @@ pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 202
 pnpm promotions --client <copie> [--date 2026-10-08] [--sans-modele]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
                          # intention (échappées finies proprement) ; au seuil, le modèle fabrique
-                         # un geste appris (deux appels au plus), le code le vérifie et l'écrit en
+                         # un geste appris (deux appels au plus ; pour une intention qui écrit, un
+                         # geste qui propose des réaffectations), le code le vérifie et l'écrit en
                          # gestes/<id>.yaml (proposé), puis une passe de traduction avec modèle dit
                          # s'il est activable ; promotions/<intention>-<date>.md raconte tout et
                          # la ligne « promotion proposée » le porte au journal ; purge
@@ -311,8 +324,10 @@ pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [-
                          # les évals de la conversation et de la promotion (cas dans evals/,
                          # copie fraîche par cas) : traduire, echappee et promotion appellent le
                          # vrai modèle (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la
-                         # fabrication, avec GLM-5.3) ; gestes rejoue les gestes appris sur leurs
-                         # instantanés sans modèle (0 $, seuil 100 %) ; chaque cas avec modèle a
+                         # fabrication, avec GLM-5.3 ; une proposition rejouée est validée par le
+                         # lanceur, comme le patron) ; gestes rejoue les gestes appris sur leurs
+                         # instantanés sans modèle (0 $, seuil 100 % ; textes ou réaffectations
+                         # attendus) ; chaque cas avec modèle a
                          # sa colonne « fuite » : les noms du fichier des agents partis au modèle,
                          # comptés en code (la consigne telle qu'écrite permise à la traduction),
                          # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;

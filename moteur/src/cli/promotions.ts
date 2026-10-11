@@ -5,7 +5,8 @@
 // seuil, le modèle fabrique un geste appris, le code le vérifie et l'écrit en
 // `gestes/<id>.yaml` (statut proposé), puis une passe de traduction avec
 // modèle dit s'il est activable par le patron (P6) ; le dossier de promotion
-// raconte tout. Une intention qui écrit attend le lot 4 (P15). Puis la purge
+// raconte tout. Une intention qui écrit se fabrique aussi : son geste propose
+// des réaffectations (PLAN-PROMOTION.md § 10). Puis la purge
 // des instantanés d'échappée plus vieux que `conservation_jours` qu'aucun
 // geste appris ne cite (P8). `--sans-modele` : le dossier seul, aucun appel.
 // Exige la clé que nomme la config, sauf --sans-modele. Travailler sur une
@@ -70,8 +71,6 @@ function resumer(f: Fabrication): string {
   switch (f.sorte) {
     case 'hors_catalogue':
       return 'hors du catalogue, non tentée'
-    case 'attend_lot_4':
-      return 'écrit dans les données : attend le lot 4, non tentée'
     case 'plafond':
       return "plafond d'IA du mois atteint, non tentée"
     case 'echec':

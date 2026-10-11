@@ -88,7 +88,11 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
       expect(new Set(g.tests.map((t) => t.echappee)).size, g.id).toBe(g.tests.length)
       for (const t of g.tests) {
         expect(g.roles, `${g.id} ${t.echappee} (${t.role})`).toContain(t.role)
-        expect(t.contient.length, `${g.id} ${t.echappee}`).toBeGreaterThan(0)
+        // Un geste qui lit attend un texte ; un geste qui écrit, les réaffectations validées (PLAN-PROMOTION.md § 10).
+        expect(
+          g.modifications === undefined ? t.contient.length : (t.modifications?.length ?? 0),
+          `${g.id} ${t.echappee}`,
+        ).toBeGreaterThan(0)
         expect(
           t.role === 'agent' ? t.agent !== null : t.agent === null,
           `${g.id} ${t.echappee}`,
@@ -96,12 +100,12 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
       }
     }
   })
-  it('sa description tient en 200 caractères ; son identifiant est une intention du catalogue qui lit, jamais un geste codé (P14, P15)', () => {
+  it('sa description tient en 200 caractères ; son identifiant est une intention du catalogue, qui écrit si le geste écrit, jamais un geste codé (P14, P15, § 10)', () => {
     for (const g of gestes) {
       expect(g.description.length, g.id).toBeLessThanOrEqual(DESCRIPTION_MAX)
       const intention = INTENTIONS.find((i) => i.id === g.id)
       expect(intention, g.id).toBeDefined()
-      expect(intention?.ecrit, g.id).toBe(false)
+      expect(intention?.ecrit, g.id).toBe(g.modifications !== undefined)
       expect(
         ACTIONS.map((a) => a.id),
         g.id,
@@ -111,7 +115,8 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
   it('les agents de ses tests existent au client fictif', () => {
     for (const g of gestes) {
       for (const t of g.tests) {
-        for (const id of [t.agent, ...Object.values(t.params)].filter(
+        const reaffectes = (t.modifications ?? []).map((m) => m.agent)
+        for (const id of [t.agent, ...Object.values(t.params), ...reaffectes].filter(
           (v): v is string => typeof v === 'string' && /^A-\d+$/.test(v),
         )) {
           expect(agentsFictif, `${g.id} ${t.echappee}`).toContain(`${id};`)

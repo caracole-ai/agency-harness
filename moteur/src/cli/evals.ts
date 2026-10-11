@@ -226,7 +226,10 @@ if (quoi === 'traduire') {
         const ecarts =
           'erreur' in rejeu
             ? [rejeu.erreur]
-            : rejeu.manque.map((mot) => `ne contient pas « ${mot} »`)
+            : [
+                ...rejeu.manque.map((mot) => `ne contient pas « ${mot} »`),
+                ...rejeu.enTrop.map((mot) => `propose « ${mot} », jamais validé`),
+              ]
         const r = { id, ecarts, coutUsd: 0, strict: false }
         resultats.push(r)
         garder(r, { id, fichier: f.fichier, test, rejeu })
@@ -239,7 +242,9 @@ if (quoi === 'traduire') {
   // La fabrication, avec modèle (§ 6.4) : un cas = une intention et les cas
   // d'`echappees.yaml` qui la portent ; rejoués sur une seule copie, puis la
   // promotion y fabrique et vérifie ; le cas passe si le geste est écrit avec
-  // zéro écart. Pas de passe de traduction ici (elle se mesure à part).
+  // zéro écart. Pas de passe de traduction ici (elle se mesure à part). Une
+  // proposition ne compte que validée (P9) : le lanceur joue le « oui » du
+  // patron par le métier, contrôles compris (§ 10).
   const fichier = FichierPromotions.parse(
     parse(readFileSync(join(EVALS, 'promotions.yaml'), 'utf8')),
   )
@@ -257,6 +262,7 @@ if (quoi === 'traduire') {
       modeleDe,
       async (dossier, modele, agence) => {
         const quand = aParis(fichier.maintenant)
+        const refusees: string[] = []
         for (const id of c.echappees) {
           const e = echappees.cas.find((x) => x.id === id)
           if (!e) throw new Error(`${c.id} : cas d'échappée inconnu : ${id}`)
@@ -267,15 +273,24 @@ if (quoi === 'traduire') {
           if (accueil.sorte === 'refus') throw new Error(`${id} : ${accueil.motif}`)
           await avecSession(m, dossier, accueil.identite, async (s) => {
             m.verifierIdentite(s, accueil.identite)
-            await echappee(
+            const moment = aParis(e.maintenant ?? echappees.maintenant)
+            const conversation = `C-eval-${e.id}`
+            const issue = await echappee(
               s,
               accueil.identite,
-              `C-eval-${e.id}`,
+              conversation,
               e.consigne,
               e.intention,
-              aParis(e.maintenant ?? echappees.maintenant),
+              moment,
               modele,
             )
+            if (issue.sorte !== 'proposition' || !m.proposition) return
+            try {
+              const { id: r } = m.proposition.ouvrir(s, conversation, issue.modifications, moment)
+              m.proposition.valider(s, r, moment)
+            } catch (erreur) {
+              refusees.push(`${id} : ${erreur instanceof Error ? erreur.message : String(erreur)}`)
+            }
           })
         }
         return avecSession(m, dossier, agence, async (s) => {
@@ -289,7 +304,10 @@ if (quoi === 'traduire') {
           if (!i) {
             const n = comptees.find((x) => x.intention === c.intention)?.occurrences ?? 0
             return {
-              ecarts: [`l'intention n'atteint pas le seuil : ${n} échappée(s) finie(s) proprement`],
+              ecarts: [
+                `l'intention n'atteint pas le seuil : ${n} échappée(s) finie(s) proprement`,
+                ...refusees.map((r) => `proposition refusée par le métier : ${r}`),
+              ],
               issue: undefined,
             }
           }

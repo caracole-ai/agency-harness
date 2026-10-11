@@ -18,8 +18,9 @@ import {
 } from './promotion'
 
 // Ce que `pnpm promotions` fait d'une intention au seuil (PLAN-PROMOTION.md
-// § 6.3) : hors du catalogue ou une intention qui écrit, rien que le dossier
-// (P15) ; sinon la fabrication (relance comprise), la vérification en code,
+// § 6.3) : hors du catalogue, rien que le dossier (P15) ; sinon, qu'elle lise
+// ou qu'elle écrive (§ 10, PLAN-GENERAL.md G5), la fabrication (relance
+// comprise), la vérification en code,
 // l'écriture du geste au statut `propose` si zéro écart, puis la passe de
 // traduction avec modèle, parce que c'est le patron qui active (P6) : il ne
 // doit voir que du vérifié. Tout est dit au dossier et au journal.
@@ -102,7 +103,6 @@ async function fabriquer<S>(
 
   const intention = m.intentions.find((x) => x.id === i.intention)
   if (!intention) return sans('hors_catalogue')
-  if (intention.ecrit) return sans('attend_lot_4')
   const mois = maintenant.toPlainDate().toPlainYearMonth().toString()
   if (plafondAtteint(coutDuMois(journal, mois).usd, config.plafonds.par_mois_usd)) {
     return sans('plafond')
@@ -233,7 +233,7 @@ export function compterFabrications(fabrications: Fabrication[]): string[] {
   const echec = (f: Fabrication) => f.sorte === 'echec' && f.injoignable !== true
   return [
     `Intentions au seuil : ${fabrications.length}`,
-    `Non tentées (hors catalogue, écriture, plafond) : ${n((f) => ['hors_catalogue', 'attend_lot_4', 'plafond'].includes(f.sorte))}`,
+    `Non tentées (hors catalogue, plafond) : ${n((f) => ['hors_catalogue', 'plafond'].includes(f.sorte))}`,
     `Tentées : ${n((f) => f.appels > 0 || f.injoignable === true)}`,
     `Écrites sans écart : ${n((f) => f.sorte === 'ecrit')}, dont après relance : ${n((f) => f.sorte === 'ecrit' && f.relance)}`,
     `Activables : ${n((f) => f.activable === true)}`,

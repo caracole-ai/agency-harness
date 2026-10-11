@@ -25,6 +25,8 @@ export interface Resultat {
   texte: string
   /** Ce qui a servi au texte ; va au journal. */
   donnees?: unknown
+  /** Des modifications calculées sans rien écrire (un geste appris qui écrit) : la conversation les traite comme une proposition d'échappée (PLAN-PROMOTION.md § 10). */
+  modifications?: unknown[]
 }
 
 export interface Action<Session, Params> {
@@ -42,8 +44,15 @@ export interface Action<Session, Params> {
    */
   personnes?: Record<string, string>
   roles: Role[]
-  /** true : l'action inscrit une validation ou écrit chez le client → elle n'est exécutée qu'après un « oui » explicite à sa reformulation. */
+  /** true : l'action inscrit une validation ou écrit chez le client → elle n'est exécutée qu'après un « oui » explicite à sa reformulation (ou, avec `propose`, à sa proposition). */
   ecrit: boolean
+  /**
+   * true : l'exécution ne fait que calculer des modifications, sans rien
+   * écrire ; elles passent par la proposition du métier (contrôles, oui du
+   * patron, oui de chaque agent, clé sur la liste exacte), exactement comme
+   * une proposition d'échappée. Un geste appris qui écrit (PLAN-PROMOTION.md § 10).
+   */
+  propose?: true
   /** La phrase de confirmation, rendue par le code. Lève si l'action est impossible pour ce demandeur. */
   reformuler(s: Session, identite: Identite, params: Params): string
   /** Synchrone pour les gestes codés ; un geste appris lit sa copie dans un processus enfant et rend une promesse (PLAN-PROMOTION.md § 5.3). */
@@ -103,7 +112,7 @@ export interface Intention {
   id: string
   /** Une phrase pour le modèle, en français. */
   description: string
-  /** true : la demande écrit dans les données ; la promotion ne la tente pas avant le lot 4 (PLAN-PROMOTION.md P15). */
+  /** true : la demande écrit dans les données ; la promotion en fabrique un geste qui propose des réaffectations (PLAN-PROMOTION.md § 10). */
   ecrit: boolean
 }
 

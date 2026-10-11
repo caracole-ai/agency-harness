@@ -4,11 +4,12 @@ import type { Identite } from '../conversation/actions'
 import type { TableCopie } from '../echappee/copie'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { actionApprise, LECTURE_IMPOSSIBLE, parametresAppris } from './action-apprise'
-import { GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
+import { GESTE_ECRIT_EXEMPLE as ECRIT, GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
 
 // Un geste appris comme action : ses paramètres à plat pour le modèle, son
 // exécution sans modèle sur la copie du rôle, l'agent qui parle pour le rôle
-// `agent` (D4), et l'échec rendu en texte (PLAN-PROMOTION.md § 5.3).
+// `agent` (D4), et l'échec rendu en texte (PLAN-PROMOTION.md § 5.3) ; un
+// geste qui écrit rend ses réaffectations, sans rien écrire (§ 10).
 
 const AGENTS: TableCopie = {
   nom: 'agents',
@@ -132,5 +133,61 @@ describe('actionApprise', () => {
       requetes: [{ nom: 'heures', erreur: expect.stringMatching(/no such table/) }],
       erreur: expect.stringMatching(/no such table/),
     })
+  })
+})
+
+describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
+  const PLANNING: TableCopie = {
+    nom: 'vacations',
+    description: 'les vacations',
+    colonnes: [
+      { nom: 'id', type: 'TEXT', description: 'identifiant' },
+      { nom: 'agent', type: 'TEXT', description: 'agent' },
+      { nom: 'jour', type: 'TEXT', description: 'jour' },
+    ],
+    lignes: [
+      { id: 'V-03', agent: 'A-1', jour: '2026-10-13' },
+      { id: 'V-07', agent: 'A-3', jour: '2026-10-14' },
+    ],
+  }
+  const action = actionApprise(ECRIT, () => [PLANNING])
+  it('écrit et propose : ouvert au patron seul', () => {
+    expect(action).toMatchObject({
+      id: 'liberer_un_jour',
+      roles: ['patron'],
+      ecrit: true,
+      propose: true,
+    })
+  })
+  it('rend les réaffectations, de la forme de l’échappée, et les requêtes au journal', async () => {
+    const r = await action.executer(null, PATRON, { agent: 'A-1', date: '2026-10-13' }, maintenant)
+    expect(r.modifications).toEqual([{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }])
+    expect(r.texte).toBe('vacation | agent\nV-03 | A-9')
+    expect(r.donnees).toEqual({
+      echappee: null,
+      requetes: [{ nom: 'liberer', sql: ECRIT.requetes[0]?.sql, lignes: 1 }],
+    })
+  })
+  it('aucune vacation ce jour-là : le texte « vide », rien à proposer', async () => {
+    const r = await action.executer(null, PATRON, { agent: 'A-1', date: '2026-10-20' }, maintenant)
+    expect(r).toMatchObject({ texte: 'Aucune vacation ce jour-là.' })
+    expect(r.modifications).toBeUndefined()
+  })
+  it('une ligne sans agent : « Je n’ai pas pu lire les données », rien à proposer', async () => {
+    const sans = actionApprise(
+      {
+        ...ECRIT,
+        requetes: [
+          {
+            nom: 'liberer',
+            sql: 'SELECT v.id AS vacation, NULL AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date',
+          },
+        ],
+      },
+      () => [PLANNING],
+    )
+    const r = await sans.executer(null, PATRON, { agent: 'A-1', date: '2026-10-13' }, maintenant)
+    expect(r.texte).toMatch(new RegExp(`^${LECTURE_IMPOSSIBLE} : la ligne 1 de « liberer »`))
+    expect(r.modifications).toBeUndefined()
   })
 })
