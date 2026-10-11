@@ -11,6 +11,12 @@
 # réponse de plus s'ajoute. `compter_vacations` est attendu en échec faute de
 # type : « de nuit » n'est pas un paramètre (les six types de P11) ; l'écart
 # nommé est la mesure.
+#
+# `liberer_un_jour` (ajouté le 2026-10-11, PLAN-PROMOTION.md § 10,
+# PLAN-GENERAL.md phase C) : une intention qui écrit. Chacune de ses échappées
+# finit en proposition, que le lanceur valide comme le patron (P9 : seule une
+# proposition validée compte) ; le geste propose des réaffectations, et son
+# rejeu doit reproduire exactement celles que le patron a validées.
 
 maintenant: "2026-10-10T21:40"
 seuil: 0.66
@@ -26,3 +32,6 @@ cas:
   - id: agents_sans_carte
     intention: agents_sans_carte
     echappees: [E-05, E-17, E-18]
+  - id: liberer_un_jour
+    intention: liberer_un_jour
+    echappees: [E-07, E-08, E-13]

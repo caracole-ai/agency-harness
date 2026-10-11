@@ -78,7 +78,7 @@ export type EvenementBoucle =
     }
 
 export const OUTIL_REQUETE = 'requete'
-const OUTIL_VERIFIER = 'verifier'
+export const OUTIL_VERIFIER = 'verifier'
 const OUTIL_REPONDRE = 'repondre'
 const OUTIL_PROPOSER = 'proposer'
 const OUTIL_ABANDONNER = 'abandonner'

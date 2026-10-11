@@ -7,6 +7,58 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11 : `PLAN-GENERAL.md` phase C faite (l'écriture par un geste
+  appris, `PLAN-PROMOTION.md` § 10, G5), branche `general/c-ecriture`,
+  fusionnée dans `main` et poussée.** Un geste appris peut porter
+  `modifications { pour_chaque, reaffecter: { vacation, agent } }` (une
+  réaffectation par ligne d'une de ses requêtes) ; il n'est ouvert qu'au
+  patron, sa réponse est le tableau de cette requête ; exécuté sans modèle,
+  il ne fait que calculer, et `conversation.ts` traite ses réaffectations
+  exactement comme une proposition d'échappée (`ouvrirProposition`, partagée
+  : contrôles du métier, `confirmation_attendue`, oui du patron, oui de
+  chaque agent, clé sur la liste exacte). `Intention.ecrit` est promouvable
+  : la fabrication lit les propositions validées (consigne masquée,
+  requêtes et vérifications masquées, réaffectations en identifiants) ; le
+  rejeu compare les réaffectations (« Choix faits faute de consigne »,
+  Phase C). `evals/promotions.yaml` gagne `liberer_un_jour` (E-07, E-08,
+  E-13 ; le lanceur joue le oui du patron) ; `evals/gestes.yaml` un geste
+  qui écrit, calculé à la main. `pnpm check` vert : 398 tests moteur (+16),
+  131 métier (+6), 20 interface. **Mesuré, GLM-5.3 via GMI** (analyse :
+  passe 18 de `evals/erreurs-2026-10-08.md`) :
+  - `pnpm evals gestes` **6/6** ; fuite **0** sur toutes les passes avec
+    modèle (trois passes de promotion, quatre sondes de fabrication) ;
+  - **`pnpm evals promotion` `liberer_un_jour` : 0/1 sur trois passes,
+    objectif 1/1 non atteint** : l'échappée qui propose est tronquée au
+    plafond par demande de la config 4 fois sur 13 (deux passes sous le
+    seuil de trois), et la fabrication d'un geste qui écrit l'est 6 fois sur
+    6 (33 000 à 41 500 caractères de réflexion, coupés avant l'appel
+    d'outil) ; relever `par_demande.tokens_sortie` reste à Lionel ;
+  - **le critère de la phase, en deux temps, sur une copie** : trois
+    « Libère le mardi 13 de Karim. » validées (sur quatre : une tronquée),
+    `pnpm promotions` → fabrication tronquée, rien d'écrit (dossier : « à
+    coder à l'atelier ») ; puis, par ce repli (G4), le même geste écrit à
+    la main : `pnpm gestes verifier --avec-modele` rejeu 3/3, traduction
+    63/63, activé ; la consigne suivante ouvre la réaffectation groupée en
+    **un appel** (0,0012 $), le oui du patron et celui d'Aïcha écrivent
+    `V-03;A-11` sous la même clé. ≈ 1,2 $ en tout.
+  - **G5 dit sa condition levée (« l'échappée tient 41/42 sur trois
+    passes »), alors que la phase B a mesuré 39/42** avec les pseudonymes :
+    la condition n'est pas rouverte (consigne de la session), la phase est
+    faite quand même, et c'est noté ici.
+  Relecture indépendante (sous-agent, lecture seule) : **aucun bloquant**,
+  deux importants corrigés (un geste qui ne trouve personne pour une vacation
+  disait « Je n'ai pas pu lire les données » : il dit « Je n'ai rien à
+  proposer : aucun agent trouvé pour V-… » ; la fabrication d'une intention
+  qui lit recevait les vérifications de l'échappée : seulement une intention
+  qui écrit, le message d'une intention qui lit est celui d'avant), des
+  mineurs corrigés (le rejeu nomme la vacation qui manque, pas un agent ; un
+  « oui » ne fait jamais exécuter une action qui propose ; tests : empreinte
+  d'un geste qui lit épinglée et identique sur `main`, proposition d'un geste
+  refusée par les règles, vacation rendue deux fois, message selon lecture ou
+  écriture) ; deux notés (plus bas). `pnpm check` : 398 tests moteur, 131
+  métier, 20 interface ; `pnpm evals gestes` 6/6 rejoué. Fin de phase
+  (§ 0.7) : voir « Phase C du plan général » plus bas. **Prochaine : la phase D**
+  (`PLAN-RONDE.md`), dans une autre session.
 - **2026-10-11 : `PLAN-GENERAL.md` phase B faite, les pseudonymes
   (`PLAN-PSEUDONYMES.md`, lots 0 à 3) fusionnés dans `main` et poussés.**
   L'échappée et la fabrication ne reçoivent plus aucun nom de salarié :
@@ -786,6 +838,41 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Phase C, aucune fabrication réelle d'un geste qui écrit n'a abouti**
+  (6 sur 6 tronquées au plafond de la config) : le chemin « fabriqué,
+  vérifié, écrit » d'une intention qui écrit n'est prouvé qu'en simulé
+  (`promouvoir.test.ts`) ; avec le vrai modèle, seule la seconde moitié
+  (activation, consigne, oui du patron, oui de l'agent, clé) est passée, sur
+  un geste écrit à la main.
+- **Phase C, le rejeu d'un geste qui écrit accepte tout agent validé pour la
+  vacation dans une des échappées du geste** : un geste qui donnerait V-03 à
+  A-9 passerait parce qu'une autre échappée a été validée pour A-9 ; c'est le
+  but (le patron a accepté les deux), mais c'est plus large qu'une égalité
+  exacte. Les règles ne sont pas rejouées en code au rejeu : elles le sont à
+  chaque proposition (`ouvrir`, `valider`, écriture).
+- **Phase C, un geste qui écrit qui ne trouve personne pour une vacation**
+  (une cellule vide dans sa requête) rend « Je n'ai rien à proposer : aucun
+  agent trouvé pour V-… », sans rien proposer pour les autres vacations du
+  jour (échec fermé) ; l'échappée, elle, aurait pu expliquer pourquoi.
+  Aucun cas ne l'a montré en réel.
+- **Phase C, plusieurs réaffectations en attente pour la même vacation**
+  (trois propositions validées puis celle du geste, sur la copie du
+  critère) : chacune attend son agent ; si deux agents disent oui à deux
+  d'entre elles, la seconde écriture lève (`appliquer` : « V-03 est déjà
+  tenue par … »), rien d'écrit de travers ; le patron n'en est pas averti.
+  Préexistant (une échappée peut déjà le faire), plus probable avec un geste.
+- **Phase C, un geste qui lit, écrit à la main avec un test `contient: []`**,
+  est désormais écarté au chargement (`verifierGabarit`, alerte G-01), même
+  activé : la fabrication n'en produit jamais (relecture, mineur noté).
+- **Phase C, l'éval de fabrication n'a que deux situations** : E-08 et E-13
+  ont la même consigne et les mêmes données (le piège n'est pas posé par ce
+  lanceur) ; un geste qui ignorerait `:agent` serait moins bien pris
+  qu'avec trois situations. Gardé : le critère de la phase répète la même
+  consigne (relecture, mineur noté).
+- **Phase C, l'interface** n'est pas rejouée avec un geste qui écrit : la
+  réponse est une `proposition` comme celle d'une échappée, que la page
+  montre déjà ; non vu à l'écran.
+
 - **Phase B, l'échappée sous son seuil** : 39/42 sur les 14 cas d'origine
   avec les pseudonymes (G4 : 41/42). Trois troncatures au plafond de la
   config sur 20 propositions, aucune sur les six passes d'avant : plausible
@@ -1538,6 +1625,65 @@ Pièges vus pendant la phase :
   seulement** (« Karim Haddad », pas aussi « Karim » et « Haddad ») ; une
   forme partagée par deux personnes (un prénom) n'est pas masquée et compte
   comme fuite (§ 4 du plan).
+
+### Phase C du plan général (`PLAN-PROMOTION.md` § 10, G5, 2026-10-11)
+
+- **Le rejeu d'un geste qui écrit** (« compare les modifications », le plan
+  ne dit pas si l'agent doit être le même) : chaque vacation du test doit
+  être proposée, chacune à un agent que le patron a validé **pour cette
+  vacation** dans ce test ou un autre du geste ; aucune vacation ni agent de
+  plus. Mesuré : sur sept propositions validées pour V-03, l'échappée a
+  choisi trois agents différents ; l'égalité exacte rendait la fabrication
+  impossible par construction, et chaque réaffectation rejouée reste une
+  réaffectation qu'un patron a validée.
+- **Un geste qui écrit n'est ouvert qu'au patron** (la proposition d'une
+  échappée l'est aussi : `proposer: identite.role === 'patron'`), et **sa
+  réponse est le tableau de sa requête `pour_chaque`** (une forme imposée :
+  le texte d'une proposition est rendu par le métier, le tableau ne sert
+  qu'à `vide`, quand il n'y a rien à changer). Les deux sont des écarts de
+  `verifierGabarit`, donc au chargement aussi.
+- **`modifications` est optionnelle dans le schéma** (et `contient` peut être
+  vide, `verifierGabarit` exige un texte attendu pour un geste qui lit, des
+  réaffectations pour un geste qui écrit) : l'empreinte d'un geste qui lit,
+  déjà activé, ne change pas (le JSON canonique n'a pas la clé). Pour le
+  modèle, l'outil `proposer_geste` d'une intention qui écrit exige
+  `modifications` ; celui d'une intention qui lit est inchangé, comme son
+  système.
+- **`Action.propose`** (nouveau, optionnel) : `ecrit: true` reste vrai pour un
+  geste qui écrit (le plan le dit), et `propose` dit que son exécution ne
+  fait que calculer, avant le oui, qui porte sur la proposition. Le moteur
+  construit `{ type: 'reaffecter', vacation, agent }`, la forme de la
+  modification du métier (D7 : une modification = une réaffectation) ; le
+  métier la relit par son schéma à l'ouverture.
+- **La fabrication d'une intention qui écrit lit aussi les `verifier` de
+  l'échappée** (entrée et sortie, masquées), à la suite de ses requêtes : P10
+  dit « les échappées entières », et c'est là que le modèle voit pourquoi un
+  agent a été écarté. Une intention qui lit les recevrait aussi si son
+  échappée en avait (aucune des évals : `verifier` sert à proposer).
+- **Le lanceur `pnpm evals promotion` valide une proposition rejouée**
+  (`m.proposition.ouvrir` puis `valider`, au moment du cas) : P9 ne compte
+  qu'une proposition validée, et le lanceur joue le patron ; un refus du
+  métier est rapporté dans l'écart quand le seuil n'est pas atteint.
+- **Le critère, en deux temps** : la fabrication réelle échoue (plafond) ;
+  la suite (activer, consigne, oui, clé) est rejouée sur la même copie avec
+  le geste d'`evals/gestes.yaml` écrit à la main, `--par "atelier (session
+  phase C)"`, ses tests reliés aux trois échappées validées de la copie.
+  C'est le repli de G4, pas le critère tel qu'écrit : dit comme tel.
+- **Une variante du système de fabrication** (« ne refais pas ce rejeu de
+  tête… ») mesurée par sondes et retirée : elle ne raccourcissait rien.
+- **`attend_lot_4`** disparaît de `Fabrication` (plus jamais produit) ; le
+  compteur du § 8 dit « Non tentées (hors catalogue, plafond) ».
+
+Pièges vus pendant la phase :
+
+- **`npx biome check --write` passé par RTK** répond « No issues found » sans
+  rien écrire : formater par `rtk proxy pnpm format`.
+- **Une sonde `tsx` hors du dépôt** (scratchpad) doit être en `.mts` : en `.ts`
+  elle est compilée en CommonJS et l'`await` de tête échoue.
+- **L'agent répond à une réaffectation par une consigne** (`pnpm parler
+  --role agent --agent A-11 --consigne "Oui, je prends la réaffectation
+  R-…"`), qui devient `repondre_reaffectation`, puis il confirme son « oui »
+  (`--confirmer … --oui`) : deux commandes, comme le patron.
 
 ## Commandes
 

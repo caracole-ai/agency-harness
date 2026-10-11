@@ -22,6 +22,8 @@ import {
   DOSSIER_GESTES,
   type FichierGeste,
   GesteAppris,
+  ModificationsApprises,
+  type Reaffectation,
   TESTS_MIN,
   type TestAppris,
   TYPES_PARAMETRE,
@@ -46,7 +48,10 @@ import type { EchappeeJournalisee } from './promotion'
 // consigne, description distincte des gestes existants) ; écrit en
 // `gestes/<id>.yaml` au statut `propose`. Un écart de fond ne relance pas :
 // l'atelier le lit. Le modèle reçoit les échappées entières, jamais
-// l'instantané (P10).
+// l'instantané (P10). Une intention qui écrit se fabrique de la même façon,
+// depuis les propositions validées par le patron : le geste rend une
+// réaffectation par ligne, et le rejeu compare les réaffectations, pas un
+// texte (PLAN-PROMOTION.md § 10, PLAN-GENERAL.md G5).
 
 export const OUTIL_PROPOSER_GESTE = 'proposer_geste'
 /** Deux appels au plus : le premier, et une relance (P5). */
@@ -96,6 +101,14 @@ export const GestePropose = z.strictObject({
 })
 export type GestePropose = z.infer<typeof GestePropose>
 
+/** Ce que le modèle propose pour une intention qui écrit : le même geste, plus ses modifications. */
+export const GesteProposeEcriture = GestePropose.extend({
+  modifications: ModificationsApprises.describe(
+    'pour_chaque : la requête qui rend une ligne par réaffectation ; reaffecter : ses deux colonnes, vacation (vacations.id) et agent (agents.id de celui qui la prend)',
+  ),
+})
+export type GesteProposeEcriture = z.infer<typeof GesteProposeEcriture>
+
 /** Un écart de la vérification, en une phrase ; `erreur` quand une requête a levé : l'écart d'exécution, celui qui relance (P5). */
 export interface EcartGeste {
   texte: string
@@ -115,7 +128,7 @@ export interface CadreFabrication {
   /** Le plafond par demande de la config, jamais un nombre en dur. */
   maxTokens: number
   intention: Intention
-  /** Les échappées finies proprement de cette intention ; seules les réponses servent. */
+  /** Les échappées finies proprement de cette intention ; seules les réponses servent, ou les propositions validées pour une intention qui écrit. */
   echappees: EchappeeJournalisee[]
   gestesExistants: { id: string; description: string }[]
   /** Les personnes que le patron peut désigner : pour résoudre un agent des tests et extraire les noms cités. */
@@ -172,8 +185,11 @@ export function systemeFabriquer(
   tables: string,
   gestesExistants: { id: string; description: string }[],
 ): string {
+  const { ecrit } = intention
   return [
-    "Tu fabriques un geste pour l'outil de planning d'une entreprise de sécurité privée. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL et a répondu. Le geste répondra désormais sans modèle, à ces demandes et à celles de la même sorte : des requêtes SQL paramétrées, un gabarit rendu par le code.",
+    ecrit
+      ? "Tu fabriques un geste pour l'outil de planning d'une entreprise de sécurité privée. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL, a proposé des réaffectations de vacations, et le patron les a validées. Le geste proposera désormais ces réaffectations sans modèle, pour ces demandes et celles de la même sorte : des requêtes SQL paramétrées, dont une rend une ligne par réaffectation ; le code fait passer la proposition par les règles, puis par l'accord du patron et de chaque agent."
+      : "Tu fabriques un geste pour l'outil de planning d'une entreprise de sécurité privée. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL et a répondu. Le geste répondra désormais sans modèle, à ces demandes et à celles de la même sorte : des requêtes SQL paramétrées, un gabarit rendu par le code.",
     '',
     `Le geste : ${intention.id} : ${intention.description}. Sa description, en une phrase de ${DESCRIPTION_MAX} caractères au plus, garde toute cette portée et ne ressemble à aucun geste existant :`,
     ...gestesExistants.map((g) => `- ${g.id} : ${g.description}`),
@@ -182,13 +198,27 @@ export function systemeFabriquer(
     '',
     `Les requêtes, une à cinq, nommées : SQLite, en lecture (SELECT ou WITH), sur les tables ci-dessous. Chaque valeur qui vient de la demande est un paramètre lié (:agent, :${CLES_PERIODE.join(', :')}, :nom_du_parametre), jamais une valeur en dur : ni identifiant, ni nom, ni date, ni site. Fais faire les sommes et les comptes par SQL.`,
     '',
-    'La réponse, une forme et une seule : ligne, une phrase qui cite {{requete.colonne}} (la première ligne du résultat de cette requête) et {{parametre}} ({{du}}, {{au}} pour une période), tableau à null ; ou tableau, le nom d’une requête rendue en tableau, ligne à null. Et vide : la phrase montrée quand une requête citée ne rend aucune ligne. Pas de condition, pas de boucle, pas de calcul dans le gabarit. Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
-    '',
-    `Les rôles : ceux des demandes (${roles.join(', ')}), au moins ; agent seulement si la demande a un sens pour un agent, qui ne voit que ses propres données.`,
-    '',
-    'Les tests : une entrée par demande, avec les valeurs que cette demande donne à chaque paramètre.',
-    '',
-    'Dans les demandes et les réponses, une personne est écrite par son identifiant (A-1), qui tient lieu de son nom ; les données que le geste lira portent les vrais noms (agents.nom) : là où une réponse cite une personne, le geste rend agents.nom.',
+    ...(ecrit
+      ? [
+          'Les modifications : pour_chaque, le nom de la requête qui rend une ligne par réaffectation ; reaffecter, les noms de ses deux colonnes : vacation (vacations.id, V-07) et agent (agents.id de l’agent qui la prend, A-9). Pour chaque demande, le geste propose exactement les vacations validées, chacune à un agent que le patron a validé pour elle ; aucune de plus. Ce qui a fait choisir l’agent (qui est libre, ce que les vérifications ont refusé, les préférences du patron) se code en SQL.',
+          '',
+          'La réponse : tableau, le nom de la requête de pour_chaque, ligne à null ; et vide, la phrase montrée quand elle ne rend aucune ligne (rien à changer).',
+          '',
+          'Les rôles : patron seulement ; un agent ne propose pas de réaffectation.',
+          '',
+          'Les tests : une entrée par demande, avec les valeurs que cette demande donne à chaque paramètre.',
+          '',
+          'Dans les demandes, une personne est écrite par son identifiant (A-1), qui tient lieu de son nom ; la colonne agent rend agents.id, jamais agents.nom.',
+        ]
+      : [
+          'La réponse, une forme et une seule : ligne, une phrase qui cite {{requete.colonne}} (la première ligne du résultat de cette requête) et {{parametre}} ({{du}}, {{au}} pour une période), tableau à null ; ou tableau, le nom d’une requête rendue en tableau, ligne à null. Et vide : la phrase montrée quand une requête citée ne rend aucune ligne. Pas de condition, pas de boucle, pas de calcul dans le gabarit. Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
+          '',
+          `Les rôles : ceux des demandes (${roles.join(', ')}), au moins ; agent seulement si la demande a un sens pour un agent, qui ne voit que ses propres données.`,
+          '',
+          'Les tests : une entrée par demande, avec les valeurs que cette demande donne à chaque paramètre.',
+          '',
+          'Dans les demandes et les réponses, une personne est écrite par son identifiant (A-1), qui tient lieu de son nom ; les données que le geste lira portent les vrais noms (agents.nom) : là où une réponse cite une personne, le geste rend agents.nom.',
+        ]),
     '',
     'Les tables (SQLite) :',
     tables,
@@ -199,12 +229,14 @@ export function systemeFabriquer(
   ].join('\n')
 }
 
-/** L'outil de la fabrication : le schéma du geste proposé, strict. */
-export function outilProposerGeste(): Anthropic.Tool {
+/** L'outil de la fabrication : le schéma du geste proposé, strict ; avec ses modifications pour une intention qui écrit. */
+export function outilProposerGeste(ecrit = false): Anthropic.Tool {
   return {
     name: OUTIL_PROPOSER_GESTE,
-    description: 'Proposer le geste : ses paramètres, ses requêtes, sa réponse, ses tests.',
-    input_schema: schemaJson(GestePropose),
+    description: ecrit
+      ? 'Proposer le geste : ses paramètres, ses requêtes, ses modifications, sa réponse, ses tests.'
+      : 'Proposer le geste : ses paramètres, ses requêtes, sa réponse, ses tests.',
+    input_schema: schemaJson(ecrit ? GesteProposeEcriture : GestePropose),
     strict: true,
   }
 }
@@ -213,14 +245,34 @@ const aParis = (horodatage: string) => Temporal.Instant.from(horodatage).toZoned
 
 const deux = (n: number) => String(n).padStart(2, '0')
 
-/** Une échappée faite depuis les pseudonymes : ce que le modèle a lu et écrit, sans aucun nom, est au journal. */
-export type EchappeeMasquee = EchappeeJournalisee & { consigneModele: string; texteModele: string }
+/**
+ * Une échappée faite depuis les pseudonymes : ce que le modèle a lu et écrit,
+ * sans aucun nom, est au journal : le texte d'une réponse, ou les
+ * modifications d'une proposition (des identifiants).
+ */
+export type EchappeeMasquee = EchappeeJournalisee & { consigneModele: string } & (
+    | { texteModele: string }
+    | { modifications: unknown[] }
+  )
 
 /** Le motif d'une échappée d'avant les pseudonymes : on ne refabrique pas avec des noms (PLAN-PSEUDONYMES.md § 6). */
 export const ANTERIEURE = 'échappée antérieure aux pseudonymes'
 
 const estMasquee = (e: EchappeeJournalisee): e is EchappeeMasquee =>
-  e.consigneModele !== undefined && e.texteModele !== undefined
+  e.consigneModele !== undefined &&
+  (e.issue === 'proposition' ? e.modifications !== undefined : e.texteModele !== undefined)
+
+/** Les réaffectations d'une proposition journalisée, lues sans connaître le métier ; rien si elles n'en ont pas la forme. */
+function reaffectationsJournalisees(e: EchappeeJournalisee): Reaffectation[] | undefined {
+  const lu = z
+    .array(z.looseObject({ vacation: z.string().min(1), agent: z.string().min(1) }))
+    .min(1)
+    .safeParse(e.modifications)
+  return lu.success ? lu.data.map(({ vacation, agent }) => ({ vacation, agent })) : undefined
+}
+
+/** Une réaffectation en une ligne, pour le modèle et pour un écart : `V-03 → A-11`. */
+const enLigne = (r: Reaffectation) => `${r.vacation} → ${r.agent}`
 
 /**
  * Le message : les échappées entières entre les balises des données, telles
@@ -243,8 +295,19 @@ export function messageFabriquer(echappees: EchappeeMasquee[]): string {
         `Résultat ${i + 1} :`,
         r.erreur !== undefined ? `erreur : ${r.erreur}` : r.sortie,
       ]),
-      'Réponse montrée :',
-      e.texteModele,
+      // Une réponse : son texte ; une proposition (une intention qui écrit) : ses vérifications, puis ce que le patron a validé.
+      ...('texteModele' in e
+        ? ['Réponse montrée :', e.texteModele]
+        : [
+            ...(e.verifications ?? []).flatMap((v, i) => [
+              `Vérification ${i + 1} :`,
+              v.modifications,
+              `Résultat de la vérification ${i + 1} :`,
+              v.erreur !== undefined ? `erreur : ${v.erreur}` : v.sortie,
+            ]),
+            'Réaffectations validées par le patron (vacation → agent) :',
+            ...(reaffectationsJournalisees(e) ?? []).map(enLigne),
+          ]),
     ].join('\n')
   })
   return [
@@ -292,10 +355,12 @@ function relireNuls(entree: unknown): unknown {
 }
 
 /** `relance` : un échec de forme (schéma, zéro ou deux outils) se relance une fois (P5) ; un refus ou une troncature, non : le modèle n'a pas pu finir, il ne finira pas mieux. */
-type Lecture = { ok: true; propose: GestePropose } | { ok: false; raison: string; relance: boolean }
+type Lecture =
+  | { ok: true; propose: GestePropose | GesteProposeEcriture }
+  | { ok: false; raison: string; relance: boolean }
 
 /** Lit la réponse du modèle, comme `traduire.lire` : refus, troncature, zéro ou deux outils, forme → échec. */
-function lire(message: Anthropic.Message): Lecture {
+function lire(message: Anthropic.Message, ecrit: boolean): Lecture {
   if (message.stop_reason === 'refusal') {
     return { ok: false, raison: 'le modèle a refusé', relance: false }
   }
@@ -311,7 +376,7 @@ function lire(message: Anthropic.Message): Lecture {
   if (bloc.name !== OUTIL_PROPOSER_GESTE) {
     return { ok: false, raison: `outil inconnu : ${bloc.name}`, relance: true }
   }
-  const lu = GestePropose.safeParse(relireNuls(bloc.input))
+  const lu = (ecrit ? GesteProposeEcriture : GestePropose).safeParse(relireNuls(bloc.input))
   return lu.success
     ? { ok: true, propose: lu.data }
     : { ok: false, raison: `forme : ${z.prettifyError(lu.error)}`, relance: true }
@@ -324,12 +389,14 @@ const estId = (v: unknown, personnes: Designable[]) =>
  * Complète la proposition en un geste (§ 6.1) : l'identifiant est
  * l'intention ; chaque test cite une échappée d'origine, dont il reçoit la
  * consigne, le rôle, l'agent, l'instantané, et `contient` : les nombres et
- * les noms du texte montré que la consigne ne portait pas déjà. Un agent des
- * paramètres est résolu comme pour les gestes codés ; pour le rôle `agent`,
- * c'est celui qui parle (D4). Chaque échappée d'origine a son test (écart 2).
+ * les noms du texte montré que la consigne ne portait pas déjà ; pour un
+ * geste qui écrit, `modifications` : les réaffectations que le patron a
+ * validées. Un agent des paramètres est résolu comme pour les gestes codés ;
+ * pour le rôle `agent`, c'est celui qui parle (D4). Chaque échappée d'origine
+ * a son test (écart 2).
  */
 export function completerGeste(
-  propose: GestePropose,
+  propose: GestePropose | GesteProposeEcriture,
   intention: string,
   echappees: EchappeeJournalisee[],
   personnes: Designable[],
@@ -383,20 +450,29 @@ export function completerGeste(
       }
     }
     if (!valide) continue
-    const attendus = citations(e.texte, noms).filter((c) => !contient(e.consigne, c))
-    if (attendus.length === 0) {
-      ecart(`${e.echappee} : rien à vérifier dans le texte montré (ni nombre ni nom)`)
-      continue
-    }
-    tests.push({
+    const test = {
       echappee: e.echappee,
       consigne: e.consigne,
       role: e.role,
       agent: e.agent ?? null,
       params,
       instantane: e.instantane,
-      contient: attendus,
-    })
+    }
+    if ('modifications' in propose) {
+      const validees = reaffectationsJournalisees(e)
+      if (!validees) {
+        ecart(`${e.echappee} : aucune réaffectation validée à reproduire`)
+        continue
+      }
+      tests.push({ ...test, contient: [], modifications: validees })
+      continue
+    }
+    const attendus = citations(e.texte, noms).filter((c) => !contient(e.consigne, c))
+    if (attendus.length === 0) {
+      ecart(`${e.echappee} : rien à vérifier dans le texte montré (ni nombre ni nom)`)
+      continue
+    }
+    tests.push({ ...test, contient: attendus })
   }
   for (const e of echappees.filter((x) => !vus.has(x.echappee))) {
     ecart(`l'échappée ${e.echappee} n'a pas de test`)
@@ -410,12 +486,22 @@ export function completerGeste(
   return { geste: lu.data, ecarts }
 }
 
-/** Le rejeu d'un test sur son instantané : le texte rendu et ce qui y manque, ou l'erreur. */
+/**
+ * Le rejeu d'un test sur son instantané : le texte rendu et ce qui y manque,
+ * ou l'erreur. Pour un geste qui écrit (PLAN-PROMOTION.md § 10), le texte est
+ * la liste des réaffectations rendues : chaque vacation du test doit y être
+ * (`manque` sinon : la vacation), et chaque réaffectation rendue doit être une que le
+ * patron a validée pour cette vacation, dans ce test ou un autre du geste
+ * (`enTrop` sinon, comme une vacation de plus) : le patron qui a validé deux
+ * agents pour la même vacation les a acceptés tous les deux.
+ */
 export async function rejouerTest(
   geste: GesteAppris,
   test: TestAppris,
   dossierClient: string,
-): Promise<{ texte: string; manque: string[] } | { erreur: string; requete?: string }> {
+): Promise<
+  { texte: string; manque: string[]; enTrop: string[] } | { erreur: string; requete?: string }
+> {
   const chemin = join(dossierClient, test.instantane)
   if (!existsSync(chemin)) return { erreur: `instantané absent : ${test.instantane}` }
   const instantane = JSON.parse(readFileSync(chemin, 'utf8')) as Instantane
@@ -429,7 +515,29 @@ export async function rejouerTest(
     if ('erreur' in e) {
       return { erreur: e.erreur, ...(e.requete !== undefined ? { requete: e.requete } : {}) }
     }
-    return { texte: e.texte, manque: test.contient.filter((mot) => !contient(e.texte, mot)) }
+    if (e.reaffectations === undefined) {
+      return {
+        texte: e.texte,
+        manque: test.contient.filter((mot) => !contient(e.texte, mot)),
+        enTrop: [],
+      }
+    }
+    const attendues = test.modifications ?? []
+    const vacations = attendues.map((r) => r.vacation)
+    const validees = new Set(geste.tests.flatMap((t) => (t.modifications ?? []).map(enLigne)))
+    const rendues = e.reaffectations
+    return {
+      texte: rendues.length > 0 ? rendues.map(enLigne).join(', ') : 'aucune réaffectation',
+      manque: vacations.filter((v) => !rendues.some((r) => r.vacation === v)),
+      enTrop: rendues
+        .filter(
+          (r, i) =>
+            !vacations.includes(r.vacation) ||
+            !validees.has(enLigne(r)) ||
+            rendues.findIndex((x) => x.vacation === r.vacation) !== i,
+        )
+        .map(enLigne),
+    }
   } finally {
     copie.fermer()
   }
@@ -492,9 +600,17 @@ export async function verifierGeste(
       })
       continue
     }
-    if (r.manque.length > 0) {
+    if (r.manque.length > 0 || r.enTrop.length > 0) {
+      const parties = [
+        ...(r.manque.length > 0
+          ? [`ne contient pas ${r.manque.map((m) => `« ${m} »`).join(', ')}`]
+          : []),
+        ...(r.enTrop.length > 0
+          ? [`propose ${r.enTrop.map((m) => `« ${m} »`).join(', ')}, jamais validé`]
+          : []),
+      ]
       ecarts.push({
-        texte: `${t.echappee} : le rejeu ne contient pas ${r.manque.map((m) => `« ${m} »`).join(', ')} (rendu : « ${r.texte} »)`,
+        texte: `${t.echappee} : le rejeu ${parties.join(' et ')} (rendu : « ${r.texte} »)`,
       })
       continue
     }
@@ -585,7 +701,8 @@ export function messageRelance(
  * ou l'échec. Jamais plus de deux appels.
  */
 export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabrication> {
-  const toutes = cadre.echappees.filter((e) => e.issue === 'reponse')
+  const { ecrit } = cadre.intention
+  const toutes = cadre.echappees.filter((e) => e.issue === (ecrit ? 'proposition' : 'reponse'))
   const reponses = toutes.filter(estMasquee)
   const anciennes = toutes.filter((e) => !estMasquee(e)).map((e) => e.echappee)
   let usage = USAGE_NUL
@@ -603,7 +720,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
   if (reponses.length < TESTS_MIN) {
     const ecartees = anciennes.length > 0 ? ` (${ANTERIEURE} : ${anciennes.join(', ')})` : ''
     return echec(
-      `${reponses.length} réponse(s) finie(s) proprement, ${TESTS_MIN} au moins${ecartees}`,
+      `${reponses.length} ${ecrit ? 'proposition(s) validée(s)' : 'réponse(s) finie(s) proprement'}, ${TESTS_MIN} au moins${ecartees}`,
     )
   }
   const roles = [...new Set(reponses.map((e) => e.role))]
@@ -624,7 +741,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
       reponse = await cadre.modele.appeler({
         systeme,
         messages,
-        outils: [outilProposerGeste()],
+        outils: [outilProposerGeste(ecrit)],
         effort: cadre.effort,
         maxTokens: cadre.maxTokens,
         unSeulOutil: true,
@@ -638,7 +755,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     if (reponse.usageBorne) usageBorne = true
     cadre.journaliser(reponse, relance)
 
-    const lu = lire(reponse.message)
+    const lu = lire(reponse.message, ecrit)
     let motif: string
     let raison: string
     if (!lu.ok) {

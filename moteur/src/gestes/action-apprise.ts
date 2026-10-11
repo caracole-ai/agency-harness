@@ -3,7 +3,16 @@ import type { Action, Identite, Resultat } from '../conversation/actions'
 import { type Copie, creerCopie, type TableCopie } from '../echappee/copie'
 import { executerRequete, type ParametresRequete, type ResultatRequete } from '../echappee/requete'
 import type { Temporal } from '../temps/temporal'
-import { CLES_PERIODE, type GesteAppris, rendre } from './geste-appris'
+import {
+  CLES_PERIODE,
+  ecritDe,
+  type GesteAppris,
+  OPERATION_REAFFECTER,
+  type Reaffectation,
+  reaffectationsDe,
+  rendre,
+  SansCandidat,
+} from './geste-appris'
 
 // Un geste appris devient une action comme les autres (PLAN-PROMOTION.md
 // § 5.3) : la traduction le choisit, puis tout est déterministe et sans
@@ -11,10 +20,14 @@ import { CLES_PERIODE, type GesteAppris, rendre } from './geste-appris'
 // (P3), le texte rendu par le code. Pour le rôle `agent`, un paramètre
 // `agent` vaut toujours celui qui parle (D4), comme pour les gestes codés.
 // L'exécution sur une copie (`executerGeste`) est la même que celle du rejeu
-// d'un test sur son instantané (§ 6.2).
+// d'un test sur son instantané (§ 6.2). Un geste qui écrit ne fait que
+// calculer ses réaffectations : il ne touche à rien, la conversation les
+// traite comme une proposition d'échappée (PLAN-PROMOTION.md § 10).
 
 /** Le texte montré quand une requête ou le rendu échoue ; le détail va au journal. */
 export const LECTURE_IMPOSSIBLE = "Je n'ai pas pu lire les données"
+/** Le texte montré quand un geste qui écrit ne trouve personne pour une vacation : les données sont lues, rien n'est proposé. */
+export const RIEN_A_PROPOSER = "Je n'ai rien à proposer"
 
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
 
@@ -83,12 +96,19 @@ export interface RequeteExecutee {
   erreur?: string
 }
 
-/** Ce qu'une exécution laisse : le texte rendu et ses résultats, ou l'erreur (celle d'une requête nommée, ou du rendu : les résultats sont là, le gabarit se vérifie dessus). */
+/** Ce qu'une exécution laisse : le texte rendu et ses résultats (et, pour un geste qui écrit, ses réaffectations), ou l'erreur (celle d'une requête nommée, ou du rendu : les résultats sont là, le gabarit se vérifie dessus). */
 export type ExecutionGeste =
-  | { texte: string; requetes: RequeteExecutee[]; resultats: Record<string, ResultatRequete> }
+  | {
+      texte: string
+      requetes: RequeteExecutee[]
+      resultats: Record<string, ResultatRequete>
+      reaffectations?: Reaffectation[]
+    }
   | {
       erreur: string
       requete?: string
+      /** Un geste qui écrit n'a trouvé personne pour une vacation. */
+      sansCandidat?: true
       requetes: RequeteExecutee[]
       resultats?: Record<string, ResultatRequete>
     }
@@ -111,9 +131,17 @@ export async function executerGeste(
     requetes.push({ nom: r.nom, sql: r.sql, lignes: resultat.lignes.length })
   }
   try {
-    return { texte: rendre(geste, liaison, resultats), requetes, resultats }
+    const texte = rendre(geste, liaison, resultats)
+    return ecritDe(geste)
+      ? { texte, requetes, resultats, reaffectations: reaffectationsDe(geste, resultats) }
+      : { texte, requetes, resultats }
   } catch (erreur) {
-    return { erreur: message(erreur), requetes, resultats }
+    return {
+      erreur: message(erreur),
+      ...(erreur instanceof SansCandidat ? { sansCandidat: true as const } : {}),
+      requetes,
+      resultats,
+    }
   }
 }
 
@@ -122,14 +150,17 @@ export function actionApprise<S>(
   copie: (s: S, identite: Identite, maintenant: Temporal.ZonedDateTime) => TableCopie[],
 ): Action<S, Record<string, unknown>> {
   const personnes = personnesDe(geste)
+  const ecrit = ecritDe(geste)
   return {
     id: geste.id,
     description: geste.description,
     parametres: parametresAppris(geste) as z.ZodType<Record<string, unknown>>,
     ...(personnes ? { personnes } : {}),
     roles: [...geste.roles],
-    ecrit: false,
-    // Jamais montré : un geste appris lit, il n'attend pas de « oui ».
+    ecrit,
+    ...(ecrit ? { propose: true as const } : {}),
+    // Jamais montré : un geste appris qui lit n'attend pas de « oui », un geste
+    // qui écrit attend celui de sa proposition.
     reformuler: () => `Je réponds à : ${geste.description}.`,
     executer: async (s, identite, params, maintenant): Promise<Resultat> => {
       const c = creerCopie(copie(s, identite, maintenant))
@@ -139,11 +170,20 @@ export function actionApprise<S>(
           const erreur =
             e.requete !== undefined ? `requête « ${e.requete} » : ${e.erreur}` : e.erreur
           return {
-            texte: `${LECTURE_IMPOSSIBLE} : ${erreur}`,
+            texte: `${e.sansCandidat ? RIEN_A_PROPOSER : LECTURE_IMPOSSIBLE} : ${erreur}`,
             donnees: { echappee: null, requetes: e.requetes, erreur },
           }
         }
-        return { texte: e.texte, donnees: { echappee: null, requetes: e.requetes } }
+        const donnees = { echappee: null, requetes: e.requetes }
+        // Aucune ligne : rien à proposer, le texte `vide` le dit.
+        if (e.reaffectations === undefined || e.reaffectations.length === 0) {
+          return { texte: e.texte, donnees }
+        }
+        return {
+          texte: e.texte,
+          donnees,
+          modifications: e.reaffectations.map((r) => ({ type: OPERATION_REAFFECTER, ...r })),
+        }
       } finally {
         c.fermer()
       }

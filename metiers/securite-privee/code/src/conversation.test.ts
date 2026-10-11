@@ -10,6 +10,7 @@ import {
   empreinteGeste,
   FICHIER_PERSONNES,
   type FichierGeste,
+  FichierGestes,
   gesteDe,
   type Identite,
   type IdentiteVerifiee,
@@ -25,11 +26,19 @@ import {
   TYPE_ECHAPPEE,
   TYPE_GESTE_APPRIS,
   TYPE_PRECISION_ATTENDUE,
+  TYPE_PROPOSITION_REFUSEE,
   traiterConsigne,
+  VALIDEE,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
+import { parse } from 'yaml'
 import { CONVERSATION } from './conversation'
-import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
+import {
+  ouvrirReaffectation,
+  STATUT_R,
+  TYPE_REAFFECTATION,
+  validerReaffectation,
+} from './reaffectation'
 import { aParis, type Session } from './remplacement'
 
 // La conversation sur le client fictif, de bout en bout, sur une copie (le
@@ -924,5 +933,168 @@ describe('un geste appris, chargé et exécuté (PLAN-PROMOTION.md § 5.5)', asy
       .filter((l) => l.type === TYPE_ALERTE)
       .at(-1)
     expect(alerte?.regle).toBe(REGLE_SANS_HUMAIN)
+  })
+})
+
+describe('un geste appris qui écrit : la réaffectation groupée en un appel (PLAN-PROMOTION.md § 10, PLAN-GENERAL.md phase C)', async () => {
+  // Le geste écrit à la main de l'éval de rejeu (`evals/gestes.yaml`, calculs
+  // à la main) : le mardi 13 de Karim, V-03, va à Aïcha (A-11).
+  const geste = FichierGestes.parse(
+    parse(
+      readFileSync(
+        fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
+        'utf8',
+      ),
+    ),
+  ).gestes.find((g) => g.id === 'liberer_un_jour')
+  if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
+  const jeton = empreinteGeste(geste)
+  const s = session((dossier) => {
+    mkdirSync(join(dossier, DOSSIER_GESTES))
+    const fichier: FichierGeste = {
+      ...geste,
+      statut: 'actif',
+      validation: { par: 'test', le: '2026-10-11', jeton },
+    }
+    writeFileSync(join(dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'), JSON.stringify(fichier))
+  })
+  s.journal.ecrire([
+    {
+      type: TYPE_GESTE_APPRIS,
+      client: s.config.client,
+      objet: geste.id,
+      issue: ISSUE_GESTE.active,
+      donnees: { jeton, par: 'test' },
+    },
+  ])
+  const { r, conversation, modele } = await tour(
+    s,
+    PATRON,
+    outil('liberer_un_jour', { agent: 'Karim', date: '2026-10-13' }),
+    'Libère le mardi 13 de Karim.',
+  )
+  if (r.sorte !== 'proposition') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
+  const id = `R-${conversation.replace(/^C-/, '')}`
+  const reaffectations = () => s.journal.historique(id).filter((l) => l.type === TYPE_REAFFECTATION)
+  const jetonDe = (statut: string) =>
+    JSON.parse(reaffectations().find((l) => l.issue === statut)?.donnees ?? '{}').jeton
+
+  it('un seul appel au modèle, sans échappée : la proposition est rendue par le code', () => {
+    const appels = lignes(s, conversation).filter((l) => l.type === TYPE_APPEL)
+    expect(appels.map((l) => l.issue)).toEqual(['traduire'])
+    expect(lignes(s, conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toEqual([])
+    expect(r.texte).toContain(`Proposition ${id}`)
+    expect(r.texte).toContain('Karim Haddad → Aïcha Traoré')
+    expect(r.texte).toMatch(/Valider \? \(oui \/ non\)$/)
+    expect(JSON.parse(reaffectations()[0]?.donnees ?? '{}').modifications).toEqual([
+      { type: 'reaffecter', vacation: 'V-03', agent: 'A-11' },
+    ])
+  })
+  it('le modèle voit le geste comme une action du patron, plus comme une intention (P14)', () => {
+    const systeme = modele.appels[0]?.systeme ?? ''
+    expect(systeme).toContain(`liberer_un_jour : ${geste.description}`)
+    expect(systeme).not.toContain('libérer un agent de ses vacations d’une journée')
+  })
+  it('le oui du patron valide avec la clé et demande son accord à Aïcha ; rien n’est encore écrit', async () => {
+    const oui = await confirmer(
+      CONVERSATION,
+      s,
+      PATRON,
+      conversation,
+      r.empreinte,
+      true,
+      maintenant,
+    )
+    expect(oui.texte).toMatch(/^Validé\. Message envoyé à 1 agent\(s\) : « Aïcha, peux-tu prendre/)
+    expect(reaffectations().map((l) => l.issue)).toEqual([
+      STATUT_R.recue,
+      VALIDEE,
+      STATUT_R.demandee,
+    ])
+    expect(jetonDe(VALIDEE)).toMatch(/^[0-9a-f]{64}$/)
+    expect(planningDe(s)).toContain('V-03;A-1;')
+  })
+  it('le oui d’Aïcha, confirmé, écrit le planning avec la même clé', async () => {
+    const aicha = await tour(
+      s,
+      agent('A-11'),
+      outil('repondre_reaffectation', { reaffectation: id, accepte: true }),
+    )
+    if (aicha.r.sorte !== 'confirmation') throw new Error(`sorte ${aicha.r.sorte}`)
+    const fin = await confirmer(
+      CONVERSATION,
+      s,
+      agent('A-11'),
+      aicha.conversation,
+      aicha.r.empreinte,
+      true,
+      maintenant,
+    )
+    expect(fin.texte).toMatch(/^C'est confirmé : V-03/)
+    expect(planningDe(s)).toContain('V-03;A-11;')
+    expect(jetonDe(STATUT_R.ecrite)).toBe(jetonDe(VALIDEE))
+  })
+  it('un agent n’a pas ce geste : il n’est offert qu’au patron', async () => {
+    const sophie = await tour(
+      s,
+      agent('A-3'),
+      outil('liberer_un_jour', { agent: null, date: '2026-10-14' }),
+    )
+    expect(sophie.modele.appels[0]?.outils.map((o) => o.name)).not.toContain('liberer_un_jour')
+    expect(sophie.r.sorte).toBe('je_ne_sais_pas')
+  })
+})
+
+describe('un geste appris qui écrit, refusé par les règles : rien n’est ouvert (PLAN-PROMOTION.md § 10)', () => {
+  it('Sophie (carte expirée) pour V-03 : la proposition est refusée par le métier, au journal, sans attente', async () => {
+    const geste = FichierGestes.parse(
+      parse(
+        readFileSync(
+          fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
+          'utf8',
+        ),
+      ),
+    ).gestes.find((g) => g.id === 'liberer_un_jour')
+    if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
+    const fautif = {
+      ...geste,
+      requetes: [
+        {
+          nom: 'liberer',
+          sql: "SELECT v.id AS vacation, 'A-3' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date",
+        },
+      ],
+    }
+    const jeton = empreinteGeste(fautif)
+    const s = session((dossier) => {
+      mkdirSync(join(dossier, DOSSIER_GESTES))
+      const fichier: FichierGeste = {
+        ...fautif,
+        statut: 'actif',
+        validation: { par: 'test', le: '2026-10-11', jeton },
+      }
+      writeFileSync(join(dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'), JSON.stringify(fichier))
+    })
+    s.journal.ecrire([
+      {
+        type: TYPE_GESTE_APPRIS,
+        client: s.config.client,
+        objet: fautif.id,
+        issue: ISSUE_GESTE.active,
+        donnees: { jeton, par: 'test' },
+      },
+    ])
+    const { r, conversation } = await tour(
+      s,
+      PATRON,
+      outil('liberer_un_jour', { agent: 'Karim', date: '2026-10-13' }),
+      'Libère le mardi 13 de Karim.',
+    )
+    expect(r.sorte).toBe('je_ne_sais_pas')
+    expect(r.texte).toMatch(/^la réaffectation enfreint .+ \(I-0\d\)/)
+    const types = lignes(s, conversation).map((l) => l.type)
+    expect(types).toContain(TYPE_PROPOSITION_REFUSEE)
+    expect(types).not.toContain('confirmation_attendue')
+    expect(planningDe(s)).toContain('V-03;A-1;')
   })
 })

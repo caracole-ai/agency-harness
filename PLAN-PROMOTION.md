@@ -543,6 +543,8 @@ corrections, puis la fusion dans `main`.
 
 ## 10. Lot 4 — L'écriture (ne pas exécuter sans une décision de Lionel)
 
+*Décidé par `PLAN-GENERAL.md` G5, fait le 2026-10-11 (phase C) : voir `HANDOFF.md`.*
+
 Quand les lots 0 à 3 sont mesurés et que l'échappée tient 80 % sur trois
 passes : un geste appris peut porter `modifications: { pour_chaque: <nom de
 requête>, reaffecter: { vacation: <colonne>, agent: <colonne> } }`. Son

@@ -2,12 +2,19 @@ import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
+import { VALIDEE } from '../approbation/jeton'
 import type { Action, Intention } from '../conversation/actions'
 import type { ConfigConversation } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
-import { CONTROLE_OK } from '../echappee/boucle'
+import { CONTROLE_OK, OUTIL_VERIFIER } from '../echappee/boucle'
 import type { TableCopie } from '../echappee/copie'
-import { cheminInstantane, ecrireInstantane, TYPE_ECHAPPEE } from '../echappee/echappee'
+import {
+  cheminInstantane,
+  ecrireInstantane,
+  TYPE_ECHAPPEE,
+  TYPE_OUTIL_ECHAPPEE,
+} from '../echappee/echappee'
 import { masquerTexte } from '../echappee/pseudonymes'
 import { ISSUE_GESTE, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
@@ -21,8 +28,9 @@ import { compterFabrications, promouvoir } from './promouvoir'
 
 // Ce que `pnpm promotions` fait d'une intention au seuil, avec le modèle
 // simulé (PLAN-PROMOTION.md § 6.5) : le dossier porte « vérification : 3/3 » ;
-// une intention qui écrit n'appelle pas le modèle et le dossier dit « lot 4 » ;
-// sans modèle, aucun appel ; la passe de traduction décide « activable ».
+// une intention qui écrit se fabrique depuis ses propositions validées, et son
+// geste propose des réaffectations, rejouées à l'identique (§ 10) ; sans
+// modèle, aucun appel ; la passe de traduction décide « activable ».
 
 const CLIENT = 'fictif'
 const AGENTS: TableCopie = {
@@ -96,6 +104,108 @@ const PROPOSE = {
   ],
 }
 const proposer = (propose: unknown): Scripte => ({ outil: OUTIL_PROPOSER_GESTE, entree: propose })
+
+/** Les vacations, avec leur identifiant, pour une intention qui écrit. */
+const VACATIONS_ID: TableCopie = {
+  nom: 'vacations',
+  description: 'les vacations',
+  colonnes: [
+    { nom: 'id', type: 'TEXT', description: "l'identifiant (V-1)" },
+    { nom: 'agent', type: 'TEXT', description: "l'agent (agents.id)" },
+    { nom: 'jour', type: 'TEXT', description: 'le jour, AAAA-MM-JJ' },
+  ],
+  lignes: [
+    { id: 'V-1', agent: 'A-1', jour: '2026-10-07' },
+    { id: 'V-2', agent: 'A-1', jour: '2026-10-09' },
+    { id: 'V-3', agent: 'A-2', jour: '2026-10-07' },
+    { id: 'V-4', agent: 'A-2', jour: '2026-10-08' },
+  ],
+}
+/** Chaque vacation du jour de l'agent, à l'autre agent : le premier par identifiant. */
+const SQL_LIBERER =
+  'SELECT v.id AS vacation, (SELECT a.id FROM agents a WHERE a.id <> v.agent ORDER BY a.id LIMIT 1) AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date'
+const PROPOSE_LIBERER = {
+  description: 'libérer un agent de ses vacations d’un jour, chacune donnée à un autre agent',
+  roles: ['patron'],
+  parametres: {
+    agent: { type: 'agent', description: "l'agent à libérer" },
+    date: { type: 'date', description: 'le jour à libérer' },
+  },
+  requetes: [{ nom: 'liberer', sql: SQL_LIBERER }],
+  modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'vacation', agent: 'agent' } },
+  reponse: { ligne: null, tableau: 'liberer', vide: 'Aucune vacation ce jour-là.' },
+  tests: [
+    { echappee: 'E-1', params: { agent: 'A-1', date: '2026-10-07' } },
+    { echappee: 'E-2', params: { agent: 'A-2', date: '2026-10-08' } },
+    { echappee: 'E-3', params: { agent: 'A-1', date: '2026-10-09' } },
+  ],
+}
+
+/** Trois propositions de l'échappée, validées par le patron (P9), leurs instantanés écrits ; une vérification sur la première. */
+function dossierAvecPropositions(): Session {
+  const dossier = mkdtempSync(join(tmpdir(), 'promouvoir-'))
+  const s = METIER.ouvrir(dossier)
+  const cas: [string, string, string, string][] = [
+    ['E-1', 'Libère le mercredi 7 de Karim.', 'Libère le mercredi 7 de A-1.', 'V-1 A-2'],
+    ['E-2', 'Libère le jeudi 8 de Julien.', 'Libère le jeudi 8 de A-2.', 'V-4 A-1'],
+    ['E-3', 'Libère le vendredi 9 de Karim.', 'Libère le vendredi 9 de A-1.', 'V-2 A-2'],
+  ]
+  for (const [n, [id, consigne, consigneModele, modif]] of cas.entries()) {
+    const horodatage = `2026-10-0${n + 7}T08:00:00Z`
+    const [vacation, agent] = modif.split(' ')
+    const modifications = [{ type: 'reaffecter', vacation, agent }]
+    ecrireInstantane(dossier, {
+      echappee: id,
+      horodatage,
+      role: 'patron',
+      tables: [AGENTS, VACATIONS_ID],
+    })
+    const conversation = `C-${id}`
+    const evenements: Evenement[] = [
+      {
+        type: TYPE_ECHAPPEE,
+        client: CLIENT,
+        objet: conversation,
+        issue: 'proposition',
+        motif: consigne,
+        donnees: {
+          echappee: id,
+          intention: 'liberer_un_jour',
+          role: 'patron',
+          consigne_modele: consigneModele,
+          modifications,
+          constats: [],
+          texte: `Proposition R-${id} : Karim Haddad → Julien Lefèvre`,
+          instantane: cheminInstantane(id),
+        },
+      },
+      {
+        type: 'reaffectation',
+        client: CLIENT,
+        objet: `R-${id}`,
+        issue: 'reçue',
+        donnees: { conversation, modifications },
+      },
+      { type: 'reaffectation', client: CLIENT, objet: `R-${id}`, issue: VALIDEE },
+    ]
+    if (n === 0) {
+      evenements.unshift({
+        type: TYPE_OUTIL_ECHAPPEE,
+        client: CLIENT,
+        objet: conversation,
+        issue: OUTIL_VERIFIER,
+        donnees: {
+          echappee: id,
+          tour: 2,
+          entree: { modifications },
+          sortie: 'V-1 : A-1 → A-2\naucun constat',
+        },
+      })
+    }
+    s.journal.ecrire(evenements, horodatage)
+  }
+  return s
+}
 
 interface Session {
   dossier: string
@@ -197,9 +307,9 @@ describe('promouvoir', () => {
     expect(existsSync(join(s.dossier, DOSSIER_GESTES))).toBe(false)
     METIER.fermer(s)
   })
-  it('une intention qui écrit, au seuil : aucun appel, le dossier dit « lot 4 »', async () => {
-    const s = dossierAvecEchappees('liberer_un_jour')
-    const modele = modeleSimule([proposer(PROPOSE)])
+  it('une intention qui écrit, au seuil : fabriquée depuis les propositions validées, sans aucun nom ; le geste propose et rejoue les réaffectations', async () => {
+    const s = dossierAvecPropositions()
+    const modele = modeleSimule([proposer(PROPOSE_LIBERER)])
     const { dossier, fabrication } = await promouvoir(
       METIER,
       s,
@@ -209,11 +319,65 @@ describe('promouvoir', () => {
       30,
       { modele },
     )
-    expect(fabrication).toEqual({ sorte: 'attend_lot_4', relance: false, appels: 0, cout_usd: 0 })
-    expect(modele.appels).toHaveLength(0)
-    const md = readFileSync(dossier, 'utf8')
-    expect(md).toContain('## Geste proposé')
-    expect(md).toContain('attend l’écriture par un geste appris (PLAN-PROMOTION.md lot 4)')
+    expect(fabrication).toMatchObject({ sorte: 'ecrit', rejeu: { ok: 3, total: 3 } })
+    const ecrit = parse(
+      readFileSync(join(s.dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'), 'utf8'),
+    )
+    expect(ecrit.modifications).toEqual(PROPOSE_LIBERER.modifications)
+    expect(ecrit.tests.map((t: { modifications: unknown }) => t.modifications)).toEqual([
+      [{ vacation: 'V-1', agent: 'A-2' }],
+      [{ vacation: 'V-4', agent: 'A-1' }],
+      [{ vacation: 'V-2', agent: 'A-2' }],
+    ])
+    expect(readFileSync(dossier, 'utf8')).toContain('Vérification : 3/3')
+
+    // Ce que la fabrication a lu : les consignes masquées, les vérifications, les réaffectations validées ; aucun nom.
+    const [appel] = modele.appels
+    const message = JSON.stringify(appel?.messages)
+    expect(message).toContain('Libère le jeudi 8 de A-2.')
+    expect(message).toContain('Vérification 1 :')
+    expect(message).toContain(
+      'Réaffectations validées par le patron (vacation → agent) :\\nV-4 → A-1',
+    )
+    expect(`${message}${appel?.systeme}`).not.toMatch(/Karim|Julien|Haddad|Lefèvre/)
+    expect(appel?.systeme).toContain('Les rôles : patron seulement')
+    expect(Object.keys(appel?.outils[0]?.input_schema.properties ?? {})).toContain('modifications')
+    METIER.fermer(s)
+  })
+  it('une intention qui écrit : un rejeu qui ajoute une réaffectation est un écart de fond', async () => {
+    const s = dossierAvecPropositions()
+    const { fabrication } = await promouvoir(
+      METIER,
+      s,
+      s.dossier,
+      auSeuil(s, 'liberer_un_jour'),
+      MAINTENANT,
+      30,
+      {
+        modele: modeleSimule([
+          proposer({
+            ...PROPOSE_LIBERER,
+            requetes: [
+              { nom: 'liberer', sql: SQL_LIBERER.replace('v.jour = :date', 'v.jour >= :date') },
+            ],
+          }),
+        ]),
+      },
+    )
+    expect(fabrication?.sorte).toBe('ecarts')
+    expect(fabrication?.ecarts).toContain(
+      'E-1 : le rejeu propose « V-2 → A-2 », jamais validé (rendu : « V-1 → A-2, V-2 → A-2 »)',
+    )
+    expect(existsSync(join(s.dossier, DOSSIER_GESTES))).toBe(false)
+    METIER.fermer(s)
+  })
+  it('une intention qui lit : l’outil de fabrication n’a pas de modifications', async () => {
+    const s = dossierAvecEchappees()
+    const modele = modeleSimule([proposer(PROPOSE)])
+    await promouvoir(METIER, s, s.dossier, auSeuil(s), MAINTENANT, 30, { modele })
+    expect(Object.keys(modele.appels[0]?.outils[0]?.input_schema.properties ?? {})).not.toContain(
+      'modifications',
+    )
     METIER.fermer(s)
   })
   it('une intention hors du catalogue : non tentée', async () => {
@@ -442,7 +606,7 @@ describe('compterFabrications', () => {
   it('compte au seuil, non tentées, tentées, écrites (dont après relance), activables, échecs de forme par appel, pannes, écarts de fond', () => {
     expect(
       compterFabrications([
-        { sorte: 'attend_lot_4', relance: false, appels: 0, cout_usd: 0 },
+        { sorte: 'hors_catalogue', relance: false, appels: 0, cout_usd: 0 },
         { sorte: 'ecrit', relance: true, appels: 2, cout_usd: 0.01, activable: true },
         { sorte: 'ecrit', relance: false, appels: 1, cout_usd: 0.01, activable: false },
         { sorte: 'echec', relance: true, appels: 2, cout_usd: 0.02, raison: 'forme' },
@@ -466,7 +630,7 @@ describe('compterFabrications', () => {
       ]),
     ).toEqual([
       'Intentions au seuil : 8',
-      'Non tentées (hors catalogue, écriture, plafond) : 1',
+      'Non tentées (hors catalogue, plafond) : 1',
       'Tentées : 6',
       'Écrites sans écart : 2, dont après relance : 1',
       'Activables : 1',

@@ -15,7 +15,10 @@ import {
 // sur la copie du rôle, un gabarit de réponse rendu par le code, et ses
 // tests. Ce fichier dit sa forme (schéma zod fermé), ce qu'un gabarit peut
 // citer, comment il se rend, et son empreinte (celle que la clé d'activation
-// scelle, P7).
+// scelle, P7). Un geste qui écrit porte en plus `modifications` : une
+// réaffectation par ligne d'une de ses requêtes, proposée comme une
+// proposition d'échappée ; ses tests attendent ces réaffectations, pas un
+// texte (PLAN-PROMOTION.md § 10, PLAN-GENERAL.md G5).
 
 /** Le dossier des gestes appris, dans le dossier du client. */
 export const DOSSIER_GESTES = 'gestes'
@@ -50,6 +53,26 @@ export const ReponseApprise = z.strictObject({
   vide: z.string().min(1).max(VIDE_MAX),
 })
 
+/** La seule modification qu'un geste propose, comme l'échappée (D7) : réaffecter une vacation à un autre agent. */
+export const OPERATION_REAFFECTER = 'reaffecter'
+
+/** Ce qu'un geste qui écrit propose : une réaffectation par ligne de la requête `pour_chaque`, lue dans deux de ses colonnes (PLAN-PROMOTION.md § 10). */
+export const ModificationsApprises = z.strictObject({
+  pour_chaque: z.string().regex(FORMAT_NOM),
+  reaffecter: z.strictObject({
+    vacation: z.string().regex(FORMAT_NOM),
+    agent: z.string().regex(FORMAT_NOM),
+  }),
+})
+export type ModificationsApprises = z.infer<typeof ModificationsApprises>
+
+/** Une réaffectation telle qu'un test l'attend ou qu'un rejeu la rend : des identifiants. */
+export const Reaffectation = z.strictObject({
+  vacation: z.string().min(1),
+  agent: z.string().min(1),
+})
+export type Reaffectation = z.infer<typeof Reaffectation>
+
 export const TestAppris = z.strictObject({
   /** L'identifiant de l'échappée d'origine. */
   echappee: z.string().min(1),
@@ -64,8 +87,10 @@ export const TestAppris = z.strictObject({
     .refine((p) => !isAbsolute(p) && !p.split(/[\\/]/).includes('..'), {
       message: 'un chemin relatif au dossier du client, sans « .. »',
     }),
-  /** Les nombres et les noms du texte validé, que le rejeu doit reproduire. */
-  contient: z.array(z.string()).min(1),
+  /** Les nombres et les noms du texte validé, que le rejeu doit reproduire ; vide pour un geste qui écrit. */
+  contient: z.array(z.string()),
+  /** Un geste qui écrit : les réaffectations que le patron a validées, que le rejeu doit reproduire exactement. */
+  modifications: z.array(Reaffectation).min(1).optional(),
 })
 export type TestAppris = z.infer<typeof TestAppris>
 
@@ -77,6 +102,8 @@ export const GesteAppris = z.strictObject({
   requetes: z.array(RequeteApprise).min(1).max(5),
   reponse: ReponseApprise,
   tests: z.array(TestAppris).min(TESTS_MIN),
+  /** Absent : le geste lit. Présent : il propose des réaffectations (PLAN-PROMOTION.md § 10). */
+  modifications: ModificationsApprises.optional(),
   origine: z.strictObject({
     fabrique_le: z.iso.date(),
     modele: z.string(),
@@ -85,6 +112,10 @@ export const GesteAppris = z.strictObject({
   }),
 })
 export type GesteAppris = z.infer<typeof GesteAppris>
+
+/** Un geste qui écrit : il propose des réaffectations, qui passent par la réaffectation groupée. */
+export const ecritDe = (geste: Pick<GesteAppris, 'modifications'>) =>
+  geste.modifications !== undefined
 
 /** Le statut écrit dans le fichier YAML, hors du geste lui-même. */
 export const STATUTS_GESTE = ['propose', 'actif', 'retire'] as const
@@ -122,9 +153,11 @@ const malForme = (ligne: string) => /\{\{|\}\}/.test(ligne.replace(REFERENCE, ''
  * Ce qu'un geste a de travers, en phrases, sans rien exécuter : une forme de
  * réponse et une seule ; une période au plus, et `du`, `au` réservés ; des
  * noms de requêtes uniques ; chaque référence du gabarit vers une requête ou
- * un paramètre qui existe ; chaque paramètre nommé dans un SQL déclaré. Avec
- * `colonnes` (celles que chaque requête rend, lues sur une copie vide), les
- * colonnes citées sont vérifiées aussi.
+ * un paramètre qui existe ; chaque paramètre nommé dans un SQL déclaré ; des
+ * tests qui attendent un texte (un geste qui lit) ou des réaffectations (un
+ * geste qui écrit, ouvert au patron seul, dont la réponse est le tableau de sa
+ * requête `pour_chaque`). Avec `colonnes` (celles que chaque requête rend,
+ * lues sur une copie vide), les colonnes citées sont vérifiées aussi.
  */
 export function verifierGabarit(
   geste: GesteAppris,
@@ -173,7 +206,84 @@ export function verifierGabarit(
       ecarts.push(`la ligne cite une colonne que « ${requete} » ne rend pas : ${colonne}`)
     }
   }
+  ecarts.push(...ecartsEcriture(geste, noms, colonnes))
   return ecarts
+}
+
+/** Ce que `verifierGabarit` exige de plus selon que le geste lit ou écrit. */
+function ecartsEcriture(
+  geste: GesteAppris,
+  noms: string[],
+  colonnes?: ReadonlyMap<string, readonly string[]>,
+): string[] {
+  const m = geste.modifications
+  if (m === undefined) {
+    return geste.tests.some((t) => t.contient.length === 0 || t.modifications !== undefined)
+      ? ['un geste qui lit : chaque test attend un texte (contient), pas des réaffectations']
+      : []
+  }
+  const ecarts: string[] = []
+  if (geste.roles.length !== 1 || geste.roles[0] !== 'patron') {
+    ecarts.push('un geste qui écrit n’est ouvert qu’au patron')
+  }
+  if (!noms.includes(m.pour_chaque)) {
+    ecarts.push(`les modifications citent une requête inconnue : ${m.pour_chaque}`)
+  } else {
+    const rendues = colonnes?.get(m.pour_chaque)
+    for (const c of [m.reaffecter.vacation, m.reaffecter.agent]) {
+      if (rendues && !rendues.includes(c)) {
+        ecarts.push(
+          `les modifications citent une colonne que « ${m.pour_chaque} » ne rend pas : ${c}`,
+        )
+      }
+    }
+  }
+  if (geste.reponse.tableau !== m.pour_chaque) {
+    ecarts.push(`la réponse d’un geste qui écrit est le tableau de sa requête « ${m.pour_chaque} »`)
+  }
+  if (geste.tests.some((t) => t.modifications === undefined)) {
+    ecarts.push('un geste qui écrit : chaque test attend des réaffectations (modifications)')
+  }
+  return ecarts
+}
+
+/** Une vacation à libérer pour laquelle la requête n'a trouvé personne : les données sont lues, il n'y a rien à proposer. */
+export class SansCandidat extends Error {}
+
+/**
+ * Les réaffectations qu'un geste qui écrit propose : une par ligne de sa
+ * requête `pour_chaque`, lues dans ses deux colonnes. Lève sur une requête
+ * absente ou en erreur, une colonne absente, une cellule vide (`SansCandidat`
+ * quand c'est l'agent qui manque) : rien ne s'invente.
+ */
+export function reaffectationsDe(
+  geste: GesteAppris,
+  resultats: Readonly<Record<string, ResultatRequete>>,
+): Reaffectation[] {
+  const m = geste.modifications
+  if (m === undefined) throw new Error(`${geste.id} : un geste qui lit ne propose rien`)
+  const r = resultats[m.pour_chaque]
+  if (!r) throw new Error(`requête « ${m.pour_chaque} » sans résultat`)
+  if ('erreur' in r) throw new Error(`requête « ${m.pour_chaque} » en erreur : ${r.erreur}`)
+  if (r.tronque) throw new Error(`la requête « ${m.pour_chaque} » rend trop de lignes`)
+  const indice = (colonne: string) => {
+    const i = r.colonnes.indexOf(colonne)
+    if (i < 0) throw new Error(`la requête « ${m.pour_chaque} » ne rend pas de colonne ${colonne}`)
+    return i
+  }
+  const iv = indice(m.reaffecter.vacation)
+  const ia = indice(m.reaffecter.agent)
+  return r.lignes.map((ligne, n) => {
+    const vacation = ligne[iv]
+    const agent = ligne[ia]
+    if (typeof vacation !== 'string' || vacation === '') {
+      throw new Error(`la ligne ${n + 1} de « ${m.pour_chaque} » n’a pas de vacation`)
+    }
+    if (typeof agent !== 'string' || agent === '') {
+      throw new SansCandidat(`aucun agent trouvé pour ${vacation}`)
+    }
+    return { vacation, agent }
+  })
 }
 
 const valeur = (v: unknown) => (v === null ? 'null' : String(v))

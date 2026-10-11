@@ -48,7 +48,9 @@ import {
 // lire, après un « oui » à sa reformulation si elle écrit). Chaque sortie
 // laisse sa ligne au journal. Une demande nouvelle du patron qui nomme
 // quelqu'un d'ambigu reçoit sa question avant tout appel d'échappée : le nom
-// ne part jamais au modèle (PLAN-PSEUDONYMES.md § 5.3, S3).
+// ne part jamais au modèle (PLAN-PSEUDONYMES.md § 5.3, S3). Un geste appris
+// qui écrit calcule ses réaffectations sans modèle, puis elles suivent le
+// chemin d'une proposition d'échappée (PLAN-PROMOTION.md § 10).
 
 export const TYPE_CONSIGNE = 'consigne'
 export const TYPE_CONFIRMATION_ATTENDUE = 'confirmation_attendue'
@@ -515,9 +517,27 @@ async function echapper<S>(
     return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${issue.motif}.` }
   }
   if (!m.proposition) return { sorte: 'resultat', texte: issue.texte }
+  return ouvrirProposition(m, s, tour, m.proposition, issue.modifications)
+}
+
+/**
+ * Une proposition, de l'échappée ou d'un geste appris qui écrit : le métier
+ * l'ouvre (ses contrôles ; un refus est au journal), puis la confirmation
+ * attend le « oui » du patron, sur l'empreinte de la liste exacte ; ensuite la
+ * réaffectation groupée (oui de chaque agent, clé). PLAN-ESPACES.md § 7.2,
+ * PLAN-PROMOTION.md § 10.
+ */
+function ouvrirProposition<S>(
+  m: MetierConversation<S>,
+  s: S,
+  tour: Tour,
+  proposition: PropositionMetier<S>,
+  modifications: unknown[],
+): Reponse {
+  const ici = cibleDe(m, s)
   let ouverte: { id: string; texte: string }
   try {
-    ouverte = m.proposition.ouvrir(s, tour.conversation, issue.modifications, tour.maintenant)
+    ouverte = proposition.ouvrir(s, tour.conversation, modifications, tour.maintenant)
   } catch (erreur) {
     ecrire(ici, tour, [
       { type: TYPE_PROPOSITION_REFUSEE, objet: tour.conversation, motif: message(erreur) },
@@ -527,7 +547,7 @@ async function echapper<S>(
   const e = empreinte({
     conversation: tour.conversation,
     id: ouverte.id,
-    modifications: JSON.stringify(issue.modifications),
+    modifications: JSON.stringify(modifications),
   })
   const attente: Attente = {
     identite: tour.identite,
@@ -702,7 +722,8 @@ async function agir<S>(
     return { sorte: 'refus', texte }
   }
   const params = lus.data as Record<string, unknown>
-  if (!action.ecrit) {
+  // Un geste qui propose ne fait que calculer : il s'exécute avant le « oui », qui porte sur sa proposition.
+  if (!action.ecrit || action.propose) {
     const fait = await executer(action, s, tour.identite, params, tour.maintenant)
     ecrire(ici, tour, [
       ligneConsigne(tour, issue, {
@@ -712,7 +733,9 @@ async function agir<S>(
         ...(fait.donnees !== undefined ? { resultat: fait.donnees } : {}),
       }),
     ])
-    return fait.reponse
+    if (!action.propose || fait.modifications === undefined) return fait.reponse
+    if (!m.proposition) return { sorte: 'refus', texte: "ce métier n'écrit pas de proposition" }
+    return ouvrirProposition(m, s, tour, m.proposition, fait.modifications)
   }
   let texte: string
   try {
@@ -746,17 +769,21 @@ async function agir<S>(
 /** Le message d'un refus, à garder au journal. */
 const erreurDe = (r: Reponse) => (r.sorte === 'refus' ? { erreur: r.texte } : {})
 
-/** Exécute une action ; ses messages d'erreur sont écrits pour le client, ils sont rendus tels quels. Ce qui a servi au texte (`donnees`) va au journal. */
+/** Exécute une action ; ses messages d'erreur sont écrits pour le client, ils sont rendus tels quels. Ce qui a servi au texte (`donnees`) va au journal ; les modifications d'un geste qui propose sont rendues à part. */
 async function executer<S>(
   action: Action<S, unknown>,
   s: S,
   identite: Identite,
   params: unknown,
   maintenant: Temporal.ZonedDateTime,
-): Promise<{ reponse: Reponse; donnees?: unknown }> {
+): Promise<{ reponse: Reponse; donnees?: unknown; modifications?: unknown[] }> {
   try {
-    const { texte, donnees } = await action.executer(s, identite, params, maintenant)
-    return { reponse: { sorte: 'resultat', texte }, ...(donnees !== undefined ? { donnees } : {}) }
+    const { texte, donnees, modifications } = await action.executer(s, identite, params, maintenant)
+    return {
+      reponse: { sorte: 'resultat', texte },
+      ...(donnees !== undefined ? { donnees } : {}),
+      ...(modifications !== undefined ? { modifications } : {}),
+    }
   } catch (erreur) {
     return { reponse: { sorte: 'refus', texte: message(erreur) } }
   }
@@ -808,7 +835,7 @@ export async function confirmer<S>(
   return r
 }
 
-/** Ce qu'un « oui » déclenche : l'action reformulée (un geste codé : un geste appris ne demande jamais de « oui »), ou la validation d'une proposition. */
+/** Ce qu'un « oui » déclenche : l'action reformulée (un geste codé : le « oui » d'un geste appris porte sur sa proposition), ou la validation d'une proposition. */
 async function executerAttente<S>(
   m: MetierConversation<S>,
   s: S,
@@ -827,6 +854,10 @@ async function executerAttente<S>(
   const action = actionsDe(m.actions, identite.role).find((a) => a.id === demande.action)
   if (!action)
     return { sorte: 'refus', texte: `l'action ${demande.action} n'est pas ouverte à ce rôle` }
+  // Le « oui » d'une action qui propose porte sur sa proposition, jamais sur elle.
+  if (action.propose) {
+    return { sorte: 'refus', texte: `l'action ${demande.action} ne s'exécute pas sur un « oui »` }
+  }
   const params = action.parametres.safeParse(demande.params)
   if (!params.success) return { sorte: 'refus', texte: 'paramètres invalides' }
   return (await executer(action, s, identite, params.data, maintenant)).reponse

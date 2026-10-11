@@ -3,14 +3,18 @@ import {
   clesDe,
   empreinteGeste,
   FichierGeste,
+  GesteAppris,
   gesteDe,
+  reaffectationsDe,
   rendre,
+  SansCandidat,
   verifierGabarit,
 } from './geste-appris'
-import { GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
+import { GESTE_ECRIT_EXEMPLE as ECRIT, GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
 
 // La forme d'un geste appris, ce qu'un gabarit peut citer, son rendu et son
-// empreinte (PLAN-PROMOTION.md § 5.5).
+// empreinte (PLAN-PROMOTION.md § 5.5) ; un geste qui écrit, ses
+// réaffectations (§ 10).
 
 const PARAMS = { agent: 'A-2', du: '2026-10-05', au: '2026-10-11' }
 const UNE_LIGNE = { colonnes: ['nom', 'heures'], lignes: [['Julien Lefèvre', 16]], tronque: false }
@@ -178,5 +182,86 @@ describe('empreinteGeste', () => {
     expect(empreinteGeste({ ...GESTE, description: `${GESTE.description} ` })).not.toBe(e)
     const { id, ...reste } = GESTE
     expect(empreinteGeste({ ...reste, id })).toBe(e)
+  })
+})
+
+describe('un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
+  const LIGNES = {
+    colonnes: ['vacation', 'agent'],
+    lignes: [
+      ['V-03', 'A-9'],
+      ['V-07', 'A-2'],
+    ],
+    tronque: false,
+  }
+  it('le geste de référence passe le schéma et le gabarit, colonnes comprises', () => {
+    expect(FichierGeste.safeParse({ ...ECRIT, statut: 'propose' }).success).toBe(true)
+    expect(verifierGabarit(ECRIT, new Map([['liberer', ['vacation', 'agent']]]))).toEqual([])
+  })
+  it('un geste qui lit ne porte pas la clé : les empreintes d’avant restent les mêmes', () => {
+    expect(Object.keys(GesteAppris.parse(GESTE))).not.toContain('modifications')
+    // L'empreinte du geste de référence, calculée sur `main` avant la phase C.
+    expect(empreinteGeste(GESTE)).toBe(
+      '65938401b1ee7fe28498e43afc3f5c37da141ad9a472802d7753d83cbfce6e25',
+    )
+  })
+  it('ouvert à un agent, une requête inconnue, une réponse qui n’est pas son tableau, une colonne absente, un test sans réaffectation : un écart chacun', () => {
+    expect(verifierGabarit({ ...ECRIT, roles: ['patron', 'agent'] })).toEqual([
+      'un geste qui écrit n’est ouvert qu’au patron',
+    ])
+    const ailleurs = { pour_chaque: 'autre', reaffecter: { vacation: 'vacation', agent: 'agent' } }
+    expect(verifierGabarit({ ...ECRIT, modifications: ailleurs })).toEqual([
+      'les modifications citent une requête inconnue : autre',
+      'la réponse d’un geste qui écrit est le tableau de sa requête « autre »',
+    ])
+    expect(
+      verifierGabarit(
+        {
+          ...ECRIT,
+          modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'id', agent: 'agent' } },
+        },
+        new Map([['liberer', ['vacation', 'agent']]]),
+      ),
+    ).toEqual(['les modifications citent une colonne que « liberer » ne rend pas : id'])
+    const [premier, ...autres] = ECRIT.tests
+    if (!premier) throw new Error('jeu')
+    const { modifications: _m, ...sansModifications } = premier
+    expect(verifierGabarit({ ...ECRIT, tests: [sansModifications, ...autres] })).toEqual([
+      'un geste qui écrit : chaque test attend des réaffectations (modifications)',
+    ])
+  })
+  it('un geste qui lit : un test sans texte attendu, ou qui attend des réaffectations, est un écart', () => {
+    const [premier, ...autres] = GESTE.tests
+    if (!premier) throw new Error('jeu')
+    const ecart =
+      'un geste qui lit : chaque test attend un texte (contient), pas des réaffectations'
+    expect(verifierGabarit({ ...GESTE, tests: [{ ...premier, contient: [] }, ...autres] })).toEqual(
+      [ecart],
+    )
+    expect(
+      verifierGabarit({
+        ...GESTE,
+        tests: [{ ...premier, modifications: [{ vacation: 'V-1', agent: 'A-1' }] }, ...autres],
+      }),
+    ).toEqual([ecart])
+  })
+  it('reaffectationsDe : une par ligne ; une cellule vide, un résultat tronqué ou en erreur lèvent', () => {
+    expect(reaffectationsDe(ECRIT, { liberer: LIGNES })).toEqual([
+      { vacation: 'V-03', agent: 'A-9' },
+      { vacation: 'V-07', agent: 'A-2' },
+    ])
+    expect(() =>
+      reaffectationsDe(ECRIT, { liberer: { ...LIGNES, lignes: [['V-03', null]] } }),
+    ).toThrow(new SansCandidat('aucun agent trouvé pour V-03'))
+    expect(() =>
+      reaffectationsDe(ECRIT, { liberer: { ...LIGNES, lignes: [[null, 'A-9']] } }),
+    ).toThrow('la ligne 1 de « liberer » n’a pas de vacation')
+    expect(() => reaffectationsDe(ECRIT, { liberer: { ...LIGNES, tronque: true } })).toThrow(
+      'rend trop de lignes',
+    )
+    expect(() => reaffectationsDe(ECRIT, { liberer: { erreur: 'no such table' } })).toThrow(
+      'en erreur',
+    )
+    expect(() => reaffectationsDe(GESTE, {})).toThrow('un geste qui lit ne propose rien')
   })
 })

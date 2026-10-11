@@ -1,8 +1,9 @@
 import type { GesteAppris } from './geste-appris'
 
-// Un geste appris de référence pour les tests du dossier (jamais exporté par
-// le moteur) : les heures d'un agent sur une période, sur les tables de la
-// copie de la sécurité privée (PLAN-PROMOTION.md § 5.5).
+// Des gestes appris de référence pour les tests du dossier (jamais exportés
+// par le moteur), sur les tables de la copie de la sécurité privée : les
+// heures d'un agent sur une période (PLAN-PROMOTION.md § 5.5) ; libérer un
+// agent d'un jour, un geste qui écrit (§ 10).
 
 const TEST = {
   echappee: 'E-1',
@@ -35,4 +36,35 @@ export const GESTE_EXEMPLE: GesteAppris = {
   },
   tests: [TEST, { ...TEST, echappee: 'E-2' }, { ...TEST, echappee: 'E-3' }],
   origine: { fabrique_le: '2026-10-10', modele: 'simulé', cout_usd: 0.01, conversations: ['C-1'] },
+}
+
+const TEST_ECRIT = {
+  echappee: 'E-1',
+  consigne: 'Libère le mardi 13 de Karim.',
+  role: 'patron' as const,
+  agent: null,
+  params: { agent: 'A-1', date: '2026-10-13' },
+  instantane: 'echappees/E-1.json',
+  contient: [],
+  modifications: [{ vacation: 'V-03', agent: 'A-9' }],
+}
+
+export const GESTE_ECRIT_EXEMPLE: GesteAppris = {
+  id: 'liberer_un_jour',
+  description: 'libérer un agent de ses vacations d’un jour, chacune donnée à un autre agent',
+  roles: ['patron'],
+  parametres: {
+    agent: { type: 'agent', description: "l'agent à libérer" },
+    date: { type: 'date', description: 'le jour à libérer' },
+  },
+  requetes: [
+    {
+      nom: 'liberer',
+      sql: "SELECT v.id AS vacation, 'A-9' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date",
+    },
+  ],
+  modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'vacation', agent: 'agent' } },
+  reponse: { ligne: null, tableau: 'liberer', vide: 'Aucune vacation ce jour-là.' },
+  tests: [TEST_ECRIT, { ...TEST_ECRIT, echappee: 'E-2' }, { ...TEST_ECRIT, echappee: 'E-3' }],
+  origine: { fabrique_le: '2026-10-11', modele: 'simulé', cout_usd: 0.01, conversations: ['C-1'] },
 }
