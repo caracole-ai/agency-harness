@@ -1,4 +1,4 @@
-# Handoff — 2026-10-10
+# Handoff — 2026-10-11
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
 des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
@@ -7,6 +7,40 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-10, nuit : `PLAN-GENERAL.md`, le grand plan, écrit ; rien
+  codé.** Lionel a tranché contre la fusion humaine : la chaîne ronde →
+  chantier → fusion → livraison est automatique, sous conditions en code
+  (G1), avec retrait (G2), clone de la nuit (G3), mémoire dans le dépôt
+  (`PLAN-RONDE.md` R10). Le plan tranche aussi la fabrication 0/3 (G4 :
+  deux clauses de système, rejeu strict gardé), l'écriture par un geste
+  appris (G5, lot 4), les six choix de l'identité (G6), le journal chaîné,
+  l'authentification de l'interface et la sauvegarde chiffrée (G7), la
+  livraison signée et tirée (G8), la veille et le canal (G9), les modèles
+  (G10), la topologie (G11). Phases A (consolider, fusionner la promotion)
+  → B (pseudonymes) → C (écriture) → D (ronde, chantier, mémoire, fusion)
+  → E (la nuit en continu, dix nuits d'observation) → F (sécurités) → G
+  (veille, canal) → H (livraison) ; I = ce qui reste aux humains. **À
+  exécuter par Claude Opus 5.5, effort élevé. A0 (commiter les plans sur
+  `main` et pousser) est fait le 2026-10-11 ; commencer par A1.** Les lots
+  0 à 3 de la promotion sont sur les branches `promotion/lot-0` à `lot-3`,
+  non poussées, pas encore fusionnées (phase A). Le mini-site dit tout cela
+  comme décidé, pas construit. La présentation (diapositive 10) n'est pas
+  reprise.
+- **2026-10-10, soir : deux plans écrits, rien codé.** `PLAN-PSEUDONYMES.md`
+  (le fournisseur ne reçoit plus aucun nom, même dans l'échappée et la
+  fabrication : l'identifiant tient lieu de nom dans la copie, la consigne
+  est masquée par la désignation existante, le code restitue, la fuite se
+  mesure en code à chaque passe, seuil 0 ; 4 lots) et `PLAN-RONDE.md` (la
+  ronde de nuit : un modèle lit un résumé fait en code de ce qui a été
+  demandé, sans aucune donnée, et désigne des missions ; le chantier :
+  Claude Code en mode non interactif dans un arbre de travail à part, bande
+  métier seulement, gardée en code, `pnpm check` rejoué par le code, relu
+  par un autre modèle, dossier ; `pnpm nuit` ; `agence.yaml` : Fable 5.1
+  planifie et relit, Opus 5.5 code, GLM reste au quotidien ; 4 lots). Les
+  deux § 10 ont été tranchés la nuit même (ligne précédente) ; décisions
+  dans `REFLEXIONS.md`. Le mini-site « Le harnais en clair » dit ces
+  décisions comme décidées, pas construites. Dépendance : la ronde lit
+  `consigne_modele`, écrit par le lot 1 des pseudonymes.
 - **2026-10-10, après-midi : `PLAN-PROMOTION.md` lot 3 fait**, branche
   `promotion/lot-3` partie de `promotion/lot-2`, un commit, **pas poussée**.
   L'atelier (`pnpm gestes lister | verifier [--avec-modele] | activer --par
