@@ -1671,6 +1671,16 @@ Pièges vus pendant la phase :
   C'est le repli de G4, pas le critère tel qu'écrit : dit comme tel.
 - **Une variante du système de fabrication** (« ne refais pas ce rejeu de
   tête… ») mesurée par sondes et retirée : elle ne raccourcissait rien.
+- **Fin de phase (§ 0.7), relus et republiés** : le mini-site (version 16)
+  dit l'écriture par un geste appris construite le 11/10 (avancement,
+  suite 01 : « 0 fois sur 6, coupée par le plafond de la demande »,
+  glossaire « Promotion » ; « Parler à l'outil » : l'en-tête, l'espace 3, la
+  promotion, « Une donnée ne sait pas tout faire » ne dit plus « écrire dans
+  le planning », Existe / Prouvé / Pas encore) ; 549 tests (398 et 131 dans
+  la carte), 84 cas d'évals. La présentation (version 26) : diapositive de
+  la promotion (« pour une demande qui écrit, le geste propose des
+  réaffectations »), évals (84 cas : 4 fabrications dont une qui écrit, 2
+  gestes rejoués), synthèse (549 tests). Rien d'autre n'a changé.
 - **`attend_lot_4`** disparaît de `Fabrication` (plus jamais produit) ; le
   compteur du § 8 dit « Non tentées (hors catalogue, plafond) ».
 
