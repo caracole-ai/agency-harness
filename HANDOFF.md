@@ -12,7 +12,18 @@ fichiers qu'il cite, si.
   de `main`) : `moteur/src/echappee/pseudonymes.ts`, pur, 22 tests
   (`formesConnues`, `masquerTexte`, `masquerTables`, `restituer`, `fuites`) ;
   `ColonneCopie.masquee` (la description d'une colonne de nom dans la copie
-  masquée). Rien de ce que le modèle lit n'a changé.
+  masquée). Rien de ce que le modèle lit n'a changé. Lot 1 fait
+  (`pseudonymes/lot-1`, partie de `lot-0`) : l'échappée ne reçoit plus aucun
+  nom (consigne, copie, sorties de `verifier` masquées ; `quiParle` dit
+  « l'agent A-2 » ; contrôle sur les identifiants ; noms restitués dans ce
+  qui est montré ; `consigne_modele` et `texte_modele` au journal) ; une
+  demande nouvelle du patron qui nomme quelqu'un d'ambigu reçoit sa question
+  avant tout appel (`masquerConsigne`, `PrecisionEchappee` dans
+  `conversation.ts`) ; le piège des évals de l'échappée a changé de cellule
+  (voir les choix). **Mesuré, GLM-5.3 via GMI** : `pnpm evals echappee`,
+  une passe, **18/18** (0,147 $, `evals/resultats/2026-10-11-1321-echappee.md`),
+  **fuite 0 sur les 18 traces** (système et tout message envoyé, comptés par
+  `fuites` avec les 13 agents ; la colonne viendra du lot 3).
 - **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
   promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
   des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
@@ -1392,6 +1403,37 @@ Pièges vus pendant la phase :
   « `agents.nom` » écrit dans le moteur, qui ne connaît pas les tables d'un
   métier. Une telle colonne qui garde un nom après le masque (deux
   personnes au même nom complet) arrête l'échappée : échec fermé.
+- **Lot 1 : un agent masque aussi le nom d'un collègue** (S7 l'emporte sur
+  « une autre reste » du § 5.3) : la consigne et la copie se masquent avec
+  **toutes** les personnes du client (`EchappeeDuMetier.toutes`), sinon E-11
+  (un agent demande les heures de Karim) enverrait « Karim » et la fuite ne
+  serait pas à 0. La restitution et le contrôle n'utilisent que les
+  personnes visibles du rôle : un agent lit « A-1 » s'il demande un collègue,
+  jamais un nom qu'il n'a pas écrit ; et il n'a jamais de question « vous
+  parlez de qui ? » (elle lui montrerait des collègues, D4).
+- **Lot 1 : ce qui déclenche la question avant l'échappée** : une forme que
+  plusieurs personnes partagent (un prénom), ou une suite de mots à
+  majuscule initiale qui ressemble à un nom (`proches`, une à trois
+  personnes : le critère 2 du plan en a une), sauf un mot seul en tête de
+  phrase (« Parmi » ressemble à « Karim »). Vérifié sur les 78 consignes des
+  évals avec les noms du client fictif : aucune question à tort. Un nom mal
+  écrit en tête de phrase (« Kareem a fait… ») passe tel quel : fuite
+  résiduelle, mesurable seulement par une étiquette.
+- **Lot 1 : `EchappeeDuMetier.nomsConnus` disparaît**, remplacé par
+  `personnes` (visibles) et `toutes` ; le moteur en tire les identifiants
+  pour le contrôle. `Echappee` gagne un dernier paramètre optionnel,
+  `precisions` (les réponses déjà données), que les évals n'emploient pas.
+- **Lot 1 : le piège des évals de l'échappée change de cellule** (le site de
+  la Ronde cynophile, `postes.csv`, au lieu du nom de A-3) : un nom ne part
+  plus au modèle, le piège n'aurait plus été lu, et la restitution aurait
+  montré le nom piégé au patron (E-14 en écart sans faute du modèle). Seule
+  cellule de texte libre qui reste en clair (S6) : les activités de la carte
+  sont une énumération. E-14 (cartes expirées) ne lit le piège que si le
+  modèle lit un site.
+- **Lot 1 : les constats d'une proposition restent masqués au journal**
+  (ceux que le modèle a lus) ; le texte et le résumé montrés sont restitués.
+  `texte_modele` n'est écrit que pour une réponse et un abandon (le texte
+  d'une proposition est rendu par le code du métier, noms compris).
 - **Lot 0 : `fuites` rend les formes telles qu'écrites, la plus longue
   seulement** (« Karim Haddad », pas aussi « Karim » et « Haddad ») ; une
   forme partagée par deux personnes (un prénom) n'est pas masquée et compte

@@ -22,10 +22,13 @@ import {
   TYPE_ECHAPPEE,
   TYPE_OUTIL_ECHAPPEE,
 } from './echappee'
+import { fuites, type Precision } from './pseudonymes'
 
 // Ce que le journal garde d'une échappée pour la promotion, avec le modèle
 // simulé et des tables en mémoire : l'identifiant sur chaque ligne, le texte
-// final tel que montré, l'instantané de la copie (PLAN-PROMOTION.md § 4.5).
+// final tel que montré, l'instantané de la copie (PLAN-PROMOTION.md § 4.5) ;
+// et aucun nom ne part au modèle, ni dans la consigne, ni dans la copie, ni
+// dans une sortie d'outil (PLAN-PSEUDONYMES.md § 5.4).
 
 const Modif = z.strictObject({ vacation: z.string(), agent: z.string() })
 type Modif = z.infer<typeof Modif>
@@ -87,7 +90,14 @@ const REQUETE: Scripte = {
 }
 const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
 
-async function echapper(identite: Identite, script: Scripte[]) {
+const PERSONNES = AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) }))
+
+async function echapper(
+  identite: Identite,
+  script: Scripte[],
+  consigne = 'Combien d’heures a fait Julien ?',
+  precisions: Precision[] = [],
+) {
   const dossier = mkdtempSync(join(tmpdir(), 'echappee-'))
   const journal = new Journal(join(dossier, 'journal.sqlite'))
   const cadre: CadreEchappee = {
@@ -97,34 +107,46 @@ async function echapper(identite: Identite, script: Scripte[]) {
     journal,
     config: CONFIG,
     identite,
-    quiParle: identite.role === 'patron' ? 'le patron' : "l'agent Julien Lefèvre (A-2)",
+    quiParle: identite.role === 'patron' ? 'le patron' : "l'agent A-2",
   }
   const metier: EchappeeDuMetier<Modif> = {
     tables: tablesPour(identite),
     outils: {
       schemaModifications: z.array(Modif),
-      verifier: (mods) => ({ constats: [], description: mods.length.toString() }),
+      // Comme le métier : la description et les constats citent les noms.
+      verifier: (mods) => ({
+        constats: mods.map((m) => ({
+          regle: 'I-01',
+          objet: m.vacation,
+          verdict: 'à vérifier',
+          motif: `Karim Haddad tiendrait ${m.vacation}`,
+        })),
+        description: mods.map((m) => `${m.vacation} : Julien Lefèvre → Karim Haddad`).join('\n'),
+      }),
       decrire: (mods) => mods.length.toString(),
       nomRegle: (id) => id,
       proposer: identite.role === 'patron',
     },
     regles: [],
     preferences: 'aucune',
-    nomsConnus: ['Julien Lefèvre', 'Karim Haddad'],
+    personnes: PERSONNES.filter((p) => identite.role === 'patron' || p.id === identite.agent),
+    toutes: PERSONNES,
   }
+  const modele = modeleSimule(script)
   const issue = await echappee(
     cadre,
     metier,
-    'Combien d’heures a fait Julien ?',
+    consigne,
     'heures_par_agent',
     maintenant,
-    modeleSimule(script),
+    modele,
+    precisions,
   )
   const lignes = journal.historique('C-test')
   journal.fermer()
   const donnees = (type: string) =>
     lignes.filter((l) => l.type === type).map((l) => JSON.parse(l.donnees ?? '{}'))
-  return { issue, dossier, lignes, donnees }
+  return { issue, dossier, lignes, donnees, appels: modele.appels }
 }
 
 const ID = /^E-\d{8}T\d{4}-[0-9a-f]{4}$/
@@ -133,7 +155,7 @@ describe('le journal se souvient de l’échappée', () => {
   it('chaque ligne porte l’identifiant ; la ligne echappee porte le rôle, le texte montré et l’instantané', async () => {
     const { issue, dossier, donnees } = await echapper(PATRON, [
       REQUETE,
-      repondre('Julien Lefèvre : 16 heures.'),
+      repondre('A-2 : 16 heures.'),
     ])
     expect(issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_OK })
     const [outil] = donnees(TYPE_OUTIL_ECHAPPEE)
@@ -157,10 +179,7 @@ describe('le journal se souvient de l’échappée', () => {
   })
 
   it('un résumé retiré : le texte journalisé est celui rendu, les tableaux', async () => {
-    const { issue, donnees } = await echapper(PATRON, [
-      REQUETE,
-      repondre('Julien Lefèvre : 17 heures.'),
-    ])
+    const { issue, donnees } = await echapper(PATRON, [REQUETE, repondre('A-2 : 17 heures.')])
     if (issue.sorte !== 'reponse') throw new Error(issue.sorte)
     expect(issue.controle).toBe(CONTROLE_RETIRE)
     const [e] = donnees(TYPE_ECHAPPEE)
@@ -214,5 +233,91 @@ describe('systemeEchappee', () => {
         'Réponds à la question posée, rien de plus : pas de détail par vacation si on demande un total, pas de remarque ajoutée.',
       )
     }
+  })
+})
+
+/** Tout ce qui part au modèle : le système, et chaque message de chaque appel. */
+const envoye = (appels: { systeme: string; messages: unknown }[]) =>
+  appels.flatMap((a) => [a.systeme, JSON.stringify(a.messages)])
+
+describe('aucun nom ne part au modèle (PLAN-PSEUDONYMES.md § 5.4)', () => {
+  it('consigne, copie, sorties de requete et de verifier : masquées ; le texte montré porte les noms', async () => {
+    const { issue, appels, donnees } = await echapper(PATRON, [
+      REQUETE,
+      { outil: 'verifier', entree: { modifications: [{ vacation: 'V-04', agent: 'A-9' }] } },
+      repondre('A-2 : 16 heures, A-9 : 24 heures.'),
+    ])
+    expect(appels).toHaveLength(3)
+    for (const texte of envoye(appels)) expect(fuites(texte, PERSONNES)).toEqual([])
+    expect(JSON.stringify(appels[0]?.messages)).toContain('Combien d’heures a fait A-2 ?')
+    expect(JSON.stringify(appels[2]?.messages)).toContain('V-04 : A-2 → A-9')
+    expect(issue).toMatchObject({
+      sorte: 'reponse',
+      controle: CONTROLE_OK,
+      texte: 'Julien Lefèvre : 16 heures, Karim Haddad : 24 heures.',
+    })
+    const [e] = donnees(TYPE_ECHAPPEE)
+    expect(e).toMatchObject({
+      consigne_modele: 'Combien d’heures a fait A-2 ?',
+      texte_modele: 'A-2 : 16 heures, A-9 : 24 heures.',
+      texte: 'Julien Lefèvre : 16 heures, Karim Haddad : 24 heures.',
+    })
+  })
+
+  it('le motif d’un abandon est restitué ; le journal garde la version du modèle', async () => {
+    const { issue, donnees } = await echapper(PATRON, [
+      REQUETE,
+      { outil: 'abandonner', entree: { motif: 'A-2 a 16 heures, rien à changer' } },
+    ])
+    expect(issue).toMatchObject({
+      sorte: 'abandon',
+      motif: 'Julien Lefèvre a 16 heures, rien à changer',
+    })
+    const [e] = donnees(TYPE_ECHAPPEE)
+    expect(e).toMatchObject({
+      abandon: 'Julien Lefèvre a 16 heures, rien à changer',
+      texte_modele: 'A-2 a 16 heures, rien à changer',
+    })
+  })
+
+  it('une proposition : son texte et son résumé sont restitués', async () => {
+    const { issue } = await echapper(PATRON, [
+      {
+        outil: 'proposer',
+        entree: { modifications: [{ vacation: 'V-04', agent: 'A-9' }], resume: 'A-9 prend V-04.' },
+      },
+    ])
+    if (issue.sorte !== 'proposition') throw new Error(issue.sorte)
+    expect(issue.resume).toBe('Karim Haddad prend V-04.')
+  })
+
+  it('un agent : « l’agent A-2 », et le nom d’un collègue qu’il écrit ne part pas non plus', async () => {
+    const { issue, appels, donnees } = await echapper(
+      JULIEN,
+      [REQUETE, repondre('Je ne vois que tes données : A-2, 16 heures.')],
+      'Combien d’heures a fait Karim ?',
+    )
+    expect(appels[0]?.systeme).toContain("Tu travailles pour l'agent A-2 ")
+    for (const texte of envoye(appels)) expect(fuites(texte, PERSONNES)).toEqual([])
+    expect(issue).toMatchObject({
+      texte: 'Je ne vois que tes données : Julien Lefèvre, 16 heures.',
+    })
+    const [e] = donnees(TYPE_ECHAPPEE)
+    expect(e.consigne_modele).toBe('Combien d’heures a fait A-9 ?')
+  })
+
+  it('une réponse à « vous parlez de qui ? » remplace la mention par l’identifiant choisi', async () => {
+    const { appels, lignes, donnees } = await echapper(
+      PATRON,
+      [repondre('Rien.')],
+      'Combien d’heures a fait Kareem ?',
+      [{ mention: 'Kareem', id: 'A-9' }],
+    )
+    expect(JSON.stringify(appels[0]?.messages)).toContain('Combien d’heures a fait A-9 ?')
+    const [e] = donnees(TYPE_ECHAPPEE)
+    expect(e.consigne_modele).toBe('Combien d’heures a fait A-9 ?')
+    expect(lignes.find((l) => l.type === TYPE_ECHAPPEE)?.motif).toBe(
+      'Combien d’heures a fait Kareem ?',
+    )
   })
 })

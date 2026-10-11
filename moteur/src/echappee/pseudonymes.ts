@@ -1,4 +1,4 @@
-import { type Designable, formes } from '../conversation/designation'
+import { type Designable, formes, proches } from '../conversation/designation'
 import type { TableCopie } from './copie'
 
 // Les pseudonymes (PLAN-PSEUDONYMES.md § 4) : le fournisseur ne reçoit jamais
@@ -185,4 +185,56 @@ export function restituer(texte: string, personnes: Designable[]): string {
     new RegExp(`(?<![\\p{L}\\p{N}-])(?:${ids})(?![\\p{N}]|-[\\p{L}\\p{N}])`, 'gu'),
     (id) => parId.get(id) ?? id,
   )
+}
+
+/** La réponse à « vous parlez de qui ? » avant une échappée : la mention telle qu'écrite, et la personne choisie. */
+export interface Precision {
+  mention: string
+  id: string
+}
+
+/** Une suite de mots à majuscule initiale (« Kareem », « Kareem Hadad ») : ce qui peut être un nom mal écrit. */
+const MOTS_A_MAJUSCULE = /(?<![\p{L}\p{N}])\p{Lu}[\p{Ll}\p{M}]+(?:[ -]\p{Lu}[\p{Ll}\p{M}]+)*/gu
+
+/** Le texte avant une position finit une phrase (ou il n'y a rien avant). */
+const debutDePhrase = (texte: string, position: number) =>
+  /^$|[.!?…:;]$/u.test(texte.slice(0, position).replace(/[\s«"“(]+$/u, ''))
+
+/**
+ * La consigne telle qu'elle part à l'échappée (S3) : les précisions déjà
+ * données remplacées par leur identifiant, puis chaque forme sûre d'un nom
+ * (niveau 1). Rend aussi, s'il y en a une, la première mention à faire
+ * préciser avant tout appel : une forme que plusieurs personnes partagent
+ * (un prénom), ou un mot à majuscule initiale qui ressemble à un nom (niveau 2,
+ * `proches`). Un mot seul en tête de phrase n'est pas comparé : « Parmi »
+ * ressemble à « Karim ». Le reste passe tel quel.
+ */
+export function masquerConsigne(
+  consigne: string,
+  personnes: Designable[],
+  precisions: Precision[] = [],
+): { texte: string; precision?: { mention: string; candidats: Designable[] } } {
+  let texte = consigne
+  for (const p of precisions) {
+    const motif = new RegExp(`(?<![\\p{L}\\p{N}])${echapper(p.mention)}(?![\\p{L}\\p{N}])`, 'gu')
+    texte = texte.replace(motif, p.id)
+  }
+  const compilees = compiler(personnes)
+  texte = masquerAvec(texte, compilees)
+  const partagee = trouver(texte, compilees).find((t) => t.forme.ids.length > 1)
+  if (partagee) {
+    return {
+      texte,
+      precision: {
+        mention: texte.slice(partagee.debut, partagee.fin),
+        candidats: personnes.filter((p) => partagee.forme.ids.includes(p.id)),
+      },
+    }
+  }
+  for (const m of texte.matchAll(MOTS_A_MAJUSCULE)) {
+    if (!m[0].includes(' ') && !m[0].includes('-') && debutDePhrase(texte, m.index)) continue
+    const candidats = proches(m[0], personnes)
+    if (candidats.length > 0) return { texte, precision: { mention: m[0], candidats } }
+  }
+  return { texte }
 }

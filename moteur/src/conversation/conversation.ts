@@ -1,6 +1,7 @@
 import { empreinte } from '../approbation/jeton'
 import type { TableCopie } from '../echappee/copie'
 import type { Echappee } from '../echappee/echappee'
+import { masquerConsigne, type Precision } from '../echappee/pseudonymes'
 import { verifierReponse } from '../echappee/reponse'
 import { actionApprise } from '../gestes/action-apprise'
 import { chargerGestesAppris } from '../gestes/charger'
@@ -45,7 +46,9 @@ import {
 // ensuite seulement le dossier s'ouvre, le moteur trouve la personne nommée
 // (ou pose la question), puis l'action (tout de suite si elle ne fait que
 // lire, après un « oui » à sa reformulation si elle écrit). Chaque sortie
-// laisse sa ligne au journal.
+// laisse sa ligne au journal. Une demande nouvelle du patron qui nomme
+// quelqu'un d'ambigu reçoit sa question avant tout appel d'échappée : le nom
+// ne part jamais au modèle (PLAN-PSEUDONYMES.md § 5.3, S3).
 
 export const TYPE_CONSIGNE = 'consigne'
 export const TYPE_CONFIRMATION_ATTENDUE = 'confirmation_attendue'
@@ -138,8 +141,8 @@ interface Attente {
   empreinte: string
 }
 
-/** Ce qu'une question « vous parlez de qui ? » garde : qui, le geste, ses paramètres, la personne à préciser et ses candidats. */
-interface PrecisionAttendue {
+/** Ce qu'une question « vous parlez de qui ? » garde pour un geste : qui, le geste, ses paramètres, la personne à préciser et ses candidats. */
+interface PrecisionGeste {
   identite: Identite
   action: string
   /** En identifiants pour les personnes déjà trouvées (`resolus`), en mentions pour les autres. */
@@ -148,6 +151,15 @@ interface PrecisionAttendue {
   champ: string
   candidats: Designable[]
 }
+
+/** Ce qu'elle garde pour une demande nouvelle, avant l'échappée : la consigne d'origine, l'intention, la mention et les réponses déjà données. */
+interface PrecisionEchappee {
+  identite: Identite
+  candidats: Designable[]
+  echappee: { consigne: string; intention: string; mention: string; precisions: Precision[] }
+}
+
+type PrecisionAttendue = PrecisionGeste | PrecisionEchappee
 
 const message = (erreur: unknown) => (erreur instanceof Error ? erreur.message : String(erreur))
 
@@ -389,6 +401,13 @@ async function apresLeDossier<S>(
   const actions = actionsDe([...m.actions, ...avant.appris], tour.identite.role)
   if (avant.sorte === 'precisee') {
     const { precision, choix } = avant
+    if ('echappee' in precision) {
+      const { consigne, intention, mention, precisions } = precision.echappee
+      return echapper(m, s, modele, tour, 'precision', consigne, intention, [
+        ...precisions,
+        { mention, id: choix.id },
+      ])
+    }
     const action = actions.find((a) => a.id === precision.action)
     if (!action) return refuser(`l'action ${precision.action} n'est pas ouverte à ce rôle`)
     const demande = {
@@ -415,62 +434,10 @@ async function apresLeDossier<S>(
           .join(' ; ')}`,
       }
     }
-    case 'nouvelle': {
-      ecrire(ici, tour, [ligneConsigne(tour, 'nouvelle', { demande })])
-      if (!m.echappee) return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
-      let issue: Awaited<ReturnType<Echappee<S>>>
-      try {
-        issue = await m.echappee(
-          s,
-          tour.identite,
-          tour.conversation,
-          tour.consigne,
-          demande.intention,
-          tour.maintenant,
-          modele,
-        )
-      } catch (erreur) {
-        return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${message(erreur)}.` }
-      }
-      if (issue.sorte === 'reponse') return { sorte: 'resultat', texte: issue.texte }
-      if (issue.sorte === 'abandon') {
-        return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${issue.motif}.` }
-      }
-      if (!m.proposition) return { sorte: 'resultat', texte: issue.texte }
-      let ouverte: { id: string; texte: string }
-      try {
-        ouverte = m.proposition.ouvrir(s, tour.conversation, issue.modifications, tour.maintenant)
-      } catch (erreur) {
-        ecrire(ici, tour, [
-          { type: TYPE_PROPOSITION_REFUSEE, objet: tour.conversation, motif: message(erreur) },
-        ])
-        return { sorte: 'je_ne_sais_pas', texte: message(erreur) }
-      }
-      const e = empreinte({
-        conversation: tour.conversation,
-        id: ouverte.id,
-        modifications: JSON.stringify(issue.modifications),
+    case 'nouvelle':
+      return echapper(m, s, modele, tour, 'nouvelle', tour.consigne, demande.intention, [], {
+        demande,
       })
-      const attente: Attente = {
-        identite: tour.identite,
-        demande: { sorte: 'reaffectation', id: ouverte.id },
-        empreinte: e,
-      }
-      ecrire(ici, tour, [
-        {
-          type: TYPE_CONFIRMATION_ATTENDUE,
-          objet: tour.conversation,
-          issue: ouverte.id,
-          motif: ouverte.texte,
-          donnees: attente,
-        },
-      ])
-      return {
-        sorte: 'proposition',
-        texte: `${ouverte.texte}\nValider ? (oui / non)`,
-        empreinte: e,
-      }
-    }
     case 'action': {
       const action = actions.find((a) => a.id === demande.action)
       if (!action)
@@ -480,10 +447,113 @@ async function apresLeDossier<S>(
   }
 }
 
+/**
+ * Une demande nouvelle, vers l'échappée : la ligne `consigne` (`nouvelle`, ou
+ * `precision` quand la consigne est la réponse à « vous parlez de qui ? »),
+ * puis, pour le patron, la consigne masquée : une mention ambiguë reçoit sa
+ * question avant tout appel au modèle ; sinon l'échappée, avec la consigne
+ * d'origine et les réponses déjà données. Un agent n'a pas de question : il
+ * ne désigne que lui-même, et aucun nom de collègue ne lui est proposé.
+ */
+async function echapper<S>(
+  m: MetierConversation<S>,
+  s: S,
+  modele: Modele,
+  tour: Tour,
+  issueLigne: 'nouvelle' | 'precision',
+  consigne: string,
+  intention: string,
+  precisions: Precision[],
+  donnees: Record<string, unknown> = {},
+): Promise<Reponse> {
+  const ici = cibleDe(m, s)
+  if (!m.echappee) {
+    ecrire(ici, tour, [ligneConsigne(tour, issueLigne, donnees)])
+    return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
+  }
+  if (tour.identite.role === 'patron') {
+    const personnes = m.vocabulaire(s, tour.identite).agents
+    const { precision } = masquerConsigne(consigne, personnes, precisions)
+    if (precision) {
+      const texte = question(tour, precision.mention, precision.candidats)
+      const attendue: PrecisionEchappee = {
+        identite: tour.identite,
+        candidats: precision.candidats,
+        echappee: { consigne, intention, mention: precision.mention, precisions },
+      }
+      ecrire(ici, tour, [
+        ligneConsigne(tour, issueLigne, donnees),
+        {
+          type: TYPE_PRECISION_ATTENDUE,
+          objet: tour.conversation,
+          issue: intention,
+          motif: texte,
+          donnees: attendue,
+        },
+      ])
+      return { sorte: 'precision', texte, candidats: precision.candidats }
+    }
+  }
+  ecrire(ici, tour, [ligneConsigne(tour, issueLigne, donnees)])
+  let issue: Awaited<ReturnType<Echappee<S>>>
+  try {
+    issue = await m.echappee(
+      s,
+      tour.identite,
+      tour.conversation,
+      consigne,
+      intention,
+      tour.maintenant,
+      modele,
+      precisions,
+    )
+  } catch (erreur) {
+    return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${message(erreur)}.` }
+  }
+  if (issue.sorte === 'reponse') return { sorte: 'resultat', texte: issue.texte }
+  if (issue.sorte === 'abandon') {
+    return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${issue.motif}.` }
+  }
+  if (!m.proposition) return { sorte: 'resultat', texte: issue.texte }
+  let ouverte: { id: string; texte: string }
+  try {
+    ouverte = m.proposition.ouvrir(s, tour.conversation, issue.modifications, tour.maintenant)
+  } catch (erreur) {
+    ecrire(ici, tour, [
+      { type: TYPE_PROPOSITION_REFUSEE, objet: tour.conversation, motif: message(erreur) },
+    ])
+    return { sorte: 'je_ne_sais_pas', texte: message(erreur) }
+  }
+  const e = empreinte({
+    conversation: tour.conversation,
+    id: ouverte.id,
+    modifications: JSON.stringify(issue.modifications),
+  })
+  const attente: Attente = {
+    identite: tour.identite,
+    demande: { sorte: 'reaffectation', id: ouverte.id },
+    empreinte: e,
+  }
+  ecrire(ici, tour, [
+    {
+      type: TYPE_CONFIRMATION_ATTENDUE,
+      objet: tour.conversation,
+      issue: ouverte.id,
+      motif: ouverte.texte,
+      donnees: attente,
+    },
+  ])
+  return {
+    sorte: 'proposition',
+    texte: `${ouverte.texte}\nValider ? (oui / non)`,
+    empreinte: e,
+  }
+}
+
 /** L'issue de la résolution : les paramètres en identifiants, ou la personne qu'il faut faire préciser. */
 export type Resolution =
   | { sorte: 'resolue'; params: Record<string, unknown> }
-  | ({ sorte: 'precision'; mention: string } & Omit<PrecisionAttendue, 'identite' | 'action'>)
+  | ({ sorte: 'precision'; mention: string } & Omit<PrecisionGeste, 'identite' | 'action'>)
 
 /**
  * Trouve les personnes que nomment les paramètres d'une action, parmi celles
@@ -605,7 +675,7 @@ async function agir<S>(
   }
   if (r.sorte === 'precision') {
     const texte = question(tour, r.mention, r.candidats)
-    const attendue: PrecisionAttendue = {
+    const attendue: PrecisionGeste = {
       identite: tour.identite,
       action: action.id,
       params: r.params,

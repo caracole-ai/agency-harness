@@ -59,11 +59,9 @@ const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dim
 /** Le jour de la semaine, en mots : « samedi ». */
 export const jourSemaine = (maintenant: Temporal.ZonedDateTime) => JOURS[maintenant.dayOfWeek - 1]
 
-/** Qui parle, en mots, pour l'échappée (qui lit les données) : « le patron », « l'agent Julien Lefèvre (A-2) ». */
-export function quiParle(identite: Identite, agents: { id: string; nom: string }[]): string {
-  if (identite.role === 'patron') return 'le patron'
-  const nom = agents.find((a) => a.id === identite.agent)?.nom
-  return `l'agent ${nom ? surUneLigne(nom).replace(/[<>]/g, '') : '?'} (${identite.agent ?? '?'})`
+/** Qui parle, en mots, pour l'échappée (qui lit les données) : « le patron », « l'agent A-2 » ; jamais un nom (PLAN-PSEUDONYMES.md S8). */
+export function quiParle(identite: Identite): string {
+  return identite.role === 'patron' ? 'le patron' : `l'agent ${identite.agent ?? '?'}`
 }
 
 /** Qui parle, pour la traduction : le rôle seul, sans nom. */

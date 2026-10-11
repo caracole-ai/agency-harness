@@ -68,7 +68,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   livraison signée et tirée, veille et canal, modèles, topologie), et les
   phases A à I dans l'ordre. Écrit pour Claude Opus 5.5 en effort élevé,
   sans décision à prendre ; il appelle les plans ci-dessous.
-- `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10, rien codé) :
+- `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10 ; phase B de
+  `PLAN-GENERAL.md`, en cours le 2026-10-11, voir `HANDOFF.md`) :
   le fournisseur ne reçoit plus aucun nom de salarié, même dans l'échappée et
   la fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
   est masquée par la désignation existante, le code restitue, la fuite se
@@ -117,6 +118,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   qu'une mention désigne : le code décide si c'est sûr, sinon une liste
   courte que le modèle départage, sinon une question au demandeur),
   `src/conversation/conversation.ts` (le déroulé d'un tour : la porte,
+  une demande nouvelle du patron qui nomme quelqu'un d'ambigu reçoit
+  « Vous parlez de qui ? » avant tout appel d'échappée ;
   plafond du mois et traduction sur le journal seul, puis le dossier, la
   personne nommée, exécution ou confirmation par « oui » à la
   reformulation, tout au journal), `src/cli/parler.ts` et

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { TableCopie } from './copie'
-import { formesConnues, fuites, masquerTables, masquerTexte, restituer } from './pseudonymes'
+import {
+  formesConnues,
+  fuites,
+  masquerConsigne,
+  masquerTables,
+  masquerTexte,
+  restituer,
+} from './pseudonymes'
 
 // PLAN-PSEUDONYMES.md § 4 : des listes synthétiques, aucune donnée du client fictif.
 const AICHA = { id: 'P-1', nom: 'Aïcha Traoré' }
@@ -157,5 +164,46 @@ describe('masquerTables', () => {
       { id: 'P-2', nom: 'Aicha Traore' },
     ]
     expect(() => masquerTables([AGENTS], jumeaux)).toThrow(/garde un nom/)
+  })
+})
+
+describe('masquerConsigne (S3)', () => {
+  const ids = (r: ReturnType<typeof masquerConsigne>) => r.precision?.candidats.map((p) => p.id)
+  it('une forme sûre : l’identifiant, sans question', () => {
+    expect(masquerConsigne('Combien d’heures a fait Aïcha ?', EQUIPE)).toEqual({
+      texte: 'Combien d’heures a fait P-1 ?',
+    })
+  })
+  it('un prénom partagé : la question, avec les deux', () => {
+    const r = masquerConsigne('Libère Karim mardi', EQUIPE)
+    expect(r.texte).toBe('Libère Karim mardi')
+    expect(r.precision?.mention).toBe('Karim')
+    expect(ids(r)).toEqual(['P-5', 'P-6'])
+  })
+  it('un nom proche, à majuscule, dans la phrase : la question', () => {
+    const r = masquerConsigne('Combien d’heures a fait Aisha ?', EQUIPE)
+    expect(r.precision?.mention).toBe('Aisha')
+    expect(ids(r)).toContain('P-1')
+  })
+  it('deux mots proches en tête de phrase : la question ; un mot seul en tête : rien', () => {
+    expect(masquerConsigne('Aisha Traorre est là ?', EQUIPE).precision?.mention).toBe(
+      'Aisha Traorre',
+    )
+    expect(masquerConsigne('Parmi les agents, qui ?', [KARIM_H])).toEqual({
+      texte: 'Parmi les agents, qui ?',
+    })
+  })
+  it('aucune ressemblance : le mot passe tel quel', () => {
+    expect(masquerConsigne('Combien d’heures a fait Bidule ?', EQUIPE)).toEqual({
+      texte: 'Combien d’heures a fait Bidule ?',
+    })
+  })
+  it('les réponses déjà données remplacent la mention, au mot près', () => {
+    expect(
+      masquerConsigne('Karim et karimou, Aisha', EQUIPE, [
+        { mention: 'Karim', id: 'P-6' },
+        { mention: 'Aisha', id: 'P-1' },
+      ]),
+    ).toEqual({ texte: 'P-6 et karimou, P-1' })
   })
 })

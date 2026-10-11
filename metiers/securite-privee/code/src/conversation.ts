@@ -165,7 +165,8 @@ export const CONVERSATION: MetierConversation<Session> = {
       return `Validé. Message envoyé à ${messages.length} agent(s) : ${messages.map((m) => `« ${m} »`).join(' ; ')}`
     },
   },
-  echappee: (s, identite, conversation, consigne, intention, maintenant, modele) => {
+  echappee: (s, identite, conversation, consigne, intention, maintenant, modele, precisions) => {
+    const personne = (a: { id: string; nom: string }) => ({ id: a.id, nom: a.nom })
     const visibles = s.ctx.planning.agents.filter(
       (a) => identite.role === 'patron' || a.id === identite.agent,
     )
@@ -181,7 +182,7 @@ export const CONVERSATION: MetierConversation<Session> = {
         journal: s.journal,
         config: configDe(s),
         identite,
-        quiParle: quiParle(identite, visibles),
+        quiParle: quiParle(identite),
       },
       {
         tables: tablesPour(s, identite, maintenant),
@@ -199,12 +200,14 @@ export const CONVERSATION: MetierConversation<Session> = {
           .filter((i) => codees.has(i.id))
           .map((i) => ({ id: i.id, nom: i.nom })),
         preferences: preferences.length > 0 ? `d'abord ${preferences.join(', puis ')}` : 'aucune',
-        nomsConnus: visibles.map((a) => a.nom),
+        personnes: visibles.map(personne),
+        toutes: s.ctx.planning.agents.map(personne),
       },
       consigne,
       intention,
       maintenant,
       modele,
+      precisions,
     )
   },
 }
