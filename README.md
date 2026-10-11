@@ -79,7 +79,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   la traduction, qui reçoit la phrase telle qu'écrite, et son niveau 2
   (`designer`), qui montre au modèle jusqu'à trois noms proches à départager.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
-  rien codé) : chaque nuit un modèle lit un résumé fait en code de ce qui a
+  construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
   coder un geste par Claude Code en mode non interactif, dans un arbre de
   travail à part, bande métier seulement (garde en code), relu par un autre
@@ -93,7 +93,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   ronde`, `pnpm evals ronde`) faits le 2026-10-11, branche `general/d-ronde` ;
   session D2 : lot 2 (le chantier, `pnpm chantier`, la fusion et le retrait
   dans le clone de la nuit) et lot 3 (la nuit, `pnpm nuit`) faits le
-  2026-10-11.
+  2026-10-11, relus, fusionnés dans `main` ; mesurés pour de vrai sur une
+  copie du client fictif et un clone de la nuit local (deux chantiers
+  fusionnés, un retiré, un refusé pour une raison écrite : passe 20 de
+  `evals/erreurs-2026-10-08.md`).
 - `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
   secret) : le modèle de chaque rôle (ronde, plan, implémentation, relecture)
   et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;

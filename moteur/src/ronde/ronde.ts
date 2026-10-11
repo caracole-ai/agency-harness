@@ -31,6 +31,7 @@ import { dollars, suiteDe, TYPE_PROMOTION } from '../promotion/promotion'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   type MissionRevalidee,
+  memesIntentions,
   OUTIL_RAPPORT,
   outilRapport,
   type RapportDeRonde,
@@ -478,6 +479,12 @@ function rendreMd(
   ].join('\n')
 }
 
+/** Le `.json` d'une ronde dit-il « ronde échouée » ? */
+function rondeEchouee(json: string): boolean {
+  const lu = z.looseObject({ issue: z.string() }).safeParse(JSON.parse(readFileSync(json, 'utf8')))
+  return lu.success && lu.data.issue === ISSUES_RONDE.echouee
+}
+
 /** Lit le schéma ; une faute se dit en une phrase, pour la relance. */
 function lireRapport(
   sortie: unknown,
@@ -501,7 +508,10 @@ export async function faireRonde<S>(
   const dossier = join(o.dossierClient, DOSSIER_RONDES)
   const fichier = join(dossier, `${date}.md`)
   const json = join(dossier, `${date}.json`)
-  if (!o.sansModele && existsSync(json) && !o.refaire) return { sorte: 'deja_faite', fichier: json }
+  // Une ronde échouée (panne, délai, préflight) n'est pas « faite » : relancée, elle se refait.
+  if (!o.sansModele && existsSync(json) && !o.refaire && !rondeEchouee(json)) {
+    return { sorte: 'deja_faite', fichier: json }
+  }
 
   const s = m.ouvrir(o.dossierClient)
   try {
@@ -529,6 +539,11 @@ export async function faireRonde<S>(
       o.memoire === false
         ? { index: [], conventions: '', rondes: [], retirees: [] }
         : pourRonde(o.racine, client, o.date, o.agence.ronde.memoire)
+    // Une mission retirée n'est plus « ouverte » : la ronde ne la lit qu'une fois, parmi les retirées (G2).
+    catalogue.missions_ouvertes = catalogue.missions_ouvertes.filter(
+      (x) =>
+        !memoire.retirees.some((r) => r.id === x.id || memesIntentions(r.intentions, x.intentions)),
+    )
     const systeme = systemeRonde(
       readFileSync(join(o.racine, FICHIER_CARTE), 'utf8'),
       catalogue,

@@ -11,6 +11,7 @@ import {
   binaireSimule,
   commandeSimulee,
   creerDepots,
+  ENV_ESSAI,
   gesteVert,
   MISSION_ESSAI,
 } from './essai'
@@ -52,7 +53,7 @@ function essai() {
     agence: agenceEssai(binaire, depots.depot),
     dossierClient: dossierEssai(),
     date: Temporal.PlainDate.from('2026-10-10'),
-    env: {},
+    env: ENV_ESSAI,
     commande,
     appelRonde,
   }
@@ -124,6 +125,13 @@ describe('faireNuit', () => {
     })
     expect(r.chantiers.map((x) => x.sorte)).toEqual(['decision', 'fait'])
     expect(r.etapes.filter((x) => x.etape === 'chantier')).toHaveLength(1)
+    // Relancée la même nuit : la borne tient, la troisième mission attend la nuit suivante.
+    const encore = await faireNuit(METIER_ESSAI, {
+      ...e.options,
+      appelRonde: async () => ({ ok: true, sortie: deux, cout_usd: 0.2, estime: true }),
+    })
+    expect(encore.etapes.filter((x) => x.etape === 'chantier')).toEqual([])
+    expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
   })
 
   it('un clone sale arrête la nuit avant tout appel', async () => {

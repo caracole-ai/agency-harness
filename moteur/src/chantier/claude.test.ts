@@ -3,12 +3,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Executer } from '../agence/config'
-import { argumentsClaude, type LancementClaude, type Lancer, lancerClaude } from './claude'
+import {
+  argumentsClaude,
+  envEnfant,
+  type LancementClaude,
+  type Lancer,
+  lancerClaude,
+} from './claude'
 
 // PLAN-RONDE.md § 6.2 et § 0.a : le binaire `claude` simulé par un script qui
 // rend un JSON connu. Le préflight passe avant tout lancement ; la ligne de
 // commande de la ronde n'a aucun outil, aucun réglage, et un schéma.
 
+const ENV = { PATH: process.env.PATH }
 const connecte: Executer = () => ({ code: 0, sortie: '{"loggedIn":true}', erreur: '' })
 const dossier = mkdtempSync(join(tmpdir(), 'claude-'))
 
@@ -103,7 +110,7 @@ describe('argumentsClaude', () => {
 describe('lancerClaude, avec un binaire simulé', () => {
   it('rend la sortie structurée, le coût et les tours ; le prompt part sur l’entrée standard', async () => {
     const b = binaire(resultat())
-    const r = await lancerClaude(lancement(), { claude: { binaire: b } }, {})
+    const r = await lancerClaude(lancement(), { claude: { binaire: b } }, ENV)
     expect(r).toMatchObject({
       ok: true,
       sortie: { a: 1 },
@@ -119,25 +126,25 @@ describe('lancerClaude, avec un binaire simulé', () => {
     const sans = await lancerClaude(
       lancement(),
       { claude: { binaire: binaire(resultat({ structured_output: undefined })) } },
-      {},
+      ENV,
     )
     expect(sans).toMatchObject({ ok: false, raison: 'sortie structurée absente', cout: 0.0123 })
     const tours = await lancerClaude(
       lancement(),
       { claude: { binaire: binaire(resultat({ subtype: 'error_max_turns', is_error: true })) } },
-      {},
+      ENV,
     )
     expect(tours).toMatchObject({ ok: false, sousType: 'error_max_turns' })
     const code = await lancerClaude(
       lancement(),
       { claude: { binaire: binaire(resultat(), { code: 1 }) } },
-      {},
+      ENV,
     )
     expect(code).toMatchObject({ ok: false, raison: 'code de sortie 1' })
   })
 
   it('une sortie illisible : ok faux, en le disant', async () => {
-    const r = await lancerClaude(lancement(), { claude: { binaire: binaire('pas du json') } }, {})
+    const r = await lancerClaude(lancement(), { claude: { binaire: binaire('pas du json') } }, ENV)
     expect(r.ok).toBe(false)
     expect(r.raison).toMatch(/illisible/)
   })
@@ -146,7 +153,7 @@ describe('lancerClaude, avec un binaire simulé', () => {
     const r = await lancerClaude(
       lancement({ delaiMs: 200 }),
       { claude: { binaire: binaire(resultat(), { attendreMs: 5000 }) } },
-      {},
+      ENV,
     )
     expect(r).toMatchObject({ ok: false })
     expect(r.raison).toMatch(/délai mural/)
@@ -168,5 +175,13 @@ describe('lancerClaude, avec un binaire simulé', () => {
       ),
     ).rejects.toThrow(/ANTHROPIC_API_KEY/)
     expect(lance).toBe(false)
+  })
+})
+
+describe('envEnfant', () => {
+  it('retire les variables npm_* du script parent : un pnpm -s ne rend pas muet le pnpm check du chantier', () => {
+    expect(
+      envEnfant({ PATH: '/bin', npm_config_loglevel: 'silent', npm_lifecycle_event: 'chantier' }),
+    ).toEqual({ PATH: '/bin' })
   })
 })

@@ -1,12 +1,14 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
+import { z } from 'zod'
 import { type Agence, cheminDepotNuit, type Executer } from '../agence/config'
 import type { MetierConversation } from '../conversation/conversation'
 import { STATUTS_MISSION } from '../ronde/rapport'
+import { jourDe } from '../ronde/resume'
 import { type AppelRonde, DOSSIER_RONDES, faireRonde, ISSUES_RONDE } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { brancheExiste, type Commande, commandeSync, remettreAOrigine } from './arbre'
-import { faireChantier, type IssueChantier } from './chantier'
+import { faireChantier, type IssueChantier, TYPE_CHANTIER } from './chantier'
 import type { Lancer } from './claude'
 import { publierMemoire } from './fusion'
 import { ajouterMesure, lireMesures } from './memoire'
@@ -62,6 +64,26 @@ function missionsDuClient(dossierClient: string): string[] {
         .sort()
         .map((f) => join(racine, date, f)),
     )
+}
+
+/** Les chantiers tentés pour de vrai à cette date : les lignes `chantier` du journal qui ont coûté un appel (une décision sans appel n'a pas de coût estimé). */
+function dejaTentees<S>(m: MetierConversation<S>, dossierClient: string, date: string): number {
+  const s = m.ouvrir(dossierClient)
+  try {
+    return m
+      .journal(s)
+      .lire()
+      .filter(
+        (l) =>
+          l.type === TYPE_CHANTIER &&
+          l.donnees !== null &&
+          z.looseObject({ cout_estime: z.literal(true) }).safeParse(JSON.parse(l.donnees))
+            .success &&
+          jourDe(l.horodatage).toString() === date,
+      ).length
+  } finally {
+    m.fermer(s)
+  }
 }
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300)
@@ -126,7 +148,8 @@ export async function faireNuit<S>(m: MetierConversation<S>, o: OptionsNuit): Pr
     etapes.push({ etape: 'ronde', ok: false, issue: message(erreur) })
   }
 
-  let tentees = 0
+  // Les chantiers déjà tentés cette nuit (une nuit relancée) comptent dans la borne.
+  let tentees = dejaTentees(m, o.dossierClient, date)
   for (const fichier of missionsDuClient(o.dossierClient)) {
     if (tentees >= o.agence.chantier.missions_max_par_nuit) break
     let lue: ReturnType<typeof lireMission>
@@ -149,13 +172,20 @@ export async function faireNuit<S>(m: MetierConversation<S>, o: OptionsNuit): Pr
         ...(o.executer ? { executer: o.executer } : {}),
       })
       chantiers.push(r)
-      // Une décision sans appel (promotion en cours, écartée…) ne compte pas : la suivante est tentée.
-      if (r.sorte === 'fait' || r.sorte === 'fuite') {
+      // Une décision sans appel (promotion en cours, écartée, refusée avant tout appel) ne compte pas.
+      if (r.sorte === 'fuite') {
+        etapes.push({
+          etape: 'chantier',
+          ok: false,
+          issue: `${lue.mission.id} : refusé avant tout appel`,
+        })
+      }
+      if (r.sorte === 'fait') {
         tentees++
         etapes.push({
           etape: 'chantier',
           ok: r.sorte === 'fait' && r.fusion?.sorte === 'fusionne',
-          issue: `${lue.mission.id} : ${r.sorte === 'fait' ? r.issue : 'refusé avant tout appel'}`,
+          issue: `${lue.mission.id} : ${r.issue}`,
         })
       }
     } catch (erreur) {

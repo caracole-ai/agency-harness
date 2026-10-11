@@ -1,6 +1,6 @@
 import { parse } from 'yaml'
 import type { Designable } from '../conversation/designation'
-import { FichierTraduire } from '../evals/evals'
+import { type CasTraduire, FichierTraduire } from '../evals/evals'
 import { BRANCHE_PRINCIPALE, type Commande, git } from './arbre'
 import { DOSSIER_MEMOIRE, FICHIER_CONVENTIONS, interdits } from './memoire'
 
@@ -11,8 +11,11 @@ import { DOSSIER_MEMOIRE, FICHIER_CONVENTIONS, interdits } from './memoire'
 // la mémoire touchée seulement par des lignes ajoutées à `CONVENTIONS.md`
 // (jamais retirées, jamais un nom) ; aucun fichier de test supprimé, aucun
 // test de moins dans un fichier de test existant, aucun `.skip` ni `.only` de
-// plus ; au plus `lignes_max` lignes. Et le compte des cas de traduction de
-// chaque geste nouveau (condition 4, première moitié).
+// plus, aucun mis en commentaire ; aucun cas d'éval existant supprimé ni
+// réécrit (sauf une demande nouvelle qui devient le geste de la branche) ; au
+// plus `lignes_max` lignes ; jamais un chemin interdit (les contrôles des
+// règles, même dans la bande). Et le compte des cas de traduction de chaque
+// geste nouveau (condition 4, première moitié).
 
 const FICHIER_TEST = /\.test\.ts$/
 /** Un test (`it(`, `test(`, `it.each(`) ; `it.skip(` n'en est pas un. */
@@ -50,6 +53,10 @@ export interface Garde {
 
 const compter = (texte: string, motif: RegExp) => texte.match(motif)?.length ?? 0
 
+/** Le code sans ses commentaires : un test mis en commentaire n'est plus un test. */
+const sansCommentaires = (code: string) =>
+  code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
+
 /** Le contenu d'un fichier à une révision, vide s'il n'y existe pas. */
 const aRevision = (c: Commande, arbre: string, rev: string, chemin: string) => {
   const r = c(arbre, 'git', ['show', `${rev}:${chemin}`])
@@ -60,7 +67,7 @@ const aRevision = (c: Commande, arbre: string, rev: string, chemin: string) => {
 export function garderDiff(
   c: Commande,
   arbre: string,
-  config: { chemins_autorises: string[]; lignes_max: number },
+  config: { chemins_autorises: string[]; chemins_interdits: string[]; lignes_max: number },
   personnes: Designable[],
 ): Garde {
   const base = git(c, arbre, ['merge-base', BRANCHE_PRINCIPALE, 'HEAD']).trim()
@@ -71,10 +78,15 @@ export function garderDiff(
       const [statut = '', chemin = ''] = l.split('\t')
       return { statut, chemin }
     })
+  // Les interdits l'emportent : les contrôles des règles vivent dans la bande métier, jamais au chantier.
   const motifs = config.chemins_autorises.map(motifChemin)
+  const interditsChemins = config.chemins_interdits.map(motifChemin)
   const horsBande = fichiers
     .map((f) => f.chemin)
-    .filter((chemin) => !motifs.some((m) => m.test(chemin)))
+    .filter(
+      (chemin) =>
+        !motifs.some((m) => m.test(chemin)) || interditsChemins.some((m) => m.test(chemin)),
+    )
 
   // La mémoire est écrite par le code ; le modèle peut seulement ajouter une ligne aux conventions (R10).
   const numstat = new Map(
@@ -113,8 +125,8 @@ export function garderDiff(
     }
     testsTouches.push(f.chemin)
     if (f.statut !== 'M') continue
-    const avant = aRevision(c, arbre, base, f.chemin)
-    const apres = aRevision(c, arbre, 'HEAD', f.chemin)
+    const avant = sansCommentaires(aRevision(c, arbre, base, f.chemin))
+    const apres = sansCommentaires(aRevision(c, arbre, 'HEAD', f.chemin))
     if (compter(apres, MOTIF_TEST) < compter(avant, MOTIF_TEST)) {
       disparus.push(
         `${f.chemin} : ${compter(avant, MOTIF_TEST)} tests avant, ${compter(apres, MOTIF_TEST)} après`,
@@ -124,6 +136,9 @@ export function garderDiff(
       disparus.push(`${f.chemin} : un .skip, .only ou .todo de plus`)
     }
   }
+
+  // Les cas d'éval existants sont des tests aussi : aucun ne disparaît ni ne change (§ 6.4 de la méthode).
+  disparus.push(...casModifies(c, arbre, base))
 
   // Un fichier binaire (« - ») compte comme hors borne : il n'a rien à faire dans la bande métier.
   const total = [...numstat.values()].reduce(
@@ -145,6 +160,46 @@ export function garderDiff(
     fichiers,
     testsTouches,
   }
+}
+
+/** Les cas d'un fichier d'éval, par identifiant (vide s'il ne se lit pas). */
+function casParId(texte: string): Map<string, CasTraduire> {
+  const lu = FichierTraduire.safeParse(parse(texte))
+  return new Map(lu.success ? lu.data.cas.map((x) => [x.id, x]) : [])
+}
+
+/**
+ * Les cas de traduction de `main` qui ont disparu ou changé sur la branche.
+ * Un seul changement est permis : une demande nouvelle (`sorte: nouvelle`)
+ * qui devient un geste nouveau de la branche, sa consigne et son rôle
+ * intacts (une factorisation sert désormais la demande).
+ */
+function casModifies(c: Commande, arbre: string, base: string): string[] {
+  const avant = casParId(aRevision(c, arbre, base, FICHIER_CONSIGNES))
+  const apres = casParId(aRevision(c, arbre, 'HEAD', FICHIER_CONSIGNES))
+  const nouveaux = new Set(casParGesteNouveau(c, arbre).map((g) => g.geste))
+  const ecarts: string[] = []
+  for (const [id, a] of avant) {
+    const b = apres.get(id)
+    if (!b) {
+      ecarts.push(`${FICHIER_CONSIGNES} : le cas ${id} a disparu`)
+      continue
+    }
+    const { attendu: attenduA, ...restA } = a
+    const { attendu: attenduB, ...restB } = b
+    if (JSON.stringify(restA) !== JSON.stringify(restB)) {
+      ecarts.push(`${FICHIER_CONSIGNES} : le cas ${id} a changé de consigne ou de rôle`)
+    } else if (JSON.stringify(attenduA) !== JSON.stringify(attenduB)) {
+      const devientGeste =
+        [attenduA.sorte].flat().includes('nouvelle') &&
+        attenduB.sorte === 'action' &&
+        attenduB.action !== undefined &&
+        nouveaux.has(attenduB.action)
+      if (!devientGeste)
+        ecarts.push(`${FICHIER_CONSIGNES} : l'étiquette du cas ${id} a été réécrite`)
+    }
+  }
+  return ecarts
 }
 
 /** Les cas de traduction par action attendue, dans un `consignes.yaml` (vide s'il ne se lit pas). */

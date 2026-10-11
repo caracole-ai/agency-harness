@@ -88,7 +88,7 @@ export const outilRapport = (missionsMax: number): Anthropic.Tool => ({
 export const schemaJsonRapport = (missionsMax: number) => schemaJson(schemaRapport(missionsMax))
 
 /** Deux listes d'intentions non vides, aux mêmes éléments. */
-const memesIntentions = (a: string[], b: string[]) =>
+export const memesIntentions = (a: string[], b: string[]) =>
   a.length > 0 && a.length === b.length && a.every((x) => b.includes(x))
 
 /** Ce que devient une mission revalidée. */

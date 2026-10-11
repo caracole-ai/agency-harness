@@ -48,11 +48,26 @@ export const refEtiquette = (id: string) => `refs/tags/chantier/${id}`
 export type IssueFusion =
   | { sorte: 'fusionne'; fusion: string; memoire: string }
   | { sorte: 'refuse'; rouges: Condition[]; memoire: string }
-  | { sorte: 'echec'; raison: string; memoire?: string }
+  | { sorte: 'echec'; raison: string }
 
 /** Une ligne d'issue, pour la mémoire, le dossier et le journal. */
 export const raisonRefus = (rouges: Condition[]) =>
   `refusé : ${rouges.map((r) => `${CONDITIONS[r.id]} (${r.mesure})`).join(' ; ')}`
+
+/**
+ * Le clone de la nuit remis à `avant` après un échec en route (fusion,
+ * retrait, push refusé) : opération abandonnée, `main` revenu, la mémoire non
+ * commise retirée, l'étiquette posée ôtée. Sans quoi le clone resterait sale
+ * et toutes les nuits suivantes s'arrêteraient (R11). Le clone seulement :
+ * l'appelant l'a vérifié.
+ */
+function restaurer(c: Commande, depot: string, avant: string, etiquette?: string): void {
+  c(depot, 'git', ['merge', '--abort'])
+  c(depot, 'git', ['revert', '--abort'])
+  git(c, depot, ['reset', '--hard', avant])
+  git(c, depot, ['clean', '-f', '-q', '--', DOSSIER_MEMOIRE])
+  if (etiquette) c(depot, 'git', ['tag', '-d', etiquette])
+}
 
 /** `git add memoire/`, un commit s'il y a lieu, rend true s'il y en a eu un. */
 function commettreMemoire(c: Commande, depot: string, message: string): boolean {
@@ -92,12 +107,18 @@ export function conclure(o: {
   )
   const rouges = sept.filter((x) => !x.ok)
 
+  const avant = git(c, o.depot, ['rev-parse', 'HEAD']).trim()
   const refuser = (toutes: Condition[]): IssueFusion => {
     const issue = raisonRefus(toutes.filter((x) => !x.ok))
-    const memoire = o.ecrireEntree('refus', issue)
-    commettreMemoire(c, o.depot, `Mémoire : chantier ${o.id} refusé`)
-    git(c, o.depot, ['push', DISTANT, BRANCHE_PRINCIPALE])
-    return { sorte: 'refuse', rouges: toutes.filter((x) => !x.ok), memoire }
+    try {
+      const memoire = o.ecrireEntree('refus', issue)
+      commettreMemoire(c, o.depot, `Mémoire : chantier ${o.id} refusé`)
+      git(c, o.depot, ['push', DISTANT, BRANCHE_PRINCIPALE])
+      return { sorte: 'refuse', rouges: toutes.filter((x) => !x.ok), memoire }
+    } catch (erreur) {
+      restaurer(c, o.depot, avant)
+      throw erreur
+    }
   }
   if (rouges.length > 0) {
     return refuser([...sept, { id: 'memoire', ok: true, mesure: 'non mesurée (refus)' }])
@@ -108,7 +129,7 @@ export function conclure(o: {
   try {
     memoire = o.ecrireEntree('fusion', 'fusionné')
   } catch (erreur) {
-    git(c, o.depot, ['checkout', '--', DOSSIER_MEMOIRE])
+    restaurer(c, o.depot, avant)
     return refuser([
       ...sept,
       { id: 'memoire', ok: false, mesure: (erreur as Error).message.slice(0, 200) },
@@ -117,7 +138,7 @@ export function conclure(o: {
   const propre =
     existsSync(memoire) && interdits(readFileSync(memoire, 'utf8'), o.personnes).length === 0
   if (!propre) {
-    git(c, o.depot, ['checkout', '--', DOSSIER_MEMOIRE])
+    restaurer(c, o.depot, avant)
     return refuser([
       ...sept,
       { id: 'memoire', ok: false, mesure: "l'entrée manque ou porte un nom" },
@@ -127,18 +148,23 @@ export function conclure(o: {
   const message = `Chantier ${o.id} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : huit conditions vertes.`
   const fusion = c(o.depot, 'git', ['merge', '--no-ff', '-m', message, refBranche(o.id)])
   if (fusion.code !== 0) {
-    c(o.depot, 'git', ['merge', '--abort'])
+    restaurer(c, o.depot, avant)
     return {
       sorte: 'echec',
       raison: `fusion impossible : ${(fusion.erreur || fusion.sortie).trim().slice(0, 300)}`,
-      memoire,
     }
   }
-  const sha = git(c, o.depot, ['rev-parse', 'HEAD']).trim()
-  git(c, o.depot, ['tag', refEtiquette(o.id).replace('refs/tags/', ''), sha])
-  commettreMemoire(c, o.depot, `Mémoire : chantier ${o.id} fusionné`)
-  git(c, o.depot, ['push', DISTANT, BRANCHE_PRINCIPALE, refEtiquette(o.id)])
-  return { sorte: 'fusionne', fusion: sha, memoire }
+  const etiquette = refEtiquette(o.id).replace('refs/tags/', '')
+  try {
+    const sha = git(c, o.depot, ['rev-parse', 'HEAD']).trim()
+    git(c, o.depot, ['tag', etiquette, sha])
+    commettreMemoire(c, o.depot, `Mémoire : chantier ${o.id} fusionné`)
+    git(c, o.depot, ['push', DISTANT, BRANCHE_PRINCIPALE, refEtiquette(o.id)])
+    return { sorte: 'fusionne', fusion: sha, memoire }
+  } catch (erreur) {
+    restaurer(c, o.depot, avant, etiquette)
+    return { sorte: 'echec', raison: `fusion défaite : ${(erreur as Error).message.slice(0, 300)}` }
+  }
 }
 
 /**
@@ -172,16 +198,23 @@ export function retirerFusion(o: {
   if (c(o.depot, 'git', ['merge-base', '--is-ancestor', sha, BRANCHE_PRINCIPALE]).code !== 0) {
     throw new Error(`${o.id} : la fusion n'est pas sur ${BRANCHE_PRINCIPALE}`)
   }
-  git(c, o.depot, ['revert', '-m', '1', '--no-commit', sha])
-  o.ecrireRetrait()
-  git(c, o.depot, ['add', '--', DOSSIER_MEMOIRE])
-  git(c, o.depot, [
-    'commit',
-    '-m',
-    `Chantier ${o.id} : retiré\n\nRetrait (PLAN-GENERAL.md G2) : git revert -m 1 de ${sha.slice(0, 12)}. Motif : ${o.motif}`,
-  ])
-  git(c, o.depot, ['push', DISTANT, BRANCHE_PRINCIPALE])
-  return { revert: git(c, o.depot, ['rev-parse', 'HEAD']).trim() }
+  const avant = git(c, o.depot, ['rev-parse', 'HEAD']).trim()
+  try {
+    git(c, o.depot, ['revert', '-m', '1', '--no-commit', sha])
+    o.ecrireRetrait()
+    git(c, o.depot, ['add', '--', DOSSIER_MEMOIRE])
+    git(c, o.depot, [
+      'commit',
+      '-m',
+      `Chantier ${o.id} : retiré\n\nRetrait (PLAN-GENERAL.md G2) : git revert -m 1 de ${sha.slice(0, 12)}. Motif : ${o.motif}`,
+    ])
+    git(c, o.depot, ['push', DISTANT, BRANCHE_PRINCIPALE])
+    return { revert: git(c, o.depot, ['rev-parse', 'HEAD']).trim() }
+  } catch (erreur) {
+    // Un conflit, un push refusé : le clone revient d'où il partait, rien n'est retiré.
+    restaurer(c, o.depot, avant)
+    throw new Error(`${o.id} : retrait défait (${(erreur as Error).message.slice(0, 300)})`)
+  }
 }
 
 /** La mémoire écrite hors d'un chantier (une ronde de la nuit), commise seule et poussée ; rend true s'il y avait à commettre. */

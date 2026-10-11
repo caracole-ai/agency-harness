@@ -64,6 +64,7 @@ export const AgenceSchema = z.strictObject({
     outils_lecture: z.array(z.string().min(1)).min(1),
     evals_client: z.string().min(1),
     chemins_autorises: z.array(z.string().min(1)).min(1),
+    chemins_interdits: z.array(z.string().min(1)),
   }),
 })
 export type Agence = z.infer<typeof AgenceSchema>

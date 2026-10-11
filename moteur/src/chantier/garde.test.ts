@@ -18,6 +18,7 @@ const CONFIG = {
     'metiers/*/fiche.md',
     'memoire/**',
   ],
+  chemins_interdits: ['metiers/*/code/src/controles.ts', 'metiers/*/code/src/connecteurs/**'],
   lignes_max: 600,
 }
 
@@ -79,6 +80,17 @@ describe('garderDiff', () => {
     expect(garde.chemins.ok).toBe(false)
   })
 
+  it('un contrôle des règles ou un connecteur, même dans la bande : hors de la bande', () => {
+    const { garde } = branche({
+      'metiers/essai/code/src/controles.ts': 'x\n',
+      'metiers/essai/code/src/connecteurs/csv.ts': 'x\n',
+    })
+    expect(garde.chemins.horsBande).toEqual([
+      'metiers/essai/code/src/connecteurs/csv.ts',
+      'metiers/essai/code/src/controles.ts',
+    ])
+  })
+
   it('la mémoire : une convention ajoutée passe ; retirée, nommée, ou un autre fichier, non', () => {
     expect(
       branche({ 'memoire/CONVENTIONS.md': '# conventions\n- un geste, trois cas\n' }).garde.chemins
@@ -108,6 +120,37 @@ describe('garderDiff', () => {
         [chemin]: TEST_ESSAI.replace("it('deux'", "it.skip('deux'"),
       }).garde.tests.disparus.join(),
     ).toMatch(/\.skip/)
+  })
+
+  it('un test mis en commentaire : disparu', () => {
+    const chemin = 'metiers/essai/code/src/actions.test.ts'
+    expect(
+      branche({ [chemin]: TEST_ESSAI.replace("it('deux'", "// it('deux'") }).garde.tests
+        .disparus[0],
+    ).toMatch(/2 tests avant, 1 après/)
+  })
+
+  it('un cas d’éval existant supprimé ou réécrit : disparu ; une demande nouvelle qui devient le geste de la branche : permis', () => {
+    const consignes = (attendu: string, plus = '') =>
+      `maintenant: "2026-10-10T21:40"\ncas:\n  - { id: P-1, role: patron, consigne: "planning", attendu: ${attendu} }\n${plus}`
+    const trois = [1, 2, 3]
+      .map(
+        (n) =>
+          `  - { id: S-${n}, role: patron, consigne: "s ${n}", attendu: { sorte: action, action: geste_neuf } }\n`,
+      )
+      .join('')
+    expect(
+      branche({ 'evals/consignes.yaml': 'maintenant: "x"\ncas: []\n' }).garde.tests.disparus,
+    ).toEqual(expect.arrayContaining([expect.stringMatching(/P-1 a disparu/)]))
+    expect(
+      branche({ 'evals/consignes.yaml': consignes('{ sorte: action, action: autre }') }).garde.tests
+        .disparus[0],
+    ).toMatch(/P-1 a été réécrite/)
+    // Sur main, P-1 attend voir_planning (pas une demande nouvelle) : la réécrire vers le geste neuf reste interdit.
+    expect(
+      branche({ 'evals/consignes.yaml': consignes('{ sorte: action, action: geste_neuf }', trois) })
+        .garde.tests.disparus[0],
+    ).toMatch(/P-1 a été réécrite/)
   })
 
   it('au-delà de lignes_max : la condition 7 est rouge', () => {

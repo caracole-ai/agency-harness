@@ -22,7 +22,7 @@ import {
   ouvrirArbre,
   verifierDepot,
 } from './arbre'
-import { type IssueClaude, type Lancer, lancerClaude, lancerProcessus } from './claude'
+import { envEnfant, type IssueClaude, type Lancer, lancerClaude, lancerProcessus } from './claude'
 import { CONDITIONS, type Condition, conclure, type IssueFusion, raisonRefus } from './fusion'
 import { casParGesteNouveau, type Garde, garderDiff } from './garde'
 import {
@@ -367,7 +367,7 @@ export async function faireChantier<S>(
       })
       return r
     }
-    const pnpm = (args: string[]) => c(cwd, 'pnpm', args, o.env)
+    const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
     const verifier = () => {
       garde = garderDiff(c, cwd, ch, personnes)
       const r = pnpm(['check'])
@@ -609,14 +609,16 @@ export async function faireChantier<S>(
           : fusion.sorte === 'refuse'
             ? raisonRefus(fusion.rouges)
             : `${ISSUES_CHANTIER.echoue} : ${fusion.raison}`
-      if (fusion.sorte === 'refuse')
-        conditions.push(...fusion.rouges.filter((r) => r.id === 'memoire'))
-      else
-        conditions.push({
-          id: 'memoire',
-          ok: fusion.sorte === 'fusionne',
-          mesure: fusion.sorte === 'fusionne' ? `écrite : ${fusion.memoire}` : 'non écrite',
-        })
+      // La huitième, toujours au dossier : rouge si c'est elle qui refuse, sinon l'entrée écrite.
+      conditions.push(
+        fusion.sorte === 'echec'
+          ? { id: 'memoire', ok: false, mesure: 'non écrite' }
+          : (fusion.sorte === 'refuse' && fusion.rouges.find((r) => r.id === 'memoire')) || {
+              id: 'memoire',
+              ok: true,
+              mesure: `écrite : ${fusion.memoire}`,
+            },
+      )
     } catch (erreur) {
       issue = `${ISSUES_CHANTIER.echoue} : ${(erreur as Error).message.slice(0, 300)}`
     } finally {
@@ -677,8 +679,8 @@ const round = (x: number) => Math.round(x * 1_000_000) / 1_000_000
 /**
  * Condition 4 de G1 : au moins trois cas de traduction par geste nouveau,
  * puis `pnpm evals traduire` dans l'arbre, avec le modèle du quotidien (la
- * clé que nomme la config du client des évals) : son code de sortie dit le
- * seuil, sa dernière ligne le compte.
+ * clé que nomme la config du client des évals) : sa dernière ligne porte le
+ * compte et le seuil, le taux décide.
  */
 function mesurerHonnetete(
   c: Commande,
@@ -693,7 +695,7 @@ function mesurerHonnetete(
       ? 'aucun geste nouveau'
       : nouveaux.map((g) => `${g.geste} : ${g.cas} cas`).join(', ')
   if (courts.length > 0) return { ok: false, mesure: `${gestes} (trois au moins)` }
-  const r = c(arbre, 'pnpm', ['evals', 'traduire', '--client', client], env)
+  const r = c(arbre, 'pnpm', ['evals', 'traduire', '--client', client], envEnfant(env))
   const compte = MOTIF_EVALS.exec(`${r.sortie}\n${r.erreur}`)
   if (!compte) {
     return {
@@ -707,9 +709,13 @@ function mesurerHonnetete(
     }
   }
   const [, ok, total, taux, seuil, fuite] = compte
+  // Les cas en écart, nommés : les traces partent avec l'arbre, l'analyse d'erreurs en a besoin.
+  const ecarts = [...`${r.sortie}`.matchAll(/^(\S+) : écart/gm)].map((x) => x[1])
+  // Au seuil comme « activable » (atelier.ts) : le taux seul décide ; la fuite se dit, elle
+  // vient du niveau 2 de la désignation, hors du chantier (point laissé à Lionel).
   return {
-    ok: r.code === 0 && fuite === '0',
-    mesure: `${gestes} ; pnpm evals traduire : ${ok}/${total} (${taux} %, seuil ${seuil} %), fuite ${fuite}`,
+    ok: Number(total) > 0 && Number(ok) / Number(total) >= Number(seuil) / 100,
+    mesure: `${gestes} ; pnpm evals traduire : ${ok}/${total} (${taux} %, seuil ${seuil} %), fuite ${fuite}${ecarts.length > 0 ? ` ; en écart : ${ecarts.join(', ')}` : ''}`,
   }
 }
 

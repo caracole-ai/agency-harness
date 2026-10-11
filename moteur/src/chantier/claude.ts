@@ -64,6 +64,15 @@ const SortieClaude = z.looseObject({
   num_turns: z.number().int().nonnegative(),
 })
 
+/**
+ * L'environnement d'un processus enfant : celui donné, sans les variables
+ * `npm_*` du script qui tourne (`pnpm -s chantier` passerait son
+ * `npm_config_loglevel=silent` au `pnpm check` du modèle et du code, qui
+ * sortirait en échec sans rien dire : vu le 2026-10-11).
+ */
+export const envEnfant = (env: Record<string, string | undefined>) =>
+  Object.fromEntries(Object.entries(env).filter(([k]) => !/^npm_/i.test(k)))
+
 /** Lance le binaire avec ses arguments et son entrée ; rend code, sorties, ou `delai` si le délai mural a tué le processus. */
 export type Lancer = (
   binaire: string,
@@ -71,11 +80,12 @@ export type Lancer = (
   entree: string,
   cwd: string,
   delaiMs: number,
+  env: Record<string, string | undefined>,
 ) => Promise<{ code: number | null; sortie: string; erreur: string; delai: boolean }>
 
-export const lancerProcessus: Lancer = (binaire, args, entree, cwd, delaiMs) =>
+export const lancerProcessus: Lancer = (binaire, args, entree, cwd, delaiMs, env) =>
   new Promise((resolve) => {
-    const enfant = spawn(binaire, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] })
+    const enfant = spawn(binaire, args, { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] })
     let sortie = ''
     let erreur = ''
     let delai = false
@@ -159,7 +169,14 @@ export async function lancerClaude(
 ): Promise<IssueClaude> {
   preflight('claude', agence, env, executer)
   const debut = Date.now()
-  const r = await lancer(agence.claude.binaire, argumentsClaude(l), l.prompt, l.cwd, l.delaiMs)
+  const r = await lancer(
+    agence.claude.binaire,
+    argumentsClaude(l),
+    l.prompt,
+    l.cwd,
+    l.delaiMs,
+    envEnfant(env),
+  )
   const dureeMs = Date.now() - debut
   if (r.delai) return echec(`délai mural dépassé (${Math.round(l.delaiMs / 1000)} s)`, dureeMs)
   let json: z.infer<typeof SortieClaude> | undefined

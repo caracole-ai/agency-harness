@@ -58,8 +58,11 @@ chantier:
   # Les règles d'outils de l'implémentation, bornées à l'arbre de travail
   # (`./**` : un `Write` nu écrit partout sur la machine, sondé le 2026-10-11) ;
   # le plan et la relecture n'ont que `outils_lecture`.
-  outils_autorises: ["Read(./**)", "Edit(./**)", "Write(./**)", "Glob(./**)", "Grep(./**)", "Bash(pnpm check)", "Bash(pnpm test*)", "Bash(git diff*)", "Bash(git status*)"]
-  outils_lecture: ["Read(./**)", "Glob(./**)", "Grep(./**)", "Bash(git diff*)", "Bash(git log*)", "Bash(git status*)"]
+  # Les commandes, exactes : `git diff*` permettrait `--no-index` ou `--output=` hors de l'arbre.
+  outils_autorises: ["Read(./**)", "Edit(./**)", "Write(./**)", "Glob(./**)", "Grep(./**)", "Bash(pnpm check)", "Bash(pnpm test)", "Bash(git diff)", "Bash(git diff main...HEAD)", "Bash(git status)"]
+  outils_lecture: ["Read(./**)", "Glob(./**)", "Grep(./**)", "Bash(git diff main...HEAD)", "Bash(git log --oneline main..HEAD)", "Bash(git status)"]
   # Le client des évals de traduction que le code rejoue dans l'arbre (G1, condition 4), relatif à l'arbre.
   evals_client: exemples/client-fictif
   chemins_autorises: ["metiers/*/code/src/**", "evals/consignes.yaml", "evals/gestes.yaml", "metiers/*/fiche.md", "memoire/**"]
+  # Jamais, même dans la bande : les contrôles des règles (I-01…I-20, les échéances d'I-17) et l'accès aux données du client.
+  chemins_interdits: ["metiers/*/code/src/controles.ts", "metiers/*/code/src/echeances.ts", "metiers/*/code/src/connecteurs/**"]

@@ -29,10 +29,13 @@ Tu n'écris que dans la **bande métier** :
   modifiée, jamais un nom ni un identifiant de personne).
 
 Jamais : `moteur/`, `interface/`, `methode/`, un `regles.yaml`, un contrôle
-`I-01`…`I-20`, un `config.yaml`, un fichier de `package.json`, un autre
+`I-01`…`I-20` (`controles.ts`, `echeances.ts` du métier), un connecteur
+(`connecteurs/`), un `config.yaml`, un fichier de `package.json`, un autre
 fichier de `memoire/`, `exemples/`. Le code vérifie le diff après toi : un
-seul fichier hors de la bande, un test existant supprimé ou tu (`.skip`,
-`.only`), une convention retirée, et rien n'est fusionné. Tu ne commets
+seul fichier hors de la bande, un test existant supprimé, tu (`.skip`,
+`.only`) ou mis en commentaire, un cas d'éval existant supprimé ou réécrit,
+une convention retirée, et rien n'est fusionné. Tes commandes sont exactes :
+`pnpm check`, `pnpm test`, `git diff`, `git diff main...HEAD`, `git status`. Tu ne commets
 pas, tu ne fusionnes pas, tu ne pousses pas : le code le fait.
 
 ## Les conventions du dépôt

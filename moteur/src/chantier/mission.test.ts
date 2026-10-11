@@ -96,7 +96,8 @@ describe('decider (§ 0.b)', () => {
 
 describe('missionPourModele', () => {
   it('des types : ni échappées ni identifiant d’échappée, même dans le texte de la ronde', () => {
-    const texte = missionPourModele(mission())
+    const texte = missionPourModele(mission({ pourquoi: 'A-7 la demande, E-20261010T0900-0005' }))
+    expect(texte).not.toMatch(/A-7/)
     expect(texte).not.toMatch(/E-2026/)
     expect(texte).toContain('<échappée>')
     expect(texte).toContain('<agent>')

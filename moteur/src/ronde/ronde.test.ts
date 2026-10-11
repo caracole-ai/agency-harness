@@ -5,14 +5,15 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
+import { parse, stringify } from 'yaml'
 import { chargerAgence } from '../agence/config'
 import { RACINE_DEPOT } from '../agence/fictif'
-import { ajouterConvention, lireIndex } from '../chantier/memoire'
+import { ajouterConvention, ecrireRetrait, lireIndex } from '../chantier/memoire'
 import { fuites } from '../echappee/pseudonymes'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { dossierEssai, METIER_ESSAI, PERSONNES_ESSAI, SECRETS_ESSAI } from './essai'
@@ -99,6 +100,17 @@ const lignesRonde = (dossier: string) => {
   }
 }
 
+describe('une ronde échouée', () => {
+  it('n’est pas « déjà faite » : relancée, elle se refait', async () => {
+    const o = options({ appel: simule() })
+    const r = await faireRonde(METIER_ESSAI, o)
+    expect(r).toMatchObject({ sorte: 'faite', issue: ISSUES_RONDE.echouee })
+    const encore = await faireRonde(METIER_ESSAI, { ...o, appel: simule(RAPPORT) })
+    expect(encore).toMatchObject({ sorte: 'faite', issue: ISSUES_RONDE.faite })
+    expect((await faireRonde(METIER_ESSAI, o)).sorte).toBe('deja_faite')
+  })
+})
+
 describe('faireRonde', () => {
   it('un rapport valide : le .md, le .json, une mission par fichier, la ligne au journal, la mémoire', async () => {
     const appel = simule(RAPPORT)
@@ -135,6 +147,38 @@ describe('faireRonde', () => {
     ])
     const souvenir = readdirSync(join(o.racine, 'memoire', 'rondes'))
     expect(souvenir).toEqual(['2026-10-10-client-essai.md'])
+  })
+
+  it('une mission retirée n’est plus parmi les missions ouvertes : la ronde ne la lit qu’une fois, parmi les retirées (G2)', async () => {
+    const o = options({ appel: simule(RAPPORT) })
+    const d = join(o.dossierClient, 'rondes', '2026-10-09')
+    mkdirSync(d, { recursive: true })
+    writeFileSync(
+      join(d, 'etat_des_heures.yaml'),
+      stringify({
+        ...MISSION,
+        id: 'etat_des_heures',
+        intentions: ['heures_par_agent'],
+        date: '2026-10-09',
+        metier: 'essai',
+        statut: 'à faire',
+      }),
+    )
+    ecrireRetrait(
+      o.racine,
+      {
+        date: '2026-10-09',
+        client: 'client essai',
+        id: 'autre_nom',
+        titre: 't',
+        intentions: ['heures_par_agent'],
+        motif: 'm',
+      },
+      PERSONNES_ESSAI,
+    )
+    const r = await faireRonde(METIER_ESSAI, o)
+    expect(r.sorte === 'faite' && r.catalogue.missions_ouvertes.map((x) => x.id)).toEqual([])
+    expect(r.sorte === 'faite' && r.message).toContain('autre_nom')
   })
 
   it('ce qui part : ni nom, ni résultat, ni texte montré, ni instantané ; la carte et le catalogue y sont', async () => {

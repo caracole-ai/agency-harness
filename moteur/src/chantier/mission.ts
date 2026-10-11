@@ -3,7 +3,7 @@ import { basename, dirname } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
-import { MissionRonde, STATUTS_MISSION } from '../ronde/rapport'
+import { MissionRonde, memesIntentions, STATUTS_MISSION } from '../ronde/rapport'
 import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS } from '../ronde/resume'
 import { DOSSIER_RONDES } from '../ronde/ronde'
 import type { MissionRetiree } from './memoire'
@@ -66,9 +66,7 @@ export function decider(m: Mission, catalogue: Catalogue, retirees: MissionRetir
   if (m.statut === STATUTS_MISSION.ecartee) {
     return { sorte: 'ecartee', motif: `écartée par la ronde${m.raison ? ` : ${m.raison}` : ''}` }
   }
-  const memes = (a: string[], b: string[]) =>
-    a.length > 0 && a.length === b.length && a.every((x) => b.includes(x))
-  const retiree = retirees.find((r) => r.id === m.id || memes(r.intentions, m.intentions))
+  const retiree = retirees.find((r) => r.id === m.id || memesIntentions(r.intentions, m.intentions))
   if (retiree)
     return { sorte: 'ecartee', motif: `mission retirée (${retiree.id}) : jamais refaite` }
   if (m.sorte === 'question_pour_l_atelier') {
@@ -89,8 +87,9 @@ export function decider(m: Mission, catalogue: Catalogue, retirees: MissionRetir
     : { sorte: 'chantier' }
 }
 
-/** Les identifiants d'échappée ou de conversation qu'un texte de la ronde citerait : remplacés par un type. */
-const sansIdentifiant = (texte: string) => texte.replace(MOTIF_ID_CONVERSATION, '<échappée>')
+/** Les identifiants d'échappée, de conversation ou d'agent qu'un texte de la ronde citerait : remplacés par un type. */
+const sansIdentifiant = (texte: string) =>
+  texte.replace(MOTIF_ID_CONVERSATION, '<échappée>').replace(/\bA-\d+\b/g, '<agent>')
 
 /** La mission telle qu'elle part au modèle du chantier : des types, ni échappées, ni client (R3). */
 export function missionPourModele(m: Mission): string {

@@ -34,6 +34,9 @@ it('un', () => {})
 it('deux', () => {})
 `
 
+/** L'environnement des processus lancés par un test : le `PATH` seul (le faux binaire est un script node). */
+export const ENV_ESSAI: Record<string, string | undefined> = { PATH: process.env.PATH }
+
 export interface Depots {
   /** Le dépôt nu qui joue `origin`. */
   origine: string
@@ -177,7 +180,8 @@ export interface PnpmSimule {
 }
 
 export const EVALS_AU_SEUIL = {
-  sortie: '\n61/62 (98 %, seuil 95 %), fuite 0 cas (seuil 0), coût 0.1200 $\nSeuil atteint.',
+  sortie:
+    'P-1 : ok\nR-2 : écart (le modèle a dit autre chose)\n\n61/62 (98 %, seuil 95 %), fuite 0 cas (seuil 0), coût 0.1200 $\nSeuil atteint.',
   code: 0,
 }
 

@@ -13,6 +13,7 @@ import {
   clientAvecMission,
   commandeSimulee,
   creerDepots,
+  ENV_ESSAI,
   EVALS_AU_SEUIL,
   gesteVert,
   MISSION_ESSAI,
@@ -69,7 +70,7 @@ async function lancer(e: Essai = {}) {
     racine: depots.racine,
     agence: agenceEssai(binaire, depots.depot, e.chantier),
     mission: fichier,
-    env: {},
+    env: ENV_ESSAI,
     maintenant: MAINTENANT,
     commande,
     ...e.options,
@@ -106,6 +107,7 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     // Plan, implémentation, relecture : trois appels ; le coût additionné.
     expect(appels().map((a) => a.role)).toEqual(['plan', 'implementation', 'relecture'])
     expect(issue.cout).toBeCloseTo(1.5)
+    expect(issue.conditions.find((k) => k.id === 'honnetete')?.mesure).toMatch(/en écart : R-2$/)
     // La fusion est une fusion (deux parents), étiquetée, poussée ; la mémoire est le commit d'après.
     const fusion = git(depots.depot, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
     expect(git(depots.depot, 'rev-list', '--parents', '-n', '1', fusion).split(' ')).toHaveLength(3)
@@ -163,6 +165,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
     if (r.issue.sorte !== 'fait') throw new Error('attendu : fait')
     expect(r.issue.conditions.find((k) => k.id === id)?.ok, id).toBe(false)
     expect(r.issue.issue).toMatch(/^refusé/)
+    expect(r.issue.conditions.map((k) => k.id)).toContain('memoire')
     // Aucune fusion, aucune étiquette ; la mémoire du refus est commise et poussée.
     expect(r.emises.some((x) => x.commande === 'git' && x.args[0] === 'merge')).toBe(false)
     expect(git(r.depots.depot, 'tag', '--list')).toBe('')
@@ -396,10 +399,46 @@ describe('G2 : le retrait défait la fusion', () => {
       racine: depots.racine,
       agence: agenceEssai('claude-absent', depots.depot),
       mission: join(dossier, 'rondes', '2026-10-10', 'simuler_absence.yaml'),
-      env: {},
+      env: ENV_ESSAI,
       maintenant: MAINTENANT,
     })
     expect(s).toMatchObject({ sorte: 'decision', decision: { sorte: 'ecartee' } })
+  })
+
+  it('un push refusé au retrait : rien n’est retiré, le clone reste propre et revient d’où il partait', async () => {
+    // Le dépôt nu disparaît : tout push échoue.
+    const essai = await lancer({ options: {} })
+    expect(essai.issue.sorte === 'fait' && essai.issue.issue).toBe('fusionné')
+    const tete = git(essai.depots.depot, 'rev-parse', 'HEAD')
+    spawnSync('git', ['remote', 'set-url', 'origin', join(essai.depots.depot, 'nulle-part.git')], {
+      cwd: essai.depots.depot,
+    })
+    expect(() =>
+      retirerFusion({
+        commande: commandeSync,
+        depot: essai.depots.depot,
+        racineCourante: essai.depots.racine,
+        id: 'simuler_absence',
+        motif: 'doublon',
+        dejaRetiree: false,
+        ecrireRetrait: () =>
+          ecrireRetrait(
+            essai.depots.depot,
+            {
+              date: '2026-10-12',
+              client: 'c',
+              id: 'simuler_absence',
+              titre: 't',
+              intentions: [],
+              motif: 'm',
+            },
+            PERSONNES_ESSAI,
+          ),
+      }),
+    ).toThrow(/retrait défait/)
+    expect(git(essai.depots.depot, 'rev-parse', 'HEAD')).toBe(tete)
+    expect(git(essai.depots.depot, 'status', '--porcelain')).toBe('')
+    expect(missionsRetirees(essai.depots.depot)).toEqual([])
   })
 
   it('rien à retirer sans fusion étiquetée', async () => {
@@ -415,6 +454,32 @@ describe('G2 : le retrait défait la fusion', () => {
         ecrireRetrait: () => undefined,
       }),
     ).toThrow(/aucune fusion/)
+  })
+})
+
+describe('une fusion dont le push échoue', () => {
+  it('est défaite : ni fusion, ni étiquette, ni mémoire en plan ; le clone reste propre', async () => {
+    const depots = creerDepots()
+    spawnSync('git', ['remote', 'set-url', 'origin', join(depots.depot, 'nulle-part.git')], {
+      cwd: depots.depot,
+    })
+    const { binaire } = binaireSimule({
+      plan: PLAN_VERT,
+      implementations: [{ ecrire: gesteVert() }],
+    })
+    const tete = git(depots.depot, 'rev-parse', 'HEAD')
+    const r = await faireChantier(METIER_ESSAI, {
+      racine: depots.racine,
+      agence: agenceEssai(binaire, depots.depot),
+      mission: clientAvecMission().fichier,
+      env: ENV_ESSAI,
+      maintenant: MAINTENANT,
+      commande: commandeSimulee().commande,
+    })
+    expect(r.sorte === 'fait' && r.issue).toMatch(/^échoué : fusion défaite/)
+    expect(git(depots.depot, 'rev-parse', 'HEAD')).toBe(tete)
+    expect(git(depots.depot, 'tag', '--list')).toBe('')
+    expect(git(depots.depot, 'status', '--porcelain')).toBe('')
   })
 })
 
