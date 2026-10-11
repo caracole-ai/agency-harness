@@ -65,7 +65,8 @@ fichiers qu'il cite, si.
     refusent, il faudra que le préflight du chantier l'accepte (le binaire
     lit la clé en `-p`) ; à faire et à mesurer ce jour-là.
   - Mini-site (https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52) et
-    présentation (https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2) relus :
+    présentation (https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2) relus et
+    republiés (mini-site version 17, présentation version 29) :
     « construit le 11/10 » pour la ronde et le chantier, le discours de
     `PLAN-RONDE.md` § 10.8, rien de plus (les comptes de tests et de cas n'y
     sont pas repris). **Prochaine : la phase E** (`PLAN-GENERAL.md`), après la
