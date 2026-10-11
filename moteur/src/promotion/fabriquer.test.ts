@@ -1,6 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import type Anthropic from '@anthropic-ai/sdk'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import type { Intention } from '../conversation/actions'
@@ -516,8 +517,15 @@ describe('fabriquerGeste', () => {
     ])
     const second = c.modele.appels[1]
     expect(second?.messages).toHaveLength(3)
-    expect(second?.messages[2]?.content).toBe(
-      "La proposition précédente n'a pas pu être lue : 2 appels d'outil au lieu d'un. Propose à nouveau.",
+    // Le protocole : chaque appel d'outil de la réponse précédente reçoit son résultat.
+    const motif =
+      "La proposition précédente n'a pas pu être lue : 2 appels d'outil au lieu d'un. Propose à nouveau."
+    const ids = ((second?.messages[1]?.content ?? []) as Anthropic.ContentBlock[])
+      .filter((b) => b.type === 'tool_use')
+      .map((b) => b.id)
+    expect(ids).toHaveLength(2)
+    expect(second?.messages[2]?.content).toEqual(
+      ids.map((id) => ({ type: 'tool_result', tool_use_id: id, is_error: true, content: motif })),
     )
   })
   it('une requête qui lève puis une bonne : geste écrit après relance, l’erreur SQL dans le message', async () => {
@@ -531,7 +539,10 @@ describe('fabriquerGeste', () => {
     ])
     const issue = await fabriquerGeste(c)
     expect(issue).toMatchObject({ sorte: 'geste', appels: 2, relance: true })
-    expect(String(c.modele.appels[1]?.messages[2]?.content)).toMatch(
+    const relance = c.modele.appels[1]?.messages[2]?.content as Anthropic.ToolResultBlockParam[]
+    expect(relance).toHaveLength(1)
+    expect(relance[0]).toMatchObject({ type: 'tool_result', is_error: true })
+    expect(String(relance[0]?.content)).toMatch(
       /^La requête « heures » a échoué : .*no such table.*\. Propose à nouveau\.$/,
     )
   })

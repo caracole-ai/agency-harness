@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { type Action, actionsDe, outilsDe, type Role, schemaMontre } from '../conversation/actions'
 import { type ConfigConversation, prixDe } from '../conversation/config'
 import { avecSession, type MetierConversation, resoudre } from '../conversation/conversation'
@@ -69,7 +69,7 @@ export function copieClient(source: string, piege?: Variante): string {
   const dossier = mkdtempSync(join(tmpdir(), 'eval-'))
   cpSync(source, dossier, {
     recursive: true,
-    filter: (f) => !/\.sqlite$|rapport-demo|promotions/.test(f),
+    filter: (f) => !/\.sqlite$|rapport-demo|promotions/.test(relative(source, f)),
   })
   if (piege) {
     const fichier = join(dossier, piege.fichier)

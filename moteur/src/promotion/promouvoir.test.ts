@@ -204,7 +204,7 @@ describe('promouvoir', () => {
       30,
       { modele },
     )
-    expect(fabrication).toEqual({ sorte: 'attend_lot_4', relance: false, cout_usd: 0 })
+    expect(fabrication).toEqual({ sorte: 'attend_lot_4', relance: false, appels: 0, cout_usd: 0 })
     expect(modele.appels).toHaveLength(0)
     const md = readFileSync(dossier, 'utf8')
     expect(md).toContain('## Geste proposé')
@@ -434,23 +434,41 @@ describe('promouvoir, le modèle injoignable', () => {
 })
 
 describe('compterFabrications', () => {
-  it('compte au seuil, non tentées, tentées, écrites (dont après relance), activables, échecs de forme, écarts de fond', () => {
+  it('compte au seuil, non tentées, tentées, écrites (dont après relance), activables, échecs de forme par appel, pannes, écarts de fond', () => {
     expect(
       compterFabrications([
-        { sorte: 'attend_lot_4', relance: false, cout_usd: 0 },
-        { sorte: 'ecrit', relance: true, cout_usd: 0.01, activable: true },
-        { sorte: 'ecrit', relance: false, cout_usd: 0.01, activable: false },
-        { sorte: 'echec', relance: true, cout_usd: 0.02, raison: 'forme' },
-        { sorte: 'echec', relance: false, cout_usd: 0, raison: 'aucun instantané lisible' },
-        { sorte: 'ecarts', relance: false, cout_usd: 0.01, ecarts: ['x'] },
+        { sorte: 'attend_lot_4', relance: false, appels: 0, cout_usd: 0 },
+        { sorte: 'ecrit', relance: true, appels: 2, cout_usd: 0.01, activable: true },
+        { sorte: 'ecrit', relance: false, appels: 1, cout_usd: 0.01, activable: false },
+        { sorte: 'echec', relance: true, appels: 2, cout_usd: 0.02, raison: 'forme' },
+        { sorte: 'echec', relance: false, appels: 1, cout_usd: 0, raison: 'réponse tronquée' },
+        {
+          sorte: 'echec',
+          relance: false,
+          appels: 0,
+          cout_usd: 0,
+          raison: 'aucun instantané lisible',
+        },
+        {
+          sorte: 'echec',
+          relance: false,
+          appels: 0,
+          cout_usd: 0,
+          raison: 'injoignable',
+          injoignable: true,
+        },
+        { sorte: 'ecarts', relance: false, appels: 1, cout_usd: 0.01, ecarts: ['x'] },
       ]),
     ).toEqual([
-      'Intentions au seuil : 6',
+      'Intentions au seuil : 8',
       'Non tentées (hors catalogue, écriture, plafond) : 1',
-      'Tentées : 5',
+      'Tentées : 6',
       'Écrites sans écart : 2, dont après relance : 1',
       'Activables : 1',
+      "Échecs de forme ou d'exécution au premier appel (relancés) : 2",
       "Échecs de forme ou d'exécution après relance : 1",
+      'Échecs sans relance (refus, troncature) : 1',
+      'Pannes du fournisseur : 1',
       'Écarts de fond : 1',
     ])
   })

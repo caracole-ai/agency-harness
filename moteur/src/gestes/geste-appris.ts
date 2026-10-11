@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path'
 import { z } from 'zod'
 import { empreinte } from '../approbation/jeton'
 import { DESCRIPTION_MAX, FORMAT_INTENTION, ROLES } from '../conversation/actions'
@@ -56,8 +57,13 @@ export const TestAppris = z.strictObject({
   role: z.enum(ROLES),
   agent: z.string().nullable(),
   params: z.record(z.string(), z.union([z.string(), z.number(), z.null()])),
-  /** `echappees/<id>.json` */
-  instantane: z.string().min(1),
+  /** `echappees/<id>.json`, relatif au dossier du client : ni absolu, ni `..`. */
+  instantane: z
+    .string()
+    .min(1)
+    .refine((p) => !isAbsolute(p) && !p.split(/[\\/]/).includes('..'), {
+      message: 'un chemin relatif au dossier du client, sans « .. »',
+    }),
   /** Les nombres et les noms du texte validé, que le rejeu doit reproduire. */
   contient: z.array(z.string()).min(1),
 })
@@ -109,6 +115,9 @@ export function clesDe(geste: Pick<GesteAppris, 'parametres'>): string[] {
 /** `{{heures.total}}` (la première ligne d'une requête) ou `{{agent}}` (un paramètre). */
 const REFERENCE = /\{\{([a-z][a-z0-9_]*)(?:\.([a-z_][a-z0-9_]*))?\}\}/g
 
+/** Des accolades qui restent hors des références valides (`{{ heures.total }}`, `{{Heures.nom}}`) : un gabarit mal formé. */
+const malForme = (ligne: string) => /\{\{|\}\}/.test(ligne.replace(REFERENCE, ''))
+
 /**
  * Ce qu'un geste a de travers, en phrases, sans rien exécuter : une forme de
  * réponse et une seule ; une période au plus, et `du`, `au` réservés ; des
@@ -145,6 +154,11 @@ export function verifierGabarit(
   }
   if (reponse.tableau !== null && !noms.includes(reponse.tableau)) {
     ecarts.push(`le tableau cite une requête inconnue : ${reponse.tableau}`)
+  }
+  if (reponse.ligne !== null && malForme(reponse.ligne)) {
+    ecarts.push(
+      'la ligne contient une référence mal formée : {{requete.colonne}} ou {{parametre}}, en minuscules, sans espace',
+    )
   }
   for (const [, requete, colonne] of (reponse.ligne ?? '').matchAll(REFERENCE)) {
     if (colonne === undefined) {
@@ -187,6 +201,7 @@ export function rendre(
     return r.lignes.length === 0 ? reponse.vide : rendreResultat(r)
   }
   if (reponse.ligne === null) throw new Error('réponse sans ligne ni tableau')
+  if (malForme(reponse.ligne)) throw new Error('référence mal formée dans la ligne')
   let vide = false
   const texte = reponse.ligne.replace(
     REFERENCE,

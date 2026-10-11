@@ -45,6 +45,16 @@ const activer = (journal: Journal, jeton = empreinteGeste(GESTE)) =>
       donnees: { jeton, par: 'test' },
     },
   ])
+const retirer = (journal: Journal, jeton = empreinteGeste(GESTE)) =>
+  journal.ecrire([
+    {
+      type: TYPE_GESTE_APPRIS,
+      client: CLIENT,
+      objet: GESTE.id,
+      issue: ISSUE_GESTE.retire,
+      donnees: { jeton },
+    },
+  ])
 const charger = (dossier: string, journal: Journal) =>
   chargerGestesAppris(dossier, { client: CLIENT, journal }, '2026-10-10T19:40:00Z')
 const refus = (journal: Journal) =>
@@ -96,12 +106,32 @@ describe('chargerGestesAppris', () => {
   it('activé puis retiré → écarté, « retiré » ; réactivé ensuite → chargé', () => {
     const { dossier, journal } = dossierAvec([FICHIER, actif])
     activer(journal)
-    journal.ecrire([
-      { type: TYPE_GESTE_APPRIS, client: CLIENT, objet: GESTE.id, issue: ISSUE_GESTE.retire },
-    ])
+    retirer(journal)
     expect(charger(dossier, journal).ecartes[0]?.motif).toBe('retiré')
     activer(journal)
     expect(charger(dossier, journal).actifs).toHaveLength(1)
+    journal.fermer()
+  })
+  it('l’identifiant d’un geste codé : écarté même activé, refusé, alerte (jamais deux outils du même nom)', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    const { actifs, ecartes } = chargerGestesAppris(
+      dossier,
+      { client: CLIENT, journal, codes: [GESTE.id] },
+      '2026-10-10T19:40:00Z',
+    )
+    expect(actifs).toEqual([])
+    expect(ecartes).toEqual([
+      { fichier: FICHIER, id: GESTE.id, motif: 'l’identifiant d’un geste codé' },
+    ])
+    expect(refus(journal)[0]?.motif).toBe('l’identifiant d’un geste codé')
+    journal.fermer()
+  })
+  it('retirer un autre fichier du même identifiant (une autre empreinte) ne retire pas le geste actif', () => {
+    const { dossier, journal } = dossierAvec([FICHIER, actif])
+    activer(journal)
+    retirer(journal, empreinteGeste({ ...GESTE, description: `${GESTE.description}, bis` }))
+    expect(charger(dossier, journal)).toEqual({ actifs: [GESTE], ecartes: [] })
     journal.fermer()
   })
   it('un refus au journal n’empêche pas le fichier rétabli de se charger', () => {

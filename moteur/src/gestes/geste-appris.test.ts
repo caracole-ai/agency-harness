@@ -36,6 +36,18 @@ describe('le schéma', () => {
     expect(FichierGeste.safeParse({ ...GESTE, statut: 'propose', code: 'x' }).success).toBe(false)
     expect(FichierGeste.safeParse({ ...GESTE, statut: 'en cours' }).success).toBe(false)
   })
+  it('un instantané hors du dossier du client (absolu ou « .. ») : refus', () => {
+    const avec = (instantane: string) =>
+      FichierGeste.safeParse({
+        ...GESTE,
+        statut: 'propose',
+        tests: GESTE.tests.map((t, i) => (i === 0 ? { ...t, instantane } : t)),
+      }).success
+    expect(avec('../../secret.json')).toBe(false)
+    expect(avec('echappees/../../x.json')).toBe(false)
+    expect(avec('/etc/passwd')).toBe(false)
+    expect(avec('echappees/E-1.json')).toBe(true)
+  })
   it('gesteDe retire statut et validation', () => {
     const fichier = FichierGeste.parse({
       ...GESTE,
@@ -67,6 +79,15 @@ describe('verifierGabarit', () => {
       ),
     ).toEqual(['la ligne cite une colonne que « heures » ne rend pas : total'])
     expect(avec(null, 'total')).toEqual(['le tableau cite une requête inconnue : total'])
+  })
+  it('une référence mal formée (espaces, majuscule, accolade seule) : un écart', () => {
+    const avec = (ligne: string) =>
+      verifierGabarit({ ...GESTE, reponse: { ...GESTE.reponse, ligne } })
+    const ecart =
+      'la ligne contient une référence mal formée : {{requete.colonne}} ou {{parametre}}, en minuscules, sans espace'
+    expect(avec('{{agent}} : {{ heures.heures }} heures')).toEqual([ecart])
+    expect(avec('{{Heures.nom}} : 3')).toEqual([ecart])
+    expect(avec('{{agent}} : {{heures.heures}} heures}}')).toEqual([ecart])
   })
   it('une forme et une seule ; une période au plus ; du et au réservés ; des noms de requêtes uniques ; un :param inconnu dans un SQL', () => {
     expect(verifierGabarit({ ...GESTE, reponse: { ...GESTE.reponse, tableau: 'heures' } })).toEqual(
@@ -108,6 +129,10 @@ describe('rendre', () => {
     const geste = { ...GESTE, reponse: { ligne: null, tableau: 'heures', vide: 'Rien.' } }
     expect(rendre(geste, PARAMS, { heures: UNE_LIGNE })).toBe('nom | heures\nJulien Lefèvre | 16')
     expect(rendre(geste, PARAMS, { heures: AUCUNE })).toBe('Rien.')
+  })
+  it('une référence mal formée : lève, aucune accolade n’arrive au patron', () => {
+    const geste = { ...GESTE, reponse: { ...GESTE.reponse, ligne: '{{ heures.heures }} heures' } }
+    expect(() => rendre(geste, PARAMS, { heures: UNE_LIGNE })).toThrow(/mal formée/)
   })
   it('aucune ligne : le texte « vide »', () => {
     expect(rendre(GESTE, PARAMS, { heures: AUCUNE })).toBe('Aucune vacation sur cette période.')

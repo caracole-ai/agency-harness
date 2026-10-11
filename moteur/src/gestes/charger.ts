@@ -73,33 +73,41 @@ export function lireFichiersGestes(dossierClient: string): FichierGesteLu[] {
     })
 }
 
-/** Ce qui manque à la clé d'un geste, ou rien : la dernière ligne `activé` ou `retiré` du journal pour cet objet. */
+const jetonDe = (donnees: string | null | undefined): unknown =>
+  donnees ? (JSON.parse(donnees) as { jeton?: unknown }).jeton : null
+
+/**
+ * Ce qui manque à la clé d'un geste, ou rien : la dernière ligne `activé` du
+ * journal pour cet objet, ou `retiré` de cette empreinte (retirer un autre
+ * fichier du même identifiant ne retire pas celui-ci).
+ */
 export function motifSansCle(journal: Journal, geste: GesteAppris): string | undefined {
+  const empreinte = empreinteGeste(geste)
   const derniere = journal
     .historique(geste.id)
     .filter(
       (l) =>
         l.type === TYPE_GESTE_APPRIS &&
-        (l.issue === ISSUE_GESTE.active || l.issue === ISSUE_GESTE.retire),
+        (l.issue === ISSUE_GESTE.active ||
+          (l.issue === ISSUE_GESTE.retire && jetonDe(l.donnees) === empreinte)),
     )
     .at(-1)
   if (!derniere) return 'jamais activé'
   if (derniere.issue === ISSUE_GESTE.retire) return 'retiré'
-  const jeton = derniere.donnees
-    ? (JSON.parse(derniere.donnees) as { jeton?: unknown }).jeton
-    : null
-  return jeton === empreinteGeste(geste) ? undefined : 'empreinte différente'
+  return jetonDe(derniere.donnees) === empreinte ? undefined : 'empreinte différente'
 }
 
 /**
  * Les gestes appris à charger pour une consigne : ceux dont le fichier dit
  * `actif` et dont la clé tient. Un fichier `propose` ou `retire` n'est ni
  * chargé ni signalé : c'est son état normal. Un fichier illisible, un gabarit
- * faux, un `actif` sans clé : écarté, `refusé` au journal, alerte.
+ * faux, l'identifiant d'un geste codé, un `actif` sans clé : écarté, `refusé`
+ * au journal, alerte.
  */
 export function chargerGestesAppris(
   dossierClient: string,
-  cible: { client: string; journal: Journal },
+  /** `codes` : les identifiants des gestes codés du métier ; un geste appris ne peut pas en porter un. */
+  cible: { client: string; journal: Journal; codes?: readonly string[] },
   horodatage?: string,
 ): { actifs: GesteAppris[]; ecartes: GesteEcarte[] } {
   const actifs: GesteAppris[] = []
@@ -138,6 +146,10 @@ export function chargerGestesAppris(
     const gabarit = verifierGabarit(geste)
     if (gabarit.length > 0) {
       ecarter(lu.fichier, geste.id, `gabarit : ${gabarit.join(' ; ')}`, jeton)
+      continue
+    }
+    if (cible.codes?.includes(geste.id)) {
+      ecarter(lu.fichier, geste.id, 'l’identifiant d’un geste codé', jeton)
       continue
     }
     const motif = motifSansCle(cible.journal, geste)

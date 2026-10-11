@@ -27,6 +27,8 @@ export interface Fabrication {
   sorte: 'hors_catalogue' | 'attend_lot_4' | 'plafond' | 'echec' | 'ecarts' | 'ecrit'
   /** Le second appel a eu lieu (P5). */
   relance: boolean
+  /** Les appels au modèle qui ont répondu : 0 (pas tentée, ou panne au premier), 1, ou 2 (relance). */
+  appels: number
   /** `echec` : pourquoi (forme, ou une requête qui lève, après relance). */
   raison?: string
   /** `ecarts` : les écarts de fond, en phrases. */

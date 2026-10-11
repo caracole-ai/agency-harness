@@ -10,7 +10,13 @@ import { GESTE_EXEMPLE } from '../gestes/geste-appris.exemple'
 import { Journal } from '../journal/journal'
 import { modeleSimule } from '../modele/simule'
 import { FICHIER_PERSONNES } from '../personnes/personnes'
-import { casDuFichier, casDuGeste, DOSSIER_PROMOTIONS, passeTraduction } from './traduction'
+import {
+  casDuFichier,
+  casDuGeste,
+  copieClient,
+  DOSSIER_PROMOTIONS,
+  passeTraduction,
+} from './traduction'
 
 // Les cas de traduction prêts à jouer (PLAN-PROMOTION.md § 7.1, P13) : ceux
 // du fichier, et les tests d'un geste appris, au moment de leur échappée ; et
@@ -205,5 +211,19 @@ describe('casDuFichier', () => {
     expect(cas[0]?.quand.hour).toBe(21)
     expect(cas[1]?.quand.day).toBe(11)
     expect(cas[1]?.strict).toBe(false)
+  })
+})
+
+describe('copieClient', () => {
+  it('écarte journal, rapport et promotions du client, pas un dossier source dont le chemin dit « promotions »', () => {
+    const source = join(mkdtempSync(join(tmpdir(), 'promotions-')), 'client')
+    mkdirSync(join(source, DOSSIER_PROMOTIONS), { recursive: true })
+    writeFileSync(join(source, 'config.yaml'), 'client: x\n')
+    writeFileSync(join(source, 'journal.sqlite'), '')
+    writeFileSync(join(source, DOSSIER_PROMOTIONS, 'p.md'), '')
+    const copie = copieClient(source)
+    expect(existsSync(join(copie, 'config.yaml'))).toBe(true)
+    expect(existsSync(join(copie, 'journal.sqlite'))).toBe(false)
+    expect(existsSync(join(copie, DOSSIER_PROMOTIONS))).toBe(false)
   })
 })

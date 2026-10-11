@@ -741,7 +741,10 @@ describe('un geste appris, chargé et exécuté (PLAN-PROMOTION.md § 5.5)', asy
     expect(systeme).not.toContain('les heures faites par un agent, ou par tous, sur une période')
     const outilAppris = modele.appels[0]?.outils.find((o) => o.name === 'heures_par_agent')
     expect(Object.keys(outilAppris?.input_schema.properties ?? {})).toEqual(['agent', 'du', 'au'])
-    expect(modele.appels[0]?.outils.map((o) => o.name)).not.toContain('demande_nouvelle_')
+    // Un seul outil du nom du geste, et la demande nouvelle reste offerte pour le reste.
+    const noms = modele.appels[0]?.outils.map((o) => o.name) ?? []
+    expect(noms.filter((n) => n === 'heures_par_agent')).toHaveLength(1)
+    expect(noms).toContain('demande_nouvelle')
   })
   it('un agent ne voit que ses lignes (D4) : ses heures à lui, et personne d’autre', async () => {
     const sophie = await tour(s, agent('A-3'), demander(null))

@@ -545,6 +545,25 @@ const relanceRequete = (nom: string, erreur: string) =>
   `La requête « ${nom} » a échoué : ${erreur}. Propose à nouveau.`
 
 /**
+ * Le message de relance : un `tool_result` en erreur par appel d'outil de la
+ * réponse précédente (le protocole l'exige), le motif dans chacun ; du texte
+ * simple quand la réponse n'appelait aucun outil.
+ */
+export function messageRelance(
+  contenu: Anthropic.ContentBlock[],
+  motif: string,
+): Anthropic.MessageParam['content'] {
+  const appels = contenu.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+  if (appels.length === 0) return motif
+  return appels.map((b) => ({
+    type: 'tool_result' as const,
+    tool_use_id: b.id,
+    is_error: true,
+    content: motif,
+  }))
+}
+
+/**
  * La fabrication : un appel, relancé une fois au plus sur un échec de forme ou
  * une requête qui lève (P5) ; vérifiée en code à chaque proposition lue. Rend
  * le geste prêt à écrire (zéro écart), la proposition et ses écarts de fond,
@@ -652,7 +671,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     if (relance) return echec(`${raison}, ${APRES_RELANCE}`)
     messages.push(
       { role: 'assistant', content: reponse.message.content },
-      { role: 'user', content: motif },
+      { role: 'user', content: messageRelance(reponse.message.content, motif) },
     )
   }
   return echec('aucun appel')

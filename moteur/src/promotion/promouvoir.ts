@@ -95,6 +95,7 @@ async function fabriquer<S>(
   const sans = (sorte: Fabrication['sorte'], raison?: string): Fabrication => ({
     sorte,
     relance: false,
+    appels: 0,
     ...(raison !== undefined ? { raison } : {}),
     cout_usd: 0,
   })
@@ -148,6 +149,7 @@ async function fabriquer<S>(
     return {
       sorte: 'echec',
       relance: issue.relance,
+      appels: issue.appels,
       raison: issue.raison,
       cout_usd,
       ...borne,
@@ -158,6 +160,7 @@ async function fabriquer<S>(
     return {
       sorte: 'ecarts',
       relance: issue.relance,
+      appels: issue.appels,
       ecarts: issue.ecarts.map((e) => e.texte),
       rejeu: issue.rejeu,
       proposition: stringify(issue.propose),
@@ -185,6 +188,7 @@ async function fabriquer<S>(
   const ecrit: Fabrication = {
     sorte: 'ecrit',
     relance: issue.relance,
+    appels: issue.appels,
     rejeu: issue.rejeu,
     fichier,
     jeton,
@@ -218,19 +222,25 @@ async function fabriquer<S>(
   return { ...ecrit, traduction, activable }
 }
 
-/** Un échec de forme : un échec de fabrication qui n'est pas « aucun instantané » ni « trop peu de réponses » (ce sont des échecs avant tout appel). */
-export const echecDeForme = (f: Fabrication) => f.sorte === 'echec' && f.cout_usd > 0
-
-/** Le compte d'une passe de promotions, pour le § 8 : au seuil, non tentées, tentées, écrites, activables ; les échecs de forme à part des écarts de fond. */
+/**
+ * Le compte d'une passe de promotions, pour le § 8 : au seuil, non tentées,
+ * tentées (au moins un appel, ou une panne du fournisseur), écrites,
+ * activables ; les échecs de forme au premier appel (relancés), après relance
+ * et sans relance (refus, troncature), à part des écarts de fond et des pannes.
+ */
 export function compterFabrications(fabrications: Fabrication[]): string[] {
   const n = (f: (x: Fabrication) => boolean) => fabrications.filter(f).length
+  const echec = (f: Fabrication) => f.sorte === 'echec' && f.injoignable !== true
   return [
     `Intentions au seuil : ${fabrications.length}`,
     `Non tentées (hors catalogue, écriture, plafond) : ${n((f) => ['hors_catalogue', 'attend_lot_4', 'plafond'].includes(f.sorte))}`,
-    `Tentées : ${n((f) => ['echec', 'ecarts', 'ecrit'].includes(f.sorte))}`,
+    `Tentées : ${n((f) => f.appels > 0 || f.injoignable === true)}`,
     `Écrites sans écart : ${n((f) => f.sorte === 'ecrit')}, dont après relance : ${n((f) => f.sorte === 'ecrit' && f.relance)}`,
     `Activables : ${n((f) => f.activable === true)}`,
-    `Échecs de forme ou d'exécution ${APRES_RELANCE} : ${n(echecDeForme)}`,
+    `Échecs de forme ou d'exécution au premier appel (relancés) : ${n((f) => f.appels > 1)}`,
+    `Échecs de forme ou d'exécution ${APRES_RELANCE} : ${n((f) => echec(f) && f.appels > 1)}`,
+    `Échecs sans relance (refus, troncature) : ${n((f) => echec(f) && f.appels === 1)}`,
+    `Pannes du fournisseur : ${n((f) => f.injoignable === true)}`,
     `Écarts de fond : ${n((f) => f.sorte === 'ecarts')}`,
   ]
 }

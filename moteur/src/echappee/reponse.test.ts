@@ -116,5 +116,10 @@ describe('citations et contient (la promotion, PLAN-PROMOTION.md § 6.2)', () =>
     expect(contient('4 vacations de nuit.', '4')).toBe(true)
     expect(contient('Julien : 16,5 h', '16')).toBe(false)
     expect(contient('Julien : 16,5 h', '16.5')).toBe(true)
+    // Un nombre attendu ne se trouve pas dans une date, une heure ou un identifiant.
+    expect(contient('9 heures du 2026-10-12 au 2026-10-18.', '12')).toBe(false)
+    expect(contient('9 heures du 12/10 au 18/10.', '12')).toBe(false)
+    expect(contient('Karim, V-11, de 20:00 à 08:00', '11')).toBe(false)
+    expect(contient('12 heures du 2026-10-12 au 2026-10-18.', '12')).toBe(true)
   })
 })

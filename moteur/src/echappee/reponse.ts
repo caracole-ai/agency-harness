@@ -155,6 +155,19 @@ export function verifierReponse(
 const NON_QUANTITES =
   /\b[A-Z]+(?:-[A-Z]+)*-\d+\b|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}|\b\d{1,2}:\d{2}\b|\b\d{1,2}h(?:\d{2})?\b|\b(?:19|20)\d{2}\b|\b0\d+\b/g
 
+/** Les plages d'un texte qui ne sont pas des quantités : dates, heures, identifiants, années. */
+function nonQuantites(texte: string): DateEcrite[] {
+  return [
+    ...datesDe(texte),
+    ...[...texte.matchAll(NON_QUANTITES)].map((m) => ({
+      position: m.index,
+      fin: m.index + m[0].length,
+      ecrite: m[0],
+      iso: '',
+    })),
+  ]
+}
+
 /**
  * Ce qu'un texte cite et qu'un rejeu doit reproduire (PLAN-PROMOTION.md § 6.2) :
  * ses nombres, tels qu'écrits, hors dates, heures et identifiants, et les mots
@@ -164,16 +177,7 @@ const NON_QUANTITES =
  * son zéro ne sont pas des quantités (vu sur les réponses de GLM, passe 14).
  */
 export function citations(texte: string, nomsConnus: string[]): string[] {
-  const plages: DateEcrite[] = [
-    ...datesDe(texte),
-    ...[...texte.matchAll(NON_QUANTITES)].map((m) => ({
-      position: m.index,
-      fin: m.index + m[0].length,
-      ecrite: m[0],
-      iso: '',
-    })),
-  ]
-  const nombres = nombresHorsDates(texte, plages).map((m) => m[0])
+  const nombres = nombresHorsDates(texte, nonQuantites(texte)).map((m) => m[0])
   const longs = new Set(
     nomsConnus.flatMap((nom) =>
       [...nom.matchAll(MOT)].map((m) => normaliser(m[0])).filter((mot) => MOT_DE_NOM.test(mot)),
@@ -185,11 +189,17 @@ export function citations(texte: string, nomsConnus: string[]): string[] {
 
 /**
  * Un mot attendu se cherche tel quel, sans accents ni casse ; un nombre se
- * cherche entier (« 4 » n'est pas dans « V-14 », « 16 » pas dans « 16,5 »).
+ * cherche entier (« 4 » n'est pas dans « V-14 », « 16 » pas dans « 16,5 »),
+ * hors des plages qui ne sont pas des quantités, comme `citations` (« 11 »
+ * n'est pas dans « 2026-10-11 »).
  */
 export function contient(texte: string, mot: string): boolean {
-  const t = normaliser(texte)
   const m = normaliser(mot)
-  if (!/^\d+(?:[.,]\d+)?$/.test(m)) return t.includes(m)
+  if (!/^\d+(?:[.,]\d+)?$/.test(m)) return normaliser(texte).includes(m)
+  let masque = texte
+  for (const p of nonQuantites(texte)) {
+    masque = masque.slice(0, p.position) + ' '.repeat(p.fin - p.position) + masque.slice(p.fin)
+  }
+  const t = normaliser(masque)
   return new RegExp(`(?<![\\d.,])${m.replace(/[.,]/, '[.,]')}(?![\\d]|[.,]\\d)`).test(t)
 }

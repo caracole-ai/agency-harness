@@ -321,9 +321,11 @@ async function avantLeDossier<S>(
     // celle des demandes nouvelles (P14).
     const copie = m.copie
     const appris: Action<S, unknown>[] = copie
-      ? chargerGestesAppris(dossier, ici, tour.maintenant.toInstant().toString()).actifs.map((g) =>
-          actionApprise(g, copie),
-        )
+      ? chargerGestesAppris(
+          dossier,
+          { ...ici, codes: m.actions.map((a) => a.id) },
+          tour.maintenant.toInstant().toString(),
+        ).actifs.map((g) => actionApprise(g, copie))
       : []
 
     const attendue = precisionEnAttente(journal, tour)
