@@ -1458,6 +1458,16 @@ Pièges vus pendant la phase :
   qu'écrit, tiret compris (`reponse.ts`). Gardés comme risques (plus bas) :
   `designer`, les mots courants qui sont des noms, une question qui
   reviendrait sur un mot à majuscule proche d'un nom.
+- **Fin de phase (§ 0.7), relus et republiés** : le mini-site (version 15)
+  dit les pseudonymes construits et mesurés le 11/10 (avancement, suite,
+  décision « Aucun nom ne part dans une demande nouvelle », glossaire,
+  fichiers ; « Les noms ne partent plus » et les listes Existe / Prouvé / Pas
+  encore de « Parler à l'outil », dont les 39 sur 42 de l'échappée ; 382,
+  125 et 527 tests) et corrige « le modèle ne voit aucun nom » en « ne reçoit
+  que la phrase » (le niveau 2 montre des noms) ; la présentation
+  (version 25) : diapositive 8, « sans aucun nom, entre balises » et
+  « V-03 passait à A-9 » ; diapositive 13, les pseudonymes passent de « ce qui
+  reste » à « ce qui existe », 527 tests.
 - **Fusion malgré l'échappée sous son seuil** (39/42, G4 : 41/42) : la
   phase n'a pas de règle pour ce cas. Fusionné quand même : la fuite, le
   but du plan, est à 0 ; deux des trois écarts sont des troncatures au
