@@ -87,7 +87,24 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   reste au quotidien. La fusion est automatique sous les conditions de
   `PLAN-GENERAL.md` G1, dans le clone de la nuit, avec retrait ; la mémoire
   de la nuit est dans `memoire/` (R10). Dépend du lot 1 des pseudonymes.
-  Quatre lots.
+  Quatre lots ; amendé le 2026-10-11 (§ 0 : au laboratoire, l'abonnement
+  claude.ai par le binaire `claude`). Phase D de `PLAN-GENERAL.md`, session
+  D1 : lot 0 fait le 2026-10-11 (branche `general/d-ronde`).
+- `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
+  secret) : le modèle de chaque rôle (ronde, plan, implémentation, relecture)
+  et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
+  `anthropic` : la clé d'API, avant la finalisation), les prix relus dans la
+  doc d'Anthropic, les bornes de la ronde et du chantier, les outils et les
+  chemins autorisés au chantier.
+- `memoire/` — la mémoire de la nuit (`PLAN-RONDE.md` R10), écrite par le
+  code : `INDEX.md` (une ligne par événement), `rondes/`, `chantiers/`,
+  `CONVENTIONS.md` (on y ajoute, on n'en retire jamais), `MESURES.md`. Aucun
+  nom ni identifiant de personne, de conversation ou d'échappée : un test de
+  `pnpm check` relit tout le dossier.
+- `methode/architecture-pour-modeles.md` — la carte du harnais que lisent la
+  ronde, le plan, l'implémentation et la relecture (`PLAN-RONDE.md` R6) :
+  les bandes et qui y écrit, ce qu'est un geste, les deux étages, ce qu'un
+  modèle ne fait jamais, ce qui mérite une mission, comment finir.
 - `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
   l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
@@ -191,6 +208,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   dans le YAML, puis la ligne `activé` au journal, la clé que le chargement
   exige), retirer (`statut: retire`, ligne `retiré` : plus chargé dès la
   consigne suivante).
+  `src/agence/config.ts` (`PLAN-RONDE.md` § 4.1) charge `agence.yaml`
+  (schéma strict) et fait le préflight au moment de l'appel : sous
+  `acces: claude`, `ANTHROPIC_API_KEY` absente et `claude auth status`
+  connecté ; sous `acces: anthropic`, la clé exigée. `src/chantier/memoire.ts`
+  écrit et relit `memoire/` (R10) : une écriture qui porterait un nom ou un
+  identifiant lève, le texte libre d'un modèle y entre nettoyé.
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
   dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la

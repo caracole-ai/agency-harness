@@ -14,6 +14,9 @@ function id(prefixe: string, maintenant: Temporal.ZonedDateTime): string {
   return `${prefixe}-${jour}T${heure}-${randomBytes(2).toString('hex')}`
 }
 
+/** Un identifiant de conversation ou d'échappée, où qu'il soit écrit : ce que la mémoire de la nuit ne garde pas (PLAN-RONDE.md R10). */
+export const MOTIF_ID_CONVERSATION = /\b[CE]-\d{8}T\d{4}-[0-9a-f]{4}\b/g
+
 /** `C-20261010T2140-3fa2` */
 export const idConversation = (maintenant: Temporal.ZonedDateTime) => id('C', maintenant)
 

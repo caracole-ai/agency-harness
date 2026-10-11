@@ -7,6 +7,14 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11, nuit : phase D, session D1, lot 0 fait** (branche
+  `general/d-ronde`, partie de `main`, pas poussée) : `agence.yaml` (les
+  quatre rôles en `acces: claude`, prix Fable 5.1 et Opus 5.5 relus ce jour
+  dans la doc d'Anthropic), `moteur/src/agence/config.ts` (schéma strict,
+  préflight au moment de l'appel), `methode/architecture-pour-modeles.md` et
+  son test (aucun nom ni identifiant du client fictif), `memoire/` et
+  `moteur/src/chantier/memoire.ts` (R10), le test de fuite sur tout
+  `memoire/`. Le lot 1 suit dans la même session.
 - **2026-10-11, soir : la phase D est prête, pas commencée.** `PLAN-RONDE.md`
   gagne un § 0 (amendements de Lionel après la phase C) : (a) au
   laboratoire, l'accès aux modèles d'Anthropic passe par **l'abonnement
