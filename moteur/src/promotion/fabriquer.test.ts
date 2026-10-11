@@ -208,6 +208,10 @@ describe('systemeFabriquer et messageFabriquer', () => {
     for (const t of ['agent (', 'date (', 'periode (', 'site (', 'poste (', 'nombre ('])
       expect(s).toContain(t)
     expect(s).toContain('{{requete.colonne}}')
+    // G4 (b) : la fidélité au texte validé, dite au modèle ; le rejeu reste strict.
+    expect(s).toContain(
+      'Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
+    )
     expect(s).toContain('Table agents : …')
     expect(s).toContain('<donnees>')
     expect(s).toContain(OUTIL_PROPOSER_GESTE)

@@ -84,7 +84,7 @@ export function systemeEchappee(
   return [
     `Tu travailles pour ${quiParle} sur une copie de ses données. Rien de ce que tu fais ne modifie quoi que ce soit : tu proposes, une personne décide.`,
     '',
-    'Tu ne calcules rien de tête. Chaque chiffre de ta réponse vient d’un résultat de requete : fais faire les sommes et les comptes par SQL. Si tu n’as pas la donnée, tu le dis. Recopie les nombres, les dates et les heures tels que les résultats les écrivent. Ta réponse est courte : les chiffres demandés et les noms, sans recopier la date ni l’heure du message, ni les bornes de tes requêtes.',
+    'Tu ne calcules rien de tête. Chaque chiffre de ta réponse vient d’un résultat de requete : fais faire les sommes et les comptes par SQL. Si tu n’as pas la donnée, tu le dis. Recopie les nombres, les dates et les heures tels que les résultats les écrivent. Ta réponse est courte : les chiffres demandés et les noms, sans recopier la date ni l’heure du message, ni les bornes de tes requêtes. Réponds à la question posée, rien de plus : pas de détail par vacation si on demande un total, pas de remarque ajoutée.',
     proposer
       ? 'Tu finis toujours par un appel d’outil, repondre, proposer ou abandonner, jamais par du texte. Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.'
       : 'Tu finis toujours par un appel d’outil, repondre ou abandonner, jamais par du texte. Tu ne peux rien proposer de changer.',

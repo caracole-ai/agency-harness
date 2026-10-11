@@ -22,6 +22,7 @@ cas:
   - id: compter_vacations
     intention: compter_vacations
     echappees: [E-04, E-15, E-16]
+    impossible: "« de nuit » n'est pas un type de paramètre (les six types de P11) : le geste ne peut pas couvrir ces demandes"
   - id: agents_sans_carte
     intention: agents_sans_carte
     echappees: [E-05, E-17, E-18]

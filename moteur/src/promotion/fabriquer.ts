@@ -182,7 +182,7 @@ export function systemeFabriquer(
     '',
     `Les requêtes, une à cinq, nommées : SQLite, en lecture (SELECT ou WITH), sur les tables ci-dessous. Chaque valeur qui vient de la demande est un paramètre lié (:agent, :${CLES_PERIODE.join(', :')}, :nom_du_parametre), jamais une valeur en dur : ni identifiant, ni nom, ni date, ni site. Fais faire les sommes et les comptes par SQL.`,
     '',
-    'La réponse, une forme et une seule : ligne, une phrase qui cite {{requete.colonne}} (la première ligne du résultat de cette requête) et {{parametre}} ({{du}}, {{au}} pour une période), tableau à null ; ou tableau, le nom d’une requête rendue en tableau, ligne à null. Et vide : la phrase montrée quand une requête citée ne rend aucune ligne. Pas de condition, pas de boucle, pas de calcul dans le gabarit.',
+    'La réponse, une forme et une seule : ligne, une phrase qui cite {{requete.colonne}} (la première ligne du résultat de cette requête) et {{parametre}} ({{du}}, {{au}} pour une période), tableau à null ; ou tableau, le nom d’une requête rendue en tableau, ligne à null. Et vide : la phrase montrée quand une requête citée ne rend aucune ligne. Pas de condition, pas de boucle, pas de calcul dans le gabarit. Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
     '',
     `Les rôles : ceux des demandes (${roles.join(', ')}), au moins ; agent seulement si la demande a un sens pour un agent, qui ne voit que ses propres données.`,
     '',

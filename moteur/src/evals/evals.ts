@@ -100,6 +100,8 @@ export const CasPromotion = z.strictObject({
   id: z.string().min(1),
   intention: z.string().min(1),
   echappees: z.array(z.string().min(1)).min(1),
+  /** Un cas impossible par construction (P11) : pourquoi ; le résultat le dit avant ses écarts. */
+  impossible: z.string().min(1).optional(),
 })
 export type CasPromotion = z.infer<typeof CasPromotion>
 

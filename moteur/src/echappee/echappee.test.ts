@@ -18,6 +18,7 @@ import {
   echappee,
   ecrireInstantane,
   type Instantane,
+  systemeEchappee,
   TYPE_ECHAPPEE,
   TYPE_OUTIL_ECHAPPEE,
 } from './echappee'
@@ -203,5 +204,15 @@ describe('ecrireInstantane', () => {
     expect(chemin).toBe(join(DOSSIER_ECHAPPEES, 'E-20261010T2140-0001.json'))
     expect(JSON.parse(readFileSync(join(dossier, chemin), 'utf8'))).toEqual(instantane)
     expect(() => ecrireInstantane(dossier, instantane)).toThrow('déjà écrit')
+  })
+})
+
+describe('systemeEchappee', () => {
+  it('dit de répondre à la question posée, rien de plus (PLAN-GENERAL.md G4 a)', () => {
+    for (const proposer of [true, false]) {
+      expect(systemeEchappee('le patron', 'Table agents : …', [], '', proposer)).toContain(
+        'Réponds à la question posée, rien de plus : pas de détail par vacation si on demande un total, pas de remarque ajoutée.',
+      )
+    }
   })
 })

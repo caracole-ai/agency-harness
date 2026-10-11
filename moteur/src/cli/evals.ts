@@ -303,8 +303,15 @@ if (quoi === 'traduire') {
         })
       },
     )
-    resultats.push(joue.resultat)
-    garder(joue.resultat, joue.trace satisfies TraceCas, joue.idModele)
+    const resultat =
+      c.impossible && joue.resultat.ecarts.length > 0
+        ? {
+            ...joue.resultat,
+            ecarts: [`impossible par construction : ${c.impossible}`, ...joue.resultat.ecarts],
+          }
+        : joue.resultat
+    resultats.push(resultat)
+    garder(resultat, joue.trace satisfies TraceCas, joue.idModele)
   }
 }
 
