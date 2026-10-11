@@ -272,6 +272,8 @@ describe('echappeesDe', () => {
           ...ok,
           agent: 'A-2',
           role: 'agent',
+          consigne_modele: 'Combien d’heures ?',
+          texte_modele: 'A-2 : 16 heures.',
         }),
       ],
       '2026-10-07T16:30:00Z',
@@ -299,6 +301,9 @@ describe('echappeesDe', () => {
       role: 'agent',
       agent: 'A-2',
       requetes: [{ sql: SQL_B, sortie: 'b\n2' }],
+      // Les versions du modèle, sans aucun nom (PLAN-PSEUDONYMES.md § 6) ; absentes de E-8a, d'avant.
+      consigneModele: 'Combien d’heures ?',
+      texteModele: 'A-2 : 16 heures.',
     })
     journal.fermer()
   })

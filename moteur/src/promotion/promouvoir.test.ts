@@ -8,6 +8,7 @@ import type { MetierConversation } from '../conversation/conversation'
 import { CONTROLE_OK } from '../echappee/boucle'
 import type { TableCopie } from '../echappee/copie'
 import { cheminInstantane, ecrireInstantane, TYPE_ECHAPPEE } from '../echappee/echappee'
+import { masquerTexte } from '../echappee/pseudonymes'
 import { ISSUE_GESTE, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
 import { type Evenement, Journal } from '../journal/journal'
@@ -126,6 +127,7 @@ const METIER: MetierConversation<Session> = {
 function dossierAvecEchappees(intention = 'heures_par_agent'): Session {
   const dossier = mkdtempSync(join(tmpdir(), 'promouvoir-'))
   const s = METIER.ouvrir(dossier)
+  const personnes = AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) }))
   const cas: [string, string, string][] = [
     ['E-1', "Combien d'heures Karim a-t-il fait cette semaine ?", 'Karim Haddad : 24 heures.'],
     ['E-2', "Combien d'heures Julien a-t-il fait cette semaine ?", 'Julien Lefèvre : 16 heures.'],
@@ -152,6 +154,9 @@ function dossierAvecEchappees(intention = 'heures_par_agent'): Session {
         cout_usd: 0.01,
         controle_reponse: CONTROLE_OK,
         texte,
+        // Ce que le modèle a lu et écrit, sans aucun nom (PLAN-PSEUDONYMES.md S5).
+        consigne_modele: masquerTexte(consigne, personnes),
+        texte_modele: masquerTexte(texte, personnes),
         instantane: cheminInstantane(id),
       },
     }

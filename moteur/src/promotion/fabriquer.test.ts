@@ -8,12 +8,15 @@ import type { Intention } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
 import type { TableCopie } from '../echappee/copie'
 import { ecrireInstantane } from '../echappee/echappee'
+import { fuites, masquerTexte } from '../echappee/pseudonymes'
 import { FichierGeste, type GesteAppris, gesteDe } from '../gestes/geste-appris'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import {
+  ANTERIEURE,
   APRES_RELANCE,
   type CadreFabrication,
   completerGeste,
+  type EchappeeMasquee,
   ecrireGeste,
   fabriquerGeste,
   type GestePropose,
@@ -29,7 +32,8 @@ import type { EchappeeJournalisee } from './promotion'
 // proposition bien formée → un geste écrit ; les écarts de fond (valeur en
 // dur, test manquant, rejeu qui ne contient pas le chiffre) ne relancent pas ;
 // la relance sur deux outils ou une requête qui lève, jamais un troisième
-// appel.
+// appel. Le modèle lit les échappées telles que masquées, sans aucun nom
+// (PLAN-PSEUDONYMES.md § 6).
 
 const AGENTS: TableCopie = {
   nom: 'agents',
@@ -116,7 +120,7 @@ const echappee = (
   consigne: string,
   texte: string,
   qui: { role: 'patron' | 'agent'; agent?: string } = { role: 'patron' },
-): EchappeeJournalisee => ({
+): EchappeeMasquee => ({
   echappee: id,
   conversation: `C-${id}`,
   horodatage: '2026-10-10T19:40:00Z',
@@ -125,11 +129,13 @@ const echappee = (
   consigne,
   intention: INTENTION.id,
   issue: 'reponse',
-  requetes: [{ sql: SQL_OK.replace(':agent', "'A-1'"), sortie: 'nom | heures\nKarim Haddad | 24' }],
+  requetes: [{ sql: SQL_OK.replace(':agent', "'A-1'"), sortie: 'nom | heures\nA-1 | 24' }],
   texte,
+  consigneModele: masquerTexte(consigne, PERSONNES),
+  texteModele: masquerTexte(texte, PERSONNES),
   instantane: `echappees/${id}.json`,
 })
-const ECHAPPEES: EchappeeJournalisee[] = [
+const ECHAPPEES: EchappeeMasquee[] = [
   echappee(
     'E-1',
     "Combien d'heures Karim a-t-il fait cette semaine ?",
@@ -213,6 +219,7 @@ describe('systemeFabriquer et messageFabriquer', () => {
       'Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
     )
     expect(s).toContain('Table agents : …')
+    expect(s).toContain('une personne est écrite par son identifiant (A-1)')
     expect(s).toContain('<donnees>')
     expect(s).toContain(OUTIL_PROPOSER_GESTE)
   })
@@ -223,10 +230,12 @@ describe('systemeFabriquer et messageFabriquer', () => {
     expect(m).toContain(
       'Moment : 2026-10-10T21:40 (samedi) ; semaine en cours du 2026-10-05 au 2026-10-11',
     )
-    expect(m).toContain("Consigne : Combien d'heures Karim a-t-il fait cette semaine ?")
+    expect(m).toContain("Consigne : Combien d'heures A-1 a-t-il fait cette semaine ?")
     expect(m).toContain('Requête 1 :\n')
-    expect(m).toContain('Résultat 1 :\nnom | heures\nKarim Haddad | 24')
-    expect(m).toContain('Réponse montrée :\nKarim Haddad : 24 heures.')
+    expect(m).toContain('Résultat 1 :\nnom | heures\nA-1 | 24')
+    expect(m).toContain('Réponse montrée :\nA-1 : 24 heures.')
+    // Aucun nom ne part : ce qui part pour fabriquer est déjà parti pour répondre (S5).
+    expect(fuites(m, PERSONNES)).toEqual([])
     expect(m).toContain("Demandeur : l'agent A-3")
     expect(m).toContain('</donnees>\nPropose le geste.')
   })
@@ -449,6 +458,23 @@ describe('ecrireGeste', () => {
 })
 
 describe('fabriquerGeste', () => {
+  it('une échappée d’avant les pseudonymes n’est pas fabricable : le motif le dit, aucun appel', async () => {
+    const dossier = dossierAvecInstantanes()
+    const c = cadre(dossier, [proposer(PROPOSE)])
+    const anciennes: EchappeeJournalisee[] = ECHAPPEES.map(
+      ({ consigneModele: _c, texteModele: _t, ...e }, i) => (i === 0 ? e : { ...e }),
+    )
+    const [premiere, ...reste] = anciennes
+    if (!premiere) throw new Error('fixture')
+    const issue = await fabriquerGeste({
+      ...c,
+      echappees: [premiere, ...reste.map((e, i) => ECHAPPEES[i + 1] ?? e)],
+    })
+    expect(issue).toMatchObject({ sorte: 'echec', appels: 0 })
+    if (issue.sorte !== 'echec') throw new Error(issue.sorte)
+    expect(issue.raison).toBe(`2 réponse(s) finie(s) proprement, 3 au moins (${ANTERIEURE} : E-1)`)
+    expect(c.modele.appels).toHaveLength(0)
+  })
   it('une proposition bien formée : un geste, un appel, rejeu 3/3, l’origine remplie', async () => {
     const dossier = dossierAvecInstantanes()
     const c = cadre(dossier, [proposer(PROPOSE)])

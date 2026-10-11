@@ -85,6 +85,9 @@ export interface EchappeeJournalisee {
   constats?: Constat[]
   /** Le texte final tel que montré. */
   texte: string
+  /** La consigne et le texte tels que le modèle les a lus et écrits, sans aucun nom ; absents avant les pseudonymes (PLAN-PSEUDONYMES.md § 6). */
+  consigneModele?: string
+  texteModele?: string
   /** `echappees/<id>.json`, relatif au dossier du client. */
   instantane: string
 }
@@ -101,6 +104,8 @@ interface DonneesEchappee {
   controle_reponse?: string
   abandon?: string
   texte?: string
+  consigne_modele?: string
+  texte_modele?: string
   instantane?: string
 }
 
@@ -305,6 +310,8 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
     ...(d.modifications !== undefined ? { modifications: d.modifications } : {}),
     ...(d.constats !== undefined ? { constats: d.constats } : {}),
     texte: d.texte,
+    ...(typeof d.consigne_modele === 'string' ? { consigneModele: d.consigne_modele } : {}),
+    ...(typeof d.texte_modele === 'string' ? { texteModele: d.texte_modele } : {}),
     instantane: d.instantane,
   }
 }

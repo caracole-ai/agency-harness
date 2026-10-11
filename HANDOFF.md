@@ -23,7 +23,12 @@ fichiers qu'il cite, si.
   (voir les choix). **Mesuré, GLM-5.3 via GMI** : `pnpm evals echappee`,
   une passe, **18/18** (0,147 $, `evals/resultats/2026-10-11-1321-echappee.md`),
   **fuite 0 sur les 18 traces** (système et tout message envoyé, comptés par
-  `fuites` avec les 13 agents ; la colonne viendra du lot 3).
+  `fuites` avec les 13 agents ; la colonne viendra du lot 3). Lot 2 fait
+  (`pseudonymes/lot-2`) : la fabrication lit `consigne_modele` et
+  `texte_modele` (`EchappeeMasquee`), une échappée d'avant les pseudonymes
+  n'est pas fabricable (« échappée antérieure aux pseudonymes ») ; le système
+  de la fabrication dit que l'identifiant tient lieu de nom et que le geste
+  rend `agents.nom`. Sa passe réelle est notée avec le lot 3.
 - **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
   promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
   des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
@@ -1403,6 +1408,16 @@ Pièges vus pendant la phase :
   « `agents.nom` » écrit dans le moteur, qui ne connaît pas les tables d'un
   métier. Une telle colonne qui garde un nom après le masque (deux
   personnes au même nom complet) arrête l'échappée : échec fermé.
+- **Lot 2 : une échappée d'avant les pseudonymes est écartée, pas toute la
+  fabrication** : la fabrication se fait avec les échappées masquées si elles
+  sont au moins trois ; sinon l'échec dit « échappée antérieure aux
+  pseudonymes » et les identifiants écartés. `completerGeste` ne change pas :
+  il acceptait déjà un identifiant pour un paramètre `agent`.
+- **Lot 2 : une phrase de plus au système de la fabrication** (« une
+  personne est écrite par son identifiant (A-1), qui tient lieu de son nom
+  ; … le geste rend agents.nom ») : sans elle, le modèle qui lit « A-1 a fait
+  24 h » rendrait l'identifiant, et le rejeu (texte montré, vrais noms)
+  échouerait.
 - **Lot 1 : un agent masque aussi le nom d'un collègue** (S7 l'emporte sur
   « une autre reste » du § 5.3) : la consigne et la copie se masquent avec
   **toutes** les personnes du client (`EchappeeDuMetier.toutes`), sinon E-11

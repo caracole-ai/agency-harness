@@ -188,6 +188,8 @@ export function systemeFabriquer(
     '',
     'Les tests : une entrée par demande, avec les valeurs que cette demande donne à chaque paramètre.',
     '',
+    'Dans les demandes et les réponses, une personne est écrite par son identifiant (A-1), qui tient lieu de son nom ; les données que le geste lira portent les vrais noms (agents.nom) : là où une réponse cite une personne, le geste rend agents.nom.',
+    '',
     'Les tables (SQLite) :',
     tables,
     '',
@@ -211,8 +213,21 @@ const aParis = (horodatage: string) => Temporal.Instant.from(horodatage).toZoned
 
 const deux = (n: number) => String(n).padStart(2, '0')
 
-/** Le message : les échappées entières entre les balises des données (P10). */
-export function messageFabriquer(echappees: EchappeeJournalisee[]): string {
+/** Une échappée faite depuis les pseudonymes : ce que le modèle a lu et écrit, sans aucun nom, est au journal. */
+export type EchappeeMasquee = EchappeeJournalisee & { consigneModele: string; texteModele: string }
+
+/** Le motif d'une échappée d'avant les pseudonymes : on ne refabrique pas avec des noms (PLAN-PSEUDONYMES.md § 6). */
+export const ANTERIEURE = 'échappée antérieure aux pseudonymes'
+
+const estMasquee = (e: EchappeeJournalisee): e is EchappeeMasquee =>
+  e.consigneModele !== undefined && e.texteModele !== undefined
+
+/**
+ * Le message : les échappées entières entre les balises des données, telles
+ * que le modèle de l'échappée les a lues et écrites, sans aucun nom (P10,
+ * PLAN-PSEUDONYMES.md S5).
+ */
+export function messageFabriquer(echappees: EchappeeMasquee[]): string {
   const blocs = echappees.map((e) => {
     const z = aParis(e.horodatage)
     const { lundi, dimanche } = semaineDe(z)
@@ -221,7 +236,7 @@ export function messageFabriquer(echappees: EchappeeJournalisee[]): string {
       `### ${e.echappee}`,
       `Demandeur : ${e.role === 'patron' ? 'le patron' : `l'agent ${e.agent ?? '?'}`}`,
       `Moment : ${moment}`,
-      `Consigne : ${e.consigne}`,
+      `Consigne : ${e.consigneModele}`,
       ...e.requetes.flatMap((r, i) => [
         `Requête ${i + 1} :`,
         r.sql,
@@ -229,7 +244,7 @@ export function messageFabriquer(echappees: EchappeeJournalisee[]): string {
         r.erreur !== undefined ? `erreur : ${r.erreur}` : r.sortie,
       ]),
       'Réponse montrée :',
-      e.texte,
+      e.texteModele,
     ].join('\n')
   })
   return [
@@ -570,7 +585,9 @@ export function messageRelance(
  * ou l'échec. Jamais plus de deux appels.
  */
 export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabrication> {
-  const reponses = cadre.echappees.filter((e) => e.issue === 'reponse')
+  const toutes = cadre.echappees.filter((e) => e.issue === 'reponse')
+  const reponses = toutes.filter(estMasquee)
+  const anciennes = toutes.filter((e) => !estMasquee(e)).map((e) => e.echappee)
   let usage = USAGE_NUL
   let usageBorne = false
   let appels = 0
@@ -584,7 +601,10 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     relance: appels > 1,
   })
   if (reponses.length < TESTS_MIN) {
-    return echec(`${reponses.length} réponse(s) finie(s) proprement, ${TESTS_MIN} au moins`)
+    const ecartees = anciennes.length > 0 ? ` (${ANTERIEURE} : ${anciennes.join(', ')})` : ''
+    return echec(
+      `${reponses.length} réponse(s) finie(s) proprement, ${TESTS_MIN} au moins${ecartees}`,
+    )
   }
   const roles = [...new Set(reponses.map((e) => e.role))]
   const systeme = systemeFabriquer(
