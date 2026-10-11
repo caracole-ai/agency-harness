@@ -53,13 +53,15 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   appris**, une donnée (paramètres typés, SQL paramétré sur la copie du rôle,
   gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
   rejeu sur l'instantané de la copie, activée par un humain avec une clé.
-  Lecture seule tant que Lionel n'a pas tranché l'écriture. Lots 0 (le journal
+  Lecture seule jusqu'au lot 4 (l'écriture, tranchée par G5). Lots 0 (le journal
   se souvient de chaque échappée), 1 (le geste appris, chargé et exécuté), 2
   (la fabrication par le modèle, vérifiée en code, mesurée) et 3 (l'atelier
   `pnpm gestes`, l'activation par le patron dans l'interface) faits le
-  2026-10-10 ; reste la relecture indépendante et la fusion (§ 9), puis le
-  lot 4 (l'écriture) sur décision de Lionel.
-- `PLAN-GENERAL.md` — **le grand plan** (2026-10-10, rien codé) : où on en
+  2026-10-10, relus par un sous-agent indépendant, corrigés et fusionnés
+  dans `main` le 2026-10-11 (`PLAN-GENERAL.md` phase A) ; le lot 4
+  (l'écriture) est la phase C du grand plan.
+- `PLAN-GENERAL.md` — **le grand plan** (2026-10-10 ; phase A faite le
+  2026-10-11, prochaine : B) : où on en
   est, les décisions G1 à G11 (fusion automatique sous huit conditions en
   code, retrait, clone de la nuit, mémoire dans le dépôt, fabrication,
   écriture, identité, journal chaîné, authentification, sauvegarde,

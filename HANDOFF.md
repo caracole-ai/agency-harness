@@ -7,6 +7,32 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-11 : `PLAN-GENERAL.md` phase A faite, lots 0 à 3 de la
+  promotion fusionnés dans `main` et poussés.** A1 : relecture indépendante
+  des lots 0 à 3 par un sous-agent en lecture seule (aucun bloquant, trois
+  importants, six mineurs), corrigés en un commit (`456582c`) : la relance de
+  la fabrication répond à chaque `tool_use` par un `tool_result` (sinon 400
+  chez Anthropic, déguisé en « injoignable ») ; le rejeu ne trouve plus un
+  nombre attendu dans une date (« 12 » dans « 2026-10-12 » laissait passer
+  une réponse fausse) ; une ligne `retiré` ne vaut que pour son empreinte
+  (retirer un doublon proposé ne tue plus le geste actif) ; les compteurs du
+  § 8 par nombre d'appels ; gabarit mal formé refusé ; `copieClient` filtre
+  sur le chemin relatif ; un geste appris à l'identifiant d'un geste codé est
+  écarté au chargement ; `test.instantane` ni absolu ni `..` ; une assertion
+  vide remplacée. A2 (`86bac1b`) : G4, les deux clauses ; **mesuré, GLM-5.3
+  via GMI** : `pnpm evals echappee` trois passes **53/54** (18 cas depuis le
+  lot 2 ; **41/42** sur les 14 d'avant, le seuil de G4) ; `pnpm evals
+  promotion` trois passes **1/3, 1/3, 0/3 : objectif 2/3 non atteint**
+  (troncatures au plafond `par_demande.tokens_sortie` de la config, la
+  réflexion de la fabrication s'allongeant avec la clause (b) ; l'échappée
+  ajoute encore du détail dans 7 réponses sur 21). Analyse : passe 16 de
+  `evals/erreurs-2026-10-08.md`. Par G4, une fabrication qui échoue finit à
+  l'atelier, et la ronde s'en saisira (phase D). A3 : `promotion/lot-3`
+  fusionnée dans `main` (`--no-ff`), poussée ; `pnpm check` vert sur `main`
+  (341 tests moteur, 119 métier, 20 interface). Choix faits faute de
+  consigne : « Phase A du plan général » plus bas. **Reste de la fin de
+  phase** : la relecture du mini-site et de la présentation (§ 0.7). **Puis
+  la phase B** (`PLAN-PSEUDONYMES.md`), dans une autre session.
 - **2026-10-10, nuit : `PLAN-GENERAL.md`, le grand plan, écrit ; rien
   codé.** Lionel a tranché contre la fusion humaine : la chaîne ronde →
   chantier → fusion → livraison est automatique, sous conditions en code
@@ -21,9 +47,8 @@ fichiers qu'il cite, si.
   → E (la nuit en continu, dix nuits d'observation) → F (sécurités) → G
   (veille, canal) → H (livraison) ; I = ce qui reste aux humains. **À
   exécuter par Claude Opus 5.5, effort élevé. A0 (commiter les plans sur
-  `main` et pousser) est fait le 2026-10-11 ; commencer par A1.** Les lots
-  0 à 3 de la promotion sont sur les branches `promotion/lot-0` à `lot-3`,
-  non poussées, pas encore fusionnées (phase A). Le mini-site dit tout cela
+  `main` et pousser) est fait le 2026-10-11 ; la phase A aussi (ligne
+  précédente).** Le mini-site dit tout cela
   comme décidé, pas construit. La présentation (diapositive 10) n'est pas
   reprise.
 - **2026-10-10, soir : deux plans écrits, rien codé.** `PLAN-PSEUDONYMES.md`
@@ -259,7 +284,9 @@ remplacement validé par le patron et la délégation (`pnpm remplacer`).
 ## `PLAN-PROMOTION.md` : l'avancement
 
 Un lot = une branche `promotion/lot-N` partie de la précédente = un commit,
-pas de push (§ 1.2 du plan).
+pas de push (§ 1.2 du plan). **Les quatre lots, la relecture indépendante et
+G4 sont fusionnés dans `main` et poussés le 2026-10-11** (`PLAN-GENERAL.md`
+phase A, qui lève l'interdiction de pousser).
 
 - **Lot 0 (le journal se souvient de l'échappée)** fait le 2026-10-10,
   branche `promotion/lot-0` : `moteur/src/echappee/requete.ts`
@@ -358,9 +385,9 @@ pas de push (§ 1.2 du plan).
   § 8 (renvoi). Tests : `atelier.test.ts` (nouveau, 12), `traduction.test.ts`
   (+1 : `passeTraduction` sur le modèle simulé), `serveur.test.ts` (+5),
   `evals.test.ts` du métier (+4). Mesure : voir « Où on en est ».
-- Reste : la relecture indépendante de tout le chantier par un sous-agent en
-  lecture seule, ses corrections, puis la fusion dans `main` (§ 9) ; le lot 4
-  attend une décision de Lionel (§ 10).
+- Relecture indépendante, corrections et fusion (§ 9) : faites le
+  2026-10-11 (`PLAN-GENERAL.md` A1 à A3). Le lot 4 (l'écriture) est tranché
+  par G5 : c'est la phase C du grand plan.
 
 ## `PLAN-ESPACES.md` : l'avancement
 
@@ -606,13 +633,11 @@ piégées, AP-4, et cette sévérité du contrôle des noms.
    seuil (41/42 sur trois passes, le 2026-10-09 au soir) : le plan peut
    commencer. Les choix du § 11 sont tranchés le 2026-10-10 (le patron
    active ; une relance à la fabrication ; le reste confirmé). **Lots 0 à 3
-   faits le 2026-10-10** sur `promotion/lot-0` à `promotion/lot-3` (non
-   poussées, chacune partie de la précédente). **Reste le § 9** : une
-   relecture indépendante de tout le chantier (un sous-agent en lecture
-   seule, comme le 2026-10-08), ses corrections, puis la fusion dans `main`
-   et le push ; et deux décisions de Lionel : la sévérité du rejeu (l'éval de
-   fabrication fait 0/3 parce que GLM répond plus long que la question, voir
-   « Lot 2 de la promotion ») et le lot 4 (l'écriture, § 10).
+   faits le 2026-10-10, relus, corrigés et fusionnés dans `main` le
+   2026-10-11** (`PLAN-GENERAL.md` phase A). Les deux décisions qui
+   restaient sont prises par le grand plan : le rejeu reste strict et
+   l'échappée est priée de répondre court (G4, mesuré : passe 16) ; le
+   lot 4 se fait (G5, phase C).
 1. ~~Relancer les deux passes GLM~~ : passe 3 faite le 2026-10-09 (la clé
    se retrouve dans le transcript du 2026-10-08, voir la mémoire du projet) ; Lionel a tranché le 2026-10-08 : pas de
    nouvelle clé ni de révocation pour l'instant (« stade du laboratoire »),
@@ -1301,6 +1326,48 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
   réelle, `validation.le` = aujourd'hui.
 - **Le mini-site et la présentation ne sont pas touchés** (§ 7.4 : avec
   Lionel, ce sont ses artefacts) ; la phrase juste est celle de P15.
+
+### Phase A du plan général (`PLAN-GENERAL.md` § 3, 2026-10-11)
+
+- **« Le dossier le dit » pour `compter_vacations`** : un champ
+  `impossible: <motif>` sur le cas dans `evals/promotions.yaml` (schéma
+  `CasPromotion`), que le lanceur écrit en tête des écarts du résultat
+  (« impossible par construction : … »). Le cas compte toujours dans le
+  dénominateur (3) : l'objectif 2/3 suppose donc les deux autres.
+- **Le seuil de l'échappée** : « 41/42 » valait pour 14 cas sur trois
+  passes ; le lot 2 en a ajouté 4 (E-15 à E-18). Lu comme « au plus un écart
+  sur trois passes » : 53/54 sur les 18, 41/42 sur les 14 d'origine.
+- **Trois passes de promotion au lieu d'une** : la première (1/3) ne
+  suffisait pas à conclure (la règle des passes 7 à 12 : jamais sur une
+  passe). 0,64 $ en tout.
+- **Relecture A1, défaut 7b non corrigé** : le test « sans modèle : aucun
+  appel » (`promouvoir.test.ts`) ne passe pas de simulé qui compte ses
+  appels, parce que sans modèle passé l'appel est impossible par le type ;
+  le test vérifie déjà le journal (aucune ligne `appel`) et `gestes/` absent.
+- **`contient` masque les plages qui ne sont pas des quantités** (dates,
+  heures, identifiants, années), exactement celles que `citations` écarte :
+  symétrique, et plus strict (un geste qui rendrait « 16h » collé ne passe
+  plus « 16 »). Une ligne `retiré` sans jeton (aucune n'existe hors des
+  tests : `retirerGeste` l'écrit toujours) ne compte plus.
+- **L'identifiant d'un geste codé** est refusé au chargement (écarté,
+  `refusé`, alerte G-01), pas à l'activation : l'échec reste fermé et un
+  seul endroit le garde.
+- **La clé GMI** : absente de l'environnement, extraite du transcript du
+  2026-10-08 vers un fichier 600 du scratchpad, comme la mémoire du projet
+  le dit ; jamais affichée.
+- **Les branches `promotion/lot-0` à `lot-3`** ne sont pas supprimées :
+  elles ne contiennent plus rien que `main` n'ait (le critère), et
+  supprimer une branche est un geste que les garde-fous laissent à Lionel.
+
+Pièges vus pendant la phase :
+
+- **`npx vitest run` passé par RTK écrit `moteur/.vitest/json/output.json`**,
+  que `biome check .` refuse ensuite (format) : le supprimer, ou lancer
+  vitest par `rtk proxy`.
+- **La fabrication de GLM touche le plafond de la config** depuis la
+  clause G4 (b) : 41 000 caractères de réflexion pour `heures_par_agent`.
+  Une « réponse tronquée » à la fabrication se lit dans la trace
+  (`stop_reason: max_tokens`, `sortie` = `par_demande.tokens_sortie`).
 
 ## Commandes
 
