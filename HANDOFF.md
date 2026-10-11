@@ -30,9 +30,16 @@ fichiers qu'il cite, si.
   l'atelier, et la ronde s'en saisira (phase D). A3 : `promotion/lot-3`
   fusionnée dans `main` (`--no-ff`), poussée ; `pnpm check` vert sur `main`
   (341 tests moteur, 119 métier, 20 interface). Choix faits faute de
-  consigne : « Phase A du plan général » plus bas. **Reste de la fin de
-  phase** : la relecture du mini-site et de la présentation (§ 0.7). **Puis
-  la phase B** (`PLAN-PSEUDONYMES.md`), dans une autre session.
+  consigne : « Phase A du plan général » plus bas. Fin de phase (§ 0.7) :
+  le mini-site (version 13) dit la promotion construite et fusionnée le
+  11/10, la fabrication à 2 sur 9 (plus « à trancher »), 480 tests ; la
+  présentation (version 23) reprend la diapositive 6 (espace 3), la
+  diapositive 10 (le modèle fabrique, le code vérifie par rejeu, le patron
+  active ; l'atelier pour le reste) et la 12 (la promotion existe). Restent
+  « décidés » les pseudonymes et la ronde. Non repris (hors du « décidé →
+  construit ») : « 74 cas d'évals » (il y en a 82 depuis le lot 2) et « la
+  passe 3 avec GLM » dans la diapositive 12. **Prochaine : la phase B**
+  (`PLAN-PSEUDONYMES.md`), dans une autre session.
 - **2026-10-10, nuit : `PLAN-GENERAL.md`, le grand plan, écrit ; rien
   codé.** Lionel a tranché contre la fusion humaine : la chaîne ronde →
   chantier → fusion → livraison est automatique, sous conditions en code
@@ -48,9 +55,7 @@ fichiers qu'il cite, si.
   (veille, canal) → H (livraison) ; I = ce qui reste aux humains. **À
   exécuter par Claude Opus 5.5, effort élevé. A0 (commiter les plans sur
   `main` et pousser) est fait le 2026-10-11 ; la phase A aussi (ligne
-  précédente).** Le mini-site dit tout cela
-  comme décidé, pas construit. La présentation (diapositive 10) n'est pas
-  reprise.
+  précédente).** Le mini-site dit le reste comme décidé, pas construit.
 - **2026-10-10, soir : deux plans écrits, rien codé.** `PLAN-PSEUDONYMES.md`
   (le fournisseur ne reçoit plus aucun nom, même dans l'échappée et la
   fabrication : l'identifiant tient lieu de nom dans la copie, la consigne
