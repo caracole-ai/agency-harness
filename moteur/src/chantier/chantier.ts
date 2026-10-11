@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
 import {
@@ -214,8 +214,13 @@ export async function faireChantier<S>(
       )
 
     if (decision.sorte !== 'chantier') {
-      writeFileSync(dossier, rendreDecision(mission, decision, jour))
-      if (!o.sansModele) journaliser(decision.motif, { decision: decision.sorte, cout_usd: 0 })
+      // La même décision le même jour : rien de plus au journal (la nuit relancée ne refait rien).
+      const contenu = rendreDecision(mission, decision, jour)
+      const deja = existsSync(dossier) && readFileSync(dossier, 'utf8') === contenu
+      writeFileSync(dossier, contenu)
+      if (!o.sansModele && !deja) {
+        journaliser(decision.motif, { decision: decision.sorte, cout_usd: 0 })
+      }
       return { sorte: 'decision', decision, dossier }
     }
 

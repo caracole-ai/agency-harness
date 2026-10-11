@@ -13,8 +13,12 @@ fichiers qu'il cite, si.
   --client`), `moteur/src/chantier/{mission,arbre,garde,fusion,chantier}.ts`,
   `methode/chantier.md`, `agence.yaml: depot_nuit`, tests en simulé (G1 :
   une fusion sous huit conditions vertes, un refus par condition rouge ; G2 :
-  un retrait qui défait ; R11 : `fusion.ts` refuse hors du clone). Les choix
-  et les mesures réelles : « Phase D, session D2 », plus bas.
+  un retrait qui défait ; R11 : `fusion.ts` refuse hors du clone). Lot 3
+  fait : `pnpm nuit --client [--date]` (`moteur/src/chantier/nuit.ts` :
+  clone remis à `origin/main`, promotions → ronde → au plus une mission,
+  ligne de `MESURES.md` ; idempotente ; la ligne cron dans le README, rien
+  d'installé). Les choix et les mesures réelles : « Phase D, session D2 »,
+  plus bas.
 - **2026-10-11, nuit : phase D, session D1 faite (lots 0 et 1 de
   `PLAN-RONDE.md`)**, branche `general/d-ronde` partie de `main`, deux
   commits (`Ronde, lot 0 : …`, `Ronde, lot 1 : …`), **pas poussée, pas

@@ -92,7 +92,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   D1 : lots 0 (config de l'agence, carte, mémoire) et 1 (la ronde, `pnpm
   ronde`, `pnpm evals ronde`) faits le 2026-10-11, branche `general/d-ronde` ;
   session D2 : lot 2 (le chantier, `pnpm chantier`, la fusion et le retrait
-  dans le clone de la nuit) fait le 2026-10-11.
+  dans le clone de la nuit) et lot 3 (la nuit, `pnpm nuit`) faits le
+  2026-10-11.
 - `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
   secret) : le modèle de chaque rôle (ronde, plan, implémentation, relecture)
   et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
@@ -254,7 +255,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   dans `main` du clone, l'étiquette, le push, la mémoire commise à part ; le
   retrait par `git revert -m 1` ; le seul module qui fusionne ou pousse),
   `chantier.ts` (plan → implémentation → garde → `pnpm check` → relecture →
-  une reprise au plus → honnêteté → dossier → mémoire → fusion).
+  une reprise au plus → honnêteté → dossier → mémoire → fusion), `nuit.ts`
+  (le clone remis à `origin/main`, promotions → ronde → chantier, la ligne de
+  la nuit ; idempotente).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
   dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
@@ -434,6 +437,17 @@ pnpm chantier retirer <id> --motif "<texte>" --client <copie>
                          # G2 : git revert -m 1 de la fusion sur main du clone, push, la mémoire
                          # (motif, intentions : la ronde ne la repropose pas, même sous un autre
                          # nom), la ligne « retiré » au journal du client.
+pnpm nuit --client <copie> [--date 2026-10-10]
+                         # la nuit (PLAN-RONDE.md § 7) : le clone de la nuit remis à origin/main
+                         # (fetch + reset --hard, ce clone seulement ; sale ou arbre courant : la
+                         # nuit s'arrête avant tout appel), puis pnpm promotions → la ronde (sa
+                         # mémoire écrite et poussée depuis le clone) → le chantier de la première
+                         # mission non traitée, au plus missions_max_par_nuit (une mission en
+                         # attente de promotion ne compte pas) → la ligne de la nuit dans
+                         # memoire/MESURES.md. Une étape qui échoue n'arrête pas les suivantes ;
+                         # relancée la même nuit, elle ne refait rien. Rien n'est installé ; au
+                         # cron de l'agence (phase E, pas avant la bascule vers la clé d'API) :
+                         # 0 3 * * * cd <clone d'un humain> && pnpm nuit --client <dossier du client>
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,

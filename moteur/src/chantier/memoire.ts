@@ -291,6 +291,19 @@ export function ajouterMesure(
   ajouter(dossier(racine, FICHIER_MESURES), ligne)
 }
 
+/** Les lignes de `MESURES.md` : la date et le client de chaque nuit. */
+export function lireMesures(racine: string): { date: string; client: string }[] {
+  const chemin = dossier(racine, FICHIER_MESURES)
+  if (!existsSync(chemin)) return []
+  return readFileSync(chemin, 'utf8')
+    .split('\n')
+    .filter((l) => l.startsWith('- ') && l.includes(SEP))
+    .map((l) => {
+      const [date = '', client = ''] = l.slice(2).split(SEP)
+      return { date, client }
+    })
+}
+
 /** `CONVENTIONS.md`, tel quel (vide s'il n'existe pas). */
 export function lireConventions(racine: string): string {
   const chemin = dossier(racine, FICHIER_CONVENTIONS)
