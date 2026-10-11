@@ -91,6 +91,14 @@ describe('écrire et relire la mémoire', () => {
       rondes_jours: 7,
     })
     expect(lu.rondes).toHaveLength(1)
+    expect(lu.index).toHaveLength(1)
+    // Le jour même : ni la ronde ni sa ligne d'index (une ronde refaite ne se relit pas).
+    expect(
+      pourRonde(r, CLIENT, Temporal.PlainDate.from('2026-10-12'), {
+        index_lignes: 60,
+        rondes_jours: 7,
+      }).index,
+    ).toHaveLength(0)
     expect(lu.rondes[0]).not.toContain('client essai')
     expect(lu.index[0]).not.toContain('client essai')
     // Le jour même et au-delà de la fenêtre : pas relue.

@@ -33,6 +33,23 @@ export const CONTROLE_RETIRE = 'résumé du modèle retiré'
 /** Le motif d'abandon montré quand celui du modèle cite une donnée non vérifiée. */
 export const MOTIF_RETIRE = "le modèle s'est arrêté sans réponse vérifiable"
 
+/**
+ * Les motifs d'abandon écrits par le code (un préfixe, pour ceux qui portent
+ * un détail) : la ronde de nuit les compte par motif sans jamais lire le
+ * texte libre d'un modèle (PLAN-RONDE.md R2).
+ */
+export const MOTIFS_ABANDON = {
+  tours: 'plafond de tours atteint',
+  tokens: 'plafond de tokens de sortie atteint',
+  temps: 'plafond de temps atteint',
+  injoignable: 'le modèle est injoignable',
+  refus: 'le modèle a refusé',
+  tronquee: 'réponse tronquée',
+  suspendu: 'tour suspendu, non prévu',
+  sans_outil: 'le modèle a fini sans répondre par un outil',
+  retire: MOTIF_RETIRE,
+} as const
+
 export type IssueEchappee =
   | {
       sorte: 'reponse'
@@ -86,7 +103,7 @@ const OUTIL_ABANDONNER = 'abandonner'
 const FINS = new Set([OUTIL_REPONDRE, OUTIL_PROPOSER, OUTIL_ABANDONNER])
 const FIN_PAS_SEULE =
   'un outil de fin (repondre, proposer, abandonner) vient seul, après avoir lu les résultats : rappelle-le seul au tour suivant'
-const SANS_OUTIL = 'le modèle a fini sans répondre par un outil'
+const SANS_OUTIL = MOTIFS_ABANDON.sans_outil
 /**
  * Un modèle qui finit par du texte est relancé une fois (vu trois fois sur trois
  * passes GLM, la réponse juste dans le texte) ; au second texte, abandon.
@@ -225,9 +242,9 @@ export async function boucle<Modif>(
   })
 
   for (let tour = 1; ; tour++) {
-    if (tour > bornes.tours) return abandon('plafond de tours atteint')
-    if (usage.sortie >= bornes.tokensSortie) return abandon('plafond de tokens de sortie atteint')
-    if (Date.now() - debut > bornes.secondes * 1000) return abandon('plafond de temps atteint')
+    if (tour > bornes.tours) return abandon(MOTIFS_ABANDON.tours)
+    if (usage.sortie >= bornes.tokensSortie) return abandon(MOTIFS_ABANDON.tokens)
+    if (Date.now() - debut > bornes.secondes * 1000) return abandon(MOTIFS_ABANDON.temps)
 
     let reponse: ReponseModele
     try {
@@ -243,7 +260,7 @@ export async function boucle<Modif>(
         unSeulOutil: true,
       })
     } catch (erreur) {
-      return abandon(`le modèle est injoignable : ${message(erreur)}`)
+      return abandon(`${MOTIFS_ABANDON.injoignable} : ${message(erreur)}`)
     }
     appels++
     usage = additionner(usage, reponse.usage)
@@ -251,10 +268,10 @@ export async function boucle<Modif>(
 
     const m = reponse.message
     if (m.stop_reason === 'refusal') {
-      return abandon(`le modèle a refusé (${m.stop_details?.category ?? '?'})`)
+      return abandon(`${MOTIFS_ABANDON.refus} (${m.stop_details?.category ?? '?'})`)
     }
-    if (m.stop_reason === 'max_tokens') return abandon('réponse tronquée')
-    if (m.stop_reason === 'pause_turn') return abandon('tour suspendu, non prévu')
+    if (m.stop_reason === 'max_tokens') return abandon(MOTIFS_ABANDON.tronquee)
+    if (m.stop_reason === 'pause_turn') return abandon(MOTIFS_ABANDON.suspendu)
     // Un fournisseur peut ignorer « un seul outil par tour » : chaque appel reçoit
     // son résultat, tous dans un seul message, sinon la conversation est invalide.
     const blocs = m.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')

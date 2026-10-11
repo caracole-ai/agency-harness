@@ -7,14 +7,60 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
-- **2026-10-11, nuit : phase D, session D1, lot 0 fait** (branche
-  `general/d-ronde`, partie de `main`, pas poussée) : `agence.yaml` (les
-  quatre rôles en `acces: claude`, prix Fable 5.1 et Opus 5.5 relus ce jour
-  dans la doc d'Anthropic), `moteur/src/agence/config.ts` (schéma strict,
-  préflight au moment de l'appel), `methode/architecture-pour-modeles.md` et
-  son test (aucun nom ni identifiant du client fictif), `memoire/` et
-  `moteur/src/chantier/memoire.ts` (R10), le test de fuite sur tout
-  `memoire/`. Le lot 1 suit dans la même session.
+- **2026-10-11, nuit : phase D, session D1 faite (lots 0 et 1 de
+  `PLAN-RONDE.md`)**, branche `general/d-ronde` partie de `main`, deux
+  commits (`Ronde, lot 0 : …`, `Ronde, lot 1 : …`), **pas poussée, pas
+  fusionnée** : la session D2 fait les lots 2 et 3, la relecture
+  indépendante et la fusion (`SESSION-D.md`). `pnpm check` vert : 460 tests
+  moteur (+62), 131 métier, 20 interface.
+  - Lot 0 : `agence.yaml` (les quatre rôles en `acces: claude` ; prix Fable
+    5.1 et Opus 5.5 relus le 2026-10-11 dans la doc d'Anthropic),
+    `moteur/src/agence/config.ts` (schéma strict, préflight au moment de
+    l'appel : `ANTHROPIC_API_KEY` absente et `claude auth status` connecté,
+    sinon refus qui le dit), `methode/architecture-pour-modeles.md` et son
+    test, `memoire/` et `moteur/src/chantier/memoire.ts` (R10) avec le test de
+    fuite sur tout `memoire/`.
+  - Lot 1 : `moteur/src/ronde/` (`resume.ts`, `rapport.ts`, `ronde.ts`),
+    `moteur/src/chantier/claude.ts` (`lancerClaude`, `--json-schema`,
+    `--tools ""`), `pnpm ronde --client --date [--depuis] [--refaire]
+    [--sans-modele] [--verifier-modeles]`, `pnpm evals ronde`
+    (`evals/rondes.yaml`, journaux fixés dans `evals/rondes/`, étiquettes en
+    **brouillon**).
+  - **Le critère, avec Fable 5.1 par le binaire (abonnement), coût estimé par
+    le binaire** : sur une copie du client fictif dont le journal porte 20
+    consignes réelles des 9 et 10 octobre (`pnpm parler`, GLM-5.3 via GMI :
+    `pnpm evals echappee` ne remplit pas le journal de la source, voir
+    « Phase D, session D1 »), `pnpm ronde --date 2026-10-10` écrit
+    `rondes/2026-10-10.md`, `.json`, `rondes/2026-10-10/<id>.yaml`, une ligne
+    `ronde` au journal avec des comptes seulement (`fenetre`, `conversations`,
+    `demandes`, `missions`, `cout_usd`, `cout_estime`, `fuite`) ; fuite 0 ;
+    `--sans-modele` montre le résumé sans appel ; relancée, « déjà faite » ;
+    `--refaire` refait. **Trois passes réelles** : 0,28 $, 0,23 $, 0,37 $ ;
+    les trois désignent **la même mission** (une `factorisation` de
+    `agents_sans_carte` et `cartes_expirees`, en lisant que le patron a lancé
+    `voir_echeances` trois fois juste après), sous trois noms différents ;
+    `heures_par_agent` et `simuler_absence`, au seuil, dites « promotion en
+    cours » par le modèle lui-même. Une quatrième passe sur le code final
+    (après les corrections ci-dessous) : la même mission, 0,13 $. Analyse :
+    passe 19 de `evals/erreurs-2026-10-08.md`.
+  - **`pnpm evals ronde`, trois passes : 3/3, 3/3, 2/3, fuite 0, 0,19 à
+    0,34 $ la passe (estimé) — brouillon, pas une mesure** (étiquettes de la
+    session ; Lionel les remplace). L'écart (R-2, passe 3) : le modèle
+    s'abstient de la factorisation, « vues une fois chacune, trop tôt », ce
+    que dit la carte : l'étiquette du brouillon est discutable.
+  - Trois défauts trouvés dans les traces des passes réelles, corrigés : une
+    ronde refaite relisait ses passes du jour dans l'index de la mémoire ; le
+    même travail sous trois noms n'aurait pas été reconnu comme « déjà
+    ouvert » (désormais aussi par les intentions) ; l'éval lisait la mémoire
+    du dépôt (une passe écartée pour ça).
+  - `pnpm ronde --verifier-modeles` : `claude-fable-5-1` et `claude-opus-5-5`
+    répondent par le binaire (≈ 0,01 $ chacun, estimé).
+  - **Rappel : la bascule de l'abonnement vers la clé d'API (`acces:
+    anthropic`) doit avoir lieu avant la finalisation, au plus tard avant la
+    phase E** ; la date est à Lionel. Le chemin `acces: anthropic` de la ronde
+    est codé et typé, jamais appelé.
+  - **Prochaine : la session D2** (`SESSION-D.md` : lots 2 et 3, relecture
+    indépendante de toute la branche, fusion `--no-ff` dans `main`, push).
 - **2026-10-11, soir : la phase D est prête, pas commencée.** `PLAN-RONDE.md`
   gagne un § 0 (amendements de Lionel après la phase C) : (a) au
   laboratoire, l'accès aux modèles d'Anthropic passe par **l'abonnement
@@ -862,6 +908,35 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Phase D, D1, les étiquettes de `pnpm evals ronde` sont un brouillon** :
+  écrites par la session avant les passes, sur trois journaux seulement (deux
+  « rien à signaler ») ; le résultat n'est pas une mesure. À Lionel :
+  relire chaque résumé (`pnpm ronde --sans-modele` sur une copie qui porte le
+  journal fixé), écrire ses missions, `etiquettes: lionel`, relancer.
+- **Phase D, D1, le coût d'une ronde** est « estimé par le binaire »
+  (0,23 à 0,37 $ sur Fable 5.1 pour une journée de 15 demandes), le double
+  de l'estimation du plan (≈ 6 000 tokens en entrée, 1 500 en sortie,
+  ≈ 0,14 $ aux prix de Fable) ; non mesuré sous la clé. Que `--effort high`
+  soit honoré en `-p` n'est pas vérifié.
+- **Phase D, D1, le chemin `acces: anthropic` de la ronde** (couche modèle,
+  outil strict, `assertEnv`) est codé et typé, jamais appelé ; le schéma du
+  rapport en mode strict chez Anthropic non plus.
+- **Phase D, D1, une mission retirée sous un autre nom** : la ronde écarte
+  une mission retirée par son identifiant seul (l'index de la mémoire ne
+  garde que lui) ; les trois passes ont nommé le même travail de trois façons.
+  Les missions ouvertes, elles, sont aussi écartées par leurs intentions. À
+  faire au lot 2 : la ligne `retrait` garde les intentions.
+- **Phase D, D1, la ronde ne voit pas les consignes des gestes** (R2) : elle
+  a deviné que `voir_echeances`, lancé trois fois juste après deux questions
+  sur les cartes, servait mal (deux des trois consignes demandaient les
+  habilitations électriques qui expirent et le recyclage SSIAP ; la
+  traduction les a envoyées au geste des échéances, qui rend toutes les
+  échéances) ; une demande mal servie par un geste n'est visible que par une
+  telle coïncidence.
+- **Phase D, D1, les journaux fixés portent des noms fictifs** (consignes
+  telles qu'écrites, textes montrés) : versionnés, comme `evals/echappees.yaml`
+  ; aucun ne part (fuite 0, mesurée avant l'appel).
+
 - **Phase C, aucune fabrication réelle d'un geste qui écrit n'a abouti**
   (6 sur 6 tronquées au plafond de la config) : le chemin « fabriqué,
   vérifié, écrit » d'une intention qui écrit n'est prouvé qu'en simulé
@@ -1708,7 +1783,92 @@ Pièges vus pendant la phase :
 - **`attend_lot_4`** disparaît de `Fabrication` (plus jamais produit) ; le
   compteur du § 8 dit « Non tentées (hors catalogue, plafond) ».
 
-Pièges vus pendant la phase :
+### Phase D, session D1 (`PLAN-RONDE.md` lots 0 et 1, 2026-10-11)
+
+Choix faits faute de consigne :
+
+- **`agence.yaml` porte en config ce que le plan écrit en prose** : le binaire
+  (`claude.binaire`), le délai mural de la ronde et du chantier, la sortie de
+  l'appel sous `acces: anthropic` (`ronde.tokens_sortie`), les 30 jours des
+  comptes, les 60 lignes d'index et les 7 jours de rondes que la ronde relit
+  (R10), `lignes_max` (G1, 600) ; `memoire/**` est dans
+  `chemins_autorises` (R10 : « dans les chemins autorisés du chantier »).
+  `depot_nuit` (G3) n'y est pas encore : le lot 2 l'ajoute.
+- **La ronde par le binaire est isolée** : `--system-prompt` (remplace celui
+  de Claude Code), `--tools ""`, `--setting-sources ""` (ni hooks ni
+  `CLAUDE.md` de l'utilisateur), `--strict-mcp-config`,
+  `--no-session-persistence`, dans un dossier temporaire vide. Vérifié par une
+  sonde : le modèle ne reçoit ni `CLAUDE.md` ni hook ; le binaire ajoute une
+  section d'environnement et un rappel qui porte l'adresse du compte (rien du
+  client). `--bare` est exclu : il exige la clé d'API.
+- **Le résumé se fait par demande, pas par conversation** (une ligne
+  `consigne` ou `echappee`) : un geste se montre sans consigne, ses
+  paramètres réduits à une date, un nombre, `<personne>` ou `<texte>` ; un
+  geste précédé de « vous parlez de qui ? » se compte à la réponse ; un « je
+  ne sais pas » montre sa consigne masquée par `masquerConsigne` (cachée si
+  elle reste ambiguë), jamais la raison du modèle ; un refus, le fait seul ;
+  un abandon, la catégorie de son motif (`MOTIFS_ABANDON`, exportés de
+  `boucle.ts`, mêmes chaînes), jamais le texte du modèle. Le coût du mois est
+  compté jusqu'à la date de la ronde (`coutDuMois` lisait tout le mois).
+- **`resumerJournal(journal, fenetre, personnes, comptes)`**, et le
+  catalogue à part (`construireCatalogue` dans `ronde.ts`) : il lit le métier
+  et le dossier du client. L'état de promotion d'une intention se lit dans
+  le journal jusqu'à la date : au seuil (échappées finies proprement sur la
+  fenêtre de la promotion) ou déjà proposée → « promotion en cours » ; la
+  dernière fabrication échouée (hors panne) ou écartée → « à coder à
+  l'atelier ». La ronde du critère tourne **sans** `pnpm promotions` avant
+  (c'est `pnpm nuit`, lot 3, qui les enchaîne) : `simuler_absence`, au seuil
+  sans dossier, est « promotion en cours ».
+- **La revalidation** : une faute du modèle (échappée hors fenêtre,
+  consigne-type avec identifiant ou nom, trop de missions, « rien à
+  signaler » incohérent, deux fois le même identifiant) refuse tout le
+  rapport (§ 5.2) ; l'état du catalogue écarte une mission en le disant
+  (mission retirée, déjà ouverte, identifiant d'un geste existant, intention
+  avec un geste actif, **mêmes intentions qu'une mission ouverte** : les
+  trois passes ont donné trois noms au même travail) ; « promotion en
+  cours » quand **toutes** les intentions de la mission sont au seuil (une
+  factorisation dont une seule l'est reste un chantier).
+- **Le coût de la ronde n'est pas une ligne `appel_modele`** : il est à
+  l'agence, pas au plafond du client (§ 2) ; il est dans la ligne `ronde`.
+- **La fuite se mesure avant l'appel** : si un nom partirait, rien ne part
+  (« refusée avant tout appel ») ; la colonne vaut donc 0 dès qu'un appel a
+  eu lieu.
+- **La mémoire** : la colonne « client » de l'index porte le nom du client
+  (pour Lionel) ; la ronde ne relit que les lignes de son client, sans cette
+  colonne, **d'avant le jour** (une ronde refaite relisait ses propres passes
+  du jour : vu aux passes 2 et 3, corrigé), et les rondes des 7 derniers
+  jours sans le nom du client dans le titre. Les trois passes réelles du
+  critère ont écrit `memoire/` dans le dépôt (trois lignes d'index, un
+  fichier de ronde) : gardées et commises, ce sont de vrais événements du
+  laboratoire.
+- **Le journal du critère** : `pnpm evals echappee` joue chaque cas sur une
+  copie fraîche qu'il efface, le journal de la source reste vide. Remplacé
+  par 24 consignes réelles (`pnpm parler`, GLM-5.3 via GMI, ≈ 0,3 $) sur deux
+  copies : 5 le 9, 15 le 10 (copie A), 4 gestes seuls le 11 (copie C).
+- **Les journaux fixés** (`evals/rondes/journal-a.json`, `journal-c.json`)
+  sont ces deux journaux, sans les lignes `outil_echappee` (les résultats de
+  requête) ; ils gardent les consignes et les textes montrés (noms fictifs)
+  pour que l'éval prouve qu'ils ne partent pas. `pnpm evals ronde` les rejoue
+  sur une copie fraîche, sans lire ni écrire `memoire/` ; ne compte que les missions
+  « à faire » ou « question pour l'atelier » ; précision et rappel, pas de
+  seuil.
+- **`memoire.ts` porte déjà `ecrireChantier`, `ajouterConvention`,
+  `ajouterMesure`, `chantiersCitant`** (R10 les met au lot 0) ; le lot 2 s'en
+  sert. Deux aides de test vivent dans `src/` : `agence/fictif.ts` (les
+  personnes du client fictif) et `ronde/essai.ts` (un métier et un journal
+  d'essai).
+
+Pièges vus pendant la session :
+
+- **Ici, `claude` est un relais de cmux** (`/var/folders/…/cmux-cli-shims/claude`)
+  ; `claude auth status` rend bien le JSON attendu.
+- **`--tools` prend des noms d'outils** (`Read,Bash`), les règles
+  (`Bash(pnpm check)`) vont dans `--allowedTools` : `argumentsClaude` fait la
+  différence (le chantier en aura besoin).
+- **Un dossier client sans `config.yaml`** fait échouer `faireRonde` (elle y
+  lit le métier pour les fichiers de mission).
+
+Pièges vus pendant la phase C :
 
 - **`npx biome check --write` passé par RTK** répond « No issues found » sans
   rien écrire : formater par `rtk proxy pnpm format`.
@@ -1734,5 +1894,8 @@ pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulem
 pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle
 pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]   # l'atelier ; --avec-modele coûte ≈ 0,15 $
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]   # onglet « Appris » : le patron active ou retire
+pnpm ronde --client <copie> --date AAAA-MM-JJ [--depuis …] [--refaire] [--sans-modele]   # la ronde de nuit (agence.yaml ; sous acces: claude, ANTHROPIC_API_KEY absente, coût estimé par le binaire)
+pnpm ronde --verifier-modeles   # un appel minuscule à chaque modèle de l'agence
+pnpm evals ronde --client exemples/client-fictif [--seulement R-2] [--modele simule]   # journaux fixés, étiquettes en brouillon : « brouillon, pas une mesure »
 # Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.
 ```

@@ -293,7 +293,7 @@ export const missionsRetirees = (racine: string): string[] =>
 
 /** Ce que la ronde lit de la mémoire (R10), pour un client : sans le nom d'aucun client. */
 export interface MemoirePourRonde {
-  /** Les dernières lignes de l'index de ce client, sans la colonne du client. */
+  /** Les dernières lignes de l'index de ce client avant aujourd'hui, sans la colonne du client. */
   index: string[]
   conventions: string
   /** Les rondes de ce client des derniers jours, avant aujourd'hui. */
@@ -307,8 +307,9 @@ export function pourRonde(
   aujourdhui: Temporal.PlainDate,
   bornes: { index_lignes: number; rondes_jours: number },
 ): MemoirePourRonde {
+  // Ce qui s'est passé avant aujourd'hui : une ronde refaite ne relit pas ses passes du jour.
   const index = lireIndex(racine)
-    .filter((e) => e.client === colonne(client))
+    .filter((e) => e.client === colonne(client) && e.date < aujourdhui.toString())
     .slice(-bornes.index_lignes)
     .map((e) => [e.date, e.sorte, e.id, e.titre, e.issue].join(SEP))
   const slug = slugClient(client)

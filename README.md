@@ -63,7 +63,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   comme une proposition d'échappée) fait le 2026-10-11, phase C du grand
   plan (G5).
 - `PLAN-GENERAL.md` — **le grand plan** (2026-10-10 ; phases A, B et C
-  faites le 2026-10-11, prochaine : D) : où on en
+  faites le 2026-10-11 ; D en cours : session D1 faite, D2 à faire) : où on en
   est, les décisions G1 à G11 (fusion automatique sous huit conditions en
   code, retrait, clone de la nuit, mémoire dans le dépôt, fabrication,
   écriture, identité, journal chaîné, authentification, sauvegarde,
@@ -89,7 +89,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   de la nuit est dans `memoire/` (R10). Dépend du lot 1 des pseudonymes.
   Quatre lots ; amendé le 2026-10-11 (§ 0 : au laboratoire, l'abonnement
   claude.ai par le binaire `claude`). Phase D de `PLAN-GENERAL.md`, session
-  D1 : lot 0 fait le 2026-10-11 (branche `general/d-ronde`).
+  D1 : lots 0 (config de l'agence, carte, mémoire) et 1 (la ronde, `pnpm
+  ronde`, `pnpm evals ronde`) faits le 2026-10-11, branche `general/d-ronde`,
+  pas fusionnée ; la session D2 fait le chantier, la nuit, la relecture et la
+  fusion.
 - `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
   secret) : le modèle de chaque rôle (ronde, plan, implémentation, relecture)
   et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
@@ -101,6 +104,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `CONVENTIONS.md` (on y ajoute, on n'en retire jamais), `MESURES.md`. Aucun
   nom ni identifiant de personne, de conversation ou d'échappée : un test de
   `pnpm check` relit tout le dossier.
+- `evals/rondes.yaml` et `evals/rondes/` — les cas de `pnpm evals ronde` :
+  des journaux fixés (copies du journal de deux copies du client fictif
+  remplies par de vraies consignes, sans les résultats de requête) et les
+  missions attendues, en **brouillon** de la session D1 (`etiquettes:
+  brouillon`) jusqu'aux étiquettes de Lionel.
 - `methode/architecture-pour-modeles.md` — la carte du harnais que lisent la
   ronde, le plan, l'implémentation et la relecture (`PLAN-RONDE.md` R6) :
   les bandes et qui y écrit, ce qu'est un geste, les deux étages, ce qu'un
@@ -214,6 +222,20 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   connecté ; sous `acces: anthropic`, la clé exigée. `src/chantier/memoire.ts`
   écrit et relit `memoire/` (R10) : une écriture qui porterait un nom ou un
   identifiant lève, le texte libre d'un modèle y entre nettoyé.
+  `src/ronde/` (`PLAN-RONDE.md` § 5, la ronde de nuit) : `resume.ts` fait en
+  code le résumé du journal sur une fenêtre de jours (par demande : le rôle, la
+  consigne version modèle, ce qu'elle est devenue ; une échappée sans
+  `consigne_modele` est comptée, pas montrée ; un geste sans valeur de
+  personne ni texte libre ; les comptes sur 30 jours, un abandon par la
+  catégorie de son motif), `rapport.ts` le schéma strict du rapport et la
+  revalidation en code, `ronde.ts` le catalogue (gestes, intentions et leur
+  état de promotion, missions ouvertes), le système, l'appel (par le binaire
+  ou par la clé selon `agence.yaml`, une relance sur un échec de forme), les
+  fichiers chez le client, la ligne au journal et la mémoire ; rien ne part si
+  un nom partirait. `src/chantier/claude.ts` lance le binaire `claude -p`
+  (préflight, ligne de commande, délai mural, JSON lu par un schéma) ; la
+  ronde s'en sert isolée (`--tools ""`, `--setting-sources ""`, ni MCP ni
+  session), le chantier (lot 2) s'en servira.
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
   dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
@@ -355,6 +377,28 @@ pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [-
                          # comptés en code (la consigne telle qu'écrite permise à la traduction),
                          # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
                          # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
+pnpm evals ronde --client exemples/client-fictif [--seulement R-1] [--modele simule]
+                         # la ronde contre des journaux fixés (evals/rondes/*.json) et les missions
+                         # attendues d'evals/rondes.yaml : précision, rappel, fuite ; le modèle
+                         # d'agence.yaml, memoire/ ni lue ni écrite. Étiquettes en brouillon
+                         # (session D1) : « brouillon, pas une mesure », jusqu'à celles de Lionel
+pnpm ronde --client <copie> --date 2026-10-10 [--depuis 2026-10-01] [--refaire] [--sans-modele]
+pnpm ronde --verifier-modeles
+                         # la ronde de nuit (PLAN-RONDE.md § 5) : le résumé du journal fait en code
+                         # (consignes version modèle, issues, comptes ; jamais une donnée, un nom,
+                         # un résultat ni un texte montré), le catalogue, la carte et la mémoire
+                         # partent au modèle « ronde » d'agence.yaml, qui désigne au plus
+                         # missions_max missions ; le code revalide (R3 : échappées de la fenêtre,
+                         # consignes-types sans identifiant ni nom, geste actif, mission ouverte
+                         # ou retirée, « promotion en cours ») ; écrit rondes/<date>.md, .json, une
+                         # mission par fichier rondes/<date>/<id>.yaml, la ligne « ronde » au
+                         # journal (des comptes), et memoire/. Une seconde fois pour la même date :
+                         # rien, sauf --refaire. --sans-modele : le résumé seul, aucun appel.
+                         # Sous acces: claude (le laboratoire), l'abonnement par le binaire
+                         # `claude` : ANTHROPIC_API_KEY doit être absente, le coût est « estimé
+                         # par le binaire » (≈ 0,2 à 0,4 $ par ronde sur Fable 5.1).
+                         # --verifier-modeles : un appel minuscule à chaque modèle de l'agence.
+                         # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,
                          # délégations, appris (activer ou retirer un geste appris), journal, et la

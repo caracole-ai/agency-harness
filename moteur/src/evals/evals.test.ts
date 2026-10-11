@@ -1,15 +1,26 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
+import { parse } from 'yaml'
+import { z } from 'zod'
 import type { IssueEchappee } from '../echappee/boucle'
 import { USAGE_NUL } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import {
   bilan,
   ecartsEchappee,
+  ecartsRonde,
   ecartsTraduction,
+  FichierRondes,
   fuiteDe,
+  LigneFixee,
+  type MissionProposee,
   modeleTrace,
   rendreResultats,
+  rendreRonde,
   textesEnvoyes,
+  trouvee,
 } from './evals'
 
 // Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9) ;
@@ -310,5 +321,90 @@ describe('la fuite (PLAN-PSEUDONYMES.md § 7)', () => {
     expect(texte).toContain('| A | ok | 0 | 0.0000 |')
     expect(texte).toContain('| B | ok | Aïcha | 0.0000 |')
     expect(rendreResultats('Évals', 'simulé', [r('A')], 0.5)).not.toContain('Fuite')
+  })
+})
+
+describe('la ronde (PLAN-RONDE.md § 5.4)', () => {
+  const attendue = {
+    sorte: 'factorisation' as const,
+    intentions: ['agents_sans_carte', 'cartes_expirees'],
+    echappees: ['E-1', 'E-2', 'E-3'],
+  }
+  const proposee = (x: Partial<MissionProposee> = {}): MissionProposee => ({
+    id: 'cartes',
+    sorte: 'factorisation',
+    intentions: ['agents_sans_carte', 'cartes_expirees', 'autre'],
+    echappees: [],
+    ...x,
+  })
+  const ECHECS = ['ronde échouée']
+
+  it('trouvée par sorte et intentions, ou par deux échappées ; jamais par une autre sorte', () => {
+    expect(trouvee(attendue, proposee())).toBe(true)
+    expect(
+      trouvee(attendue, proposee({ intentions: ['agents_sans_carte'], echappees: ['E-1', 'E-3'] })),
+    ).toBe(true)
+    expect(
+      trouvee(attendue, proposee({ intentions: ['agents_sans_carte'], echappees: ['E-1'] })),
+    ).toBe(false)
+    expect(trouvee(attendue, proposee({ sorte: 'geste_code' }))).toBe(false)
+  })
+
+  it('précision et rappel : une juste, une en trop, une attendue manquée', () => {
+    const autre = { sorte: 'geste_code' as const, intentions: ['simuler_absence'], echappees: [] }
+    const b = ecartsRonde(
+      { rien_a_signaler: false, missions: [attendue, autre] },
+      'faite',
+      [proposee(), proposee({ id: 'x', sorte: 'intention_nouvelle', intentions: ['paie'] })],
+      ECHECS,
+    )
+    expect(b).toMatchObject({ attendues: 2, trouvees: 1, proposees: 2, justes: 1 })
+    expect(b.ecarts).toEqual([
+      'attendue non trouvée : geste_code (simuler_absence)',
+      'en trop : x (intention_nouvelle ; paie)',
+    ])
+  })
+
+  it('rien à signaler : juste sans mission ; une ronde échouée est un écart', () => {
+    expect(
+      ecartsRonde({ rien_a_signaler: true, missions: [] }, 'rien à signaler', [], ECHECS).ecarts,
+    ).toEqual([])
+    expect(
+      ecartsRonde({ rien_a_signaler: true, missions: [] }, 'faite', [proposee()], ECHECS).ecarts[0],
+    ).toMatch(/rien à signaler attendu/)
+    expect(
+      ecartsRonde({ rien_a_signaler: true, missions: [] }, 'ronde échouée', [], ECHECS).ecarts,
+    ).toEqual(['ronde : ronde échouée'])
+  })
+
+  it('le tableau dit « brouillon, pas une mesure » tant que les étiquettes sont un brouillon', () => {
+    const cas = [
+      {
+        id: 'R-1',
+        ecarts: [],
+        coutUsd: 0.25,
+        strict: false,
+        fuite: [],
+        estime: true,
+        bilan: { ecarts: [], attendues: 1, trouvees: 1, proposees: 1, justes: 1 },
+      },
+    ]
+    const brouillon = rendreRonde('t', 'm', 'brouillon', cas)
+    expect(brouillon).toContain('brouillon, pas une mesure')
+    expect(brouillon).toContain('estimé par le binaire')
+    expect(brouillon).toContain('Précision : 100 %')
+    expect(rendreRonde('t', 'm', 'lionel', cas)).not.toContain('brouillon')
+  })
+
+  it('evals/rondes.yaml et ses journaux fixés se lisent', () => {
+    const racine = fileURLToPath(new URL('../../../evals/', import.meta.url))
+    const fichier = FichierRondes.parse(parse(readFileSync(join(racine, 'rondes.yaml'), 'utf8')))
+    expect(fichier.cas.some((c) => c.attendu.rien_a_signaler)).toBe(true)
+    expect(fichier.cas.length).toBeGreaterThanOrEqual(3)
+    for (const nom of Object.values(fichier.journaux)) {
+      const lignes = z.array(LigneFixee).parse(JSON.parse(readFileSync(join(racine, nom), 'utf8')))
+      // Aucun résultat de requête dans un journal fixé.
+      expect(lignes.every((l) => l.type !== 'outil_echappee')).toBe(true)
+    }
   })
 })
