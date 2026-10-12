@@ -6,3 +6,17 @@ interdits:
   - I-02
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Site, type: forfait, etat: garantie, mise_en_prod_le: "2026-08-18", garantie_fin: "2026-11-18" }
+  lots:
+    - { id: LOT-001, projet: PRJ-01, nom: Lot 1, jours_vendus: 10 }
+  tickets:
+    - { cle: TK-0001, projet: PRJ-01, resume: Un second formulaire, type: evolution, etat: resolu, estimation_h: 12, cree_le: "2026-08-21", resolu_le: "2026-08-26" }
+    - { cle: TK-0002, projet: PRJ-01, lot: LOT-001, resume: Une page du lot, type: evolution, etat: resolu, estimation_h: 6, cree_le: "2026-07-01", resolu_le: "2026-07-03", rattache_a: LOT-001 }
+  attendu:
+    - { regle: I-02, objet: TK-0001, verdict: à vérifier }
+    - { regle: I-02, objet: TK-0002, verdict: ok }

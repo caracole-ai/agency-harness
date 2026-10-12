@@ -6,3 +6,21 @@ interdits:
   - I-04
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  personnes:
+    - { id: M-01, nom: Personne A, role: developpeur }
+  sous_traitants:
+    - { id: ST-01, nom: Sous-traitant A }
+  clients:
+    - { id: CLI-01, nom: Client A }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Site, type: forfait, etat: clos, fin_prevue: "2026-06-12" }
+  depots:
+    - { nom: prj-01-web, projet: PRJ-01, collaborateurs: "ST-01,M-01" }
+  acces:
+    - { ressource: prj-01-web, sorte: depot, personne: ST-01, depuis: "2026-01-05", jusqua: "2026-06-12" }
+  attendu:
+    - { regle: I-04, objet: ST-01/depot/prj-01-web, verdict: à vérifier }
+    # collaborateur du dépôt, absent du registre
+    - { regle: I-04, objet: M-01/depot/prj-01-web, verdict: à vérifier }

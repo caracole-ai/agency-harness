@@ -6,3 +6,17 @@ interdits:
   - I-14
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A, secteur: e-commerce, contrat_art28: non }
+    - { id: CLI-02, nom: Client B, secteur: e-commerce, contrat_art28: oui }
+  domaines:
+    - { id: DOM-01, nom: boutique-a.example, client: CLI-01 }
+    - { id: DOM-02, nom: boutique-b.example, client: CLI-02 }
+  acces:
+    - { ressource: boutique-a.example, sorte: hebergeur, personne: M-01, depuis: "2025-01-06" }
+    - { ressource: boutique-b.example, sorte: hebergeur, personne: M-01, depuis: "2025-01-06" }
+  attendu:
+    - { regle: I-14, objet: CLI-01, verdict: à vérifier }
+    - { regle: I-14, objet: CLI-02, verdict: ok }

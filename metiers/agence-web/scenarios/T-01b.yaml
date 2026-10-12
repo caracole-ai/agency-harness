@@ -6,3 +6,21 @@ interdits:
   - I-01
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Site, type: forfait, etat: en_cours }
+  lots:
+    - { id: LOT-001, projet: PRJ-01, nom: Lot 1, jours_vendus: 10 }
+    - { id: LOT-002, projet: PRJ-01, nom: Lot 2, jours_vendus: 8 }
+  recettes:
+    - { projet: PRJ-01, lot: LOT-001, date: "2026-10-05", pv_signe_le: "2026-10-07", reserves: "mineure : un libellé à corriger", bloquante: non }
+    - { projet: PRJ-01, lot: LOT-002, date: "2026-10-05", pv_signe_le: "2026-10-07", reserves: "le paiement échoue", bloquante: oui }
+  factures:
+    - { id: FAC-2026-001, client: CLI-01, projet: PRJ-01, lot: LOT-001, date: "2026-10-08", montant_ht_eur: 6000, tva: 0.2, montant_ttc_eur: 7200, etat: emise }
+    - { id: FAC-2026-002, client: CLI-01, projet: PRJ-01, lot: LOT-002, date: "2026-10-08", montant_ht_eur: 4800, tva: 0.2, montant_ttc_eur: 5760, etat: emise }
+  attendu:
+    - { regle: I-01, objet: FAC-2026-001, verdict: ok }
+    - { regle: I-01, objet: FAC-2026-002, verdict: à vérifier }

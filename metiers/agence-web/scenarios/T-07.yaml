@@ -6,3 +6,13 @@ interdits:
   - I-07
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  factures:
+    - { id: FAC-2026-001, client: CLI-01, date: "2026-09-01", montant_ht_eur: 1000, tva: 0.2, montant_ttc_eur: 1200, delai_jours: 90, fin_de_mois: non, etat: emise, penalites_mentionnees: non, indemnite_40_mentionnee: oui }
+    - { id: FAC-2026-002, client: CLI-01, date: "2026-09-01", montant_ht_eur: 1000, tva: 0.2, montant_ttc_eur: 1200, delai_jours: 45, fin_de_mois: oui, etat: emise, penalites_mentionnees: oui, indemnite_40_mentionnee: oui }
+  attendu:
+    - { regle: I-07, objet: FAC-2026-001, verdict: à vérifier }
+    - { regle: I-07, objet: FAC-2026-002, verdict: ok }

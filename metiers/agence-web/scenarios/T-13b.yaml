@@ -6,3 +6,11 @@ interdits:
   - I-13
 statut: hypothèse
 source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  domaines:
+    - { id: DOM-01, nom: site-a.example, client: CLI-01, registrar: registrar-a, certificat_expire_le: "2027-06-30" }
+  alertes:
+    - { regle: I-13, objet: DOM-01/domaine, niveau: alerte }
