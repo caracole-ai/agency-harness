@@ -200,4 +200,18 @@ describe('l’argent (PLAN-METIER-2.md § 6.4, M11)', () => {
     ).toEqual({ ok: true })
     expect(verifierReponse('le 13/10', ['13 | 10'], [])).toEqual({ ok: false, intrus: ['13/10'] })
   })
+  it('un mois d’un chiffre après un mot de date reste une date : une date inventée ne passe pas par ses nombres', () => {
+    expect(verifierReponse('Absent le 5/3.', ['A-5 | A-3 | 2026-10-13'], [])).toEqual({
+      ok: false,
+      intrus: ['5/3'],
+    })
+    expect(verifierReponse('Le 1/1', ['1 | 1'], [])).toEqual({ ok: false, intrus: ['1/1'] })
+    expect(verifierReponse('lundi 5/3', ['2026-03-05'], [])).toEqual({ ok: true })
+    expect(citations('Les 3/4 des lots', [])).toEqual(['3', '4'])
+  })
+  it('un nombre n’est pas trouvé dans les décimales d’un autre (« 50 » dans « 0.50 »)', () => {
+    expect(verifierReponse('Taux : 50', ['x\n0.50'], [])).toEqual({ ok: false, intrus: ['50'] })
+    expect(verifierReponse('Taux : 0,50', ['x\n0.50'], [])).toEqual({ ok: true })
+    expect(verifierReponse('16 h', ['heures | 16'], [])).toEqual({ ok: true })
+  })
 })

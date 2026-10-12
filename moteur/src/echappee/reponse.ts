@@ -8,6 +8,9 @@
 
 /** `JJ/MM` ou `JJ/MM/AAAA`, le mois sur deux chiffres (« 8/10 » est une date, « 3/4 » non), isolée des autres chiffres et barres obliques. */
 const DATE = /(?<![\d/])(\d{1,2})\/(\d{2})(?:\/(\d{4}))?(?![\d/])/g
+/** Un mois d'un chiffre n'est une date qu'après un mot de date (« le 5/3 », « du 1/1 », « lundi 5/3 ») : sinon c'est une fraction (« 3/4 »), dont chaque nombre se cite. */
+const DATE_MOIS_COURT =
+  /(?<=\b(?:le|du|au|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche|lun|mar|mer|jeu|ven|sam|dim)\.?\s+)(\d{1,2})\/(\d)(?:\/(\d{4}))?(?![\d/])/gi
 /** `AAAA-MM-JJ`, isolée des autres chiffres et tirets (une heure peut suivre : `2026-10-11T08:00`). */
 const DATE_ISO = /(?<![\d-])\d{4}-\d{2}-\d{2}(?![\d-])/g
 /** Un séparateur de milliers : espace, espace insécable, espaces fines, point (PLAN-METIER-2.md § 1, M11). */
@@ -49,9 +52,9 @@ function canonique(ecrit: string): string {
   return point.includes('.') ? point.replace(/0+$/, '').replace(/\.$/, '') : point
 }
 
-/** Le nombre apparaît dans les sources comme nombre entier, pas comme fragment d'un autre. */
+/** Le nombre apparaît dans les sources comme nombre entier, pas comme fragment d'un autre, ni comme décimales d'un autre (« 50 » n'est pas dans « 0.50 »). */
 function nombreTrouve(sources: string, ecritures: string[]): boolean {
-  return ecritures.some((e) => new RegExp(`(?<!\\d)${echapper(e)}(?!\\d)`).test(sources))
+  return ecritures.some((e) => new RegExp(`(?<!\\d|\\d[.,])${echapper(e)}(?!\\d)`).test(sources))
 }
 
 /** Les mots se suivent dans les sources (déjà normalisées), sur mots entiers. */
@@ -74,7 +77,7 @@ function datesDe(texte: string): DateEcrite[] {
   for (const m of texte.matchAll(DATE_ISO)) {
     dates.push({ position: m.index, fin: m.index + m[0].length, ecrite: m[0], iso: m[0] })
   }
-  for (const m of texte.matchAll(DATE)) {
+  for (const m of [...texte.matchAll(DATE), ...texte.matchAll(DATE_MOIS_COURT)]) {
     const [ecrite, jour = '', mois = '', annee] = m
     if (Number(mois) < 1 || Number(mois) > 12 || Number(jour) < 1 || Number(jour) > 31) continue
     dates.push({

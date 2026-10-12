@@ -8,6 +8,7 @@ import {
   executerSync,
   preflight,
 } from '../agence/config'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
@@ -183,6 +184,11 @@ export async function faireChantier<S>(
 ): Promise<IssueChantier> {
   const debut = Date.now()
   const { mission, dossierClient } = lireMission(o.mission)
+  // Le métier de la mission décide de la bande et du client d'évals (M9) : il doit être celui du client qui l'a demandée.
+  const { metier } = chargerConfig(join(dossierClient, FICHIER_CONFIG), ConfigBase)
+  if (mission.metier !== metier) {
+    throw new Error(`mission ${mission.id} du métier ${mission.metier}, client du métier ${metier}`)
+  }
   const c = o.commande ?? commandeSync
   const lancer = o.lancer ?? lancerProcessus
   const executer = o.executer ?? executerSync

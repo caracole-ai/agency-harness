@@ -275,6 +275,14 @@ describe('G1 : une condition rouge, aucun merge', () => {
     expect(r.emises.some((x) => x.commande === 'pnpm' && x.args[0] === 'evals')).toBe(false)
   })
 
+  it('une mission d’un autre métier que celui du client lève avant tout appel (PLAN-METIER-2.md M9)', async () => {
+    await expect(
+      lancer({ mission: { ...MISSION_ESSAI, metier: 'securite-privee' } }),
+    ).rejects.toThrow(
+      `mission ${MISSION_ESSAI.id} du métier securite-privee, client du métier essai`,
+    )
+  })
+
   it('1. un fichier d’un autre métier que celui de la mission : refusé (PLAN-METIER-2.md M9)', async () => {
     const r = await refuse(
       {
