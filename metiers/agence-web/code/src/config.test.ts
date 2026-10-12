@@ -19,6 +19,7 @@ seuils:
   forfait_alerte: 0.9
   forfait_refus: 1.1
   tma_alerte: 0.8
+  facture_alerte: 1
   delegation_eur_ht: 5000
   remise_max: 0.1
   heures_par_jour: 7

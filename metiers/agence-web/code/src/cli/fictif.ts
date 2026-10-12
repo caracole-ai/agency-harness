@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { ConfigBase, FICHIER_CONFIG, Temporal } from '@harnais/moteur'
+import { ajouter, ConfigBase, FICHIER_CONFIG, Temporal } from '@harnais/moteur'
 import { parse } from 'yaml'
 import { METIER } from '../config'
 import { colonnes, NOMS_TABLES, type ROLES, type Table } from '../modele'
@@ -2050,9 +2050,11 @@ export function genererAgenceWeb(): Sortie {
   const relances: Ligne[] = []
   for (const b of brutes) {
     const date = J(b.l.date ?? '')
-    let echeance = date.add({ days: b.delai.jours })
-    if (b.delai.finDeMois)
-      echeance = echeance.toPlainYearMonth().toPlainDate({ day: echeance.daysInMonth })
+    // « 45 jours fin de mois » : la durée du moteur (PLAN-METIER-2.md § 8, M13)
+    const echeance = ajouter(
+      date,
+      b.delai.finDeMois ? { jours: b.delai.jours, fin_de_mois: true } : { jours: b.delai.jours },
+    )
     Object.assign(b.l, {
       echeance: echeance.toString(),
       delai_jours: nombre(b.delai.jours),

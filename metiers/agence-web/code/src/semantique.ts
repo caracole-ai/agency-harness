@@ -1,10 +1,11 @@
-import { Temporal } from '@harnais/moteur'
-import type { Acces, Contexte } from './modele'
+import { type Ecart, Temporal } from '@harnais/moteur'
+import type { ConfigAgenceWeb } from './config'
+import { type Acces, type Contexte, IDENTIFIANTS } from './modele'
 
 // Les notions de l'agence web, définies une fois, au-dessus du modèle
-// (PLAN-METIER-2.md § 2 et § 7.1) : le lot 3 les étend. Un contrôle, une
-// échéance ou un geste ne recalcule jamais une notion : il la demande ici.
-// Des fonctions pures sur le contexte.
+// (PLAN-METIER-2.md § 2 et § 7.1) : le lot 3 les étend (§ 8, M12 : les
+// écarts). Un contrôle, une échéance ou un geste ne recalcule jamais une
+// notion : il la demande ici. Des fonctions pures sur le contexte.
 
 /**
  * Les jours vendus d'un projet : ceux de ses lots, plus ceux de ses avenants
@@ -201,4 +202,159 @@ export function heuresTma(ctx: Contexte, contrat: string, mois: Temporal.PlainYe
         t.projet === contrat && Temporal.PlainDate.from(t.date).toPlainYearMonth().equals(mois),
     )
     .reduce((s, t) => s + t.heures, 0)
+}
+
+// ---------------------------------------------------------------------------
+// Rapprocher (PLAN-METIER-2.md M12, § 8 ; entretien § 36) : le consommé contre
+// le vendu, par projet, par lot, par contrat TMA dans le mois ; le facturé
+// contre le vendu. Les seuils sont ceux du client (`config.yaml: seuils`).
+
+/** Les seuils du client (`config.yaml: seuils`). */
+type Seuils = ConfigAgenceWeb['seuils']
+
+/** Un identifiant de lot cité dans un texte libre, tiré du motif de `IDENTIFIANTS` (jamais recopié). */
+const LOT_CITE = new RegExp(`\\b${IDENTIFIANTS.lot.source.replace(/^\^|\$$/g, '')}\\b`, 'gi')
+
+export interface ConsommeLot {
+  lot: string
+  projet: string
+  /** Les jours vendus du lot ; 0 s'ils sont inconnus (un avenant porte un projet, jamais un lot). */
+  vendus: number
+  /** Les heures dont le commentaire cite ce lot, en jours. */
+  consommes: number
+}
+
+/**
+ * Le consommé par lot, là où le temps le dit (la maille de Notion est le
+ * projet) : une ligne de temps dont le commentaire cite un seul lot, et un
+ * lot de son projet, lui est comptée ; une ligne qui n'en cite aucun, en cite
+ * plusieurs ou cite celui d'un autre projet ne compte qu'au projet. Rendus
+ * dans l'ordre de `lots.csv`, sans les lots qu'aucune ligne ne cite.
+ */
+export function consommeParLot(ctx: Contexte, heuresParJour: number): ConsommeLot[] {
+  if (!(heuresParJour > 0)) throw new Error(`heures par jour invalides : ${heuresParJour}`)
+  const heures = new Map<string, number>()
+  for (const t of ctx.temps) {
+    const cites = new Set((t.commentaire?.match(LOT_CITE) ?? []).map((l) => l.toUpperCase()))
+    const [lot] = cites
+    if (cites.size !== 1 || lot === undefined || ctx.lots.get(lot)?.projet !== t.projet) continue
+    heures.set(lot, (heures.get(lot) ?? 0) + t.heures)
+  }
+  return [...ctx.lots.values()].flatMap((l) => {
+    const h = heures.get(l.id)
+    if (h === undefined) return []
+    return [
+      { lot: l.id, projet: l.projet, vendus: l.jours_vendus ?? 0, consommes: h / heuresParJour },
+    ]
+  })
+}
+
+export interface FactureVendu {
+  projet: string
+  /** Ses devis signés et ses avenants signés, en euros HT. */
+  vendus: number
+  /** Ses factures, émises ou payées, hors TMA, en euros HT. */
+  factures: number
+}
+
+/**
+ * Le facturé et le vendu d'un projet, en euros HT. Vendu : ses devis signés,
+ * plus ses avenants signés (un devis envoyé, refusé ou expiré ne vend rien).
+ * Facturé : ses factures, émises comme payées ; le modèle n'a ni avoir ni
+ * facture annulée (`ETATS_FACTURE`), un avoir s'y écrirait en montant négatif
+ * et se retrancherait. La TMA n'est pas du vendu du projet : le modèle ne
+ * relie pas une facture à un contrat, et une facture sans lot d'un projet
+ * sous contrat TMA, datée du début du contrat ou après, est tenue pour celle
+ * de la TMA (un acompte précède le contrat, un lot porte son lot).
+ */
+export function factureVendu(ctx: Contexte, projet: string): FactureVendu {
+  const signes = [...ctx.devis.values(), ...ctx.avenants.values()].filter(
+    (d) => d.projet === projet && d.etat === 'signe',
+  )
+  const tma = [...ctx.contrats_tma.values()].filter((c) => c.projet === projet)
+  const deLaTma = (date: string, lot: string | undefined) =>
+    lot === undefined && tma.some((c) => c.debut <= date)
+  const factures = [...ctx.factures.values()].filter(
+    (f) => f.projet === projet && !deLaTma(f.date, f.lot),
+  )
+  return {
+    projet,
+    vendus: signes.reduce((s, d) => s + d.montant_ht_eur, 0),
+    factures: factures.reduce((s, f) => s + f.montant_ht_eur, 0),
+  }
+}
+
+/** Ce que rapproche chaque sorte d'écart : la section du rapport les regroupe par ces mots. */
+export const MESURES = {
+  forfait: 'jours consommés / vendus, par forfait',
+  lot: 'jours consommés / vendus, par lot de forfait',
+  tma: 'heures consommées dans le mois / incluses, par contrat TMA',
+  facture: 'euros HT facturés / vendus, par projet (le consommé est le facturé)',
+} as const
+
+/** L'écart d'un forfait, à la maille du projet, au seuil donné : `forfait_alerte` pour prévenir, `forfait_refus` pour I-12. */
+export function ecartForfait(
+  ctx: Contexte,
+  projet: string,
+  heuresParJour: number,
+  seuil: number,
+): Ecart {
+  const c = consommeVendu(ctx, projet, heuresParJour)
+  return {
+    objet: projet,
+    mesure: MESURES.forfait,
+    consomme: c.consommes,
+    vendu: c.vendus,
+    unite: 'jours',
+    seuil,
+  }
+}
+
+/**
+ * Tous les écarts de l'agence au jour dit, chacun à son seuil ; `depasse`
+ * (moteur) dit lesquels prévenir. Les forfaits (`forfait_alerte`) et leurs
+ * lots dont le temps est cité (une régie se facture au réel : son vendu n'est
+ * pas une limite) ; chaque contrat TMA sur le mois d'`aujourdhui`
+ * (`tma_alerte`) ; le facturé de chaque projet (`facture_alerte`).
+ */
+export function ecarts(ctx: Contexte, seuils: Seuils, aujourdhui: Temporal.PlainDate): Ecart[] {
+  const forfaits = [...ctx.projets.values()].filter((p) => p.type === 'forfait')
+  const auForfait = new Set(forfaits.map((p) => p.id))
+  const mois = aujourdhui.toPlainYearMonth()
+  return [
+    ...forfaits.map((p) => ecartForfait(ctx, p.id, seuils.heures_par_jour, seuils.forfait_alerte)),
+    ...consommeParLot(ctx, seuils.heures_par_jour)
+      .filter((l) => auForfait.has(l.projet))
+      .map(
+        (l): Ecart => ({
+          objet: `${l.projet}/${l.lot}`,
+          mesure: MESURES.lot,
+          consomme: l.consommes,
+          vendu: l.vendus,
+          unite: 'jours',
+          seuil: seuils.forfait_alerte,
+        }),
+      ),
+    ...[...ctx.contrats_tma.values()].map(
+      (c): Ecart => ({
+        objet: `${c.id}/${mois.toString()}`,
+        mesure: MESURES.tma,
+        consomme: heuresTma(ctx, c.id, mois),
+        vendu: c.heures_incluses_mois,
+        unite: 'heures',
+        seuil: seuils.tma_alerte,
+      }),
+    ),
+    ...[...ctx.projets.values()].map((p): Ecart => {
+      const f = factureVendu(ctx, p.id)
+      return {
+        objet: p.id,
+        mesure: MESURES.facture,
+        consomme: f.factures,
+        vendu: f.vendus,
+        unite: 'euros',
+        seuil: seuils.facture_alerte,
+      }
+    }),
+  ]
 }

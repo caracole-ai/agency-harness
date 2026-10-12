@@ -32,10 +32,13 @@ journal: journal.sqlite
 
 # Valeurs déclarées par le dirigeant (entretien § 1, § 9), à confirmer.
 # heures_par_jour : la valeur du générateur (HEURES_PAR_JOUR_FICTIF).
+# facture_alerte : valeur d'exemple, l'entretien ne la chiffre pas ; dès que
+# tout le vendu est facturé, ce qui suit se facture sans devis signé.
 seuils:
   forfait_alerte: 0.9
   forfait_refus: 1.1
   tma_alerte: 0.8
+  facture_alerte: 1
   delegation_eur_ht: 5000
   remise_max: 0.1
   heures_par_jour: 7

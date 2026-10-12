@@ -47,6 +47,11 @@ export const ConfigAgenceWeb = z.strictObject({
     forfait_refus: Fraction,
     /** La part des heures incluses d'un contrat TMA, dans le mois, à partir de laquelle on prévient. */
     tma_alerte: Fraction,
+    /**
+     * La part du vendu d'un projet (devis et avenants signés, en euros HT)
+     * facturée à partir de laquelle on prévient (`semantique.ts`, `ecarts`).
+     */
+    facture_alerte: Fraction,
     /** Le plafond d'engagement de la PO en l'absence du dirigeant, en euros HT (I-11). */
     delegation_eur_ht: z.number().positive(),
     /** La remise au-delà de laquelle seul le dirigeant engage (I-11). */

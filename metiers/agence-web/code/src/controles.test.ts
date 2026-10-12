@@ -51,7 +51,7 @@ describe('client fictif : chaque erreur posée du § 7.3 est retrouvée', () => 
   it('1. PRJ-10 à 150 % des jours vendus (I-12)', () => {
     expect(constat(ctx, 'I-12', 'PRJ-10')).toMatchObject({
       verdict: 'à vérifier',
-      motif: '36 j consommés sur 24 vendus (150 %), au-delà de 110 %',
+      motif: 'PRJ-10 : 36 j consommés sur 24 vendus (150 %), au-delà de 110 %',
     })
   })
   it('3. ST-02 sur le dépôt prj-18-web, projet clos (I-04)', () => {
@@ -200,6 +200,15 @@ describe('les seuils viennent de la config', () => {
   it('un seuil de forfait relevé à 160 % ne signale plus PRJ-10', () => {
     const ctx: ContexteVeille = { ...lire(), seuils: { ...config.seuils, forfait_refus: 1.6 } }
     expect(constat(ctx, 'I-12', 'PRJ-10')?.verdict).toBe('ok')
+  })
+  it('I-12 à son seuil pile : PRJ-10 à 150 % pour un refus à 150 % est conforme (« ne dépasse pas »)', () => {
+    const pile: ContexteVeille = { ...lire(), seuils: { ...config.seuils, forfait_refus: 1.5 } }
+    expect(constat(pile, 'I-12', 'PRJ-10')?.verdict).toBe('ok')
+    const juste: ContexteVeille = { ...lire(), seuils: { ...config.seuils, forfait_refus: 1.49 } }
+    expect(constat(juste, 'I-12', 'PRJ-10')).toMatchObject({
+      verdict: 'à vérifier',
+      motif: 'PRJ-10 : 36 j consommés sur 24 vendus (150 %), au-delà de 149 %',
+    })
   })
   it('une remise permise à 20 % : DEV-2026-008 reste signalé, signé par la commerciale', () => {
     const ctx: ContexteVeille = { ...lire(), seuils: { ...config.seuils, remise_max: 0.2 } }
