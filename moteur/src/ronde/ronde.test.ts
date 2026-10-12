@@ -16,7 +16,13 @@ import { RACINE_DEPOT } from '../agence/fictif'
 import { ajouterConvention, ecrireRetrait, lireIndex } from '../chantier/memoire'
 import { fuites } from '../echappee/pseudonymes'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { DOMAINE_ESSAI, dossierEssai, METIER_ESSAI, PERSONNES_ESSAI, SECRETS_ESSAI } from './essai'
+import {
+  DOMAINE_ESSAI,
+  dossierEssai,
+  METIER_ESSAI,
+  PERSONNES_ESSAI,
+  SECRETS_ESSAI,
+} from './essai.test.fixture'
 import type { MissionRonde, RapportDeRonde } from './rapport'
 import {
   type AppelRonde,

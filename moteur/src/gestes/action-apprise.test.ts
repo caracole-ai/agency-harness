@@ -15,7 +15,7 @@ import {
   DECLARATIONS_EXEMPLE,
   GESTE_ECRIT_EXEMPLE as ECRIT,
   GESTE_EXEMPLE as GESTE,
-} from './geste-appris.exemple'
+} from './geste-appris.test.fixture'
 
 // Un geste appris comme action : ses paramètres à plat pour le modèle, son
 // exécution sans modèle sur la copie du rôle, l'agent qui parle pour le rôle

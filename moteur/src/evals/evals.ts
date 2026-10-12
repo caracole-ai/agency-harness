@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { type Designable, normaliserNom } from '../conversation/designation'
+import { avecPersonne, CHAMPS_PERSONNE } from '../conversation/roles'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
 import { fuites } from '../echappee/pseudonymes'
@@ -33,25 +34,11 @@ export const Variante = z.strictObject({
 })
 export type Variante = z.infer<typeof Variante>
 
-/**
- * Qui parle dans un cas : `personne`, ou `agent`, la graphie des fichiers
- * d'avant, qu'on ne réécrit pas (PLAN-METIER-2.md M2) ; rend `personne`.
- */
-function avecPersonne<C extends { agent?: string; personne?: string }>({
-  agent,
-  personne,
-  ...cas
-}: C) {
-  const qui = personne ?? agent
-  return { ...cas, ...(qui !== undefined ? { personne: qui } : {}) }
-}
-
 export const CasTraduire = z
   .strictObject({
     id: z.string().min(1),
     role: z.string().min(1),
-    agent: z.string().optional(),
-    personne: z.string().optional(),
+    ...CHAMPS_PERSONNE,
     maintenant: z.string().optional(),
     /** Le nom d'une variante du fichier (`variantes`) : le cas tourne sur elle. */
     variante: z.string().optional(),
@@ -80,8 +67,7 @@ export const CasEchappee = z
   .strictObject({
     id: z.string().min(1),
     role: z.string().min(1),
-    agent: z.string().optional(),
-    personne: z.string().optional(),
+    ...CHAMPS_PERSONNE,
     maintenant: z.string().optional(),
     piege: z.boolean().optional(),
     consigne: z.string().min(1),

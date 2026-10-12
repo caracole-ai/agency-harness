@@ -15,7 +15,7 @@ import {
   GESTE_ECRIT_EXEMPLE as ECRIT,
   GESTE_EXEMPLE as GESTE,
   OPERATION_EXEMPLE,
-} from './geste-appris.exemple'
+} from './geste-appris.test.fixture'
 
 // La forme d'un geste appris, ce qu'un gabarit peut citer, son rendu et son
 // empreinte (PLAN-PROMOTION.md § 5.5) ; un geste qui écrit, ses

@@ -18,7 +18,11 @@ import {
 import { masquerTexte } from '../echappee/pseudonymes'
 import { ISSUE_GESTE, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
-import { DOMAINE_EXEMPLE, OPERATION_EXEMPLE, TYPES_EXEMPLE } from '../gestes/geste-appris.exemple'
+import {
+  DOMAINE_EXEMPLE,
+  OPERATION_EXEMPLE,
+  TYPES_EXEMPLE,
+} from '../gestes/geste-appris.test.fixture'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { modeleSimule, type Scripte } from '../modele/simule'

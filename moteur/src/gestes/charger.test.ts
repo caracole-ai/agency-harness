@@ -18,7 +18,7 @@ import {
   GESTE_ECRIT_EXEMPLE as ECRIT,
   GESTE_EXEMPLE as GESTE,
   OPERATION_EXEMPLE,
-} from './geste-appris.exemple'
+} from './geste-appris.test.fixture'
 
 // Un fichier de geste ne vaut que par sa clé (PLAN-PROMOTION.md § 5.5, P7) :
 // jamais activé, un octet changé, retiré → écarté, refusé au journal, alerte ;

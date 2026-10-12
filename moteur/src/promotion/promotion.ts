@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { parse } from 'yaml'
 import { VALIDEE } from '../approbation/jeton'
 import type { Role } from '../conversation/actions'
+import { personneLue } from '../conversation/roles'
 import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE, OUTIL_VERIFIER } from '../echappee/boucle'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
@@ -99,9 +100,8 @@ interface DonneesEchappee {
   echappee?: string
   intention?: string
   role?: string
+  /** Lue par `personneLue`, sous ses deux graphies (PLAN-METIER-2.md M2) : se lit, ne s'écrit plus que sous ce nom. */
   personne?: string
-  /** L'ancienne graphie de `personne`, dans les lignes d'avant (PLAN-METIER-2.md M2) : se lit, ne s'écrit plus. */
-  agent?: string
   cout_usd?: number
   modifications?: unknown[]
   constats?: Constat[]
@@ -280,7 +280,7 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
         suiteDe(lignes, l.objet) !== SUITE_NON_VALIDEE
   if (!propre) return undefined
   const id = d.echappee
-  const personne = d.personne ?? d.agent
+  const personne = personneLue(d)
   const outils = (nom: string) =>
     lignes.filter(
       (o) => o.type === TYPE_OUTIL_ECHAPPEE && o.issue === nom && donneesDe(o).echappee === id,

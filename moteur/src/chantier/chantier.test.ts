@@ -3,7 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { RACINE_DEPOT } from '../agence/fictif'
-import { METIER_ESSAI, PERSONNES_ESSAI } from '../ronde/essai'
+import { METIER_ESSAI, PERSONNES_ESSAI } from '../ronde/essai.test.fixture'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { commandeSync } from './arbre'
 import { faireChantier, type OptionsChantier, TYPE_CHANTIER } from './chantier'
@@ -19,7 +19,7 @@ import {
   MISSION_ESSAI,
   type PnpmSimule,
   type Scenario,
-} from './essai'
+} from './essai.test.fixture'
 import {
   type Condition,
   conclure,
@@ -599,7 +599,7 @@ describe('aucun merge ni push hors de fusion.ts', () => {
     const fautifs = fichiers(join(RACINE_DEPOT, 'moteur', 'src'))
       .filter((f) => !f.endsWith('.test.ts') && !f.endsWith(join('chantier', 'fusion.ts')))
       // Les aides de test montent leurs faux dépôts avec git, poussées comprises.
-      .filter((f) => !f.endsWith('essai.ts'))
+      .filter((f) => !f.endsWith('essai.test.fixture.ts'))
       .filter((f) => /['"`](?:merge|push)['"`]/.test(readFileSync(f, 'utf8')))
     expect(fautifs).toEqual([])
   })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Temporal } from '../temps/temporal'
-import { DOMAINE_ESSAI, dossierEssai, METIER_ESSAI, PERSONNES_ESSAI } from './essai'
+import { DOMAINE_ESSAI, dossierEssai, METIER_ESSAI, PERSONNES_ESSAI } from './essai.test.fixture'
 import {
   type MissionRonde,
   outilRapport,

@@ -67,6 +67,46 @@ export const IdentiteSchema: z.ZodType<Identite> = z
     return { role, ...(id !== undefined ? { personne: id } : {}) }
   })
 
+/**
+ * L'identifiant d'une identité reçue de l'extérieur, sous ses deux graphies
+ * (M2) : rend l'identifiant (ou rien), ou le motif d'un refus de forme.
+ */
+export function identifiantRecu(
+  d: Record<string, unknown>,
+): { id: string | undefined } | { motif: string } {
+  const { personne, agent } = d
+  if ([personne, agent].some((v) => v !== undefined && typeof v !== 'string')) {
+    return { motif: "l'identifiant doit être un texte" }
+  }
+  if (personne !== undefined && agent !== undefined && personne !== agent) {
+    return { motif: 'deux identifiants différents' }
+  }
+  return { id: (personne ?? agent) as string | undefined }
+}
+
+/** Qui parle dans une ligne persistée qu'on ne réécrit pas : `personne`, sinon l'ancienne graphie (M2). */
+export const personneLue = (d: { personne?: string; agent?: string }): string | undefined =>
+  d.personne ?? d.agent
+
+/** Les champs de qui parle dans un fichier qu'on ne réécrit pas (cas d'éval) : `personne`, et l'ancienne graphie, encore lue (M2). À étendre dans un schéma, puis `avecPersonne`. */
+export const CHAMPS_PERSONNE = {
+  agent: z.string().optional(),
+  personne: z.string().optional(),
+}
+
+/**
+ * Qui parle dans un cas : `personne`, ou `agent`, la graphie des fichiers
+ * d'avant, qu'on ne réécrit pas (PLAN-METIER-2.md M2) ; rend `personne`.
+ */
+export function avecPersonne<C extends { agent?: string; personne?: string }>({
+  agent,
+  personne,
+  ...cas
+}: C) {
+  const qui = personne ?? agent
+  return { ...cas, ...(qui !== undefined ? { personne: qui } : {}) }
+}
+
 const cle = (i: Identite) => (i.personne === undefined ? i.role : `${i.role} ${i.personne}`)
 
 /** Le schéma zod de `personnes.yaml` pour ces rôles : un rôle non identifié est unique ; un rôle identifié exige `personne` (ancienne graphie `agent` acceptée et renommée). */

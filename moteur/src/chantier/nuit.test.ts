@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { dossierEssai, METIER_ESSAI } from '../ronde/essai'
+import { dossierEssai, METIER_ESSAI } from '../ronde/essai.test.fixture'
 import type { AppelRonde } from '../ronde/ronde'
 import { Temporal } from '../temps/temporal'
 import { TYPE_CHANTIER } from './chantier'
@@ -14,7 +14,7 @@ import {
   ENV_ESSAI,
   gesteVert,
   MISSION_ESSAI,
-} from './essai'
+} from './essai.test.fixture'
 import { lireIndex, lireMesures } from './memoire'
 import { faireNuit, type OptionsNuit } from './nuit'
 

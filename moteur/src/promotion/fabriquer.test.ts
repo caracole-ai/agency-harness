@@ -19,7 +19,7 @@ import {
   DECLARATIONS_EXEMPLE,
   DOMAINE_EXEMPLE,
   OPERATION_EXEMPLE,
-} from '../gestes/geste-appris.exemple'
+} from '../gestes/geste-appris.test.fixture'
 import { Journal } from '../journal/journal'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TYPES_EXEMPLE } from './geste-appris.exemple'
+import { TYPES_EXEMPLE } from './geste-appris.test.fixture'
 import { TYPES_MOTEUR, typeDe } from './types-parametre'
 
 // Le type d'un paramètre appris (PLAN-METIER-2.md § 3.3, M5) : du moteur (sa

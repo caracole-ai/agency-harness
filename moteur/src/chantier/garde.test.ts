@@ -2,9 +2,9 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { PERSONNES_ESSAI } from '../ronde/essai'
+import { PERSONNES_ESSAI } from '../ronde/essai.test.fixture'
 import { commandeSync } from './arbre'
-import { creerDepots, gesteVert, TEST_ESSAI } from './essai'
+import { creerDepots, gesteVert, TEST_ESSAI } from './essai.test.fixture'
 import { casParGesteNouveau, garderDiff, motifChemin } from './garde'
 
 // PLAN-RONDE.md § 6.2 (garderDiff) et PLAN-GENERAL.md G1, conditions 1, 2, 4

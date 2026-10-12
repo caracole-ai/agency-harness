@@ -16,7 +16,7 @@ import {
   GESTE_EXEMPLE as GESTE,
   OPERATION_EXEMPLE,
   TYPES_EXEMPLE,
-} from '../gestes/geste-appris.exemple'
+} from '../gestes/geste-appris.test.fixture'
 import { Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { FUSEAU, Temporal } from '../temps/temporal'

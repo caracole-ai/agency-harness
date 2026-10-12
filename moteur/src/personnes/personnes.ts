@@ -2,7 +2,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
-import { type Identite, type RoleDeclare, schemaRegistre } from '../conversation/roles'
+import {
+  type Identite,
+  identifiantRecu,
+  type RoleDeclare,
+  schemaRegistre,
+} from '../conversation/roles'
 
 // Qui a le droit de parler à l'outil chez un client : le registre d'accès,
 // `personnes.yaml` dans le dossier du client. Il appartient au harnais, pas
@@ -47,21 +52,17 @@ const borne = (valeur: unknown) => String(valeur).slice(0, 80)
 /**
  * La porte : la forme de l'identité reçue, contre les rôles du métier, puis
  * sa présence au registre d'accès. Ne lit rien d'autre. L'identifiant se lit
- * sous `personne` ou sous l'ancienne graphie `agent` (PLAN-METIER-2.md, M2).
+ * sous ses deux graphies par `identifiantRecu` (PLAN-METIER-2.md, M2).
  */
 export function recevoir(roles: RoleDeclare[], personnes: Personne[], demandeur: unknown): Accueil {
   const refus = (motif: string): Accueil => ({ sorte: 'refus', motif })
   if (typeof demandeur !== 'object' || demandeur === null) return refus('identité absente')
-  const { role, personne, agent } = demandeur as Record<string, unknown>
+  const { role } = demandeur as Record<string, unknown>
   const declare = roles.find((r) => r.id === role)
   if (!declare) return refus(`rôle inconnu : ${borne(role)}`)
-  if ([personne, agent].some((v) => v !== undefined && typeof v !== 'string')) {
-    return refus("l'identifiant doit être un texte")
-  }
-  if (personne !== undefined && agent !== undefined && personne !== agent) {
-    return refus('deux identifiants différents')
-  }
-  const id = (personne ?? agent) as string | undefined
+  const lu = identifiantRecu(demandeur as Record<string, unknown>)
+  if ('motif' in lu) return refus(lu.motif)
+  const { id } = lu
   if (!declare.identifie && id !== undefined) {
     return refus(`${declare.enMots} parle en son nom : pas d'identifiant`)
   }

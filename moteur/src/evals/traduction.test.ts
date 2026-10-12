@@ -11,7 +11,7 @@ import {
   DOMAINE_EXEMPLE,
   GESTE_EXEMPLE,
   TYPES_EXEMPLE,
-} from '../gestes/geste-appris.exemple'
+} from '../gestes/geste-appris.test.fixture'
 import { Journal } from '../journal/journal'
 import { modeleSimule } from '../modele/simule'
 import { FICHIER_PERSONNES } from '../personnes/personnes'

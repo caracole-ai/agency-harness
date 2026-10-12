@@ -9,7 +9,7 @@ import {
   METIER_ESSAI,
   PERSONNES_ESSAI,
   SECRETS_ESSAI,
-} from './essai'
+} from './essai.test.fixture'
 import { categorieAbandon, MOTIF_DU_MODELE, resumerJournal } from './resume'
 
 // PLAN-RONDE.md § 5.1 : la fenêtre, les comptes, le refus d'une échappée sans

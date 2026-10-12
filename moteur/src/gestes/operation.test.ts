@@ -11,7 +11,7 @@ import {
   GESTE_ECRIT_EXEMPLE as ECRIT,
   GESTE_EXEMPLE as GESTE,
   OPERATION_EXEMPLE,
-} from './geste-appris.exemple'
+} from './geste-appris.test.fixture'
 
 // L'opération d'écriture déclarée par le métier (PLAN-METIER-2.md § 3.4, M6),
 // côté moteur : les deux formes de `modifications` se lisent sans conversion

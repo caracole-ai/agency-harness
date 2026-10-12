@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { stringify } from 'yaml'
-import { DOMAINE_ESSAI } from '../ronde/essai'
+import { DOMAINE_ESSAI } from '../ronde/essai.test.fixture'
 import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS } from '../ronde/resume'
-import { MISSION_ESSAI } from './essai'
+import { MISSION_ESSAI } from './essai.test.fixture'
 import { decider, lireMission, type Mission, missionPourModele } from './mission'
 
 // PLAN-RONDE.md § 6.1 et § 0.b : la mission lue par un schéma strict, et la
