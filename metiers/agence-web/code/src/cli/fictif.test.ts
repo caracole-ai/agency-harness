@@ -333,14 +333,20 @@ describe('le générateur', () => {
   it('rejoué dans un dossier temporaire, il rend les CSV commis octet pour octet', () => {
     const d = temporaire()
     const ecrits = ecrireAgenceWeb(d)
-    expect(ecrits.sort()).toEqual(readdirSync(EXEMPLE).sort())
+    expect(ecrits.sort()).toEqual(
+      readdirSync(EXEMPLE)
+        .filter((f) => f.endsWith('.csv'))
+        .sort(),
+    )
     for (const f of ecrits) {
       expect(readFileSync(join(d, f)).equals(readFileSync(join(EXEMPLE, f))), f).toBe(true)
     }
   })
 
-  it('le dossier commis ne porte que les CSV (config et personnes arrivent au lot 2b)', () => {
-    expect(readdirSync(EXEMPLE).sort()).toEqual(NOMS_TABLES.map((t) => `${t}.csv`).sort())
+  it('le dossier commis porte les CSV, et depuis le lot 2b sa config et son registre d’accès', () => {
+    expect(readdirSync(EXEMPLE).sort()).toEqual(
+      [...NOMS_TABLES.map((t) => `${t}.csv`), 'config.yaml', 'personnes.yaml'].sort(),
+    )
   })
 
   it('refuse le client fictif de la sécurité', () => {

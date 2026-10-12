@@ -1,0 +1,80 @@
+# Client fictif de l'agence web (PLAN-METIER-2.md § 7.1, M16) : sert aux
+# démonstrations et aux tests. Aucune donnée réelle. Les CSV sont la sortie
+# du générateur (`pnpm --filter @harnais/agence-web fictif --vers …`) ; les
+# noms sont inventés, d'origines et de genres mêlés, et les erreurs posées
+# sont réparties sans lien avec les noms.
+client: agence web fictive
+metier: agence-web
+
+donnees:
+  personnes: personnes.csv
+  clients: clients.csv
+  contacts: contacts.csv
+  projets: projets.csv
+  lots: lots.csv
+  devis: devis.csv
+  avenants: avenants.csv
+  tickets: tickets.csv
+  temps: temps.csv
+  factures: factures.csv
+  paiements: paiements.csv
+  relances: relances.csv
+  contrats_tma: contrats_tma.csv
+  recettes: recettes.csv
+  acces: acces.csv
+  depots: depots.csv
+  sauvegardes: sauvegardes.csv
+  domaines: domaines.csv
+  sous_traitants: sous_traitants.csv
+  versions: versions.csv
+
+journal: journal.sqlite
+
+# Valeurs déclarées par le dirigeant (entretien § 1, § 9), à confirmer.
+# heures_par_jour : la valeur du générateur (HEURES_PAR_JOUR_FICTIF).
+seuils:
+  forfait_alerte: 0.9
+  forfait_refus: 1.1
+  tma_alerte: 0.8
+  delegation_eur_ht: 5000
+  remise_max: 0.1
+  heures_par_jour: 7
+
+veiller:
+  # Valeurs d'exemple tirées de l'entretien § 8 : quand prévenir, et combien
+  # de temps il faut pour agir (en dessous, l'alerte est escaladée).
+  echeances:
+    facture_echeance: { alerter: { jours: 0 }, preparation: { jours: 1 } }
+    fin_garantie: { alerter: { mois: 1 }, preparation: { jours: 7 } }
+    fin_tma: { alerter: { mois: 1 }, preparation: { mois: 1 } }
+    domaine: { alerter: { jours: 30 }, preparation: { jours: 7 } }
+    certificat: { alerter: { jours: 30 }, preparation: { jours: 7 } }
+    fin_support: { alerter: { mois: 6 }, preparation: { mois: 1 } }
+    attestation_urssaf: { alerter: { mois: 1 }, preparation: { jours: 7 } }
+    pv_non_signe: { alerter: { jours: 0 }, preparation: { jours: 1 } }
+    devis_sans_reponse: { alerter: { jours: 0 }, preparation: { jours: 1 } }
+conversation:
+  modele:
+    fournisseur: anthropic
+    # Référence jusqu'à nouvel ordre (Lionel, 2026-10-08) : GLM-5.3 chez GMI
+    # Cloud, par son point d'accès au format Anthropic. Prix GMI relevés le
+    # 2026-10-08, en dollars par million de tokens. La clé reste dans la
+    # variable nommée, jamais ici. GMI ignore les outils stricts et « un seul
+    # outil par tour » : le harnais le tient quand même.
+    id: zai-org/GLM-5.3
+    prix_par_million_usd: { entree: 1.4, sortie: 4.4, cache_ecrit: 0, cache_lu: 0.26 }
+    effort: { traduire: low, echappee: medium }
+    acces: { url: "https://api.gmi-serving.com", authentification: bearer, variable_cle: GMI_API_KEY }
+    # Pour l'API d'Anthropic (prix relevés le 2026-10-07), retirer `acces` (la
+    # clé est alors lue dans ANTHROPIC_API_KEY) et mettre :
+    #   id: claude-opus-5-5
+    #   prix_par_million_usd: { entree: 4, sortie: 20, cache_ecrit: 5, cache_lu: 0.2 }
+    #   plafonds.par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
+  plafonds:
+    # Relevés pour GLM : jusqu'à 45 s par appel, et sa réflexion est longue.
+    par_demande: { tours: 12, tokens_sortie: 12000, secondes: 240 }
+    par_mois_usd: 30
+  # conservation_jours : les instantanés des échappées (echappees/<id>.json)
+  # sont purgés passé ce délai par `pnpm promotions`, sauf ceux qu'un geste
+  # appris cite dans ses tests.
+  promotion: { occurrences: 3, jours: 30, conservation_jours: 90 }
