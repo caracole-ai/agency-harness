@@ -324,7 +324,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   - `regles.yaml` (interdits, escalades, avec leurs paramètres et leurs
     lectures) et `scenarios/T-xx.yaml` (un test par fichier, avec ses
     données rejouables) : le registre, source de ces trois tables et des
-    contrôles du moteur. Seule la sécurité privée en a un ;
+    contrôles du moteur. La sécurité privée et l'agence web en ont un ;
   - `code/` : le paquet du métier (`@harnais/securite-privee`) — le modèle
     canonique (`modele.ts`), les notions (`semantique.ts`), un contrôle par
     interdit codé (`controles.ts` : I-01 à I-05, I-20 ; I-05 en partie), les
@@ -334,6 +334,12 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     patron et la délégation (`remplacement.ts`, `cli/remplacer.ts`) et le
     rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et
     vérifie que code, registre et scénarios concordent ;
+    l'agence web a le sien (`@harnais/agence-web`, `PLAN-METIER-2.md` § 7) :
+    modèle des vingt exports, connecteur CSV en lecture seule, générateur
+    déterministe du client fictif (`cli/fictif.ts`), neuf contrôles et deux
+    veilles (I-01 à I-04, I-07, I-09 à I-14), ses échéances, la copie par
+    capacité et ses huit gestes (`actions.ts`) ; rien ne s'écrit chez le
+    client ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
   - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel
@@ -350,6 +356,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     AFNOR s'oppose à ce qu'une IA lise ses normes ;
   - `avocats-affaires/` — prescripteurs et démonstration d'Attendu, pas une
     cible d'appels (arbitrage du 2026-09-22).
+
+  Et le second métier codé, pour prouver que le moteur est agnostique
+  (`PLAN-METIER-2.md`) : `agence-web/` — une agence web fictive (dirigeant,
+  commerciale, PO, graphiste, deux développeurs), son entretien simulé et
+  confirmé, sa fiche, son registre et ses scénarios.
 - `presentation/` — la page « Schéma du harnais » (2026-10-05) : le
   fonctionnement complet du moteur tel que décidé dans `REFLEXIONS.md`, pour
   la mini-conférence et pour validation avant le plan ; `harness-figure.js`
@@ -365,6 +376,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   liste écrite à la main de ce que la veille doit trouver ; un test la
   compare au résultat. Sert aux démonstrations : jamais de données réelles
   ici.
+- `exemples/agence-web-fictive/` — l'agence web fictive : les vingt CSV que
+  rend son générateur (graine fixe, date de référence 2026-10-12, dix erreurs
+  posées), sa config et son registre d'accès (six personnes, cinq rôles).
 - `clients/` — les notes d'entretien, une par client, et `index.md`, la table
   des lettres (client A, client B) sous lesquelles les fiches les citent.
   Ignoré par git (voir `.gitignore`) : ce que dit un client chez lui ne part
@@ -386,6 +400,10 @@ pnpm registre:generer    # réécrit les tables 1, 2, 4 des fiches depuis leur r
 pnpm registre:verifier   # identifiants, couverture interdit ↔ test, codes cités par les vues, fiche à jour
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
                          # la veille d'un client : planning contrôlé, échéances, rapport ; écrit dans son journal
+pnpm veiller --client <copie de exemples/agence-web-fictive> --date 2026-10-12
+                         # la même veille chez l'agence web (constats « à décider », échéances)
+pnpm --filter @harnais/agence-web fictif --vers <dossier>
+                         # régénère les CSV du client fictif de l'agence web (refuse exemples/client-fictif)
 pnpm rapport:html rapport.md rapport.html [--bandeau "texte"]
                          # le rapport mis en page (A4), à imprimer en PDF depuis un navigateur
 pnpm remplacer absence --client <copie> --agent A-11 --jour 2026-10-11 --maintenant 2026-10-10T21:40
