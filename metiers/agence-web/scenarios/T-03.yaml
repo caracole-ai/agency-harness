@@ -1,0 +1,8 @@
+id: T-03
+etant_donne: "un site e-commerce dont la dernière sauvegarde date de 30 h"
+quand: "une mise en production a lieu un vendredi à 19 h"
+alors: "la mise en production est signalée « à vérifier » : aucune sauvegarde de moins de 24 h avant elle ; l'accord écrit du client, qui vit dans la messagerie, se confirme à la main"
+interdits:
+  - I-03
+statut: hypothèse
+source: conçu depuis l'interdit

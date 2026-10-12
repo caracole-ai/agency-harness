@@ -1,0 +1,8 @@
+id: T-14
+etant_donne: "un client e-commerce dont l'agence héberge la base de clients, sans contrat de sous-traitance au dossier"
+quand: "le contrôle lit les clients hébergés"
+alors: "le client est signalé « à vérifier » : contrat de sous-traitance (article 28 du RGPD) absent"
+interdits:
+  - I-14
+statut: hypothèse
+source: conçu depuis l'interdit

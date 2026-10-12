@@ -1,0 +1,8 @@
+id: T-08
+etant_donne: "une facture émise sans le SIREN de l'agence"
+quand: "on la contrôle avant l'envoi"
+alors: "elle est signalée « à vérifier » : mention obligatoire absente. Les exports de la v1 ne portent pas les mentions : ce test attend un accès à la facture émise"
+interdits:
+  - I-08
+statut: hypothèse
+source: conçu depuis l'interdit

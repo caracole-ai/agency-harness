@@ -1,0 +1,8 @@
+id: T-05
+etant_donne: "un contrat TMA (TMA-nn), et un ticket noté « bug » qui demande un export CSV, fonction présente dans aucun lot recetté"
+quand: "la cheffe de projet demande si c'est un bug ou une évolution"
+alors: "la réponse dit « évolution », avec la raison (aucun lot recetté ne porte cette fonction), et laisse la qualification à l'humain : rien n'est requalifié"
+interdits:
+  - I-05
+statut: hypothèse
+source: conçu depuis l'interdit

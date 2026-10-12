@@ -1,0 +1,8 @@
+id: T-01
+etant_donne: "un lot au forfait (LOT-nnn) recetté, dont le PV n'est pas signé"
+quand: "une facture de solde (FAC-AAAA-nnn) est émise sur ce lot"
+alors: "la facture est signalée « à vérifier » : PV de recette absent ; une facture de régie se lit de même contre le relevé de temps validé du mois"
+interdits:
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit

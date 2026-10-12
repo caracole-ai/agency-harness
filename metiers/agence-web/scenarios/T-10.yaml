@@ -1,0 +1,8 @@
+id: T-10
+etant_donne: "un devis signé pour un site avec logo et maquettes, sans clause de cession des droits d'auteur"
+quand: "un lot de ce devis est mis en production"
+alors: "la livraison est signalée « à vérifier » : clause de cession absente ; une clause présente mais sans étendue, durée ou territoire se relit à la main"
+interdits:
+  - I-10
+statut: hypothèse
+source: conçu depuis l'interdit

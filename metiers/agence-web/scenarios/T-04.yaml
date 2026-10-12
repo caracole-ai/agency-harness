@@ -1,0 +1,8 @@
+id: T-04
+etant_donne: "un sous-traitant (ST-nn), toujours collaborateur du dépôt d'un projet clos depuis quatre mois, sans date de révocation au registre"
+quand: "le contrôle croise le registre des accès et les collaborateurs des dépôts"
+alors: "l'accès est signalé « à vérifier » : à révoquer, la fin du projet est passée ; un collaborateur du dépôt absent du registre est signalé de même"
+interdits:
+  - I-04
+statut: hypothèse
+source: conçu depuis l'interdit

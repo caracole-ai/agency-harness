@@ -1,0 +1,8 @@
+id: T-01b
+etant_donne: "un lot recetté dont le PV est signé avec une réserve mineure"
+quand: "la facture de solde du lot est émise"
+alors: "rien n'est signalé : une réserve mineure n'empêche pas la facture ; avec une réserve bloquante, la facture serait signalée « à vérifier »"
+interdits:
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit

@@ -1,0 +1,8 @@
+id: T-12
+etant_donne: "un forfait vendu 18 jours, dont les temps saisis sur le projet atteignent 27 jours"
+quand: "le contrôle rapproche les temps du projet et les jours vendus"
+alors: "le projet est signalé « à vérifier » : 150 % des jours vendus, au-delà de 110 % ; l'alerte était due dès 90 %, l'escalade à 100 % (E-07)"
+interdits:
+  - I-12
+statut: hypothèse
+source: conçu depuis l'interdit

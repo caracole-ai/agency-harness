@@ -1,0 +1,8 @@
+id: T-02
+etant_donne: "un projet en garantie, et un ticket (TK-nnnn) de type « évolution », résolu, rattaché à aucun lot vendu ni avenant"
+quand: "le contrôle lit les tickets"
+alors: "le ticket est signalé « à vérifier » : travail hors devis, sans lot ni avenant ; un accord écrit par mail, s'il existe, n'est pas lu en v1 et se confirme à la main"
+interdits:
+  - I-02
+statut: hypothèse
+source: conçu depuis l'interdit

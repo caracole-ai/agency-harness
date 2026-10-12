@@ -1,0 +1,8 @@
+id: T-13b
+etant_donne: "un domaine géré par l'agence dont la date d'expiration n'est pas connue"
+quand: "le contrôle quotidien des échéances"
+alors: "alerte : date d'expiration inconnue, en tête de liste, jamais tenue pour lointaine"
+interdits:
+  - I-13
+statut: hypothèse
+source: conçu depuis l'interdit

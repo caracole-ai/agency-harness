@@ -1,0 +1,8 @@
+id: T-07
+etant_donne: "une facture émise avec un délai de paiement de 90 jours, sans mention des pénalités de retard"
+quand: "le contrôle lit les factures"
+alors: "la facture est signalée « à vérifier » : délai au-delà de 60 jours, pénalités non mentionnées ; une facture à 45 jours fin de mois qui porte pénalités et indemnité de 40 € n'est pas signalée"
+interdits:
+  - I-07
+statut: hypothèse
+source: conçu depuis l'interdit

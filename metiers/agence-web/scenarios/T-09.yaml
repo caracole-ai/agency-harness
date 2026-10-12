@@ -1,0 +1,8 @@
+id: T-09
+etant_donne: "un sous-traitant (ST-nn) payé 8 000 € HT sur l'année, dont la dernière attestation URSSAF date de huit mois"
+quand: "le contrôle lit les sous-traitants"
+alors: "le sous-traitant est signalé « à vérifier » : attestation de plus de six mois au-delà de 5 000 € HT ; sous le seuil, rien n'est signalé"
+interdits:
+  - I-09
+statut: hypothèse
+source: conçu depuis l'interdit

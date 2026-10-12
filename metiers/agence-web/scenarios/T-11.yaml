@@ -1,0 +1,8 @@
+id: T-11
+etant_donne: "un devis à 15 % de remise, signé par la commerciale"
+quand: "le contrôle lit les devis"
+alors: "le devis est signalé « à vérifier » : remise de plus de 10 % engagée par une autre personne que le dirigeant ; de même pour un devis de plus de 5 000 € HT signé par la cheffe de projet"
+interdits:
+  - I-11
+statut: hypothèse
+source: conçu depuis l'interdit

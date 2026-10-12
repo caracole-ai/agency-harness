@@ -1,0 +1,8 @@
+id: T-13
+etant_donne: "un domaine géré par l'agence qui expire dans 25 jours, sans renouvellement"
+quand: "le contrôle quotidien des échéances"
+alors: "alerte : expiration dans moins de 30 jours, avec la date, le client et le registrar ; nouvelle alerte à 7 jours"
+interdits:
+  - I-13
+statut: hypothèse
+source: conçu depuis l'interdit
