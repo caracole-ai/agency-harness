@@ -22,7 +22,7 @@ import { TYPES_PARAMETRE } from './types-parametre'
 // vacation et agent compris ; les gestes de l'éval de rejeu, écrits sous
 // l'ancienne forme, passent le gabarit avec ces déclarations.
 
-const evals = fileURLToPath(new URL('../../../../evals', import.meta.url))
+const evals = fileURLToPath(new URL('../../evals', import.meta.url))
 const COLONNES = { vacation: 'vacation', agent: 'agent' }
 
 describe('OPERATION_REAFFECTER', () => {

@@ -16,7 +16,8 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse } from 'yaml'
-import { FichierTraduire } from '../evals/evals'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
+import { evalsDuMetier, FichierTraduire } from '../evals/evals'
 import { type BilanTraduction, passeTraduction } from '../evals/traduction'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import { coutDuMois } from '../modele/compteur'
@@ -35,7 +36,6 @@ import { FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
-const EVALS = join(RACINE, 'evals')
 
 const { values } = parseArgs({
   options: {
@@ -51,6 +51,11 @@ if (!values.client) {
 
 const dossier = resolve(values.client)
 const m = await metierDe(dossier)
+/** Les cas de traduction du métier du client (PLAN-METIER-2.md M8). */
+const EVALS = join(
+  RACINE,
+  evalsDuMetier(chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase).metier),
+)
 
 /** `--date` à 23:59 heure de Paris, sinon l'heure réelle. */
 const maintenant = values.date

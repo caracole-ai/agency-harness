@@ -25,7 +25,7 @@ import { OPERATION_REAFFECTER } from './operation-reaffecter'
 // client fictif s'il en a) passent le même test d'honnêteté que les gestes
 // codés (PLAN-PROMOTION.md § 7.3, P13).
 
-const evals = fileURLToPath(new URL('../../../../evals', import.meta.url))
+const evals = fileURLToPath(new URL('../../evals', import.meta.url))
 const fictif = fileURLToPath(new URL('../../../../exemples/client-fictif', import.meta.url))
 const traduire = FichierTraduire.parse(parse(readFileSync(`${evals}/consignes.yaml`, 'utf8')))
 const echappee = FichierEchappee.parse(parse(readFileSync(`${evals}/echappees.yaml`, 'utf8')))

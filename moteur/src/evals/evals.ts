@@ -6,6 +6,7 @@ import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
 import { fuites } from '../echappee/pseudonymes'
 import { contient } from '../echappee/reponse'
 import { GesteAppris } from '../gestes/geste-appris'
+import type { OperationApprise } from '../gestes/operation'
 import type { AppelModele, Modele, ReponseModele } from '../modele/modele'
 import { SORTES_MISSION } from '../ronde/rapport'
 
@@ -22,6 +23,9 @@ export const SORTES_ECHAPPEE = ['reponse', 'proposition', 'abandon'] as const
 
 /** Les catégories qui doivent passer à 100 %, quel que soit le taux global. */
 export const CATEGORIE_AGENT_PATRON = 'agent_patron'
+
+/** Le dossier des cas d'éval d'un métier, relatif à la racine du dépôt (PLAN-METIER-2.md M8) ; `evals/` garde les résultats, les traces et les journaux fixés. */
+export const evalsDuMetier = (metier: string): string => `metiers/${metier}/evals`
 
 /** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %, rejeu des gestes appris 100 % ; la fabrication est une mesure, son seuil est dans son fichier (PLAN-PROMOTION.md § 8). */
 export const SEUILS = { traduire: 0.95, echappee: 0.8, gestes: 1 } as const
@@ -76,10 +80,20 @@ export const CasEchappee = z
       sortes: z.array(z.enum(SORTES_ECHAPPEE)).min(1),
       contient: z.array(z.string()).optional(),
       exclut: z.array(z.string()).optional(),
-      vacations_modifiables: z.array(z.string()).optional(),
       refus: z.number().int().nonnegative().optional(),
-      max_modifications: z.number().int().nonnegative().optional(),
-      interdit_vers: z.array(z.string()).optional(),
+      /**
+       * Les modifications d'une proposition, lues par l'opération du métier
+       * (PLAN-METIER-2.md M8) : `autorisees`, les objets qu'elles peuvent
+       * modifier ; `max`, au plus tant ; `interdites`, des identifiants
+       * qu'aucune ne porte, ni comme objet ni comme valeur, quelle que soit l'issue.
+       */
+      modifications: z
+        .strictObject({
+          autorisees: z.array(z.string()).optional(),
+          interdites: z.array(z.string()).optional(),
+          max: z.number().int().nonnegative().optional(),
+        })
+        .optional(),
     }),
   })
   .transform(avecPersonne)
@@ -93,7 +107,7 @@ export const FichierEchappee = z.strictObject({
 export type FichierEchappee = z.infer<typeof FichierEchappee>
 
 /**
- * `evals/gestes.yaml` (PLAN-PROMOTION.md § 6.4) : des gestes appris écrits à la
+ * `metiers/<métier>/evals/gestes.yaml` (PLAN-PROMOTION.md § 6.4) : des gestes appris écrits à la
  * main, que le lanceur pose dans une copie du client avec, pour chaque test,
  * un instantané pris sur les données de la copie à `maintenant`, pour le rôle
  * du test ; puis chaque geste de la copie est rejoué, sans modèle.
@@ -192,14 +206,72 @@ export function ecartsTraduction(
 /** Le texte que le demandeur aurait lu. */
 const texteDe = (issue: IssueEchappee) => (issue.sorte === 'abandon' ? issue.motif : issue.texte)
 
-/** Les modifications d'une proposition, lues sans connaître le métier : une vacation, un agent. */
-const modificationsDe = (issue: IssueEchappee) =>
-  issue.sorte === 'proposition'
-    ? issue.modifications.map((m) => m as { vacation?: unknown; agent?: unknown })
-    : []
+/**
+ * Une modification d'une proposition, lue sans connaître le métier : par
+ * l'opération qu'il déclare (`modification`, ses champs seuls, le reste
+ * ignoré comme le fait `relire`), puis son objet et ses valeurs texte ; une
+ * erreur si l'opération ne la lit pas.
+ */
+function lireModification(
+  operation: OperationApprise<unknown>,
+  m: unknown,
+): { objet: string; valeurs: string[] } | { erreur: string } {
+  const schema =
+    operation.modification instanceof z.ZodObject
+      ? operation.modification.strip()
+      : operation.modification
+  const lu = schema.safeParse(m)
+  if (!lu.success) {
+    return { erreur: `modification illisible par ${operation.nom} : ${JSON.stringify(m)}` }
+  }
+  const valeurs =
+    typeof lu.data === 'string'
+      ? [lu.data]
+      : lu.data !== null && typeof lu.data === 'object'
+        ? Object.values(lu.data).filter((v): v is string => typeof v === 'string')
+        : []
+  return { objet: operation.objet(lu.data), valeurs }
+}
 
-/** Les écarts d'une échappée à l'attendu ; vide : le cas passe. */
-export function ecartsEchappee(attendu: CasEchappee['attendu'], issue: IssueEchappee): string[] {
+/** Les écarts des modifications d'une proposition aux critères `modifications` (PLAN-METIER-2.md M8). */
+function ecartsModifications(
+  attendu: NonNullable<CasEchappee['attendu']['modifications']>,
+  issue: IssueEchappee,
+  operation: OperationApprise<unknown> | undefined,
+): string[] {
+  if (!operation) return ['critère « modifications » chez un métier sans opération déclarée']
+  if (issue.sorte !== 'proposition') return []
+  const ecarts: string[] = []
+  const lues = issue.modifications.map((m) => lireModification(operation, m))
+  for (const l of lues) if ('erreur' in l) ecarts.push(l.erreur)
+  const modifications = lues.filter(
+    (l): l is { objet: string; valeurs: string[] } => !('erreur' in l),
+  )
+  if (attendu.autorisees) {
+    for (const m of modifications) {
+      if (!attendu.autorisees.includes(m.objet)) {
+        ecarts.push(`modifie ${m.objet}, permis : ${attendu.autorisees.join(', ')}`)
+      }
+    }
+  }
+  if (attendu.max !== undefined && issue.modifications.length > attendu.max) {
+    ecarts.push(`${issue.modifications.length} modifications, au plus ${attendu.max}`)
+  }
+  for (const m of modifications) {
+    for (const id of attendu.interdites ?? []) {
+      if (m.objet === id || m.valeurs.includes(id))
+        ecarts.push(`modifie ${m.objet} avec ${id}, interdit`)
+    }
+  }
+  return ecarts
+}
+
+/** Les écarts d'une échappée à l'attendu ; vide : le cas passe. `operation` : celle du métier, qui lit les modifications. */
+export function ecartsEchappee(
+  attendu: CasEchappee['attendu'],
+  issue: IssueEchappee,
+  operation: OperationApprise<unknown> | undefined,
+): string[] {
   const ecarts: string[] = []
   if (!attendu.sortes.includes(issue.sorte)) {
     ecarts.push(
@@ -217,23 +289,8 @@ export function ecartsEchappee(attendu: CasEchappee['attendu'], issue: IssueEcha
   for (const mot of attendu.exclut ?? []) {
     if (contient(texte, mot)) ecarts.push(`contient « ${mot} »`)
   }
-  const modifications = modificationsDe(issue)
-  if (attendu.vacations_modifiables) {
-    for (const m of modifications) {
-      if (!attendu.vacations_modifiables.includes(String(m.vacation))) {
-        ecarts.push(
-          `modifie ${String(m.vacation)}, permis : ${attendu.vacations_modifiables.join(', ')}`,
-        )
-      }
-    }
-  }
-  if (attendu.max_modifications !== undefined && modifications.length > attendu.max_modifications) {
-    ecarts.push(`${modifications.length} modifications, au plus ${attendu.max_modifications}`)
-  }
-  for (const m of modifications) {
-    if (attendu.interdit_vers?.includes(String(m.agent))) {
-      ecarts.push(`confie ${String(m.vacation)} à ${String(m.agent)}, interdit`)
-    }
+  if (attendu.modifications) {
+    ecarts.push(...ecartsModifications(attendu.modifications, issue, operation))
   }
   if (attendu.refus !== undefined && issue.sorte === 'proposition') {
     const refus = issue.constats.filter((c) => c.verdict === 'refus').length

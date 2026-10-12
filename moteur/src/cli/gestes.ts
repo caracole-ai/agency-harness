@@ -14,7 +14,8 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse } from 'yaml'
-import { FichierTraduire } from '../evals/evals'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
+import { evalsDuMetier, FichierTraduire } from '../evals/evals'
 import { passeTraduction } from '../evals/traduction'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import {
@@ -30,7 +31,6 @@ import { dateFr, FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
-const EVALS = join(RACINE, 'evals')
 const COMMANDES = ['lister', 'verifier', 'activer', 'retirer'] as const
 type Commande = (typeof COMMANDES)[number]
 
@@ -57,6 +57,11 @@ if (commande === 'retirer' && !values.motif) usage()
 
 const dossier = resolve(values.client as string)
 const m = await metierDe(dossier)
+/** Les cas de traduction du métier du client (PLAN-METIER-2.md M8). */
+const EVALS = join(
+  RACINE,
+  evalsDuMetier(chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase).metier),
+)
 const maintenant = Temporal.Now.zonedDateTimeISO(FUSEAU)
 const pourCent = (taux: number) => `${Math.round(taux * 100)} %`
 

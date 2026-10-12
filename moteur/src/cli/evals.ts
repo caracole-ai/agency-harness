@@ -1,18 +1,20 @@
 // pnpm evals traduire|echappee|gestes|promotion|ronde --client <dossier> [--seulement id,id] [--modele simule]
 // Les évals de la conversation (PLAN-ESPACES.md § 9) et de la promotion
-// (PLAN-PROMOTION.md § 6.4) : chaque cas, écrit à la main dans `evals/`,
+// (PLAN-PROMOTION.md § 6.4) : chaque cas, écrit à la main dans
+// `metiers/<métier>/evals/` (le métier du client, PLAN-METIER-2.md M8),
 // tourne sur une copie fraîche du client (ou sur une variante dérivée de lui,
 // pour un homonyme) ; la sortie est vérifiée en code, la trace complète est
-// gardée dans `evals/traces/` (non versionné) et le tableau dans
-// `evals/resultats/`. `traduire`, `echappee` et `promotion` appellent le vrai
-// modèle : exige la clé que nomme la config (ANTHROPIC_API_KEY sans `acces`)
-// et coûte (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la fabrication, avec
-// GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
+// gardée dans `evals/traces/<horodatage>-<métier>-<quoi>/` (non versionné) et
+// le tableau dans `evals/resultats/<horodatage>-<métier>-<quoi>.md`.
+// `traduire`, `echappee` et `promotion` appellent le vrai modèle : exige la
+// clé que nomme la config (ANTHROPIC_API_KEY sans `acces`) et coûte (≈ 0,3 $
+// les deux premières passes, ≈ 0,2 $ la fabrication, avec GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
 // vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
 // porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du client (`m.noms`)
 // partis au modèle, colonne du tableau, seuil 0. `ronde` (PLAN-RONDE.md § 5.4)
-// rejoue les journaux fixés d'`evals/rondes.yaml` sur une copie et lance la
-// ronde avec le modèle d'`agence.yaml` (sous acces: claude, l'abonnement : le
+// rejoue les journaux fixés du `rondes.yaml` du métier (les journaux restent
+// dans `evals/`) sur une copie et lance la ronde avec le modèle
+// d'`agence.yaml` (sous acces: claude, l'abonnement : le
 // coût est estimé par le binaire), sans rien écrire dans `memoire/` ; tant que
 // les étiquettes sont un brouillon, le résultat aussi.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
@@ -32,6 +34,7 @@ import {
   type Etiquettes,
   ecartsEchappee,
   ecartsRonde,
+  evalsDuMetier,
   FichierEchappee,
   FichierGestes,
   FichierPromotions,
@@ -94,6 +97,8 @@ if (values.modele !== undefined && values.modele !== 'simule') {
 const source = resolve(values.client)
 const { metier } = chargerConfig(join(source, FICHIER_CONFIG), ConfigBase)
 const m = await metierDe(source)
+/** Les cas du métier du client ; `EVALS` garde les résultats, les traces et les journaux fixés. */
+const CAS = join(RACINE, evalsDuMetier(metier))
 const avecModele = quoi !== 'gestes'
 // La ronde n'appelle pas le modèle du client : celui de l'agence, préflight au moment de l'appel.
 const avecModeleClient = avecModele && quoi !== 'ronde'
@@ -114,7 +119,7 @@ const modeleDe = (config: Parameters<typeof modeleDepuisConfig>[0]): Modele =>
 const deux = (n: number) => String(n).padStart(2, '0')
 const t = Temporal.Now.zonedDateTimeISO(FUSEAU)
 const tampon = `${t.year}-${deux(t.month)}-${deux(t.day)}-${deux(t.hour)}${deux(t.minute)}`
-const dossierTraces = join(EVALS, 'traces', `${tampon}-${quoi}`)
+const dossierTraces = join(EVALS, 'traces', `${tampon}-${metier}-${quoi}`)
 mkdirSync(dossierTraces, { recursive: true })
 mkdirSync(join(EVALS, 'resultats'), { recursive: true })
 const seulement = values.seulement ? new Set(values.seulement.split(',')) : undefined
@@ -142,7 +147,7 @@ const rondes: (ResultatCas & { bilan: BilanRonde; estime: boolean })[] = []
 let etiquettes: Etiquettes = 'brouillon'
 
 if (quoi === 'traduire') {
-  const fichier = FichierTraduire.parse(parse(readFileSync(join(EVALS, 'consignes.yaml'), 'utf8')))
+  const fichier = FichierTraduire.parse(parse(readFileSync(join(CAS, 'consignes.yaml'), 'utf8')))
   const { appris, erreurs } = apprisDuDossier(m, source)
   for (const e of erreurs) console.error(e)
   if (appris.length > 0) {
@@ -159,7 +164,7 @@ if (quoi === 'traduire') {
     )),
   )
 } else if (quoi === 'echappee') {
-  const fichier = FichierEchappee.parse(parse(readFileSync(join(EVALS, 'echappees.yaml'), 'utf8')))
+  const fichier = FichierEchappee.parse(parse(readFileSync(join(CAS, 'echappees.yaml'), 'utf8')))
   const echappee = m.echappee
   if (!echappee) throw new Error(`le métier ${metier} n'a pas d'échappée`)
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
@@ -186,7 +191,7 @@ if (quoi === 'traduire') {
             aParis(c.maintenant ?? fichier.maintenant),
             modele,
           )
-          return { ecarts: ecartsEchappee(c.attendu, issue), issue }
+          return { ecarts: ecartsEchappee(c.attendu, issue, m.operation), issue }
         }),
     )
     resultats.push(joue.resultat)
@@ -197,7 +202,7 @@ if (quoi === 'traduire') {
   // `gestes.yaml` sont posés dans une copie avec un instantané par test, pris
   // sur les données de la copie ; puis chaque geste de la copie, ceux du
   // dossier passé en --client compris, est rejoué sur ses instantanés.
-  const fichier = FichierGestes.parse(parse(readFileSync(join(EVALS, 'gestes.yaml'), 'utf8')))
+  const fichier = FichierGestes.parse(parse(readFileSync(join(CAS, 'gestes.yaml'), 'utf8')))
   const copieMetier = m.copie
   if (!copieMetier) throw new Error(`le métier ${metier} n'expose pas sa copie`)
   const dossier = copieClient(source)
@@ -256,7 +261,7 @@ if (quoi === 'traduire') {
     rmSync(dossier, { recursive: true, force: true })
   }
 } else if (quoi === 'ronde') {
-  const fichier = FichierRondes.parse(parse(readFileSync(join(EVALS, 'rondes.yaml'), 'utf8')))
+  const fichier = FichierRondes.parse(parse(readFileSync(join(CAS, 'rondes.yaml'), 'utf8')))
   etiquettes = fichier.etiquettes
   const agence = chargerAgence(RACINE)
   idModele =
@@ -341,12 +346,8 @@ if (quoi === 'traduire') {
   // zéro écart. Pas de passe de traduction ici (elle se mesure à part). Une
   // proposition ne compte que validée (P9) : le lanceur joue le « oui » d'un
   // rôle qui valide (PLAN-METIER-2.md M3) par le métier, contrôles compris (§ 10).
-  const fichier = FichierPromotions.parse(
-    parse(readFileSync(join(EVALS, 'promotions.yaml'), 'utf8')),
-  )
-  const echappees = FichierEchappee.parse(
-    parse(readFileSync(join(EVALS, 'echappees.yaml'), 'utf8')),
-  )
+  const fichier = FichierPromotions.parse(parse(readFileSync(join(CAS, 'promotions.yaml'), 'utf8')))
+  const echappees = FichierEchappee.parse(parse(readFileSync(join(CAS, 'echappees.yaml'), 'utf8')))
   const echappee = m.echappee
   if (!echappee) throw new Error(`le métier ${metier} n'a pas d'échappée`)
   seuil = fichier.seuil
@@ -437,7 +438,7 @@ if (quoi === 'traduire') {
 }
 
 const b = bilan(resultats, seuil)
-const chemin = join(EVALS, 'resultats', `${tampon}-${quoi}.md`)
+const chemin = join(EVALS, 'resultats', `${tampon}-${metier}-${quoi}.md`)
 const TITRES: Record<Quoi, string> = {
   traduire: 'de la traduction',
   echappee: "de l'échappée",

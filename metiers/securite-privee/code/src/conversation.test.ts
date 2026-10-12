@@ -944,12 +944,7 @@ describe('un geste appris qui écrit : la réaffectation groupée en un appel (P
   // Le geste écrit à la main de l'éval de rejeu (`evals/gestes.yaml`, calculs
   // à la main) : le mardi 13 de Karim, V-03, va à Aïcha (A-11).
   const geste = FichierGestes.parse(
-    parse(
-      readFileSync(
-        fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
-        'utf8',
-      ),
-    ),
+    parse(readFileSync(fileURLToPath(new URL('../../evals/gestes.yaml', import.meta.url)), 'utf8')),
   ).gestes.find((g) => g.id === 'liberer_un_jour')
   if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
   const jeton = empreinteGeste(geste)
@@ -1053,10 +1048,7 @@ describe('un geste appris qui écrit, refusé par les règles : rien n’est ouv
   it('Sophie (carte expirée) pour V-03 : la proposition est refusée par le métier, au journal, sans attente', async () => {
     const geste = FichierGestes.parse(
       parse(
-        readFileSync(
-          fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
-          'utf8',
-        ),
+        readFileSync(fileURLToPath(new URL('../../evals/gestes.yaml', import.meta.url)), 'utf8'),
       ),
     ).gestes.find((g) => g.id === 'liberer_un_jour')
     if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
