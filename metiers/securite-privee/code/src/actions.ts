@@ -7,6 +7,7 @@ import {
   veilleDuClient,
 } from '@harnais/moteur'
 import { z } from 'zod'
+import { DOMAINE } from './domaine'
 import { NOMS_ACTIVITES } from './modele'
 import {
   attendus,
@@ -399,7 +400,10 @@ const lancerVeille: Action<Session, z.infer<typeof LancerVeille>> = {
   reformuler: () => 'Je lance la veille du planning et des échéances.',
   executer: (s, _identite, p, maintenant) => {
     const jour = p.date ? Temporal.PlainDate.from(p.date) : maintenant.toPlainDate()
-    return { texte: veilleDuClient(VEILLER, METIER, s.dossier, jour, s.journal).rapport }
+    return {
+      texte: veilleDuClient(VEILLER, METIER, s.dossier, jour, s.journal, DOMAINE.rienASignaler)
+        .rapport,
+    }
   },
 }
 

@@ -20,6 +20,10 @@ describe('methode/architecture-pour-modeles.md', () => {
     expect(carte).toContain("Ce qu'un modèle ne fait jamais")
     expect(carte).toContain('Non vérifié, risque')
   })
+
+  it('ne dit aucun métier : la ronde reçoit le cadre du domaine (PLAN-METIER-2.md M7)', () => {
+    expect(carte).not.toMatch(/sécurité privée|ici, la/)
+  })
 })
 
 // PLAN-RONDE.md § 6.4 : le système ajouté au chantier, de même.
@@ -36,5 +40,9 @@ describe('methode/chantier.md', () => {
     for (const s of ['## Vérifié', '## Non vérifié, risque', "## Ce que j'ai appris"]) {
       expect(methode).toContain(s)
     }
+  })
+
+  it('ne cite ni les places ni l’opération de la sécurité (PLAN-METIER-2.md M7)', () => {
+    expect(methode).not.toMatch(/<agent>|<site>|'reaffecter'/)
   })
 })

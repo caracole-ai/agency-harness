@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import type { Identite } from '../conversation/actions'
 import type { ConfigConversation } from '../conversation/config'
+import type { Domaine } from '../conversation/domaine'
 import { Journal } from '../journal/journal'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -32,6 +33,16 @@ import { fuites, type Precision } from './pseudonymes'
 
 const Modif = z.strictObject({ vacation: z.string(), agent: z.string() })
 type Modif = z.infer<typeof Modif>
+
+const DOMAINE: Domaine = {
+  cadre: "l'outil de planning d'une entreprise de sécurité privée",
+  objets: 'le planning et les agents',
+  modifications:
+    'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
+  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
+  identifiants: /\bA-\d+\b/g,
+  rienASignaler: 'Aucune vacation contraire à une règle.',
+}
 
 const CONFIG: ConfigConversation = {
   modele: {
@@ -112,6 +123,7 @@ async function echapper(
     config: CONFIG,
     identite,
     quiParle: identite.role === 'patron' ? 'le patron' : "l'agent A-2",
+    domaine: DOMAINE,
   }
   const metier: EchappeeDuMetier<Modif> = {
     tables: tablesPour(identite),
@@ -233,10 +245,24 @@ describe('ecrireInstantane', () => {
 describe('systemeEchappee', () => {
   it('dit de répondre à la question posée, rien de plus (PLAN-GENERAL.md G4 a)', () => {
     for (const proposer of [true, false]) {
-      expect(systemeEchappee('le patron', 'Table agents : …', [], '', proposer)).toContain(
-        'Réponds à la question posée, rien de plus : pas de détail par vacation si on demande un total, pas de remarque ajoutée.',
+      expect(systemeEchappee('le patron', 'Table agents : …', [], '', proposer, DOMAINE)).toContain(
+        'Réponds à la question posée, rien de plus : pas de détail ligne par ligne si on demande un total, pas de remarque ajoutée.',
       )
     }
+  })
+  it('dit les modifications possibles du métier, ou rien quand il n’en déclare aucune (PLAN-METIER-2.md M7)', () => {
+    const fin =
+      'Tu finis toujours par un appel d’outil, repondre, proposer ou abandonner, jamais par du texte.'
+    expect(systemeEchappee('le patron', '', [], '', true, DOMAINE)).toContain(
+      `${fin} Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.\n`,
+    )
+    const sans = systemeEchappee('la dirigeante', '', [], '', true, {
+      ...DOMAINE,
+      modifications: null,
+    })
+    expect(sans).toContain(`${fin}\n`)
+    expect(sans).not.toMatch(/vacation|agent|patron/)
+    expect(sans).toContain('Les préférences de l’entreprise, pour choisir')
   })
 })
 
@@ -323,6 +349,7 @@ describe('aucun nom ne part au modèle (PLAN-PSEUDONYMES.md § 5.4)', () => {
         config: CONFIG,
         identite: PATRON,
         quiParle: 'le patron',
+        domaine: DOMAINE,
       },
       {
         tables: tablesPour(PATRON),

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { stringify } from 'yaml'
+import { DOMAINE_ESSAI } from '../ronde/essai'
 import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS } from '../ronde/resume'
 import { MISSION_ESSAI } from './essai'
 import { decider, lireMission, type Mission, missionPourModele } from './mission'
@@ -96,10 +97,24 @@ describe('decider (§ 0.b)', () => {
 
 describe('missionPourModele', () => {
   it('des types : ni échappées ni identifiant d’échappée, même dans le texte de la ronde', () => {
-    const texte = missionPourModele(mission({ pourquoi: 'A-7 la demande, E-20261010T0900-0005' }))
-    expect(texte).not.toMatch(/A-7/)
+    const texte = missionPourModele(
+      mission({ pourquoi: 'A-7 la demande, E-20261010T0900-0005, puis A-8' }),
+      DOMAINE_ESSAI,
+    )
+    expect(texte).not.toMatch(/A-[78]/)
     expect(texte).not.toMatch(/E-2026/)
     expect(texte).toContain('<échappée>')
-    expect(texte).toContain('<agent>')
+    expect(texte).toContain('- pourquoi : <personne> la demande, <échappée>, puis <personne>')
+  })
+  it('masque avec le motif des identifiants du métier, même déclaré sans `g` (PLAN-METIER-2.md M7)', () => {
+    const agence = { ...DOMAINE_ESSAI, identifiants: /\bM-\d+\b/ }
+    const texte = missionPourModele(
+      mission({ titre: 'le temps de M-3 et de M-12', consignes_types: ['M-4 sur <projet>'] }),
+      agence,
+    )
+    expect(texte).toContain('- titre : le temps de <personne> et de <personne>')
+    expect(texte).toContain('« <personne> sur <projet> »')
+    expect(texte).toContain('(les demandes, réécrites avec des places)')
+    expect(texte).not.toMatch(/M-\d|patron/)
   })
 })

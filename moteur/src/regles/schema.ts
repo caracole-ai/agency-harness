@@ -42,7 +42,7 @@ export const Lecture = z.object({
 export const Interdit = z
   .object({
     id: z.string().regex(/^I-\d{2}$/),
-    /** Le nom court, celui que lit le client dans un rapport (« carte professionnelle »). */
+    /** Le nom court, celui que lit le client dans un rapport (exemple : « carte professionnelle »). */
     nom: z.string().min(1),
     interdit: z.string(),
     etapes: z.array(z.string()).min(1),

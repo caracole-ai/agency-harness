@@ -16,7 +16,7 @@ import { RACINE_DEPOT } from '../agence/fictif'
 import { ajouterConvention, ecrireRetrait, lireIndex } from '../chantier/memoire'
 import { fuites } from '../echappee/pseudonymes'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { dossierEssai, METIER_ESSAI, PERSONNES_ESSAI, SECRETS_ESSAI } from './essai'
+import { DOMAINE_ESSAI, dossierEssai, METIER_ESSAI, PERSONNES_ESSAI, SECRETS_ESSAI } from './essai'
 import type { MissionRonde, RapportDeRonde } from './rapport'
 import {
   type AppelRonde,
@@ -24,6 +24,7 @@ import {
   faireRonde,
   ISSUES_RONDE,
   type OptionsRonde,
+  systemeRonde,
   TYPE_RONDE,
 } from './ronde'
 
@@ -192,6 +193,26 @@ describe('faireRonde', () => {
     expect(systeme).toContain("Ce qu'un modèle ne fait jamais")
     expect(systeme).toContain('`simuler_absence`')
     expect(message).toContain('<donnees>')
+  })
+
+  it('le système dit le cadre et les places du métier, et la carte ne dit plus la sécurité (PLAN-METIER-2.md M7)', () => {
+    const carte = readFileSync(join(RACINE_DEPOT, FICHIER_CARTE), 'utf8')
+    const vide = { gestes: [], appris: [], intentions: [], missions_ouvertes: [] }
+    const securite = systemeRonde(carte, vide, 3, DOMAINE_ESSAI)
+    expect(securite).toContain(
+      "Tu fais la ronde de nuit de l'outil de planning d'une entreprise de sécurité privée.",
+    )
+    expect(securite).toContain(
+      'places entre chevrons (<agent>, <du>, <au>, <site>, <vacation>) : jamais un identifiant ni un nom.',
+    )
+    const agence = systemeRonde(carte, vide, 3, {
+      ...DOMAINE_ESSAI,
+      cadre: "l'outil de gestion d'une agence web",
+      places: ['<personne>', '<projet>', '<du>', '<au>'],
+    })
+    expect(agence).toContain("Tu fais la ronde de nuit de l'outil de gestion d'une agence web.")
+    expect(agence).toContain('places entre chevrons (<personne>, <projet>, <du>, <au>)')
+    expect(agence).not.toMatch(/sécurité|vacation|A-7/)
   })
 
   it('un échec de forme : une relance, pas deux ; puis « ronde échouée », sans mission', async () => {

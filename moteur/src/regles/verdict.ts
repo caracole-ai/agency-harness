@@ -8,7 +8,7 @@ const rang = (v: Verdict) => VERDICTS.indexOf(v)
 export const plusGrave = (a: Verdict, b: Verdict): Verdict => (rang(a) >= rang(b) ? a : b)
 export const moinsGrave = (a: Verdict, b: Verdict): Verdict => (rang(a) <= rang(b) ? a : b)
 
-/** Ce qu'un contrôle constate sur un objet (une vacation, un agent…). */
+/** Ce qu'un contrôle constate sur un objet (exemple : une vacation, un agent…). */
 export interface Constat {
   regle: string
   objet: string

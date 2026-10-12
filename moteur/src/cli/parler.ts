@@ -88,7 +88,7 @@ function modele(): Modele {
 
 /**
  * La porte, avant toute ouverture du dossier ; un refus est au journal. Puis,
- * pour qui l'a passée, chaque agent du registre doit exister chez le client.
+ * pour qui l'a passée, chaque personne du registre doit exister chez le client.
  */
 function entrer(conversation?: string): IdentiteVerifiee | undefined {
   const accueil = accueillir(m, dossier, {

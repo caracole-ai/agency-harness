@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import { TYPE_ALERTE } from '../archetypes/veille-client'
-import type { RoleDeclare } from '../conversation/roles'
 import type { Evenement, Journal } from '../journal/journal'
 import {
+  type DeclarationsGeste,
   DOSSIER_GESTES,
   empreinteGeste,
   FichierGeste,
@@ -102,13 +102,19 @@ export function motifSansCle(journal: Journal, geste: GesteAppris): string | und
  * Les gestes appris à charger pour une consigne : ceux dont le fichier dit
  * `actif` et dont la clé tient. Un fichier `propose` ou `retire` n'est ni
  * chargé ni signalé : c'est son état normal. Un fichier illisible, un gabarit
- * faux, l'identifiant d'un geste codé, un `actif` sans clé : écarté, `refusé`
- * au journal, alerte.
+ * faux (un type de paramètre ou une opération que le métier ne déclare pas
+ * compris), l'identifiant d'un geste codé, un `actif` sans clé : écarté,
+ * `refusé` au journal, alerte.
  */
 export function chargerGestesAppris(
   dossierClient: string,
-  /** `codes` : les identifiants des gestes codés du métier ; un geste appris ne peut pas en porter un. `roles` : ceux que le métier déclare (PLAN-METIER-2.md M1). */
-  cible: { client: string; journal: Journal; roles: RoleDeclare[]; codes?: readonly string[] },
+  /** `codes` : les identifiants des gestes codés du métier ; un geste appris ne peut pas en porter un. `declarations` : les rôles, les types de paramètre et l'opération que le métier déclare (PLAN-METIER-2.md M1, M5, M6). */
+  cible: {
+    client: string
+    journal: Journal
+    declarations: DeclarationsGeste
+    codes?: readonly string[]
+  },
   horodatage?: string,
 ): { actifs: GesteAppris[]; ecartes: GesteEcarte[] } {
   const actifs: GesteAppris[] = []
@@ -144,7 +150,7 @@ export function chargerGestesAppris(
     if (lu.contenu.statut !== 'actif') continue
     const geste = gesteDe(lu.contenu)
     const jeton = empreinteGeste(geste)
-    const gabarit = verifierGabarit(cible.roles, geste)
+    const gabarit = verifierGabarit(cible.declarations, geste)
     if (gabarit.length > 0) {
       ecarter(lu.fichier, geste.id, `gabarit : ${gabarit.join(' ; ')}`, jeton)
       continue

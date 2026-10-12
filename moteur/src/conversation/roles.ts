@@ -19,7 +19,7 @@ export type Capacite = (typeof CAPACITES)[number]
 export interface RoleDeclare {
   /** snake_case ASCII, c'est la valeur de `Identite.role` et de `personnes.yaml`. */
   id: string
-  /** « le patron », « l'agent », « la cheffe de projet » : pour les prompts, jamais un nom. */
+  /** Le rôle en mots, forme définie, pour les prompts, jamais un nom (exemple : « le patron », « l'agent », « la cheffe de projet »). */
   enMots: string
   /** true : `Identite.personne` est exigé et doit exister chez le client. false : le rôle est unique dans le registre. */
   identifie: boolean
@@ -46,7 +46,7 @@ export const roleDe = (roles: RoleDeclare[], identite: Identite): RoleDeclare =>
   return role
 }
 
-/** Qui parle, en mots, pour l'échappée (qui lit les données) : « le patron », « l'agent A-2 » ; enMots, puis l'identifiant si le rôle est identifié ; jamais un nom (PLAN-PSEUDONYMES.md S8). */
+/** Qui parle, en mots, pour l'échappée (qui lit les données) : enMots, puis l'identifiant si le rôle est identifié ; jamais un nom (PLAN-PSEUDONYMES.md S8 ; exemple : « le patron », « l'agent A-2 »). */
 export const quiParle = (roles: RoleDeclare[], identite: Identite): string => {
   const role = roleDe(roles, identite)
   return role.identifie ? `${role.enMots} ${identite.personne ?? '?'}` : role.enMots

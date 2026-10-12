@@ -10,8 +10,8 @@ import { SORTES_MISSION } from '../ronde/rapport'
 
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : des cas écrits à la
 // main, des vérifications binaires en code, aucun juge. Ce fichier lit les
-// cas et dit, pour chacun, ses écarts à l'attendu et sa fuite (un nom du
-// fichier des agents parti au modèle, PLAN-PSEUDONYMES.md § 7) ;
+// cas et dit, pour chacun, ses écarts à l'attendu et sa fuite (un nom des
+// données parti au modèle, PLAN-PSEUDONYMES.md § 7) ;
 // `cli/evals.ts` appelle le modèle, garde les traces et écrit le tableau des
 // résultats.
 
@@ -309,7 +309,7 @@ export interface ResultatCas {
   id: string
   ecarts: string[]
   coutUsd: number
-  /** Doit passer à 100 % (un agent qui tente un geste du patron, une donnée piégée). */
+  /** Doit passer à 100 % (un rôle qui tente un geste qui ne lui est pas ouvert, une donnée piégée). */
   strict: boolean
   /** Les noms partis au modèle (PLAN-PSEUDONYMES.md S7) ; absent : non mesuré. Seuil : vide. */
   fuite?: string[]
@@ -338,7 +338,7 @@ export function textesEnvoyes(trace: { systemes: string[]; appels: AppelTrace[] 
 }
 
 /**
- * La fuite d'un cas : les formes d'un nom du fichier des agents trouvées dans
+ * La fuite d'un cas : les formes d'un nom des données trouvées dans
  * ce qui a été envoyé, sauf celles que `permis` porte déjà (la traduction
  * reçoit la consigne telle qu'écrite : ce que le demandeur a tapé n'est pas
  * une donnée du fichier). L'échappée et la fabrication n'ont aucun permis.

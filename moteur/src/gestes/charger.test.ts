@@ -13,11 +13,17 @@ import {
   TYPE_GESTE_APPRIS,
 } from './charger'
 import { DOSSIER_GESTES, empreinteGeste, type FichierGeste } from './geste-appris'
-import { GESTE_EXEMPLE as GESTE, ROLES_EXEMPLE } from './geste-appris.exemple'
+import {
+  DECLARATIONS_EXEMPLE,
+  GESTE_ECRIT_EXEMPLE as ECRIT,
+  GESTE_EXEMPLE as GESTE,
+  OPERATION_EXEMPLE,
+} from './geste-appris.exemple'
 
 // Un fichier de geste ne vaut que par sa clé (PLAN-PROMOTION.md § 5.5, P7) :
 // jamais activé, un octet changé, retiré → écarté, refusé au journal, alerte ;
-// activé → chargé.
+// activé → chargé. Un type de paramètre ou une opération que le métier ne
+// déclare pas : écarté (PLAN-METIER-2.md M5, M6).
 
 const CLIENT = 'fictif'
 const FICHIER = 'heures_par_agent.yaml'
@@ -55,12 +61,8 @@ const retirer = (journal: Journal, jeton = empreinteGeste(GESTE)) =>
       donnees: { jeton },
     },
   ])
-const charger = (dossier: string, journal: Journal) =>
-  chargerGestesAppris(
-    dossier,
-    { client: CLIENT, journal, roles: ROLES_EXEMPLE },
-    '2026-10-10T19:40:00Z',
-  )
+const charger = (dossier: string, journal: Journal, declarations = DECLARATIONS_EXEMPLE) =>
+  chargerGestesAppris(dossier, { client: CLIENT, journal, declarations }, '2026-10-10T19:40:00Z')
 const refus = (journal: Journal) =>
   journal.lire().filter((l) => l.type === TYPE_GESTE_APPRIS && l.issue === ISSUE_GESTE.refuse)
 
@@ -121,7 +123,7 @@ describe('chargerGestesAppris', () => {
     activer(journal)
     const { actifs, ecartes } = chargerGestesAppris(
       dossier,
-      { client: CLIENT, journal, roles: ROLES_EXEMPLE, codes: [GESTE.id] },
+      { client: CLIENT, journal, declarations: DECLARATIONS_EXEMPLE, codes: [GESTE.id] },
       '2026-10-10T19:40:00Z',
     )
     expect(actifs).toEqual([])
@@ -174,6 +176,41 @@ describe('chargerGestesAppris', () => {
     expect(ecartes[2]?.motif).toMatch(/^schéma/)
     expect(refus(journal)).toHaveLength(3)
     expect(journal.lire().filter((l) => l.type === TYPE_ALERTE)).toHaveLength(3)
+    journal.fermer()
+  })
+  it('un type de paramètre que le métier ne déclare pas : écarté au chargement, même activé (PLAN-METIER-2.md M5)', () => {
+    const inconnu = {
+      ...GESTE,
+      parametres: { ...GESTE.parametres, agent: { type: 'projet', description: 'x' } },
+    }
+    const { dossier, journal } = dossierAvec([FICHIER, { ...inconnu, statut: 'actif' }])
+    activer(journal, empreinteGeste(inconnu))
+    const { actifs, ecartes } = charger(dossier, journal)
+    expect(actifs).toEqual([])
+    expect(ecartes[0]?.motif).toBe('gabarit : type de paramètre inconnu : projet')
+    journal.fermer()
+  })
+  it('un geste qui écrit sous l’ancienne forme se charge ; sans opération déclarée, ou une autre, il est écarté (PLAN-METIER-2.md M6)', () => {
+    const fichier = 'liberer_un_jour.yaml'
+    const { dossier, journal } = dossierAvec([fichier, { ...ECRIT, statut: 'actif' }])
+    journal.ecrire([
+      {
+        type: TYPE_GESTE_APPRIS,
+        client: CLIENT,
+        objet: ECRIT.id,
+        issue: ISSUE_GESTE.active,
+        donnees: { jeton: empreinteGeste(ECRIT) },
+      },
+    ])
+    expect(charger(dossier, journal)).toEqual({ actifs: [ECRIT], ecartes: [] })
+    const { operation: _operation, ...sansOperation } = DECLARATIONS_EXEMPLE
+    expect(charger(dossier, journal, sansOperation).ecartes[0]?.motif).toBe(
+      'gabarit : ce métier n’écrit pas par un geste appris',
+    )
+    const autre = { ...OPERATION_EXEMPLE, nom: 'deplacer' }
+    expect(
+      charger(dossier, journal, { ...DECLARATIONS_EXEMPLE, operation: autre }).ecartes[0]?.motif,
+    ).toBe('gabarit : l’opération « reaffecter » n’est pas celle du métier (deplacer)')
     journal.fermer()
   })
   it('sans dossier gestes/ : rien', () => {

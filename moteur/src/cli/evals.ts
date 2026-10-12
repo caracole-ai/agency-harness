@@ -9,7 +9,7 @@
 // et coûte (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la fabrication, avec
 // GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
 // vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
-// porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du fichier des agents
+// porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du client (`m.noms`)
 // partis au modèle, colonne du tableau, seuil 0. `ronde` (PLAN-RONDE.md § 5.4)
 // rejoue les journaux fixés d'`evals/rondes.yaml` sur une copie et lance la
 // ronde avec le modèle d'`agence.yaml` (sous acces: claude, l'abonnement : le
@@ -24,6 +24,7 @@ import { z } from 'zod'
 import { chargerAgence } from '../agence/config'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { avecSession, type MetierConversation } from '../conversation/conversation'
+import { aCapacite } from '../conversation/roles'
 import { ecrireInstantane } from '../echappee/echappee'
 import {
   type BilanRonde,
@@ -242,7 +243,7 @@ if (quoi === 'traduire') {
       for (const test of geste.tests) {
         const id = `${geste.id}/${test.echappee}`
         if (seulement && !seulement.has(id)) continue
-        const rejeu = await rejouerTest(geste, test, dossier, m.roles)
+        const rejeu = await rejouerTest(geste, test, dossier, m)
         const ecarts =
           'erreur' in rejeu
             ? [rejeu.erreur]
@@ -342,8 +343,8 @@ if (quoi === 'traduire') {
   // d'`echappees.yaml` qui la portent ; rejoués sur une seule copie, puis la
   // promotion y fabrique et vérifie ; le cas passe si le geste est écrit avec
   // zéro écart. Pas de passe de traduction ici (elle se mesure à part). Une
-  // proposition ne compte que validée (P9) : le lanceur joue le « oui » du
-  // patron par le métier, contrôles compris (§ 10).
+  // proposition ne compte que validée (P9) : le lanceur joue le « oui » d'un
+  // rôle qui valide (PLAN-METIER-2.md M3) par le métier, contrôles compris (§ 10).
   const fichier = FichierPromotions.parse(
     parse(readFileSync(join(EVALS, 'promotions.yaml'), 'utf8')),
   )
@@ -353,11 +354,13 @@ if (quoi === 'traduire') {
   const echappee = m.echappee
   if (!echappee) throw new Error(`le métier ${metier} n'a pas d'échappée`)
   seuil = fichier.seuil
+  const valideur = m.roles.find((r) => aCapacite(m.roles, { role: r.id }, 'valide'))
+  if (!valideur) throw new Error(`le métier ${metier} n'a pas de rôle qui valide`)
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
     const joue = await jouerCas(
       m,
       source,
-      { id: c.id, strict: false, role: 'patron' },
+      { id: c.id, strict: false, role: valideur.id },
       modeleDe,
       async (dossier, modele, agence) => {
         const quand = aParis(fichier.maintenant)

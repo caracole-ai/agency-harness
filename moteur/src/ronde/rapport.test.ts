@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Temporal } from '../temps/temporal'
-import { dossierEssai, METIER_ESSAI, PERSONNES_ESSAI } from './essai'
+import { DOMAINE_ESSAI, dossierEssai, METIER_ESSAI, PERSONNES_ESSAI } from './essai'
 import {
   type MissionRonde,
   outilRapport,
@@ -65,6 +65,7 @@ const config = {
   missionsMax: 3,
   retirees: [{ id: 'retiree', intentions: ['qui_travaille'] }],
   personnes: PERSONNES_ESSAI,
+  domaine: DOMAINE_ESSAI,
 }
 const verifier = (r: RapportDeRonde) => revalider(r, RESUME, CATALOGUE, config)
 
@@ -97,6 +98,17 @@ describe('revalider (R3)', () => {
       const r = verifier(rapport([mission({ consignes_types: [c] })]))
       expect(r.sorte === 'refuse' && r.ecarts[0]).toMatch(/identifiant ou un nom/)
     }
+  })
+
+  it('l’identifiant se reconnaît au motif du domaine du métier, d’un appel à l’autre (PLAN-METIER-2.md M7)', () => {
+    const agence = { ...config, domaine: { ...DOMAINE_ESSAI, identifiants: /\bM-\d+\b/g } }
+    const refuse = (c: string) =>
+      revalider(rapport([mission({ consignes_types: [c] })]), RESUME, CATALOGUE, agence).sorte
+    // Le motif porte `g` : sans copie, le second `.test()` repartirait de `lastIndex`.
+    expect(refuse('le temps de M-3')).toBe('refuse')
+    expect(refuse('le temps de M-3')).toBe('refuse')
+    expect(refuse('le temps de <personne>')).toBe('accepte')
+    expect(refuse('les heures de A-99')).toBe('accepte')
   })
 
   it('trop de missions, ou « rien à signaler » incohérent, ou deux fois le même identifiant : refusé', () => {
@@ -171,16 +183,29 @@ describe('revalider (R3)', () => {
 
 describe('le schéma du rapport', () => {
   it('strict : un champ de plus refuse, un slug invalide refuse', () => {
-    const schema = schemaRapport(3)
+    const schema = schemaRapport(3, DOMAINE_ESSAI.places)
     expect(schema.safeParse({ ...rapport([mission()]), autre: 1 }).success).toBe(false)
     expect(schema.safeParse(rapport([mission({ id: 'Pas un slug' })])).success).toBe(false)
     expect(schema.safeParse(rapport([mission()])).success).toBe(true)
   })
 
   it('l’outil et le schéma JSON du binaire disent la même chose', () => {
-    const outil = outilRapport(3)
+    const outil = outilRapport(3, DOMAINE_ESSAI.places)
     expect(outil.strict).toBe(true)
-    expect(outil.input_schema).toEqual(schemaJsonRapport(3))
-    expect(schemaJsonRapport(3).required).toEqual(['observations', 'missions', 'rien_a_signaler'])
+    expect(outil.input_schema).toEqual(schemaJsonRapport(3, DOMAINE_ESSAI.places))
+    expect(schemaJsonRapport(3, DOMAINE_ESSAI.places).required).toEqual([
+      'observations',
+      'missions',
+      'rien_a_signaler',
+    ])
+  })
+
+  it('les consignes-types citent les places du métier ; « écrit » dit les données (PLAN-METIER-2.md M7)', () => {
+    const json = JSON.stringify(schemaJsonRapport(3, ['<personne>', '<projet>']))
+    expect(json).toContain(
+      'la demande réécrite avec des places entre chevrons (<personne>, <projet>), sans aucun identifiant ni nom',
+    )
+    expect(json).toContain('vrai si la demande modifie les données')
+    expect(json).not.toMatch(/agent|planning|vacation/)
   })
 })

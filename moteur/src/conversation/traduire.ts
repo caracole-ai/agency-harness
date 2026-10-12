@@ -11,6 +11,7 @@ import {
   schemaJson,
 } from './actions'
 import type { Designable } from './designation'
+import type { Domaine } from './domaine'
 import type { RoleDeclare } from './roles'
 
 // Traduire une consigne en une demande : une action de la liste fermée, une
@@ -58,14 +59,15 @@ const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dim
 /** Le jour de la semaine, en mots : « samedi ». */
 export const jourSemaine = (maintenant: Temporal.ZonedDateTime) => JOURS[maintenant.dayOfWeek - 1]
 
-/** Le système de la traduction. Rien de volatil (ni date, ni consigne) : il se met en cache. Aucune donnée du client. */
+/** Le système de la traduction. Rien de volatil (ni date, ni consigne) : il se met en cache. Aucune donnée du client ; le domaine vient du métier (PLAN-METIER-2.md M7). */
 export function systemeTraduire(
   role: RoleDeclare,
+  domaine: Domaine,
   actions: { id: string; description: string }[],
   intentions: Intention[],
 ): string {
   return [
-    `Tu parles avec ${role.enMots}, dans l'outil de planning d'une entreprise de sécurité privée.`,
+    `Tu parles avec ${role.enMots}, dans ${domaine.cadre}.`,
     'Tu traduis la consigne en une seule action de la liste. Tu ne réponds jamais toi-même, tu ne calcules rien, tu n’inventes aucune donnée.',
     'Une personne se recopie telle qu’elle est écrite dans la consigne (prénom, nom, ou les deux), sans la corriger ni la compléter : l’outil la retrouve lui-même.',
     '',
@@ -74,7 +76,7 @@ export function systemeTraduire(
     '',
     `Quand la consigne est claire mais qu'aucune action ne la couvre (une question sur les données, une simulation, une réorganisation), choisis ${DEMANDE_NOUVELLE}, avec l'une des intentions connues quand elle convient, sinon un mot-clé nouveau :`,
     ...intentions.map((i) => `${i.id} : ${i.description}`),
-    `Quand la consigne est inintelligible, trop vague pour choisir une action, ou demande autre chose que du travail sur le planning et les agents, choisis ${JE_NE_SAIS_PAS}.`,
+    `Quand la consigne est inintelligible, trop vague pour choisir une action, ou demande autre chose que du travail sur ${domaine.objets}, choisis ${JE_NE_SAIS_PAS}.`,
     '',
     FRONTIERE,
     '',

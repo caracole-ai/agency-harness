@@ -5,6 +5,7 @@ import type { Action, Intention } from '../conversation/actions'
 import type { ConfigConversation } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
 import { TYPE_CONSIGNE, TYPE_PRECISION_ATTENDUE } from '../conversation/conversation'
+import type { Domaine } from '../conversation/domaine'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
@@ -57,6 +58,17 @@ export const INTENTIONS_ESSAI: Intention[] = [
   { id: 'liberer_un_jour', description: "libérer un agent d'une journée", ecrit: true },
 ]
 
+/** Le domaine du métier d'essai : celui du métier livré, recopié, pour que la ronde d'essai reçoive le même système qu'avant (PLAN-METIER-2.md M7). */
+export const DOMAINE_ESSAI: Domaine = {
+  cadre: "l'outil de planning d'une entreprise de sécurité privée",
+  objets: 'le planning et les agents',
+  modifications:
+    'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
+  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
+  identifiants: /\bA-\d+\b/g,
+  rienASignaler: 'Aucune vacation contraire à une règle.',
+}
+
 export interface Session {
   dossier: string
   journal: Journal
@@ -86,6 +98,8 @@ export const METIER_ESSAI: MetierConversation<Session> = {
   ],
   vocabulaire: () => ({ noms: PERSONNES_ESSAI }),
   noms: () => PERSONNES_ESSAI,
+  typesParametre: [],
+  domaine: DOMAINE_ESSAI,
   verifierIdentite: () => undefined,
 }
 

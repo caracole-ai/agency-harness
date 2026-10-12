@@ -132,10 +132,10 @@ const A_FAIRE = [
   "Livrer : la mise à jour à distance d'un harnais livré est à concevoir par Lionel (PLAN-ESPACES.md D2).",
 ]
 
-/** Quand le geste est écrit et vérifié : ce qui reste est à l'atelier et au patron (§ 6.3, P6). */
+/** Quand le geste est écrit et vérifié : ce qui reste est à l'atelier et à celui qui administre (§ 6.3, P6). */
 const A_FAIRE_GESTE = [
   'Relire le YAML du geste (atelier).',
-  "Activer : le patron, dans l'interface (« Ce que l'outil a appris ») ; ou `pnpm gestes activer <id> --client <dossier> --par <nom>` à l'atelier.",
+  "Activer : celui qui administre, dans l'interface (« Ce que l'outil a appris ») ; ou `pnpm gestes activer <id> --client <dossier> --par <nom>` à l'atelier.",
   "Livrer : la mise à jour à distance d'un harnais livré est à concevoir par Lionel (PLAN-ESPACES.md D2).",
 ]
 

@@ -16,6 +16,7 @@ import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ACTIONS } from './actions'
 import { INTENTIONS } from './conversation'
+import { OPERATION_REAFFECTER } from './operation-reaffecter'
 
 // Les fichiers d'étiquettes des évals (`evals/`) se lisent et couvrent ce que
 // le plan exige (PLAN-ESPACES.md § 9.1) : sans appel au modèle, cette garde
@@ -115,7 +116,9 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
   it('les agents de ses tests existent au client fictif', () => {
     for (const g of gestes) {
       for (const t of g.tests) {
-        const reaffectes = (t.modifications ?? []).map((m) => m.agent)
+        const reaffectes = (t.modifications ?? []).map(
+          (m) => OPERATION_REAFFECTER.modification.parse(m).agent,
+        )
         for (const id of [t.agent, ...Object.values(t.params), ...reaffectes].filter(
           (v): v is string => typeof v === 'string' && /^A-\d+$/.test(v),
         )) {

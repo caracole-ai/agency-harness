@@ -6,7 +6,7 @@
 // l'activation (la clé au journal, que le chargement exige) et le retrait.
 // `<id>` est l'identifiant du geste, ou le nom de son fichier quand plusieurs
 // le portent. `--par` n'a pas de valeur par défaut : activer engage quelqu'un.
-// Le patron fait la même chose dans l'interface (§ 7.2). Exige la clé que
+// L'interface fait la même chose (§ 7.2). Exige la clé que
 // nomme la config pour --avec-modele seulement. Travailler sur une copie du
 // client fictif, jamais sur `exemples/`.
 import { readFileSync } from 'node:fs'
@@ -156,7 +156,7 @@ try {
       }
       console.log(
         issue.activable
-          ? `Activable : oui (pnpm gestes activer ${issue.geste.id} --client ${dossier} --par <nom>, ou le patron dans l’interface).`
+          ? `Activable : oui (pnpm gestes activer ${issue.geste.id} --client ${dossier} --par <nom>, ou dans l’interface).`
           : 'Activable : non.',
       )
       break

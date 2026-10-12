@@ -21,7 +21,7 @@ import { TYPE_APPEL } from '../modele/compteur'
 import type { Temporal } from '../temps/temporal'
 import { type EcartGeste, type Rejeu, verifierGeste } from './fabriquer'
 
-// L'atelier et le patron devant un geste appris (PLAN-PROMOTION.md § 7.1,
+// L'atelier et qui administre devant un geste appris (PLAN-PROMOTION.md § 7.1,
 // § 7.2) : lister, vérifier, activer, retirer. Activer exige une ligne
 // `vérifié` sans écart, avec modèle, sur l'empreinte exacte du fichier : c'est
 // l'empreinte qui dit que ce qui a été vérifié est ce qui est sur le disque.
@@ -67,7 +67,7 @@ export interface GesteListe {
   validation?: { par: string; le: string }
   /** La dernière vérification de cette empreinte exacte. */
   verification?: Verification
-  /** Un geste proposé que le patron peut activer : vérifié sans écart, avec modèle, sur cette empreinte. */
+  /** Un geste proposé qui peut être activé : vérifié sans écart, avec modèle, sur cette empreinte. */
   activable: boolean
   /** Pourquoi un geste proposé ne l'est pas. */
   motif?: string
@@ -407,7 +407,7 @@ export async function verifierGesteAppris<S>(
     copieVide,
     consignes: geste.tests.map((t) => t.consigne),
     personnes: m.noms(s),
-    roles: m.roles,
+    declarations: m,
     gestesExistants,
   })
   const journal = m.journal(s)

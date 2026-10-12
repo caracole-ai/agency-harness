@@ -24,8 +24,8 @@ const cle = (c: Constat) => `${c.regle} ${c.objet}`
  * Les constats non conformes qu'un contexte modifié fait apparaître, ou
  * aggrave, par rapport au contexte de départ. Un refus qui porte sur un objet
  * modifié (`touches`) compte toujours, même s'il existait avant : sinon
- * confier une vacation déjà en infraction à un autre agent en infraction
- * passerait pour sans effet. Un contrôle qui échoue refuse (le moteur échoue
+ * modifier un objet déjà en infraction pour un autre en infraction passerait
+ * (exemple : une vacation confiée d'un agent à un autre) pour sans effet. Un contrôle qui échoue refuse (le moteur échoue
  * fermé).
  */
 export function constatsApparus<Contexte>(

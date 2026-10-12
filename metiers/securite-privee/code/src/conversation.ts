@@ -14,10 +14,13 @@ import { z } from 'zod'
 import { ACTIONS } from './actions'
 import { CONTROLES } from './controles'
 import { tablesPour } from './copie'
+import { DOMAINE } from './domaine'
 import { constatsNouveaux, decrireModifications, Modification } from './modifications'
+import { OPERATION_REAFFECTER } from './operation-reaffecter'
 import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
 import { evaluer, ouvrir, type Session } from './remplacement'
 import { ROLES } from './roles'
+import { TYPES_PARAMETRE } from './types-parametre'
 import { ConfigSecurite, type PREFERENCES } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
@@ -147,6 +150,9 @@ export const CONVERSATION: MetierConversation<Session> = {
   actions: ACTIONS,
   intentions: INTENTIONS,
   roles: ROLES,
+  domaine: DOMAINE,
+  typesParametre: TYPES_PARAMETRE,
+  operation: OPERATION_REAFFECTER,
   copie: tablesPour,
   vocabulaire: (s, identite) => ({
     noms: s.ctx.planning.agents
@@ -190,6 +196,7 @@ export const CONVERSATION: MetierConversation<Session> = {
         config: configDe(s),
         identite,
         quiParle: quiParle(ROLES, identite),
+        domaine: DOMAINE,
       },
       {
         tables: tablesPour(s, identite, maintenant),

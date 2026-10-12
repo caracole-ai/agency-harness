@@ -7,10 +7,20 @@ import { parse } from 'yaml'
 import type { Intention } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
 import type { TableCopie } from '../echappee/copie'
-import { ecrireInstantane } from '../echappee/echappee'
+import { ecrireInstantane, TYPE_ECHAPPEE } from '../echappee/echappee'
 import { fuites, masquerTexte } from '../echappee/pseudonymes'
-import { FichierGeste, type GesteAppris, gesteDe } from '../gestes/geste-appris'
-import { ROLES_EXEMPLE } from '../gestes/geste-appris.exemple'
+import {
+  type DeclarationsGeste,
+  FichierGeste,
+  type GesteAppris,
+  gesteDe,
+} from '../gestes/geste-appris'
+import {
+  DECLARATIONS_EXEMPLE,
+  DOMAINE_EXEMPLE,
+  OPERATION_EXEMPLE,
+} from '../gestes/geste-appris.exemple'
+import { Journal } from '../journal/journal'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import {
   ANTERIEURE,
@@ -25,6 +35,7 @@ import {
   OUTIL_PROPOSER_GESTE,
   rejouerTest,
   systemeFabriquer,
+  type ValideesDe,
   verifierGeste,
 } from './fabriquer'
 import type { EchappeeJournalisee } from './promotion'
@@ -34,7 +45,12 @@ import type { EchappeeJournalisee } from './promotion'
 // dur, test manquant, rejeu qui ne contient pas le chiffre) ne relancent pas ;
 // la relance sur deux outils ou une requête qui lève, jamais un troisième
 // appel. Le modèle lit les échappées telles que masquées, sans aucun nom
-// (PLAN-PSEUDONYMES.md § 6).
+// (PLAN-PSEUDONYMES.md § 6). Le prompt dit le domaine, l'opération et les
+// types du métier, rien d'autre (PLAN-METIER-2.md M5 à M7).
+
+const DOMAINE = DOMAINE_EXEMPLE
+/** Une intention qui lit ne relit aucune modification validée. */
+const SANS_VALIDEES: ValideesDe = () => []
 
 const AGENTS: TableCopie = {
   nom: 'agents',
@@ -200,7 +216,9 @@ function cadre(
     echappees: ECHAPPEES,
     gestesExistants: GESTES_EXISTANTS,
     personnes: PERSONNES,
-    roles: ROLES_EXEMPLE,
+    declarations: DECLARATIONS_EXEMPLE,
+    domaine: DOMAINE,
+    journal: new Journal(join(dossierClient, 'journal.sqlite')),
     dossierClient,
     copieVide: COPIE_VIDE,
     fabriqueLe: '2026-10-10',
@@ -210,8 +228,18 @@ function cadre(
 }
 
 describe('systemeFabriquer et messageFabriquer', () => {
-  it('le système dit l’intention, les gestes existants, les six types, les deux formes, les tables, la frontière', () => {
-    const s = systemeFabriquer(INTENTION, ['patron'], 'Table agents : …', GESTES_EXISTANTS)
+  it('le système dit le cadre, l’intention, les gestes existants, les six types, les deux formes, les tables, la frontière', () => {
+    const s = systemeFabriquer(
+      INTENTION,
+      ['patron'],
+      'Table agents : …',
+      GESTES_EXISTANTS,
+      DECLARATIONS_EXEMPLE,
+      DOMAINE,
+    )
+    expect(s).toMatch(
+      /^Tu fabriques un geste pour l'outil de planning d'une entreprise de sécurité privée\. /,
+    )
     expect(s).toContain('heures_par_agent : les heures faites par un agent, ou par tous')
     expect(s).toContain('- voir_planning : ')
     for (const t of ['agent (', 'date (', 'periode (', 'site (', 'poste (', 'nombre ('])
@@ -222,12 +250,66 @@ describe('systemeFabriquer et messageFabriquer', () => {
       'Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
     )
     expect(s).toContain('Table agents : …')
-    expect(s).toContain('une personne est écrite par son identifiant (A-1)')
+    expect(s).toContain('une personne est écrite par son identifiant, qui tient lieu de son nom')
+    expect(s).toContain(
+      "agent seulement si la demande a un sens pour l'agent, qui ne voit que ses propres données",
+    )
     expect(s).toContain('<donnees>')
     expect(s).toContain(OUTIL_PROPOSER_GESTE)
   })
+  it('une intention qui écrit : l’opération en mots, ses colonnes décrites, ceux qui valident, ceux qui écrivent', () => {
+    const s = systemeFabriquer(
+      { ...INTENTION, ecrit: true },
+      ['patron'],
+      'Table vacations : …',
+      [],
+      DECLARATIONS_EXEMPLE,
+      DOMAINE,
+    )
+    expect(s).toContain(
+      'a proposé des modifications (réaffecter une vacation à un autre agent), et le patron les a validées',
+    )
+    expect(s).toContain(
+      'operation, reaffecter ; colonnes, pour chaque clé de l’opération, le nom de la colonne de cette requête qui la rend : vacation (vacations.id), agent (agents.id de celui qui la prend)',
+    )
+    expect(s).toContain(
+      'Les rôles : patron seulement ; les autres ne proposent pas de modification.',
+    )
+    const { operation: _o, ...sansOperation } = DECLARATIONS_EXEMPLE
+    expect(() =>
+      systemeFabriquer({ ...INTENTION, ecrit: true }, [], '', [], sansOperation, DOMAINE),
+    ).toThrow('ce métier n’écrit pas par un geste appris')
+  })
+  it('un autre métier : son cadre, ses types, ses rôles, et aucune phrase de la sécurité', () => {
+    const autre: DeclarationsGeste = {
+      roles: [
+        {
+          id: 'dirigeant',
+          enMots: 'la dirigeante',
+          identifie: false,
+          capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+        },
+        { id: 'graphiste', enMots: 'un graphiste', identifie: true, capacites: [] },
+      ],
+      typesParametre: [
+        { nom: 'projet', enMots: 'un projet, par son identifiant', sorte: 'entite' },
+      ],
+    }
+    const s = systemeFabriquer(
+      { id: 'jours_du_projet', description: 'les jours consommés sur un projet', ecrit: false },
+      ['dirigeant'],
+      'Table projets : …',
+      [],
+      autre,
+      { ...DOMAINE, cadre: "l'outil de gestion d'une agence web", objets: 'les projets' },
+    )
+    expect(s).toContain("Tu fabriques un geste pour l'outil de gestion d'une agence web.")
+    expect(s).toContain('projet (un projet, par son identifiant) ; date (')
+    expect(s).toContain('graphiste seulement si la demande a un sens pour un graphiste')
+    expect(s).not.toMatch(/sécurité|vacation|patron|\bagents?\b|A-1|V-07|A-9/)
+  })
   it('le message met les échappées entières entre les balises des données, avec le moment et la semaine', () => {
-    const m = messageFabriquer(ECHAPPEES, ROLES_EXEMPLE)
+    const m = messageFabriquer(ECHAPPEES, DECLARATIONS_EXEMPLE, SANS_VALIDEES)
     expect(m).toMatch(/^Les demandes \(3\)/)
     expect(m).toContain('<donnees>### E-1')
     expect(m).toContain(
@@ -252,7 +334,8 @@ describe('completerGeste', () => {
       ECHAPPEES,
       PERSONNES,
       ORIGINE,
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
+      SANS_VALIDEES,
     )
     expect(ecarts).toEqual([])
     expect(geste?.id).toBe('heures_par_agent')
@@ -302,7 +385,8 @@ describe('completerGeste', () => {
       ECHAPPEES,
       PERSONNES,
       ORIGINE,
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
+      SANS_VALIDEES,
     )
     expect(geste).toBeUndefined()
     expect(ecarts.map((e) => e.texte)).toEqual([
@@ -324,7 +408,8 @@ describe('completerGeste', () => {
       ],
       PERSONNES,
       ORIGINE,
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
+      SANS_VALIDEES,
     )
     expect(ecarts.map((e) => e.texte)).toContain(
       'E-3 : rien à vérifier dans le texte montré (ni nombre ni nom)',
@@ -340,7 +425,8 @@ describe('verifierGeste et rejouerTest', () => {
       ECHAPPEES,
       PERSONNES,
       ORIGINE,
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
+      SANS_VALIDEES,
     )
     if (!g) throw new Error('fixture')
     return g
@@ -350,7 +436,7 @@ describe('verifierGeste et rejouerTest', () => {
     copieVide: COPIE_VIDE,
     consignes: ECHAPPEES.map((e) => e.consigne),
     personnes: PERSONNES,
-    roles: ROLES_EXEMPLE,
+    declarations: DECLARATIONS_EXEMPLE,
     gestesExistants: GESTES_EXISTANTS,
   })
   it('un geste juste : zéro écart, rejeu 3/3', async () => {
@@ -365,13 +451,13 @@ describe('verifierGeste et rejouerTest', () => {
     const g = geste()
     const [t1, , t3] = g.tests
     if (!t1 || !t3) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
       texte: 'Karim Haddad : 24 heures du 2026-10-05 au 2026-10-11.',
       manque: [],
       enTrop: [],
     })
     expect(
-      await rejouerTest(g, { ...t1, contient: ['24', '99'] }, dossier, ROLES_EXEMPLE),
+      await rejouerTest(g, { ...t1, contient: ['24', '99'] }, dossier, DECLARATIONS_EXEMPLE),
     ).toMatchObject({
       manque: ['99'],
     })
@@ -381,7 +467,7 @@ describe('verifierGeste et rejouerTest', () => {
         g,
         { ...t3, params: { ...t3.params, agent: 'A-1' } },
         dossier,
-        ROLES_EXEMPLE,
+        DECLARATIONS_EXEMPLE,
       ),
     ).toEqual({
       texte: 'Sophie Marchand : 12 heures du 2026-10-05 au 2026-10-11.',
@@ -389,7 +475,12 @@ describe('verifierGeste et rejouerTest', () => {
       enTrop: [],
     })
     expect(
-      await rejouerTest(g, { ...t1, instantane: 'echappees/E-0.json' }, dossier, ROLES_EXEMPLE),
+      await rejouerTest(
+        g,
+        { ...t1, instantane: 'echappees/E-0.json' },
+        dossier,
+        DECLARATIONS_EXEMPLE,
+      ),
     ).toEqual({
       erreur: 'instantané absent : echappees/E-0.json',
     })
@@ -483,7 +574,8 @@ describe('ecrireGeste', () => {
       ECHAPPEES,
       PERSONNES,
       ORIGINE,
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
+      SANS_VALIDEES,
     )
     if (!geste) throw new Error('fixture')
     expect(ecrireGeste(dossier, geste)).toBe(join('gestes', 'heures_par_agent.yaml'))
@@ -733,12 +825,12 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
     const g = ecrit('A-3')
     const [t1, t2] = g.tests
     if (!t1 || !t2) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
       texte: 'V-01 → A-3',
       manque: [],
       enTrop: [],
     })
-    expect(await rejouerTest(g, t2, dossier, ROLES_EXEMPLE)).toMatchObject({
+    expect(await rejouerTest(g, t2, dossier, DECLARATIONS_EXEMPLE)).toMatchObject({
       manque: [],
       enTrop: [],
     })
@@ -748,7 +840,7 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
     const g = ecrit('A-1')
     const [t1, , t3] = g.tests
     if (!t1 || !t3) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
       texte: 'V-01 → A-1',
       manque: [],
       enTrop: ['V-01 → A-1'],
@@ -758,10 +850,10 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
         g,
         { ...t3, params: { agent: 'A-1', date: '2026-10-20' } },
         dossier,
-        ROLES_EXEMPLE,
+        DECLARATIONS_EXEMPLE,
       ),
     ).toEqual({
-      texte: 'aucune réaffectation',
+      texte: 'aucune modification',
       manque: ['V-02'],
       enTrop: [],
     })
@@ -770,7 +862,7 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
       copieVide: COPIE_VIDE,
       consignes: [],
       personnes: PERSONNES,
-      roles: ROLES_EXEMPLE,
+      declarations: DECLARATIONS_EXEMPLE,
       gestesExistants: GESTES_EXISTANTS,
     })
     expect(rejeu).toEqual({ ok: 0, total: 3 })
@@ -796,24 +888,32 @@ describe('le message de fabrication, selon que l’intention lit ou écrit', () 
     texte: 'x',
     instantane: 'echappees/E-1.json',
   }
-  it('une proposition : ses vérifications, puis les réaffectations validées', () => {
+  it('une proposition : ses vérifications, puis les modifications validées, relues dans le journal par l’opération', () => {
+    const modifications = [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }]
+    const journal = new Journal(join(mkdtempSync(join(tmpdir(), 'fabriquer-')), 'journal.sqlite'))
+    journal.ecrire([
+      {
+        type: TYPE_ECHAPPEE,
+        client: 'fictif',
+        objet: 'C-1',
+        issue: 'proposition',
+        donnees: { echappee: 'E-1', modifications },
+      },
+    ])
     const m = messageFabriquer(
-      [
-        {
-          ...base,
-          issue: 'proposition',
-          modifications: [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }],
-        },
-      ],
-      ROLES_EXEMPLE,
+      [{ ...base, issue: 'proposition', modifications }],
+      DECLARATIONS_EXEMPLE,
+      (e) => OPERATION_EXEMPLE.relire(journal, e.conversation),
     )
     expect(m).toContain('Vérification 1 :')
-    expect(m).toContain('Réaffectations validées par le patron (vacation → agent) :\nV-03 → A-9')
+    expect(m).toContain('Modifications validées par le patron (vacation → agent) :\nV-03 → A-9')
+    journal.fermer()
   })
   it('une réponse : le message d’avant la phase C, sans les vérifications', () => {
     const m = messageFabriquer(
       [{ ...base, issue: 'reponse', texteModele: 'A-1 : 24 heures.' }],
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
+      SANS_VALIDEES,
     )
     expect(m).not.toContain('Vérification')
     expect(m).toContain('Réponse montrée :\nA-1 : 24 heures.')
@@ -853,10 +953,106 @@ describe('le message de fabrication, selon que l’intention lit ou écrit', () 
     }
     const [t1] = g.tests
     if (!t1) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
       texte: 'V-01 → A-2, V-01 → A-2',
       manque: [],
       enTrop: ['V-01 → A-2'],
     })
+  })
+})
+
+describe('fabriquerGeste, une intention qui écrit (PLAN-METIER-2.md M6)', () => {
+  const ECRIRE: Intention = {
+    id: 'liberer_un_jour',
+    description: 'libérer quelqu’un de ses services d’un jour, chacun donné à un autre',
+    ecrit: true,
+  }
+  const modifications = [{ type: 'reaffecter', vacation: 'V-01', agent: 'A-3' }]
+  const propositions: EchappeeMasquee[] = ['P1', 'P2', 'P3'].map((n) => ({
+    echappee: `E-${n}`,
+    conversation: `C-${n}`,
+    horodatage: '2026-10-10T19:40:00Z',
+    role: 'patron',
+    consigne: 'Libère Karim le 7.',
+    consigneModele: 'Libère A-1 le 7.',
+    intention: ECRIRE.id,
+    issue: 'proposition',
+    requetes: [],
+    modifications,
+    texte: 'x',
+    instantane: 'echappees/E-1.json',
+  }))
+  const PROPOSE_ECRIT = {
+    description: 'libérer quelqu’un de ses services d’un jour, chacun donné à un autre libre',
+    roles: ['patron'],
+    parametres: {
+      agent: { type: 'agent', description: 'la personne à libérer' },
+      date: { type: 'date', description: 'le jour' },
+    },
+    requetes: [
+      {
+        nom: 'liberer',
+        sql: 'SELECT v.id AS vacation, (SELECT a.id FROM agents a WHERE a.id <> :agent AND a.id NOT IN (SELECT agent FROM vacations WHERE jour = :date) ORDER BY a.id LIMIT 1) AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date',
+      },
+    ],
+    modifications: {
+      pour_chaque: 'liberer',
+      operation: 'reaffecter',
+      colonnes: { vacation: 'vacation', agent: 'agent' },
+    },
+    reponse: { ligne: null, tableau: 'liberer', vide: 'Rien à changer.' },
+    tests: propositions.map((e) => ({
+      echappee: e.echappee,
+      params: { agent: 'A-1', date: '2026-10-07' },
+    })),
+  }
+  it('les modifications validées sont relues dans le journal par l’opération : le message et les tests les portent', async () => {
+    const dossier = dossierAvecInstantanes()
+    const c = cadre(dossier, [proposer(PROPOSE_ECRIT)])
+    c.journal.ecrire(
+      propositions.map((e) => ({
+        type: TYPE_ECHAPPEE,
+        client: 'fictif',
+        objet: e.conversation,
+        issue: 'proposition',
+        donnees: { echappee: e.echappee, modifications },
+      })),
+    )
+    const issue = await fabriquerGeste({ ...c, intention: ECRIRE, echappees: propositions })
+    expect(issue).toMatchObject({ sorte: 'geste', rejeu: { ok: 3, total: 3 } })
+    if (issue.sorte !== 'geste') throw new Error(issue.sorte)
+    expect(issue.geste.tests.map((t) => t.modifications)).toEqual([
+      [{ vacation: 'V-01', agent: 'A-3' }],
+      [{ vacation: 'V-01', agent: 'A-3' }],
+      [{ vacation: 'V-01', agent: 'A-3' }],
+    ])
+    const appel = c.modele.appels[0]
+    expect(JSON.stringify(appel?.messages[0]?.content)).toContain(
+      'Modifications validées par le patron (vacation → agent) :\\nV-01 → A-3',
+    )
+    const schema = appel?.outils[0]?.input_schema as {
+      properties: { modifications: { properties: Record<string, unknown> } }
+    }
+    expect(schema.properties.modifications.properties.operation).toMatchObject({
+      const: 'reaffecter',
+    })
+    c.journal.fermer()
+  })
+  it('un métier sans opération : échec sans appel', async () => {
+    const dossier = dossierAvecInstantanes()
+    const c = cadre(dossier, [proposer(PROPOSE_ECRIT)])
+    const { operation: _o, ...sansOperation } = DECLARATIONS_EXEMPLE
+    const issue = await fabriquerGeste({
+      ...c,
+      intention: ECRIRE,
+      echappees: propositions,
+      declarations: sansOperation,
+    })
+    expect(issue).toMatchObject({
+      sorte: 'echec',
+      appels: 0,
+      raison: 'ce métier n’écrit pas par un geste appris',
+    })
+    expect(c.modele.appels).toHaveLength(0)
   })
 })

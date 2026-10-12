@@ -11,6 +11,7 @@ import {
 import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
+import type { Domaine } from '../conversation/domaine'
 import { dollars } from '../promotion/promotion'
 import { construireCatalogue } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -215,7 +216,7 @@ export async function faireChantier<S>(
 
     if (decision.sorte !== 'chantier') {
       // La même décision le même jour : rien de plus au journal (la nuit relancée ne refait rien).
-      const contenu = rendreDecision(mission, decision, jour)
+      const contenu = rendreDecision(mission, decision, jour, m.domaine)
       const deja = existsSync(dossier) && readFileSync(dossier, 'utf8') === contenu
       writeFileSync(dossier, contenu)
       if (!o.sansModele && !deja) {
@@ -232,7 +233,7 @@ export async function faireChantier<S>(
           o.agence.ronde.memoire.index_lignes,
         )
       : { index: [], conventions: '', chantiers: [] }
-    const missionTexte = missionPourModele(mission)
+    const missionTexte = missionPourModele(mission, m.domaine)
     const memoireTexte = [
       '### L’index (les dernières lignes)',
       '',
@@ -250,7 +251,12 @@ export async function faireChantier<S>(
     if (fuite.length > 0) {
       writeFileSync(
         dossier,
-        rendreDecision(mission, { sorte: 'ecartee', motif: ISSUES_CHANTIER.fuite }, jour),
+        rendreDecision(
+          mission,
+          { sorte: 'ecartee', motif: ISSUES_CHANTIER.fuite },
+          jour,
+          m.domaine,
+        ),
       )
       if (!o.sansModele) journaliser(ISSUES_CHANTIER.fuite, { fuite: fuite.length, cout_usd: 0 })
       return { sorte: 'fuite', fuite, dossier }
@@ -272,7 +278,7 @@ export async function faireChantier<S>(
       writeFileSync(
         dossier,
         [
-          rendreDecision(mission, decision, jour),
+          rendreDecision(mission, decision, jour, m.domaine),
           '## Ce que le plan recevrait (sans modèle : aucun appel)',
           '',
           promptPlan,
@@ -423,7 +429,16 @@ export async function faireChantier<S>(
         const motif = `question pour l'atelier : ${nettoyer(plan.raison, personnes)}`
         writeFileSync(
           dossier,
-          rendreDossier({ mission, jour, plan, etapes, conditions, constats, issue: motif }),
+          rendreDossier({
+            mission,
+            domaine: m.domaine,
+            jour,
+            plan,
+            etapes,
+            conditions,
+            constats,
+            issue: motif,
+          }),
         )
         journaliser(motif, { decision: 'question', cout_usd: round(cout()), cout_estime: true })
         return {
@@ -630,6 +645,7 @@ export async function faireChantier<S>(
       dossier,
       rendreDossier({
         mission,
+        domaine: m.domaine,
         jour,
         ...(plan ? { plan } : {}),
         etapes,
@@ -764,7 +780,12 @@ function sectionsMemoire(x: {
 const sec = (ms: number) => `${Math.round(ms / 1000)} s`
 
 /** Le dossier d'une mission qui ne lance rien (promotion en cours, question, écartée). */
-function rendreDecision(mission: Mission, decision: Decision, jour: string): string {
+function rendreDecision(
+  mission: Mission,
+  decision: Decision,
+  jour: string,
+  domaine: Domaine,
+): string {
   return [
     `# Chantier \`${mission.id}\` — ${jour}`,
     '',
@@ -774,7 +795,7 @@ function rendreDecision(mission: Mission, decision: Decision, jour: string): str
     '',
     '## La mission',
     '',
-    missionPourModele(mission),
+    missionPourModele(mission, domaine),
     '',
   ].join('\n')
 }
@@ -782,6 +803,7 @@ function rendreDecision(mission: Mission, decision: Decision, jour: string): str
 /** Le dossier d'un chantier (§ 6.3) : chez le client, pour Lionel. */
 function rendreDossier(x: {
   mission: Mission
+  domaine: Domaine
   jour: string
   plan?: PlanChantier
   etapes: Etape[]
@@ -804,7 +826,7 @@ function rendreDossier(x: {
     '',
     `Ronde du ${x.mission.date}, sorte ${x.mission.sorte}.`,
     '',
-    missionPourModele(x.mission),
+    missionPourModele(x.mission, x.domaine),
     '',
     '## Le plan',
     '',

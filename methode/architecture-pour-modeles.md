@@ -9,8 +9,7 @@ tous ; elle ne change pas quand le modèle change.
 
 ## Ce qu'est le harnais
 
-Un outil de travail pour une petite entreprise d'un métier donné (ici, la
-sécurité privée : planning des agents, titres, remplacements). Le patron et
+Un outil de travail pour une petite entreprise d'un métier donné. Le patron et
 ses salariés lui parlent en français ; il traduit la phrase en un **geste**,
 exécute le geste, et répond. Tout ce qui se passe est écrit dans un
 **journal** en ajout seul, chez le client.

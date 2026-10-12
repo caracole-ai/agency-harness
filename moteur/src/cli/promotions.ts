@@ -4,9 +4,9 @@
 // intention comptée sur la fenêtre de la config ; pour celle qui atteint le
 // seuil, le modèle fabrique un geste appris, le code le vérifie et l'écrit en
 // `gestes/<id>.yaml` (statut proposé), puis une passe de traduction avec
-// modèle dit s'il est activable par le patron (P6) ; le dossier de promotion
+// modèle dit s'il est activable (P6) ; le dossier de promotion
 // raconte tout. Une intention qui écrit se fabrique aussi : son geste propose
-// des réaffectations (PLAN-PROMOTION.md § 10). Puis la purge
+// des modifications (PLAN-PROMOTION.md § 10). Puis la purge
 // des instantanés d'échappée plus vieux que `conservation_jours` qu'aucun
 // geste appris ne cite (P8). `--sans-modele` : le dossier seul, aucun appel.
 // Exige la clé que nomme la config, sauf --sans-modele. Travailler sur une

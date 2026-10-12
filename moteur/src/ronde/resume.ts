@@ -35,7 +35,7 @@ export type Devenue =
       fin: 'reponse' | 'proposition' | 'abandon'
       /** `reponse` : le résumé du modèle a passé le contrôle, ou il a été retiré. */
       controle?: 'ok' | 'retiré'
-      /** `proposition` : la suite que le patron lui a donnée. */
+      /** `proposition` : la suite que le demandeur lui a donnée. */
       suite?: string
       /** `abandon` : le motif, par catégorie (jamais le texte du modèle). */
       abandon?: string

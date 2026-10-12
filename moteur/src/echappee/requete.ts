@@ -8,7 +8,7 @@ import type { Copie } from './copie'
 // en plus (PLAN-ESPACES.md § 6.3). `node:sqlite` est synchrone : une requête
 // sans fin (récursion, produit de tables) figerait le processus ; elle tourne
 // donc dans un processus à part, tué passé le délai. Un geste appris passe
-// ses paramètres liés (`:agent`), jamais collés dans le SQL
+// ses paramètres liés (`:nom`), jamais collés dans le SQL
 // (PLAN-PROMOTION.md § 4.1).
 
 export const LIGNES_MAX = 200
@@ -20,7 +20,7 @@ export type ResultatRequete =
   | { colonnes: string[]; lignes: unknown[][]; tronque: boolean }
   | { erreur: string }
 
-/** Les valeurs liées aux paramètres nommés d'une requête : `{ agent: 'A-2' }` pour `:agent`. */
+/** Les valeurs liées aux paramètres nommés d'une requête : `{ nom: 'valeur' }` pour `:nom`. */
 export type ParametresRequete = Record<string, string | number | null>
 
 const DEBUT_LECTURE = /^(select|with)\b/i
@@ -30,7 +30,7 @@ const MOTS_REFUSES =
 const ENTRE_GUILLEMETS = /'(?:[^']|'')*'|"(?:[^"]|"")*"/g
 const PARAMETRE_NOMME = /[:@$][A-Za-z_][A-Za-z0-9_]*/g
 
-/** Les paramètres nommés d'une requête (`:agent`, `@agent`, `$agent`), sans leur préfixe, hors guillemets. */
+/** Les paramètres nommés d'une requête (`:nom`, `@nom`, `$nom`), sans leur préfixe, hors guillemets. */
 export function parametresNommes(sql: string): string[] {
   const nus = sql.replace(ENTRE_GUILLEMETS, '')
   return [...new Set([...nus.matchAll(PARAMETRE_NOMME)].map((m) => m[0].slice(1)))]

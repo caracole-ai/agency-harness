@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { basename, dirname } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
+import { type Domaine, motifPourMasquer } from '../conversation/domaine'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
 import { MissionRonde, memesIntentions, STATUTS_MISSION } from '../ronde/rapport'
 import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS } from '../ronde/resume'
@@ -87,18 +88,21 @@ export function decider(m: Mission, catalogue: Catalogue, retirees: MissionRetir
     : { sorte: 'chantier' }
 }
 
-/** Les identifiants d'échappée, de conversation ou d'agent qu'un texte de la ronde citerait : remplacés par un type. */
-const sansIdentifiant = (texte: string) =>
-  texte.replace(MOTIF_ID_CONVERSATION, '<échappée>').replace(/\bA-\d+\b/g, '<agent>')
+/** Les identifiants d'échappée, de conversation ou de personne (le motif du métier) qu'un texte de la ronde citerait : remplacés par un type. */
+const sansIdentifiant = (texte: string, domaine: Domaine) =>
+  texte
+    .replace(MOTIF_ID_CONVERSATION, '<échappée>')
+    .replace(motifPourMasquer(domaine), '<personne>')
 
 /** La mission telle qu'elle part au modèle du chantier : des types, ni échappées, ni client (R3). */
-export function missionPourModele(m: Mission): string {
+export function missionPourModele(m: Mission, domaine: Domaine): string {
+  const sans = (texte: string) => sansIdentifiant(texte, domaine)
   return [
     `- identifiant : \`${m.id}\` ; sorte : ${m.sorte} ; métier : ${m.metier} ; écrit : ${m.ecrit ? 'oui' : 'non'} ; estimation : ${m.estimation}`,
-    `- titre : ${sansIdentifiant(m.titre)}`,
-    `- pourquoi : ${sansIdentifiant(m.pourquoi)}`,
+    `- titre : ${sans(m.titre)}`,
+    `- pourquoi : ${sans(m.pourquoi)}`,
     `- intentions : ${m.intentions.length > 0 ? m.intentions.map((i) => `\`${i}\``).join(', ') : 'aucune'}`,
-    '- consignes-types (les demandes du patron, réécrites avec des places) :',
-    ...m.consignes_types.map((c) => `  - « ${sansIdentifiant(c)} »`),
+    '- consignes-types (les demandes, réécrites avec des places) :',
+    ...m.consignes_types.map((c) => `  - « ${sans(c)} »`),
   ].join('\n')
 }

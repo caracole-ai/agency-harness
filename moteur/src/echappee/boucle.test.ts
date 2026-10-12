@@ -10,6 +10,7 @@ import {
   type EvenementBoucle,
   MOTIF_RETIRE,
   type OutilsEchappee,
+  outilsEchappee,
 } from './boucle'
 
 // La boucle de l'échappée avec le modèle simulé et des outils factices en
@@ -86,6 +87,19 @@ function resultats(messages: Anthropic.MessageParam[]): Anthropic.ToolResultBloc
       : m.content.filter((b): b is Anthropic.ToolResultBlockParam => b.type === 'tool_result'),
   )
 }
+
+describe('les outils envoyés au modèle', () => {
+  it('disent « modifications » et « le demandeur », jamais un métier (PLAN-METIER-2.md § 3.5)', () => {
+    const json = JSON.stringify(outilsEchappee(outils()))
+    expect(json).toContain('Essayer des modifications : dit ce qui change')
+    expect(json).toContain(
+      'Finir par une proposition de modifications, que le demandeur validera ou non.',
+    )
+    expect(json).toContain('les modifications à essayer')
+    expect(json).toContain('les modifications proposées')
+    expect(json).not.toMatch(/réaffectation|patron/)
+  })
+})
 
 describe('une question', () => {
   it('requete puis repondre : une réponse contrôlée, tout au journal, le cache sur le dernier résultat', async () => {

@@ -1,8 +1,9 @@
 import { FUSEAU, Temporal } from './temporal'
 
 // Le temps des personnes et des titres : intervalles comptés en instants
-// réels, affichés en heure de Paris. Une vacation 21 h – 7 h dure 11 h la nuit
-// du passage à l'heure d'hiver, 9 h celle du passage à l'heure d'été.
+// réels, affichés en heure de Paris (exemple : une vacation 21 h – 7 h dure
+// 11 h la nuit du passage à l'heure d'hiver, 9 h celle du passage à l'heure
+// d'été).
 
 export interface Intervalle {
   debut: Temporal.ZonedDateTime
@@ -73,7 +74,7 @@ export type Couverture = 'entière' | 'partielle' | 'aucune'
 
 /**
  * Ce que des validités couvrent d'un intervalle. « partielle » est le cas
- * d'un titre qui expire pendant une vacation de nuit : le moteur ne tranche
+ * d'un titre qui expire pendant l'intervalle (exemple : une vacation de nuit) : le moteur ne tranche
  * pas, la règle dit ce qu'elle en fait (une lecture par interprétation).
  */
 export function couverture(validites: Validite[], i: Intervalle): Couverture {

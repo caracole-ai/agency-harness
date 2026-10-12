@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import type { Temporal } from '../temps/temporal'
+import type { Domaine } from './domaine'
 import type { Identite, Role } from './roles'
 
 // Les gestes du quotidien (espace 1) : une liste fermée d'actions codées, que
@@ -42,9 +43,10 @@ export interface Action<Session, Params> {
   ecrit: boolean
   /**
    * true : l'exécution ne fait que calculer des modifications, sans rien
-   * écrire ; elles passent par la proposition du métier (contrôles, oui du
-   * patron, oui de chaque agent, clé sur la liste exacte), exactement comme
-   * une proposition d'échappée. Un geste appris qui écrit (PLAN-PROMOTION.md § 10).
+   * écrire ; elles passent par la proposition du métier (contrôles, oui de
+   * qui valide, oui de chaque personne concernée, clé sur la liste exacte),
+   * exactement comme une proposition d'échappée. Un geste appris qui écrit
+   * (PLAN-PROMOTION.md § 10).
    */
   propose?: true
   /** La phrase de confirmation, rendue par le code. Lève si l'action est impossible pour ce demandeur. */
@@ -126,8 +128,8 @@ export const JeNeSaisPas = z.strictObject({
 })
 export type JeNeSaisPas = z.infer<typeof JeNeSaisPas>
 
-/** Les deux méta-outils : ce que le modèle choisit quand aucune action ne convient. */
-export const META_OUTILS: Anthropic.Tool[] = [
+/** Les deux méta-outils : ce que le modèle choisit quand aucune action ne convient ; les objets du travail viennent du métier (PLAN-METIER-2.md M7). */
+export const metaOutils = (domaine: Domaine): Anthropic.Tool[] => [
   outil(
     DEMANDE_NOUVELLE,
     'La consigne est claire mais aucune action ne la couvre : une question sur les données, une simulation, une réorganisation.',
@@ -135,7 +137,7 @@ export const META_OUTILS: Anthropic.Tool[] = [
   ),
   outil(
     JE_NE_SAIS_PAS,
-    'La consigne est inintelligible, trop vague pour choisir, ou demande autre chose que du travail sur le planning et les agents.',
+    `La consigne est inintelligible, trop vague pour choisir, ou demande autre chose que du travail sur ${domaine.objets}.`,
     JeNeSaisPas,
   ),
 ]
@@ -161,9 +163,13 @@ export function schemaMontre<S>(action: Action<S, unknown>): z.ZodType<unknown> 
 }
 
 /** Les outils à envoyer au modèle : un par action du rôle, `strict: true`, plus les deux méta-outils. */
-export function outilsDe<S>(actions: Action<S, unknown>[], role: Role): Anthropic.Tool[] {
+export function outilsDe<S>(
+  actions: Action<S, unknown>[],
+  role: Role,
+  domaine: Domaine,
+): Anthropic.Tool[] {
   return [
     ...actionsDe(actions, role).map((a) => outil(a.id, a.description, schemaMontre(a))),
-    ...META_OUTILS,
+    ...metaOutils(domaine),
   ]
 }

@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util'
 import type { ConfigClient, MetierVeiller } from '../archetypes/metier'
 import { veilleDuClient } from '../archetypes/veille-client'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
+import type { Domaine } from '../conversation/domaine'
 import { Journal } from '../journal/journal'
 import { FUSEAU, Temporal } from '../temps/temporal'
 
@@ -30,9 +31,12 @@ const cheminConfig = join(dossier, FICHIER_CONFIG)
 const { metier } = chargerConfig(cheminConfig, ConfigBase)
 const module = (await import(
   pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { VEILLER?: MetierVeiller<unknown, ConfigClient> }
+)) as { VEILLER?: MetierVeiller<unknown, ConfigClient>; CONVERSATION?: { domaine?: Domaine } }
 if (!module.VEILLER) throw new Error(`le métier ${metier} ne sait pas encore veiller`)
 const m = module.VEILLER
+// La phrase d'un rapport sans refus vient du domaine du métier (PLAN-METIER-2.md M7).
+const domaine = module.CONVERSATION?.domaine
+if (!domaine) throw new Error(`le métier ${metier} ne déclare pas son domaine`)
 
 const aujourdhui = values.date
   ? Temporal.PlainDate.from(values.date)
@@ -46,6 +50,7 @@ try {
     dossier,
     aujourdhui,
     journal,
+    domaine.rienASignaler,
   )
   if (values.sortie) writeFileSync(values.sortie, rapport)
   else console.log(rapport)

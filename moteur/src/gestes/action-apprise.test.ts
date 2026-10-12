@@ -6,19 +6,22 @@ import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   actionApprise,
   LECTURE_IMPOSSIBLE,
+  LEQUEL,
   parametresAppris,
   RIEN_A_PROPOSER,
 } from './action-apprise'
+import type { DeclarationsGeste, GesteAppris } from './geste-appris'
 import {
+  DECLARATIONS_EXEMPLE,
   GESTE_ECRIT_EXEMPLE as ECRIT,
   GESTE_EXEMPLE as GESTE,
-  ROLES_EXEMPLE,
 } from './geste-appris.exemple'
 
 // Un geste appris comme action : ses paramètres à plat pour le modèle, son
 // exécution sans modèle sur la copie du rôle, l'agent qui parle pour le rôle
 // `agent` (D4), et l'échec rendu en texte (PLAN-PROMOTION.md § 5.3) ; un
-// geste qui écrit rend ses réaffectations, sans rien écrire (§ 10).
+// geste qui écrit rend ses modifications, sans rien écrire (§ 10) ; une
+// entité d'un type déclaré par un métier, résolue par lui (PLAN-METIER-2.md M5).
 
 const AGENTS: TableCopie = {
   nom: 'agents',
@@ -62,7 +65,7 @@ const PERIODE = { du: '2026-10-05', au: '2026-10-11' }
 
 describe('parametresAppris', () => {
   it('à plat : l’agent nullable, la période en du et au, chaque champ décrit ; strict', () => {
-    const schema = parametresAppris(GESTE)
+    const schema = parametresAppris(GESTE, DECLARATIONS_EXEMPLE)
     expect(Object.keys(schema.shape)).toEqual(['agent', 'du', 'au'])
     expect(schema.safeParse({ agent: null, ...PERIODE }).success).toBe(true)
     expect(schema.safeParse({ agent: 'A-2', du: '5 octobre', au: '2026-10-11' }).success).toBe(
@@ -72,15 +75,18 @@ describe('parametresAppris', () => {
     expect(z.toJSONSchema(schema.shape.du as z.ZodType).description).toContain('premier jour')
   })
   it('date, site, poste, nombre', () => {
-    const schema = parametresAppris({
-      ...GESTE,
-      parametres: {
-        jour: { type: 'date', description: 'le jour' },
-        site: { type: 'site', description: 'le site' },
-        poste: { type: 'poste', description: 'le poste' },
-        n: { type: 'nombre', description: 'combien' },
+    const schema = parametresAppris(
+      {
+        ...GESTE,
+        parametres: {
+          jour: { type: 'date', description: 'le jour' },
+          site: { type: 'site', description: 'le site' },
+          poste: { type: 'poste', description: 'le poste' },
+          n: { type: 'nombre', description: 'combien' },
+        },
       },
-    })
+      DECLARATIONS_EXEMPLE,
+    )
     expect(
       schema.safeParse({ jour: '2026-10-11', site: 'Hôpital', poste: 'Accueil', n: 3 }).success,
     ).toBe(true)
@@ -94,7 +100,7 @@ describe('parametresAppris', () => {
 })
 
 describe('actionApprise', () => {
-  const action = actionApprise(GESTE, copie, ROLES_EXEMPLE)
+  const action = actionApprise(GESTE, copie, DECLARATIONS_EXEMPLE)
   it('une action qui lit, ouverte aux rôles du geste, l’agent comme personne à résoudre', () => {
     expect(action).toMatchObject({
       id: 'heures_par_agent',
@@ -132,7 +138,7 @@ describe('actionApprise', () => {
     const casse = actionApprise(
       { ...GESTE, requetes: [{ nom: 'heures', sql: 'SELECT * FROM absente WHERE a = :agent' }] },
       copie,
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
     )
     const r = await casse.executer(null, PATRON, { agent: 'A-2', ...PERIODE }, maintenant)
     expect(r.texte).toMatch(
@@ -160,7 +166,7 @@ describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
       { id: 'V-07', agent: 'A-3', jour: '2026-10-14' },
     ],
   }
-  const action = actionApprise(ECRIT, () => [PLANNING], ROLES_EXEMPLE)
+  const action = actionApprise(ECRIT, () => [PLANNING], DECLARATIONS_EXEMPLE)
   it('écrit et propose : ouvert au patron seul', () => {
     expect(action).toMatchObject({
       id: 'liberer_un_jour',
@@ -195,10 +201,73 @@ describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
         ],
       },
       () => [PLANNING],
-      ROLES_EXEMPLE,
+      DECLARATIONS_EXEMPLE,
     )
     const r = await sans.executer(null, PATRON, { agent: 'A-1', date: '2026-10-13' }, maintenant)
     expect(r.texte).toBe(`${RIEN_A_PROPOSER} : aucun agent trouvé pour V-03`)
+    expect(r.modifications).toBeUndefined()
+  })
+})
+
+describe('actionApprise, une entité d’un type déclaré par le métier (PLAN-METIER-2.md M5)', () => {
+  const PROJETS: TableCopie = {
+    nom: 'projets',
+    description: 'les projets',
+    colonnes: [
+      { nom: 'id', type: 'TEXT', description: 'identifiant' },
+      { nom: 'nom', type: 'TEXT', description: 'nom' },
+      { nom: 'jours', type: 'REAL', description: 'jours consommés' },
+    ],
+    lignes: [
+      { id: 'PRJ-1', nom: 'Refonte du site', jours: 12 },
+      { id: 'PRJ-2', nom: 'Refonte de l’appli', jours: 4 },
+      { id: 'PRJ-3', nom: 'Boutique', jours: 7 },
+    ],
+  }
+  /** Un métier simulé : l'identifiant exact, sinon le nom unique (insensible à la casse), sinon ceux qui contiennent la mention. */
+  const resoudre = (mention: string) => {
+    const lignes = PROJETS.lignes as { id: string; nom: string }[]
+    const exact = lignes.filter(
+      (p) => p.id === mention || p.nom.toLowerCase() === mention.toLowerCase(),
+    )
+    const trouves =
+      exact.length > 0
+        ? exact
+        : lignes.filter((p) => p.nom.toLowerCase().includes(mention.toLowerCase()))
+    return trouves.map((p) => ({ id: p.id, nom: p.nom, sorte: 'organisation' as const }))
+  }
+  const declarations: DeclarationsGeste = {
+    ...DECLARATIONS_EXEMPLE,
+    typesParametre: [
+      ...DECLARATIONS_EXEMPLE.typesParametre,
+      { nom: 'projet', enMots: 'un projet, par son identifiant', sorte: 'entite', resoudre },
+    ],
+  }
+  const geste: GesteAppris = {
+    ...GESTE,
+    id: 'jours_du_projet',
+    description: 'les jours consommés sur un projet',
+    parametres: { projet: { type: 'projet', description: 'le projet nommé' } },
+    requetes: [{ nom: 'p', sql: 'SELECT nom, jours FROM projets WHERE id = :projet' }],
+    reponse: { ligne: '{{p.nom}} : {{p.jours}} jours.', tableau: null, vide: 'Aucun projet.' },
+  }
+  const action = actionApprise(geste, () => [PROJETS], declarations)
+  it('le schéma : une mention texte non vide', () => {
+    const schema = parametresAppris(geste, declarations)
+    expect(schema.safeParse({ projet: 'Boutique' }).success).toBe(true)
+    expect(schema.safeParse({ projet: '' }).success).toBe(false)
+  })
+  it('un seul candidat : son identifiant est lié, le geste s’exécute', async () => {
+    const r = await action.executer(null, PATRON, { projet: 'boutique' }, maintenant)
+    expect(r.texte).toBe('Boutique : 7 jours.')
+    expect(await action.executer(null, PATRON, { projet: 'PRJ-1' }, maintenant)).toMatchObject({
+      texte: 'Refonte du site : 12 jours.',
+    })
+  })
+  it('deux candidats : « Lequel ? » avec leurs identifiants, rien ne s’exécute', async () => {
+    const r = await action.executer(null, PATRON, { projet: 'Refonte' }, maintenant)
+    expect(r.texte).toBe(`${LEQUEL} PRJ-1, PRJ-2`)
+    expect(r.donnees).toEqual({ echappee: null, requetes: [], candidats: ['PRJ-1', 'PRJ-2'] })
     expect(r.modifications).toBeUndefined()
   })
 })

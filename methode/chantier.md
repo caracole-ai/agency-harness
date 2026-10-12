@@ -11,7 +11,8 @@ geste, les deux étages, ce qu'un modèle ne fait jamais) et
 `memoire/CONVENTIONS.md` (ce que les chantiers précédents ont appris).
 
 Tu ne vois aucune donnée d'un client : la mission te parvient par types
-(des consignes-types avec des places : `<agent>`, `<du>`, `<au>`, `<site>`).
+(des consignes-types avec des places entre chevrons, celles du métier de la
+mission).
 Les données de `exemples/client-fictif/` sont fictives : tu peux les lire
 pour tes tests, jamais y écrire.
 
@@ -72,7 +73,7 @@ fais pareil.
   désormais la bonne réponse à sa consigne, et tu le dis dans ton bloc.
 - **Un geste qui écrit ne touche jamais le planning lui-même** : `ecrit: true`
   et `propose: true`, son `executer` ne fait que calculer et rend des
-  `Modification` (`{ type: 'reaffecter', vacation, agent }`, `modifications.ts` du métier) dans `modifications` ; la
+  `Modification` (`{ type: <opération du métier>, … }`, `modifications.ts` du métier) dans `modifications` ; la
   conversation les traite comme une proposition d'échappée
   (`ouvrirProposition` : contrôles des règles, oui du patron, oui de chaque
   agent, clé sur la liste exacte).

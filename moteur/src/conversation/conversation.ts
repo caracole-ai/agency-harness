@@ -5,6 +5,8 @@ import { masquerConsigne, type Precision } from '../echappee/pseudonymes'
 import { verifierReponse } from '../echappee/reponse'
 import { actionApprise } from '../gestes/action-apprise'
 import { chargerGestesAppris } from '../gestes/charger'
+import type { OperationApprise } from '../gestes/operation'
+import type { TypeParametreDeclare } from '../gestes/types-parametre'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
@@ -26,6 +28,7 @@ import {
   normaliserNom,
   proches,
 } from './designation'
+import type { Domaine } from './domaine'
 import { aCapacite, IdentiteSchema, type RoleDeclare, roleDe } from './roles'
 import {
   type Demande,
@@ -42,7 +45,7 @@ import {
 // ensuite seulement le dossier s'ouvre, le moteur trouve la personne nommée
 // (ou pose la question), puis l'action (tout de suite si elle ne fait que
 // lire, après un « oui » à sa reformulation si elle écrit). Chaque sortie
-// laisse sa ligne au journal. Une demande nouvelle du patron qui nomme
+// laisse sa ligne au journal. Une demande nouvelle d'un rôle qui désigne autrui et nomme
 // quelqu'un d'ambigu reçoit sa question avant tout appel d'échappée : le nom
 // ne part jamais au modèle (PLAN-PSEUDONYMES.md § 5.3, S3). Un geste appris
 // qui écrit calcule ses réaffectations sans modèle, puis elles suivent le
@@ -71,7 +74,7 @@ export interface MetierConversation<Session> {
   journal(s: Session): Journal
   /**
    * Le journal et la config de la conversation, sans rien lire des données
-   * (ni planning ni agents) : pour un refus à la porte, le plafond du mois et
+   * du client : pour un refus à la porte, le plafond du mois et
    * la traduction, avant l'ouverture du dossier. L'appelant ferme le journal.
    */
   ouvrirJournal(dossierClient: string): {
@@ -87,6 +90,12 @@ export interface MetierConversation<Session> {
   vocabulaire(s: Session, identite: Identite): Vocabulaire
   /** Tout nom qui ne part jamais au modèle (PLAN-METIER-2.md § 3.2, M4). */
   noms(s: Session): Designable[]
+  /** Les types de paramètre d'un geste appris que le métier ajoute à ceux du moteur (PLAN-METIER-2.md § 3.3, M5). */
+  typesParametre: TypeParametreDeclare[]
+  /** L'opération d'écriture d'un geste appris ; absente, ce métier n'écrit pas par un geste appris (PLAN-METIER-2.md § 3.4, M6). */
+  operation?: OperationApprise<unknown>
+  /** Le domaine que disent les prompts du moteur (PLAN-METIER-2.md § 3.5, M7). */
+  domaine: Domaine
   /**
    * Contrôle de cohérence, en seconde ligne : l'identité, déjà passée par le
    * registre d'accès, existe encore dans les données du client. Lève sinon. Il
@@ -105,7 +114,7 @@ export interface MetierConversation<Session> {
   copie?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => TableCopie[]
 }
 
-/** Comment le métier écrit une proposition de l'échappée : validée par le patron, acceptée par les agents (PLAN-ESPACES.md § 7.2). */
+/** Comment le métier écrit une proposition de l'échappée : validée par le demandeur, puis les accords que le métier exige (PLAN-ESPACES.md § 7.2). */
 export interface PropositionMetier<Session> {
   /** Ouvre la demande d'écriture ; rend son identifiant et le texte à montrer, rendu par le code. Lève si une règle s'y oppose. */
   ouvrir(
@@ -114,7 +123,7 @@ export interface PropositionMetier<Session> {
     modifications: unknown[],
     maintenant: Temporal.ZonedDateTime,
   ): { id: string; texte: string }
-  /** Le patron a dit oui : la clé sur le contenu exact, puis la demande d'accord aux agents. Rend le texte. */
+  /** Le demandeur a dit oui : la clé sur le contenu exact, puis les demandes d'accord du métier. Rend le texte. */
   valider(s: Session, id: string, maintenant: Temporal.ZonedDateTime): string
 }
 
@@ -171,7 +180,7 @@ const identiteRecue = (demandeur: unknown) => (JSON.stringify(demandeur) ?? 'rie
 /**
  * La porte, avant toute ouverture du dossier : le registre d'accès décide qui
  * parle. Un refus est écrit au journal seul, avec l'identité reçue, le canal,
- * l'heure et le motif ; ni le planning ni les agents ne sont lus.
+ * l'heure et le motif ; aucune donnée du client n'est lue.
  */
 export function accueillir<S>(
   m: MetierConversation<S>,
@@ -343,9 +352,9 @@ async function avantLeDossier<S>(
     const appris: Action<S, unknown>[] = copie
       ? chargerGestesAppris(
           dossier,
-          { ...ici, roles: m.roles, codes: m.actions.map((a) => a.id) },
+          { ...ici, declarations: m, codes: m.actions.map((a) => a.id) },
           tour.maintenant.toInstant().toString(),
-        ).actifs.map((g) => actionApprise(g, copie, m.roles))
+        ).actifs.map((g) => actionApprise(g, copie, m))
       : []
 
     const attendue = precisionEnAttente(journal, tour)
@@ -361,8 +370,8 @@ async function avantLeDossier<S>(
       traduite = await traduire(
         modele,
         config.modele.effort.traduire,
-        systemeTraduire(roleDe(m.roles, tour.identite), actions, intentions),
-        outilsDe(toutes, role),
+        systemeTraduire(roleDe(m.roles, tour.identite), m.domaine, actions, intentions),
+        outilsDe(toutes, role, m.domaine),
         tour.consigne,
         tour.maintenant,
         new Map(actions.map((a) => [a.id, schemaMontre(a)])),
@@ -458,10 +467,11 @@ async function apresLeDossier<S>(
 /**
  * Une demande nouvelle, vers l'échappée : la ligne `consigne` (`nouvelle`, ou
  * `precision` quand la consigne est la réponse à « vous parlez de qui ? »),
- * puis, pour le patron, la consigne masquée : une mention ambiguë reçoit sa
+ * puis, pour un rôle qui désigne autrui, la consigne masquée : une mention ambiguë reçoit sa
  * question avant tout appel au modèle ; sinon l'échappée, avec la consigne
- * d'origine et les réponses déjà données. Un agent n'a pas de question : il
- * ne désigne que lui-même, et aucun nom de collègue ne lui est proposé.
+ * d'origine et les réponses déjà données. Un rôle qui ne désigne pas autrui
+ * n'a pas de question : il ne désigne que lui-même, et aucun nom de collègue
+ * ne lui est proposé.
  */
 async function echapper<S>(
   m: MetierConversation<S>,
@@ -529,8 +539,8 @@ async function echapper<S>(
 /**
  * Une proposition, de l'échappée ou d'un geste appris qui écrit : le métier
  * l'ouvre (ses contrôles ; un refus est au journal), puis la confirmation
- * attend le « oui » du patron, sur l'empreinte de la liste exacte ; ensuite la
- * réaffectation groupée (oui de chaque agent, clé). PLAN-ESPACES.md § 7.2,
+ * attend le « oui » du demandeur, sur l'empreinte de la liste exacte ; ensuite
+ * l'écriture du métier (ses accords, sa clé). PLAN-ESPACES.md § 7.2,
  * PLAN-PROMOTION.md § 10.
  */
 function ouvrirProposition<S>(
@@ -616,7 +626,7 @@ export async function resoudre<S>(
       const exacts = correspondances(mention, personnes)
       if (exacts.length > 1) return precision(exacts)
       let trouve = exacts[0]
-      // Un agent ne désigne que lui-même (D4) : pas de niveau 2, où le modèle
+      // Un rôle qui ne désigne pas autrui ne désigne que lui-même (D4) : pas de niveau 2, où le modèle
       // dirait « oui, c'est lui » pour un collègue au nom proche.
       if (!trouve && !aCapacite(m.roles, tour.identite, 'designe_autrui')) return precision([])
       if (!trouve) {
@@ -703,7 +713,7 @@ async function agir<S>(
     r.candidats.length === 0 &&
     !aCapacite(m.roles, tour.identite, 'designe_autrui')
   ) {
-    // Un agent ne peut désigner que lui-même (D4) : rien à lui proposer, rien à lui apprendre.
+    // Un rôle qui ne désigne pas autrui ne désigne que lui-même (D4) : rien à lui proposer, rien à lui apprendre.
     const texte = `Tu ne peux désigner que toi-même : ${citer(tour, r.mention)} ne te désigne pas.`
     ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, erreur: texte })])
     return { sorte: 'refus', texte }

@@ -97,7 +97,7 @@ function exigerPropre(texte: string, personnes: Designable[], ou: string): void 
   }
 }
 
-/** Un nom de client en nom de fichier : `client fictif (sécurité privée)` → `client-fictif-securite-privee`. */
+/** Un nom de client en nom de fichier (exemple : `client fictif (sécurité privée)` → `client-fictif-securite-privee`). */
 export const slugClient = (client: string) =>
   client
     .normalize('NFD')

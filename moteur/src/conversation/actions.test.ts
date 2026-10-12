@@ -9,6 +9,7 @@ import {
   schemaJson,
   schemaMontre,
 } from './actions'
+import type { Domaine } from './domaine'
 
 // La forme des gestes et ce qu'on envoie au modèle (PLAN-ESPACES.md § 5.7).
 
@@ -21,6 +22,14 @@ const action = (id: string, roles: Action<null, unknown>['roles']): Action<null,
   reformuler: () => id,
   executer: () => ({ texte: id }),
 })
+const DOMAINE: Domaine = {
+  cadre: 'l’outil d’essai',
+  objets: 'les essais',
+  modifications: null,
+  places: ['<du>', '<au>'],
+  identifiants: /\bX-\d+\b/g,
+  rienASignaler: 'Rien.',
+}
 const ACTIONS = [
   action('gerer_absence', ['patron', 'agent']),
   action('valider_remplacement', ['patron']),
@@ -47,7 +56,7 @@ describe('schemaJson', () => {
 
 describe('outilsDe', () => {
   it('un agent ne reçoit pas les gestes du patron, et reçoit les deux méta-outils', () => {
-    const noms = outilsDe(ACTIONS, 'agent').map((o) => o.name)
+    const noms = outilsDe(ACTIONS, 'agent', DOMAINE).map((o) => o.name)
     expect(noms).toEqual([
       'gerer_absence',
       'repondre_sollicitation',
@@ -57,11 +66,17 @@ describe('outilsDe', () => {
     expect(noms).not.toContain('valider_remplacement')
   })
   it('chaque outil est strict', () => {
-    for (const o of outilsDe(ACTIONS, 'patron')) expect(o.strict).toBe(true)
+    for (const o of outilsDe(ACTIONS, 'patron', DOMAINE)) expect(o.strict).toBe(true)
   })
   it('une description trop longue arrête', () => {
     const longue = { ...action('trop_long', ['patron']), description: 'x'.repeat(201) }
-    expect(() => outilsDe([longue], 'patron')).toThrow(/200 caractères/)
+    expect(() => outilsDe([longue], 'patron', DOMAINE)).toThrow(/200 caractères/)
+  })
+  it('je_ne_sais_pas dit les objets du travail du métier', () => {
+    const outil = outilsDe(ACTIONS, 'patron', DOMAINE).find((o) => o.name === JE_NE_SAIS_PAS)
+    expect(outil?.description).toBe(
+      'La consigne est inintelligible, trop vague pour choisir, ou demande autre chose que du travail sur les essais.',
+    )
   })
   it('actionsDe filtre par rôle', () => {
     expect(actionsDe(ACTIONS, 'patron').map((a) => a.id)).toEqual([

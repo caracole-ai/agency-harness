@@ -18,6 +18,8 @@ export function veilleDuClient<Contexte, Config extends ConfigClient>(
   dossierClient: string,
   aujourdhui: Temporal.PlainDate,
   journal: Journal,
+  /** La phrase d'un rapport sans refus : `domaine.rienASignaler` du métier (PLAN-METIER-2.md M7). */
+  rienASignaler: string,
 ): { passe: Passe<Contexte, Config>; rapport: string } {
   const passe = passerVeille(m, dossierMetier, dossierClient, aujourdhui)
   const { config, registre, ctx, constats, alertes } = passe
@@ -57,6 +59,7 @@ export function veilleDuClient<Contexte, Config extends ConfigClient>(
       ...(c.nonCouvert ? { nonCouvert: c.nonCouvert } : {}),
     })),
     decrire: (objet) => m.decrire(ctx, objet),
+    rienASignaler,
   })
   return { passe, rapport }
 }
