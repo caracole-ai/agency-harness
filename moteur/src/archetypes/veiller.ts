@@ -1,17 +1,21 @@
 import { z } from 'zod'
-import { auPlusTardAvant, type Duree, DureeSchema } from '../temps/delais'
+import { auPlusTardAvant, type Duree, DureeSimpleSchema } from '../temps/delais'
 import { dateFr, Temporal } from '../temps/temporal'
 
 // L'archétype Veiller (`methode/archetypes.md`) : connaître les dates qui
 // comptent, et prévenir assez tôt pour qu'on puisse encore agir. Tout en code.
 // Le métier dit quelles échéances existent ; ce fichier dit quand on prévient.
 
-/** Quand prévenir, et combien de temps il faut pour faire ce que l'échéance exige. */
+/**
+ * Quand prévenir, et combien de temps il faut pour faire ce que l'échéance
+ * exige. Une fin de mois ne se retranche pas d'une limite : refusée dès la
+ * lecture de la config, jamais au milieu d'une veille (PLAN-METIER-2.md M13).
+ */
 export const FenetreSchema = z.strictObject({
   /** On prévient à partir de la limite moins cette durée. */
-  alerter: DureeSchema,
+  alerter: DureeSimpleSchema,
   /** Le temps qu'il faut pour agir : en dessous, l'alerte est escaladée. */
-  preparation: DureeSchema,
+  preparation: DureeSimpleSchema,
 })
 export type Fenetre = z.infer<typeof FenetreSchema>
 

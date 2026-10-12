@@ -1,6 +1,7 @@
 export * from './agence/config'
 export * from './approbation/jeton'
 export * from './archetypes/candidats'
+export * from './archetypes/ecarts'
 export * from './archetypes/metier'
 export * from './archetypes/passe'
 export * from './archetypes/rapport'

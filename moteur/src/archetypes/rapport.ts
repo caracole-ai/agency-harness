@@ -8,6 +8,12 @@ import type { Alerte } from './veiller'
 // fabrication du harnais (relectures, veille des textes), qui ne le regarde pas.
 // La phrase d'une partie sans refus vient du domaine du métier (PLAN-METIER-2.md M7).
 
+/** Une section que le métier ajoute au rapport (PLAN-METIER-2.md M12), exemple : « Écarts ». */
+export interface SectionRapport {
+  titre: string
+  lignes: string[]
+}
+
 export interface EntreeRapport {
   client: string
   aujourdhui: Temporal.PlainDate
@@ -22,6 +28,8 @@ export interface EntreeRapport {
   decrire(objet: string): string
   /** La phrase de la partie « À corriger » quand elle est vide : `domaine.rienASignaler`. */
   rienASignaler: string
+  /** Les sections du métier, rendues après « Sources » dans cet ordre ; absentes, le rapport est inchangé. */
+  sections?: SectionRapport[]
 }
 
 const fr = dateFr
@@ -104,5 +112,7 @@ export function rendreRapport(e: EntreeRapport): string {
         .map((r) => `- ${r} (${nom(r)}) : ${source(r)}`),
       '—',
     ),
+    // une section vide se rend comme « Sources » vide : le moteur n'y met aucune phrase du métier
+    ...(e.sections ?? []).flatMap((s) => section(s.titre, s.lignes, '—')),
   ].join('\n')
 }

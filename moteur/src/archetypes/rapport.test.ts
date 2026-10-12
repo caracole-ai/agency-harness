@@ -37,6 +37,59 @@ describe('rendreRapport', () => {
     expect(rapport).toContain(`## ${PARTIES.refus} (0)\n\nAucun projet contraire à une règle.\n`)
     expect(rapport).not.toContain('vacation')
   })
+  // PLAN-METIER-2.md M12 : les sections du métier
+  it('sans section, le rapport est le même octet pour octet', () => {
+    const sans = rendreRapport(entree())
+    expect(rendreRapport(entree({ sections: [] }))).toBe(sans)
+    expect(sans).toBe(
+      [
+        '# Veille du 12/10/2026 — client essai',
+        '',
+        'Lu : 3 projets. Vérifié : un écart.',
+        '',
+        '## À corriger (0)',
+        '',
+        'Aucun projet contraire à une règle.',
+        '',
+        "## À décider par l'exploitation (0)",
+        '',
+        'Rien à décider.',
+        '',
+        '## Conforme, à noter (0)',
+        '',
+        'Rien à noter.',
+        '',
+        '## Échéances à traiter maintenant (0)',
+        '',
+        'Aucune.',
+        '',
+        '## Échéances à préparer (0)',
+        '',
+        'Aucune.',
+        '',
+        '## Sources',
+        '',
+        '—',
+        '',
+      ].join('\n'),
+    )
+  })
+  it('deux sections arrivent après « Sources », dans l’ordre donné', () => {
+    const rapport = rendreRapport(
+      entree({
+        sections: [
+          { titre: 'Écarts', lignes: ['- PRJ-12 : 27 j consommés sur 18 vendus (150 %)'] },
+          { titre: 'Seconde', lignes: [] },
+        ],
+      }),
+    )
+    expect(
+      rapport.endsWith(
+        `## ${PARTIES.sources}\n\n—\n\n## Écarts\n\n- PRJ-12 : 27 j consommés sur 18 vendus (150 %)\n\n## Seconde\n\n—\n`,
+      ),
+    ).toBe(true)
+    expect(rapport.startsWith(rendreRapport(entree()))).toBe(true)
+  })
   it('avec un refus, la phrase n’apparaît pas', () => {
     const rapport = rendreRapport(
       entree({ constats: [{ regle: 'I-01', objet: 'PRJ-01', verdict: 'refus', motif: 'm' }] }),

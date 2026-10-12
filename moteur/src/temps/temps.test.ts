@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { auPlusTardAvant, echeance, limitePeriodique, type RegleDeDecompte } from './delais'
+import {
+  ajouter,
+  auPlusTardAvant,
+  DureeSchema,
+  echeance,
+  limitePeriodique,
+  type RegleDeDecompte,
+} from './delais'
 import { estFerie, joursFeries, paques } from './feries'
 import {
   couverture,
@@ -91,6 +98,35 @@ describe('délais : sécurité privée', () => {
   it('trois mois avant le 31 janvier, ce n’est pas J-90', () => {
     expect(iso(auPlusTardAvant(d('2027-01-31'), { mois: 3 }))).toBe('2026-10-31')
     expect(iso(auPlusTardAvant(d('2027-01-31'), { jours: 90 }))).toBe('2026-11-02')
+  })
+})
+
+// PLAN-METIER-2.md M13, § 8 : les jours, puis la fin du mois atteint.
+describe('délais : 45 jours fin de mois', () => {
+  const finDeMois = { jours: 45, fin_de_mois: true } as const
+  it('du 31/01/2026 : le 17/03, donc le 31/03', () => {
+    expect(iso(ajouter(d('2026-01-31'), finDeMois))).toBe('2026-03-31')
+  })
+  it('du 15/02/2026 : le 01/04, donc le 30/04', () => {
+    expect(iso(ajouter(d('2026-02-15'), finDeMois))).toBe('2026-04-30')
+  })
+  it('du 28/02/2026, année non bissextile : le 14/04, donc le 30/04', () => {
+    expect(iso(ajouter(d('2026-02-28'), finDeMois))).toBe('2026-04-30')
+  })
+  it('la forme telle qu’une config l’écrit', () => {
+    expect(DureeSchema.parse({ jours: 45, fin_de_mois: true })).toEqual(finDeMois)
+    expect(() => DureeSchema.parse({ jours: 45, fin_de_mois: false })).toThrow()
+    expect(DureeSchema.parse({ jours: 45 })).toEqual({ jours: 45 })
+  })
+  it('les autres formes : le calendrier, sans règle de décompte', () => {
+    expect(iso(ajouter(d('2026-01-31'), { jours: 45 }))).toBe('2026-03-17')
+    expect(iso(ajouter(d('2026-01-31'), { mois: 1 }))).toBe('2026-02-28')
+    expect(iso(ajouter(d('2024-02-29'), { ans: 1 }))).toBe('2025-02-28')
+  })
+  it('là où une fin de mois n’est pas définie, on lève au lieu de deviner', () => {
+    expect(() => auPlusTardAvant(d('2026-03-31'), finDeMois)).toThrow(/fin de mois/)
+    expect(() => limitePeriodique(d('2026-01-31'), finDeMois, [])).toThrow(/fin de mois/)
+    expect(() => echeance(d('2026-01-31'), finDeMois, CPC)).toThrow(/fin de mois/)
   })
 })
 

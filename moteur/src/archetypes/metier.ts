@@ -3,6 +3,7 @@ import type { Politique } from '../config'
 import type { Controle } from '../controles/controle'
 import type { Registre } from '../regles/schema'
 import type { Temporal } from '../temps/temporal'
+import type { SectionRapport } from './rapport'
 import type { Echeance } from './veiller'
 
 /** Ce que toute config de client porte une fois validée par son métier. */
@@ -35,4 +36,9 @@ export interface MetierVeiller<Contexte, Config extends ConfigClient> {
     aujourdhui: Temporal.PlainDate,
   ): Echeance[]
   decrire(ctx: Contexte, objet: string): string
+  /**
+   * Les sections que le métier ajoute au rapport, après celles du moteur
+   * (PLAN-METIER-2.md M12, exemple : « Écarts »). Elles ne vont pas au journal.
+   */
+  sections?(ctx: Contexte, config: Config, aujourdhui: Temporal.PlainDate): SectionRapport[]
 }

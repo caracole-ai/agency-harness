@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { echeance, type RegleDeDecompte } from '../temps/delais'
 import { Temporal } from '../temps/temporal'
-import { type Echeance, type Fenetre, veiller } from './veiller'
+import { type Echeance, type Fenetre, FenetreSchema, veiller } from './veiller'
 
 const d = (s: string) => Temporal.PlainDate.from(s)
 const fenetre: Fenetre = { alerter: { mois: 2 }, preparation: { mois: 1 } }
@@ -31,6 +31,21 @@ describe('Veiller : quand prévenir', () => {
   })
   it('une date inconnue n’est pas une date lointaine', () => {
     expect(niveau(undefined, '2026-10-05')).toBe('alerte')
+  })
+})
+
+describe('Veiller : la fenêtre', () => {
+  // PLAN-METIER-2.md M13 : refusée à la lecture de la config, jamais au milieu d'une veille
+  it('refuse une fin de mois', () => {
+    const fin = { jours: 45, fin_de_mois: true }
+    expect(() => FenetreSchema.parse({ alerter: fin, preparation: { jours: 1 } })).toThrow()
+    expect(() => FenetreSchema.parse({ alerter: { jours: 3 }, preparation: fin })).toThrow()
+  })
+  it('accepte les jours, les mois, les ans', () => {
+    expect(FenetreSchema.parse({ alerter: { mois: 2 }, preparation: { jours: 10 } })).toEqual({
+      alerter: { mois: 2 },
+      preparation: { jours: 10 },
+    })
   })
 })
 
