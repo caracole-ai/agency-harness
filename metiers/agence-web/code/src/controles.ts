@@ -137,7 +137,30 @@ export const I02: Controle<ContexteVeille> = {
           ]),
         ]
       }
+      // « c'est dans la maintenance » pour une évolution : le piège que nomme
+      // l'entretien (§ 5, § 22) ; seul un lot ou un avenant la couvre (§ 36)
+      const contrat = ctx.contrats_tma.get(couverture)
+      if (contrat) {
+        return [
+          constat('I-02', t.cle, [
+            aVerifier(
+              `évolution rattachée au contrat de maintenance ${contrat.id} : une évolution n'est pas dans la maintenance, devis ou avenant attendu`,
+            ),
+          ]),
+        ]
+      }
+      const lot = ctx.lots.get(couverture)
       const avenant = ctx.avenants.get(couverture)
+      const projetCouvert = lot?.projet ?? avenant?.projet
+      if (projetCouvert !== undefined && t.projet !== undefined && projetCouvert !== t.projet) {
+        return [
+          constat('I-02', t.cle, [
+            aVerifier(
+              `évolution de ${t.projet} rattachée à ${couverture}, qui couvre ${projetCouvert}, pas ce projet`,
+            ),
+          ]),
+        ]
+      }
       if (avenant && avenant.etat !== 'signe') {
         return [
           constat('I-02', t.cle, [
@@ -185,7 +208,7 @@ export const I04: Controle<ContexteVeille> = {
   regle: 'I-04',
   nonCouvert: [
     'les accès aux hébergeurs, registrars et sites hors du registre (seuls les collaborateurs des dépôts sont lus)',
-    "la fin d'un contrat TMA : l'accès d'une personne de l'agence qu'il justifiait n'est plus signalé, l'échéance fin_tma prévient de cette fin",
+    "l'accès d'une personne de l'agence qu'un contrat TMA justifie : sa fin est portée par l'échéance fin_tma (I-04), qui dit de révoquer ces accès",
   ],
   verifier: (ctx) => {
     const constats: Constat[] = []

@@ -7,12 +7,12 @@ import {
   type ETATS_TICKET,
   type Facture,
   IDENTIFIANTS,
-  type Lot,
+  NIVEAUX_RELANCE,
   type Projet,
   type Ticket,
 } from './modele'
 import { ROLES_DECLARES, rolesQui, TOUS_LES_ROLES, vueDe } from './roles'
-import { consommeVendu } from './semantique'
+import { consommeVendu, recetteDuLot } from './semantique'
 import { type Entite, entites, resoudreEntite, type SorteEntite } from './types-parametre'
 
 // Les huit gestes de l'agence web (PLAN-METIER-2.md § 7.5, M14) : la liste
@@ -130,14 +130,6 @@ function projetVise(s: Session, identite: Identite, mention: string): Projet | {
   return p
 }
 
-/** La recette d'un lot : celle du fichier des lots, sinon la dernière de `recettes.csv`. */
-function recetteDe(s: Session, lot: Lot): { recette?: string; pv?: string } {
-  const r = s.ctx.recettes.filter((x) => x.lot === lot.id).at(-1)
-  const recette = lot.recette_le ?? r?.date
-  const pv = lot.pv_signe_le ?? r?.pv_signe_le
-  return { ...(recette ? { recette } : {}), ...(pv ? { pv } : {}) }
-}
-
 /** Ce qui reste dû sur une facture : le TTC moins les paiements reçus. */
 function resteDu(s: Session, f: Facture): number {
   const paye = s.ctx.paiements
@@ -194,11 +186,12 @@ const etatProjet: Action<Session, z.infer<typeof EtatProjet>> = {
     const aujourdhui = maintenant.toPlainDate()
     const client = projet.client === undefined ? undefined : s.ctx.clients.get(projet.client)
     const lots = [...s.ctx.lots.values()].filter((l) => l.projet === projet.id)
-    const enCours = lots.find((l) => recetteDe(s, l).pv === undefined)
+    // la même lecture que I-01 (`semantique.ts`) : un geste et un contrôle ne divergent pas
+    const enCours = lots.find((l) => recetteDuLot(s.ctx, l.id).pv_signe_le === undefined)
     const enAttente = lots.flatMap((l) => {
-      const r = recetteDe(s, l)
-      return r.recette !== undefined && r.pv === undefined
-        ? [`${l.id} (recette du ${date(r.recette)})`]
+      const r = recetteDuLot(s.ctx, l.id)
+      return r.recette_le !== undefined && r.pv_signe_le === undefined
+        ? [`${l.id} (recette du ${date(r.recette_le)})`]
         : []
     })
     const echeances = [
@@ -606,7 +599,7 @@ function brouillon(
   const f = s.ctx.factures.get(e.id)
   if (!f) throw new Error(`facture ${e.id} inconnue`)
   const relances = relancesDe(s, f.id)
-  const niveau = Math.min(3, (relances.at(-1)?.niveau ?? 0) + 1)
+  const niveau = Math.min(NIVEAUX_RELANCE.length, (relances.at(-1)?.niveau ?? 0) + 1)
   const client = s.ctx.clients.get(f.client)
   const contact = [...s.ctx.contacts.values()].find((c) => c.client === f.client)
   const reste = resteDu(s, f)

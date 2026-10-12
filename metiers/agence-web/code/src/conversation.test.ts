@@ -127,7 +127,8 @@ describe('les noms qui ne partent jamais au modèle', () => {
       new Set(noms.filter((x) => x.id.startsWith(prefixe)).map((x) => x.sorte))
     for (const p of ['M-', 'ST-', 'CT-']) expect(sorte(p)).toEqual(new Set(['personne']))
     for (const p of ['CLI-', 'DOM-']) expect(sorte(p)).toEqual(new Set(['organisation']))
-    expect(noms).toHaveLength(123)
+    // 39 personnes ; 25 clients entiers, 30 mots propres (« Hautes-Brandes » en donne deux), 30 domaines
+    expect(noms).toHaveLength(124)
   })
   it('un client se masque entier, et par ses mots propres ; pas par ses mots courants', () => {
     expect(fuites('Céramiques Orsini', noms)).toEqual(['Céramiques Orsini'])
@@ -135,6 +136,8 @@ describe('les noms qui ne partent jamais au modèle', () => {
     expect(fuites('ceramiques-orsini.example', noms)).toEqual(['ceramiques-orsini.example'])
     expect(fuites('orsini-pro.example', noms)).toEqual(['orsini-pro.example'])
     expect(fuites("l'agence, l'atelier, le cabinet, la boulangerie", noms)).toEqual([])
+    // un mot propre pris dans un nom composé (« Hautes-Brandes ») se masque seul aussi
+    expect(fuites('la communauté des Brandes', noms)).toEqual(['Brandes'])
   })
   it('ce qu’un rôle désigne : toute l’agence s’il désigne autrui, sinon lui-même', () => {
     const designe = (identite: Identite) =>

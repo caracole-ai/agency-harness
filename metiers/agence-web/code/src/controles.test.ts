@@ -90,6 +90,24 @@ describe('client fictif : la liste complète des constats', () => {
       [
         'I-01 FAC-2026-042 à vérifier',
         'I-02 TK-0978 à vérifier',
+        // une évolution rattachée à un contrat TMA (« c'est dans la maintenance », entretien § 5, § 22)
+        'I-02 TK-0761 à vérifier',
+        'I-02 TK-0778 à vérifier',
+        'I-02 TK-0781 à vérifier',
+        'I-02 TK-0794 à vérifier',
+        'I-02 TK-0798 à vérifier',
+        'I-02 TK-0809 à vérifier',
+        'I-02 TK-0858 à vérifier',
+        'I-02 TK-0883 à vérifier',
+        'I-02 TK-0884 à vérifier',
+        'I-02 TK-0906 à vérifier',
+        'I-02 TK-0934 à vérifier',
+        'I-02 TK-0962 à vérifier',
+        'I-02 TK-0965 à vérifier',
+        'I-02 TK-0970 à vérifier',
+        'I-02 TK-0987 à vérifier',
+        'I-02 TK-0988 à vérifier',
+        'I-02 TK-1023 à vérifier',
         'I-03 PRJ-15/mise-en-prod/2026-09-24 à vérifier',
         // I-04 : un accès non révoqué à une ressource dont les projets sont clos ;
         // pas celui d'une personne de l'agence qu'un contrat TMA justifie
@@ -210,5 +228,22 @@ describe('les valeurs des textes viennent du registre', () => {
     )
     expect(c?.motif).not.toMatch(/délai de paiement/)
     expect(c?.motif).toMatch(/pénalités de retard non mentionnées/)
+  })
+})
+
+describe('I-02 : une évolution n’est couverte que par un lot ou un avenant de son projet', () => {
+  it('rattachée à un contrat TMA, elle est à vérifier', () => {
+    expect(constat(lire(), 'I-02', 'TK-0761')?.verdict).toBe('à vérifier')
+    expect(constat(lire(), 'I-02', 'TK-0761')?.motif).toMatch(/TMA-08/)
+  })
+  it('rattachée au lot d’un autre projet, elle est à vérifier', () => {
+    const ctx = lire()
+    const t = ctx.tickets.get('TK-0978')
+    if (!t) throw new Error('TK-0978')
+    const ailleurs = [...ctx.lots.values()].find((l) => l.projet !== t.projet)
+    if (!ailleurs) throw new Error('un lot d’un autre projet')
+    t.rattache_a = ailleurs.id
+    expect(constat(ctx, 'I-02', 'TK-0978')?.motif).toMatch(new RegExp(ailleurs.id))
+    expect(constat(ctx, 'I-02', 'TK-0978')?.verdict).toBe('à vérifier')
   })
 })

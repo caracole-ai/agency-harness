@@ -35,6 +35,7 @@ describe('les neuf échéances de la config', () => {
   it('celles qu’un interdit porte sont remises à la veille, chacune à un interdit du registre', () => {
     const portees = Object.entries(INTERDIT_DE_L_ECHEANCE).filter(([, r]) => r !== null)
     expect(Object.fromEntries(portees)).toEqual({
+      fin_tma: 'I-04',
       domaine: 'I-13',
       certificat: 'I-13',
       attestation_urssaf: 'I-09',
@@ -150,6 +151,8 @@ describe('client fictif : la liste complète au 2026-10-12', () => {
         'I-13 DOM-07/certificat alerte',
         'I-09 ST-01/attestation escalade',
         'I-01 LOT-042/pv escalade',
+        // la fin d'un contrat TMA met fin aux accès de l'agence qu'il justifiait (I-04)
+        'I-04 TMA-08/fin escalade',
       ].sort(),
     )
   })
@@ -171,5 +174,28 @@ describe('les valeurs des textes viennent du registre', () => {
     const objets = (r: typeof registre) => echeancesDues(lire(), veille, r).map((e) => e.objet)
     expect(objets(registre)).toContain('ST-01/attestation')
     expect(objets(avec9000)).not.toContain('ST-01/attestation')
+  })
+})
+
+describe('I-04 : la fin d’un contrat TMA arrive au rapport', () => {
+  it('TMA-04 fini le 2026-09-30 : les accès de l’agence à PRJ-18 sont à révoquer', () => {
+    const ctx = lire()
+    const c = ctx.contrats_tma.get('TMA-04')
+    if (!c) throw new Error('TMA-04')
+    c.fin = '2026-09-30'
+    const alerte = veiller(echeancesAgenceWeb(ctx, veille, registre), REF).find(
+      (a) => a.objet === 'TMA-04/fin',
+    )
+    expect(alerte?.regle).toBe('I-04')
+    expect(alerte?.niveau).toBe('escalade')
+    expect(alerte?.motif).toMatch(/révoquer les accès/)
+  })
+})
+
+describe('une relance se prépare en dix minutes (entretien § 8)', () => {
+  it('le jour de la limite, une alerte ; le lendemain, une escalade', () => {
+    const jour = Temporal.PlainDate.from('2026-10-20')
+    expect(toutes(jour)).toContain('pv_non_signe LOT-023/pv alerte')
+    expect(toutes(jour.add({ days: 1 }))).toContain('pv_non_signe LOT-023/pv escalade')
   })
 })

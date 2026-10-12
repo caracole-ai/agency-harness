@@ -3,7 +3,7 @@ import { ConfigAgenceWeb } from './config'
 import { lireAgenceWeb } from './connecteurs/csv-exports'
 import { CONTROLES, type ContexteVeille } from './controles'
 import { echeancesAgenceWeb, VEILLES } from './echeances'
-import type { Contexte } from './modele'
+import type { Contexte, SORTES_ACCES } from './modele'
 
 // Veiller chez un client de l'agence web (PLAN-METIER-2.md M13, § 7.4) : sa
 // config, la lecture de ses exports, les contrôles, les échéances, et la
@@ -13,13 +13,14 @@ import type { Contexte } from './modele'
 // leur identifiant et leur libellé, jamais par le nom du client ; un domaine,
 // par son nom, comme l'agence le désigne (entretien § 24).
 
+// chaque sorte d'accès du modèle a ses mots ; `decrire` y cherche n'importe quel segment d'objet
 const SORTES: Record<string, string> = {
   depot: 'dépôt',
   admin_site: 'administration du site',
   hebergeur: 'hébergement',
   registrar: 'compte registrar',
   tiers: 'service tiers',
-}
+} satisfies Record<(typeof SORTES_ACCES)[number], string>
 
 const QUOI: Record<string, string> = {
   echeance: 'échéance de paiement',

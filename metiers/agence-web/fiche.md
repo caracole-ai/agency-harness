@@ -417,7 +417,8 @@ en vigueur, les interdits qui s'y adossent ne rendent que « à vérifier ».
   première (`PLAN-METIER-2.md` § 10).
 - **L8222-1 du code du travail** (I-09) : le seuil de 5 000 € HT et la
   périodicité de six mois sont-ils dans l'article lui-même, ou dans un texte
-  d'application à citer ?
+  d'application à citer ? Et le seuil est-il « plus de 5 000 € » (l'entretien,
+  ce que le code applique) ou « au moins égal à 5 000 € » ?
 - **L131-3 du code de la propriété intellectuelle** (I-10) : ce qu'une clause
   de cession doit contenir pour valoir (étendue, destination, lieu, durée), et
   si une clause au devis suffit.
@@ -433,6 +434,18 @@ en vigueur, les interdits qui s'y adossent ne rendent que « à vérifier ».
   d'accessibilité des services de commerce en ligne, en vigueur depuis 2025,
   est-elle un interdit pour l'agence qui livre un site e-commerce ? Quel
   texte, quel référentiel, et qui en répond (l'agence ou son client) ?
+
+### Deux lectures à confirmer par le dirigeant
+
+- **I-04 sous contrat TMA** : un projet clos qu'un contrat TMA maintient garde
+  les accès des personnes de l'agence tant que le contrat court ; à sa fin
+  (l'échéance de fin de TMA), ils sont à révoquer. Un sous-traitant, lui, perd
+  son accès à la fin du projet. L'entretien dit « à la fin du projet » et
+  définit le projet « jusqu'à la garantie » : est-ce bien ainsi qu'on l'entend ?
+- **I-11 en l'absence du dirigeant** : la cheffe de projet signe jusqu'à
+  5 000 € HT ; une remise de plus de 10 % dans ce plafond reste-t-elle au
+  dirigeant seul (E-01), ou la délégation la couvre-t-elle ? Le code prend la
+  seconde lecture.
 
 ### Les seuils (déclarés, à confirmer avec un document)
 

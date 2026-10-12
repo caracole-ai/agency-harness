@@ -1,6 +1,19 @@
 import type { ColonneCopie, Identite, TableCopie } from '@harnais/moteur'
 import type { Session } from './conversation'
-import { colonnes, NOMS_TABLES, type Table, type Tables } from './modele'
+import {
+  colonnes,
+  ETATS_DEVIS,
+  ETATS_FACTURE,
+  ETATS_PROJET,
+  ETATS_TICKET,
+  NOMS_TABLES,
+  ROLES,
+  SORTES_ACCES,
+  type Table,
+  type Tables,
+  TYPES_PROJET,
+  TYPES_TICKET,
+} from './modele'
 import { vueDe } from './roles'
 
 // Les tables de la copie de l'échappée, à l'échelle du rôle (PLAN-METIER-2.md
@@ -18,6 +31,9 @@ const INCONNU = '`null` = inconnu, rien n’est supposé.'
 
 type Colonne = Omit<ColonneCopie, 'nom'>
 const texte = (description: string): Colonne => ({ type: 'TEXT', description })
+/** Les valeurs d'une colonne, en mots, depuis la liste du modèle : « a, b ou c ». */
+const uneDe = (valeurs: readonly string[]) =>
+  `${valeurs.slice(0, -1).join(', ')} ou ${valeurs.at(-1)}`
 const reel = (description: string): Colonne => ({ type: 'REAL', description })
 const euros = (description: string): Colonne => ({ type: 'REAL', description, decimales: 2 })
 const date = (description: string) => texte(`${description}, AAAA-MM-JJ`)
@@ -37,7 +53,7 @@ const DEFINITIONS: {
     colonnes: {
       id: texte("l'identifiant de la personne (M-01)"),
       nom: nom('prénom et nom', "l'identifiant de la personne, qui tient lieu de nom"),
-      role: texte('dirigeant, commercial, po, graphiste ou developpeur'),
+      role: texte(uneDe(ROLES)),
       tjm_vente_eur: euros('le TJM de vente, HT'),
       cout_journalier_eur: euros('le coût journalier, confidentiel'),
       entree_le: date("l'entrée dans l'agence"),
@@ -70,8 +86,8 @@ const DEFINITIONS: {
       id: texte("l'identifiant du projet (PRJ-01)"),
       client: texte('le client (clients.id) ; null pour un projet interne'),
       nom: texte('le nom du projet'),
-      type: texte('forfait, regie ou interne'),
-      etat: texte('cadrage, en_cours, recette, livre, garantie ou clos'),
+      type: texte(uneDe(TYPES_PROJET)),
+      etat: texte(uneDe(ETATS_PROJET)),
       debut: date('le début'),
       fin_prevue: date('la fin prévue'),
       mise_en_prod_le: date('la mise en production'),
@@ -100,7 +116,7 @@ const DEFINITIONS: {
       date: date('la date du devis'),
       montant_ht_eur: euros('le montant HT'),
       jours: reel('les jours vendus'),
-      etat: texte('brouillon, envoye, signe, refuse ou expire'),
+      etat: texte(uneDe(ETATS_DEVIS)),
       signataire: texte('qui a signé pour l’agence (personnes.id)'),
       remise: reel('la remise, en fraction (0.1 pour 10 %)'),
       clause_cession: ouiNon('le devis porte la clause de cession des droits'),
@@ -117,7 +133,7 @@ const DEFINITIONS: {
       date: date("la date de l'avenant"),
       montant_ht_eur: euros('le montant HT'),
       jours: reel('les jours vendus'),
-      etat: texte('brouillon, envoye, signe, refuse ou expire'),
+      etat: texte(uneDe(ETATS_DEVIS)),
       signataire: texte('qui a signé pour l’agence (personnes.id)'),
       motif: texte('ce que l’avenant ajoute'),
     },
@@ -130,8 +146,8 @@ const DEFINITIONS: {
       lot: texte('le lot (lots.id)'),
       contrat_tma: texte('le contrat de maintenance (contrats_tma.id)'),
       resume: texte('le résumé'),
-      type: texte('bug, evolution ou tache ; null quand le ticket n’est pas qualifié'),
-      etat: texte('a_faire, en_cours, en_revue ou resolu'),
+      type: texte(`${uneDe(TYPES_TICKET)} ; null quand le ticket n’est pas qualifié`),
+      etat: texte(uneDe(ETATS_TICKET)),
       assigne: texte('à qui il est assigné (personnes.id, ou un sous-traitant ST-)'),
       estimation_h: reel("l'estimation, en heures"),
       cree_le: date('la création'),
@@ -166,7 +182,7 @@ const DEFINITIONS: {
       echeance: date("l'échéance"),
       delai_jours: reel('le délai de paiement, en jours'),
       fin_de_mois: ouiNon('le délai court jusqu’à la fin du mois'),
-      etat: texte('emise ou payee'),
+      etat: texte(uneDe(ETATS_FACTURE)),
       payee_le: date('le paiement complet'),
       penalites_mentionnees: ouiNon('la facture mentionne les pénalités de retard'),
       indemnite_40_mentionnee: ouiNon(
@@ -219,7 +235,7 @@ const DEFINITIONS: {
     description: 'le registre des accès : qui a accès à quelle ressource, depuis quand',
     colonnes: {
       ressource: texte('le dépôt (depots.nom), le domaine (domaines.nom) ou le compte'),
-      sorte: texte('depot, hebergeur, registrar, admin_site ou tiers'),
+      sorte: texte(uneDe(SORTES_ACCES)),
       personne: texte('qui a l’accès (personnes.id, ou un sous-traitant ST-)'),
       depuis: date("le début de l'accès"),
       jusqua: date("la fin prévue de l'accès"),

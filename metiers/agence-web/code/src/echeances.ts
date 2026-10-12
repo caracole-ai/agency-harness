@@ -40,7 +40,8 @@ export type CleEcheance = (typeof ECHEANCES)[number]
 export const INTERDIT_DE_L_ECHEANCE: Record<CleEcheance, string | null> = {
   facture_echeance: null,
   fin_garantie: null,
-  fin_tma: null,
+  // la fin d'un contrat met fin aux accès de l'agence qu'il justifiait (`controles.ts`, I-04)
+  fin_tma: 'I-04',
   domaine: 'I-13',
   certificat: 'I-13',
   fin_support: null,
@@ -147,7 +148,7 @@ export function echeancesDues(ctx: Contexte, veille: Veille, registre: Registre)
     de(
       'fin_tma',
       objet,
-      `renégocier ou dénoncer le contrat ${c.id} (fin le ${fr(c.fin)})`,
+      `renégocier ou dénoncer le contrat ${c.id} (fin le ${fr(c.fin)}) ; à sa fin, révoquer les accès de l'agence qu'il justifiait`,
       auPlusTardAvant(jour(c.fin), { jours: c.preavis_jours }),
       `préavis de ${c.preavis_jours} jours`,
     )

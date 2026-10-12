@@ -87,14 +87,14 @@ const LETTRES_MOT_PROPRE = 4
  * aux espaces ; pour une organisation, ses mots courants (« Agence »,
  * « Atelier », « Groupe ») n'en sont pas des formes sûres : ils masqueraient
  * le mot partout, et rendraient « agence » une fuite. Le nom entier s'écrit
- * donc d'un seul tenant (les tirets valent des espaces pour le masque, pas
- * pour la coupure), et chacun de ses mots propres (une majuscule ailleurs
+ * donc d'un seul tenant (les tirets valent des espaces pour le masque), et
+ * chacun de ses mots propres, coupés aux espaces, apostrophes et tirets (une majuscule ailleurs
  * qu'en tête, quatre lettres au moins : « Orsini », « Castelvert ») se masque
  * seul.
  */
 function nomsDuClient(id: string, nom: string): Designable[] {
   const propres = nom
-    .split(/[\s'’]+/)
+    .split(/[\s'’-]+/)
     .slice(1)
     .filter((m) => /^\p{Lu}/u.test(m) && (m.match(/\p{L}/gu) ?? []).length >= LETTRES_MOT_PROPRE)
   return [

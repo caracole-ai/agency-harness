@@ -101,6 +101,16 @@ describe('etat_projet', () => {
       expect(texte).not.toMatch(/€|vendus/)
     },
   )
+  it('un lot recetté deux fois, son PV signé à la première : pas en attente, comme pour I-01', async () => {
+    const t = session()
+    t.ctx.recettes.push(
+      { projet: 'PRJ-12', lot: 'LOT-032', date: '2026-09-01', pv_signe_le: '2026-09-03' },
+      { projet: 'PRJ-12', lot: 'LOT-032', date: '2026-09-20' },
+    )
+    const texte = await jouer(t, 'etat_projet', DIRIGEANT, { projet: 'PRJ-12' })
+    expect(texte).toContain('PV en attente : aucun')
+    expect(texte).toContain('Lot en cours : LOT-033')
+  })
   it('un graphiste, hors de ses projets : refus du code ; une mention vague : « lequel ? »', async () => {
     const autre = [...s.ctx.projets.keys()].find((id) => !projetsDe(s, 'M-04').has(id))
     if (!autre) throw new Error('le graphiste a tous les projets')
