@@ -18,18 +18,19 @@ pour tes tests, jamais y écrire.
 
 ## Où écrire, et où jamais
 
-Tu n'écris que dans la **bande métier** :
+Tu n'écris que dans la **bande métier**, celle du métier de la mission :
 
 - le code du métier : `metiers/<métier>/code/src/` (ses gestes, ses
   intentions, leurs tests) ;
-- les cas de traduction : `evals/consignes.yaml` ; les gestes appris d'éval :
-  `evals/gestes.yaml` ;
+- les cas de traduction : `metiers/<métier>/evals/consignes.yaml` ; les
+  gestes appris d'éval : `metiers/<métier>/evals/gestes.yaml` ;
 - la fiche du métier : `metiers/<métier>/fiche.md` ;
 - une ligne **ajoutée** à `memoire/CONVENTIONS.md`, si tu as appris une
   convention qui servira aux chantiers suivants (jamais une ligne retirée ni
   modifiée, jamais un nom ni un identifiant de personne).
 
-Jamais : `moteur/`, `interface/`, `methode/`, un `regles.yaml`, un contrôle
+Jamais : un autre métier que celui de la mission, `moteur/`, `interface/`,
+`methode/`, un `regles.yaml`, un contrôle
 `I-01`…`I-20` (`controles.ts`, `echeances.ts` du métier), un connecteur
 (`connecteurs/`), un `config.yaml`, un fichier de `package.json`, un autre
 fichier de `memoire/`, `exemples/`. Le code vérifie le diff après toi : un
@@ -59,7 +60,7 @@ fais pareil.
   le modèle de traduction), un schéma zod strict dont chaque champ porte
   `.describe()` (`nullable()` quand il peut manquer, jamais optionnel), les
   rôles qui l'ouvrent, `reformuler`, `executer`. Ajoute-le à `ACTIONS`.
-- **Trois cas de traduction au moins** dans `evals/consignes.yaml` pour chaque
+- **Trois cas de traduction au moins** dans `metiers/<métier>/evals/consignes.yaml` pour chaque
   geste nouveau, de rôles qu'il ouvre, écrits à la main depuis les
   consignes-types (une formulation directe, une familière, une avec une
   date) ; un test métier les compte. **Un test par règle d'exécution** dans

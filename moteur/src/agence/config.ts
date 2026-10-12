@@ -15,6 +15,9 @@ import { EFFORTS, type PrixModele } from '../modele/modele'
 
 export const FICHIER_AGENCE = 'agence.yaml'
 
+/** La place du métier de la mission dans `chemins_autorises` et `chemins_interdits`, résolue avant la garde (PLAN-METIER-2.md M9). */
+export const PLACE_METIER = `\${metier}`
+
 /** Les deux accès aux modèles d'Anthropic (PLAN-RONDE.md § 0.a). */
 export const ACCES_AGENCE = ['claude', 'anthropic'] as const
 export type AccesAgence = (typeof ACCES_AGENCE)[number]
@@ -34,6 +37,14 @@ const Prix = z.strictObject({
 })
 
 const entier = () => z.number().int().positive()
+
+/** Un chemin autorisé sous `metiers/` porte la place du métier : sans elle, un chantier ouvrirait tous les métiers (PLAN-METIER-2.md M9). */
+const CheminAutorise = z
+  .string()
+  .min(1)
+  .refine((c) => !c.startsWith('metiers/') || c.includes(PLACE_METIER), {
+    message: `un chemin autorisé sous metiers/ porte ${PLACE_METIER}`,
+  })
 
 export const AgenceSchema = z.strictObject({
   modeles: z.strictObject({
@@ -62,8 +73,9 @@ export const AgenceSchema = z.strictObject({
     delai_secondes: entier(),
     outils_autorises: z.array(z.string().min(1)).min(1),
     outils_lecture: z.array(z.string().min(1)).min(1),
-    evals_client: z.string().min(1),
-    chemins_autorises: z.array(z.string().min(1)).min(1),
+    /** Le client des évals de traduction de chaque métier, relatif à l'arbre (PLAN-METIER-2.md M9). */
+    evals_clients: z.record(z.string().min(1), z.string().min(1)),
+    chemins_autorises: z.array(CheminAutorise).min(1),
     chemins_interdits: z.array(z.string().min(1)),
   }),
 })

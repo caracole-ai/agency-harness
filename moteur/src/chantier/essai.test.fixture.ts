@@ -9,6 +9,7 @@ import { dossierEssai } from '../ronde/essai.test.fixture'
 import { FICHIER_CARTE } from '../ronde/ronde'
 import { type Commande, commandeSync } from './arbre'
 import { FICHIER_METHODE } from './chantier'
+import { fichierConsignes } from './garde'
 import type { Mission } from './mission'
 
 // Pour les tests du chantier (PLAN-RONDE.md § 6.4, PLAN-GENERAL.md G1 à G3) :
@@ -60,7 +61,7 @@ export function creerDepots(): Depots {
     [FICHIER_CARTE]: readFileSync(join(RACINE_DEPOT, FICHIER_CARTE), 'utf8'),
     'memoire/INDEX.md': '# index\n',
     'memoire/CONVENTIONS.md': '# conventions\n',
-    'evals/consignes.yaml': CONSIGNES_ESSAI,
+    [fichierConsignes(MISSION_ESSAI.metier)]: CONSIGNES_ESSAI,
     'metiers/essai/code/src/actions.ts': 'export const ACTIONS = []\n',
     'metiers/essai/code/src/actions.test.ts': TEST_ESSAI,
     'moteur/src/moteur.ts': 'export const MOTEUR = 1\n',
@@ -209,7 +210,10 @@ export function commandeSimulee(p: PnpmSimule = {}): {
   return { commande, emises }
 }
 
-/** L'agence du dépôt, avec le binaire simulé et le clone de la nuit d'essai. */
+/** Le client des évals du métier d'essai : jamais lu, `pnpm` est simulé ; la commande émise le porte. */
+export const CLIENT_EVALS_ESSAI = 'exemples/client-essai'
+
+/** L'agence du dépôt, avec le binaire simulé, le clone de la nuit d'essai et le client des évals du métier d'essai. */
 export function agenceEssai(
   binaire: string,
   depot: string,
@@ -220,7 +224,11 @@ export function agenceEssai(
     ...a,
     claude: { binaire },
     depot_nuit: depot,
-    chantier: { ...a.chantier, ...x },
+    chantier: {
+      ...a.chantier,
+      evals_clients: { [MISSION_ESSAI.metier]: CLIENT_EVALS_ESSAI },
+      ...x,
+    },
   }
 }
 
@@ -257,7 +265,7 @@ export function gesteVert(id = 'simuler_absence_code'): Record<string, string> {
   return {
     'metiers/essai/code/src/simulation.ts': `export const ${id.toUpperCase()} = '${id}'\n`,
     'metiers/essai/code/src/simulation.test.ts': `import { it } from 'vitest'\nit('simule', () => {})\n`,
-    'evals/consignes.yaml': `${CONSIGNES_ESSAI}${[1, 2, 3]
+    [fichierConsignes(MISSION_ESSAI.metier)]: `${CONSIGNES_ESSAI}${[1, 2, 3]
       .map(
         (n) =>
           `  - { id: S-${n}, role: patron, consigne: "et si ${n}", attendu: { sorte: action, action: ${id} } }\n`,

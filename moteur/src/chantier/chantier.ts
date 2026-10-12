@@ -25,7 +25,7 @@ import {
 } from './arbre'
 import { envEnfant, type IssueClaude, type Lancer, lancerClaude, lancerProcessus } from './claude'
 import { CONDITIONS, type Condition, conclure, type IssueFusion, raisonRefus } from './fusion'
-import { casParGesteNouveau, type Garde, garderDiff } from './garde'
+import { casParGesteNouveau, fichierConsignes, type Garde, garderDiff } from './garde'
 import {
   coutEcrit,
   ecrireChantier,
@@ -67,6 +67,9 @@ export const ISSUES_CHANTIER = {
 } as const
 
 export const NIVEAUX = ['bloquant', 'à corriger', 'remarque'] as const
+
+/** La condition 4 d'une mission dont le métier n'a pas de client d'évals dans `agence.yaml` (PLAN-METIER-2.md M9). */
+export const AUCUN_CLIENT_EVALS = "aucun client d'évals pour ce métier"
 
 export const PlanChantier = z.strictObject({
   faisable: z
@@ -375,7 +378,7 @@ export async function faireChantier<S>(
     }
     const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
     const verifier = () => {
-      garde = garderDiff(c, cwd, ch, personnes)
+      garde = garderDiff(c, cwd, ch, personnes, mission.metier)
       const r = pnpm(['check'])
       check = { ok: r.code === 0, sortie: fin(`${r.sortie}\n${r.erreur}`, 15) }
     }
@@ -468,7 +471,7 @@ export async function faireChantier<S>(
         '',
         memoire.conventions.trim() || '(aucune)',
         '',
-        "Pour chaque geste nouveau : trois cas de traduction au moins dans `evals/consignes.yaml`, un test par règle d'exécution. Lance `pnpm check` jusqu'au vert. Finis par les trois sections : « ## Vérifié », « ## Non vérifié, risque », « ## Ce que j'ai appris ».",
+        `Pour chaque geste nouveau : trois cas de traduction au moins dans \`${fichierConsignes(mission.metier)}\`, un test par règle d'exécution. Lance \`pnpm check\` jusqu'au vert. Finis par les trois sections : « ## Vérifié », « ## Non vérifié, risque », « ## Ce que j'ai appris ».`,
       ].join('\n')
       const rImpl = await appeler(
         'implémentation',
@@ -521,7 +524,13 @@ export async function faireChantier<S>(
       ).length
 
       if (garde?.chemins.ok && check?.ok && relu && bloquantsRestants === 0) {
-        honnetete = mesurerHonnetete(c, cwd, o.env, ch.evals_client)
+        honnetete = mesurerHonnetete(
+          c,
+          cwd,
+          o.env,
+          mission.metier,
+          ch.evals_clients[mission.metier],
+        )
       }
 
       const echecsBornes = etapes.filter(
@@ -694,17 +703,22 @@ const round = (x: number) => Math.round(x * 1_000_000) / 1_000_000
 
 /**
  * Condition 4 de G1 : au moins trois cas de traduction par geste nouveau,
- * puis `pnpm evals traduire` dans l'arbre, avec le modèle du quotidien (la
- * clé que nomme la config du client des évals) : sa dernière ligne porte le
- * compte et le seuil, le taux décide.
+ * puis `pnpm evals traduire` dans l'arbre, sur le client des évals du métier
+ * de la mission (PLAN-METIER-2.md M9 ; aucun : refus), avec le modèle du
+ * quotidien (la clé que nomme sa config) : sa dernière ligne porte le compte
+ * et le seuil, le taux décide.
  */
 function mesurerHonnetete(
   c: Commande,
   arbre: string,
   env: Record<string, string | undefined>,
-  client: string,
+  metier: string,
+  client: string | undefined,
 ): { ok: boolean; mesure: string } {
-  const nouveaux = casParGesteNouveau(c, arbre)
+  if (client === undefined) {
+    return { ok: false, mesure: `${AUCUN_CLIENT_EVALS} (${metier})` }
+  }
+  const nouveaux = casParGesteNouveau(c, arbre, metier)
   const courts = nouveaux.filter((g) => g.cas < 3)
   const gestes =
     nouveaux.length === 0

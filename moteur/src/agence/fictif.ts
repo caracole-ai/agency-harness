@@ -1,25 +1,36 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { metierDe } from '../cli/metier'
+import { FICHIER_CONFIG } from '../config'
 import type { Designable } from '../conversation/designation'
+import { copieClient } from '../evals/traduction'
 
-// Pour les tests de fuite (PLAN-RONDE.md § 4.3, R10) : les personnes du client
-// fictif, lues dans son fichier des agents, sans ouvrir le métier. Ce que la
-// carte et la mémoire ne doivent jamais citer.
+// Pour les tests de fuite (PLAN-RONDE.md § 4.3, R10 ; PLAN-METIER-2.md M9) :
+// les clients fictifs du dépôt, et les noms de chacun que rien ne doit citer
+// (la carte, la mémoire, ce qui part à la ronde et au chantier), lus par son
+// métier sans le connaître.
 
 export const RACINE_DEPOT = fileURLToPath(new URL('../../..', import.meta.url))
+const DOSSIER_EXEMPLES = join(RACINE_DEPOT, 'exemples')
 
-/** `exemples/client-fictif/agents.csv` : identifiant et nom de chaque agent. */
-export function personnesFictives(): Designable[] {
-  const lignes = readFileSync(join(RACINE_DEPOT, 'exemples', 'client-fictif', 'agents.csv'), 'utf8')
-    .split('\n')
-    .filter((l) => l.trim().length > 0)
-  const entete = (lignes[0] ?? '').split(';')
-  const id = entete.indexOf('id')
-  const nom = entete.indexOf('nom')
-  if (id < 0 || nom < 0) throw new Error('agents.csv : colonnes id et nom attendues')
-  return lignes.slice(1).map((l) => {
-    const c = l.split(';')
-    return { id: c[id] ?? '', nom: c[nom] ?? '', sorte: 'personne' as const }
-  })
+/** Les dossiers des clients fictifs : chaque dossier d'`exemples/` qui a un `config.yaml`. */
+export const CLIENTS_FICTIFS: string[] = readdirSync(DOSSIER_EXEMPLES)
+  .map((d) => join(DOSSIER_EXEMPLES, d))
+  .filter((d) => existsSync(join(d, FICHIER_CONFIG)))
+
+/** Les noms d'un client fictif qui ne partent jamais au modèle (`m.noms`), lus sur une copie : ouvrir écrit un journal. */
+export async function personnesFictives(dossierClient: string): Promise<Designable[]> {
+  const m = await metierDe(dossierClient)
+  const copie = copieClient(dossierClient)
+  try {
+    const s = m.ouvrir(copie)
+    try {
+      return m.noms(s)
+    } finally {
+      m.fermer(s)
+    }
+  } finally {
+    rmSync(copie, { recursive: true, force: true })
+  }
 }

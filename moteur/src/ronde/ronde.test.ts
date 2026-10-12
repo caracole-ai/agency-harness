@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { parse, stringify } from 'yaml'
 import { chargerAgence } from '../agence/config'
-import { RACINE_DEPOT } from '../agence/fictif'
+import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
 import { ajouterConvention, ecrireRetrait, lireIndex } from '../chantier/memoire'
 import { fuites } from '../echappee/pseudonymes'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -194,6 +194,10 @@ describe('faireRonde', () => {
     const [{ systeme, message } = { systeme: '', message: '' }] = appel.recus
     const tout = `${systeme}\n${message}`
     expect(fuites(tout, PERSONNES_ESSAI)).toEqual([])
+    // Ni un nom d'un client fictif du dépôt (PLAN-METIER-2.md M9).
+    for (const client of CLIENTS_FICTIFS) {
+      expect(fuites(tout, await personnesFictives(client))).toEqual([])
+    }
     for (const secret of Object.values(SECRETS_ESSAI)) expect(tout).not.toContain(secret)
     expect(tout).not.toContain('client essai')
     expect(systeme).toContain("Ce qu'un modèle ne fait jamais")
