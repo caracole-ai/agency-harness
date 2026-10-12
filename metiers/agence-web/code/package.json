@@ -1,0 +1,19 @@
+{
+  "name": "@harnais/agence-web",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "fictif": "cd \"${INIT_CWD:?lancer par pnpm --filter @harnais/agence-web fictif}\" && NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx \"$OLDPWD/src/cli/fictif.ts\""
+  },
+  "dependencies": {
+    "@harnais/moteur": "workspace:*",
+    "csv-parse": "7.0.3",
+    "yaml": "2.9.1",
+    "zod": "4.6.3"
+  }
+}

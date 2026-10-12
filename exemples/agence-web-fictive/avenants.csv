@@ -1,0 +1,7 @@
+id;devis;projet;date;montant_ht_eur;jours;etat;signataire;motif
+AVE-2026-001;DEV-2025-006;PRJ-05;2026-01-20;2480.00;4;signe;M-01;Synchronisation avec un second agenda
+AVE-2026-002;DEV-2025-008;PRJ-16;2026-05-11;3250.00;5;signe;M-01;Export vers le logiciel de facturation
+AVE-2026-003;DEV-2025-012;PRJ-08;2026-06-15;3600.00;6;refuse;;Module de paiement en ligne
+AVE-2026-004;DEV-2026-010;PRJ-12;2026-08-24;1800.00;3;signe;M-01;Page des produits de saison
+AVE-2026-005;DEV-2026-013;PRJ-14;2026-09-07;1200.00;2;signe;M-01;Export des inscrits
+AVE-2026-006;DEV-2026-016;PRJ-09;2026-09-28;1800.00;3;envoye;;Galerie de photos des cours

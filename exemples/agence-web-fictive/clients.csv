@@ -1,0 +1,26 @@
+id;nom;secteur;nda;contrat_art28;bon_de_commande_obligatoire;portail_fournisseur
+CLI-01;Atelier de ferronnerie Valcourt;artisanat;non;oui;non;non
+CLI-02;Maison de santé des Coteaux;santé;non;oui;non;non
+CLI-03;Boulangerie Fournil des Saules;boulangerie;non;oui;non;non
+CLI-04;Compagnie théâtrale L'Escabeau;culture;non;oui;non;non
+CLI-05;Cabinet Dalbret et associés;cabinet d'avocats;non;oui;non;non
+CLI-06;Camping Les Genêts bleus;tourisme;non;oui;non;non
+CLI-07;Transports Mérindol;logistique;non;oui;non;non
+CLI-08;Groupe Hexalis Industrie;industrie;oui;non;oui;non
+CLI-09;Clinique vétérinaire des Aulnes;santé;non;oui;non;non
+CLI-10;Fédération régionale de randonnée;association;non;oui;non;non
+CLI-11;Céramiques Orsini;e-commerce;non;oui;non;non
+CLI-12;Cave Lumen;commerce;non;oui;non;non
+CLI-13;Institut de formation Kerdual;formation;non;oui;non;non
+CLI-14;Communauté de communes des Hautes-Brandes;collectivité;non;non;non;oui
+CLI-15;Studio de yoga Prana Rive;bien-être;non;oui;non;non
+CLI-16;Agence immobilière Castelvert;immobilier;non;oui;non;non
+CLI-17;Brasserie La Mousse dorée;restauration;non;oui;non;non
+CLI-18;Laboratoire Biocéane;recherche;oui;non;oui;non
+CLI-19;École de musique Arpège Nord;culture;non;oui;non;non
+CLI-20;Menuiserie Lacombe frères;artisanat;non;oui;non;non
+CLI-21;Épicerie fine Saveurs d'ailleurs;e-commerce;non;oui;non;non
+CLI-22;Atelier d'architectes Trait d'encre;architecture;non;oui;non;non
+CLI-23;Association Les Jardins de Lune;association;non;oui;non;non
+CLI-24;Garage Dumontel;automobile;non;oui;non;non
+CLI-25;Office de tourisme de la vallée d'Esque;tourisme;non;non;non;non

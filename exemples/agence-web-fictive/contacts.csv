@@ -1,0 +1,31 @@
+id;client;nom;fonction
+CT-01;CLI-01;Paulo Traoré;président
+CT-02;CLI-02;Inès Ziani;président
+CT-03;CLI-03;Hugo Brunet;assistante de direction
+CT-04;CLI-04;Sven Kaya;gérante
+CT-05;CLI-05;Ibrahima Leclerc;responsable informatique
+CT-06;CLI-05;Nadia Chevalier;associé
+CT-07;CLI-06;Olivier Achour;associé
+CT-08;CLI-07;Margaux Cohen;trésorière
+CT-09;CLI-08;Zoé Ferreira;gérante
+CT-10;CLI-08;Youssef Renard;gérante
+CT-11;CLI-09;Étienne Lefort;assistante de direction
+CT-12;CLI-10;Léa Marchetti;chargée de communication
+CT-13;CLI-11;Amina Tanaka;responsable des achats
+CT-14;CLI-11;Mei Bensaïd;président
+CT-15;CLI-12;Soraya Benali;directeur
+CT-16;CLI-13;Arnaud Vasseur;trésorière
+CT-17;CLI-14;Karim Dubreuil;responsable des achats
+CT-18;CLI-14;Mathis Diop;associé
+CT-19;CLI-15;Chloé Girard;responsable informatique
+CT-20;CLI-16;Fatoumata Lindqvist;assistante de direction
+CT-21;CLI-17;Thomas Da Silva;responsable informatique
+CT-22;CLI-18;Mamadou Petrov;trésorière
+CT-23;CLI-18;Ewa Laurent;directeur
+CT-24;CLI-19;Anh Perrin;gérante
+CT-25;CLI-20;Nikolaï Mendes;gérante
+CT-26;CLI-21;Salomé Sow;associé
+CT-27;CLI-22;Baptiste Lemaire;assistante de direction
+CT-28;CLI-23;Rafael Mansouri;responsable des achats
+CT-29;CLI-24;Yasmine Yilmaz;assistante de direction
+CT-30;CLI-25;Dmitri Kamara;assistante de direction

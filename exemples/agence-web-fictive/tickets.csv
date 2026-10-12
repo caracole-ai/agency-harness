@@ -1,0 +1,301 @@
+cle;projet;lot;contrat_tma;resume;type;etat;assigne;estimation_h;cree_le;resolu_le;rattache_a
+TK-0751;PRJ-18;LOT-044;;Page de recherche;evolution;resolu;ST-02;13;2025-10-15;2025-10-31;LOT-044
+TK-0752;PRJ-02;LOT-006;TMA-02;Lenteur de la page catalogue;bug;resolu;M-06;2;2025-10-23;2025-11-01;TMA-02
+TK-0753;PRJ-01;LOT-002;TMA-01;Optimisation des images;tache;resolu;M-06;8;2025-10-24;2025-10-25;TMA-01
+TK-0754;PRJ-05;LOT-013;;Filtres du catalogue;tache;resolu;M-05;15;2025-10-30;2025-11-01;LOT-013
+TK-0755;PRJ-13;LOT-034;;Rédiger le cahier de recette;tache;resolu;M-03;9;2025-11-05;2025-11-10;LOT-034
+TK-0756;PRJ-15;LOT-038;;Import des données;tache;resolu;M-05;16;2025-11-06;2025-11-21;LOT-038
+TK-0757;PRJ-18;LOT-044;;Maquette mobile;tache;resolu;M-04;2;2025-11-06;2025-11-12;LOT-044
+TK-0758;PRJ-05;LOT-014;;Accessibilité des formulaires;tache;resolu;M-05;3;2025-11-14;2025-12-02;LOT-014
+TK-0759;PRJ-15;LOT-040;;Erreur à l'envoi du formulaire;bug;resolu;M-05;5;2025-11-21;2025-12-07;LOT-040
+TK-0760;;;TMA-06;Maquette de la page produit;tache;resolu;M-04;6;2025-11-24;2025-12-09;TMA-06
+TK-0761;;;TMA-08;Tableau de bord;evolution;resolu;M-05;14;2025-11-24;2025-12-04;TMA-08
+TK-0762;PRJ-05;LOT-013;;Traductions des libellés;;resolu;M-05;13;2025-11-28;2025-12-13;LOT-013
+TK-0763;PRJ-13;LOT-034;;Pagination des listes;tache;resolu;M-06;8;2025-12-01;2025-12-06;LOT-034
+TK-0764;PRJ-13;LOT-034;;Formulaire de contact;tache;resolu;M-06;8;2025-12-02;2025-12-05;LOT-034
+TK-0765;PRJ-05;LOT-014;;Déclinaison des visuels;;resolu;M-04;2;2025-12-04;2025-12-23;LOT-014
+TK-0766;PRJ-16;LOT-043;;Pictogrammes;evolution;resolu;M-04;1;2025-12-04;2025-12-09;LOT-043
+TK-0767;PRJ-16;LOT-041;;Formulaire de contact;tache;resolu;M-06;9;2025-12-04;2025-12-10;LOT-041
+TK-0768;PRJ-18;LOT-044;;Planifier la mise en ligne;tache;resolu;M-03;13;2025-12-04;2025-12-08;LOT-044
+TK-0769;PRJ-18;LOT-045;;Traductions des libellés;tache;resolu;ST-02;2;2025-12-05;2025-12-22;LOT-045
+TK-0770;PRJ-13;LOT-034;;Formulaire de contact;tache;resolu;M-05;2;2025-12-08;2025-12-27;LOT-034
+TK-0771;PRJ-18;LOT-044;;Optimisation des images;evolution;resolu;ST-02;3;2025-12-09;2025-12-15;LOT-044
+TK-0772;PRJ-16;LOT-042;;Formulaire de contact;tache;resolu;M-06;8;2025-12-10;2025-12-20;LOT-042
+TK-0773;PRJ-02;LOT-006;TMA-02;Erreur à l'envoi du formulaire;bug;resolu;M-06;4;2025-12-10;2025-12-21;TMA-02
+TK-0774;PRJ-05;LOT-013;;Plan du site;tache;resolu;M-05;8;2025-12-11;2025-12-25;LOT-013
+TK-0775;PRJ-03;LOT-007;TMA-03;Courriel de confirmation non reçu;bug;resolu;M-06;6;2025-12-16;2025-12-28;TMA-03
+TK-0776;PRJ-13;LOT-034;;Export CSV;evolution;resolu;M-06;8;2025-12-19;2026-01-07;LOT-034
+TK-0777;PRJ-16;LOT-041;;Rédiger le cahier de recette;evolution;resolu;M-03;12;2025-12-19;2025-12-24;LOT-041
+TK-0778;;;TMA-11;Connexion des utilisateurs;evolution;en_cours;M-05;4;2025-12-19;;TMA-11
+TK-0779;PRJ-15;LOT-040;;Traductions des libellés;tache;resolu;M-05;2;2025-12-25;2025-12-28;LOT-040
+TK-0780;PRJ-16;LOT-043;;Pagination des listes;tache;en_revue;M-06;9;2025-12-26;;LOT-043
+TK-0781;PRJ-01;LOT-003;TMA-01;Page de recherche;evolution;resolu;M-06;16;2026-01-06;2026-01-10;TMA-01
+TK-0782;PRJ-15;LOT-038;;Total du panier erroné;bug;resolu;M-04;1;2026-01-08;2026-01-20;LOT-038
+TK-0783;PRJ-15;LOT-039;;Accessibilité des formulaires;evolution;resolu;M-05;9;2026-01-08;2026-01-20;LOT-039
+TK-0784;PRJ-13;LOT-034;;Connexion des utilisateurs;;en_cours;M-06;5;2026-01-09;;LOT-034
+TK-0785;PRJ-13;LOT-034;;Export CSV;tache;resolu;M-06;16;2026-01-13;2026-01-16;LOT-034
+TK-0786;PRJ-15;LOT-040;;Envoi des courriels;tache;resolu;M-05;3;2026-01-13;2026-01-21;LOT-040
+TK-0787;PRJ-05;LOT-012;;Page de recherche;tache;resolu;M-05;14;2026-01-14;2026-01-17;LOT-012
+TK-0788;PRJ-16;LOT-043;;Accessibilité des formulaires;tache;resolu;M-06;3;2026-01-14;2026-01-18;LOT-043
+TK-0789;;;TMA-08;Plan du site;tache;resolu;M-05;1;2026-01-14;2026-01-28;TMA-08
+TK-0790;PRJ-13;LOT-034;;Import des données;tache;en_cours;M-05;3;2026-01-19;;LOT-034
+TK-0791;PRJ-16;LOT-041;;Préparer la recette;evolution;resolu;M-03;12;2026-01-20;2026-01-30;LOT-041
+TK-0792;PRJ-05;LOT-014;;Tableau de bord;tache;resolu;M-05;4;2026-01-22;2026-02-08;LOT-014
+TK-0793;PRJ-05;LOT-014;;Traductions des libellés;tache;resolu;M-05;8;2026-01-27;2026-02-11;LOT-014
+TK-0794;PRJ-03;LOT-009;TMA-03;Compte rendu du point client;evolution;resolu;M-03;9;2026-01-27;2026-01-29;TMA-03
+TK-0795;PRJ-05;LOT-014;;Maquette de la page d'accueil;evolution;resolu;M-04;15;2026-01-28;2026-02-12;AVE-2026-001
+TK-0796;PRJ-05;LOT-013;;Page de recherche;;resolu;M-05;10;2026-01-30;2026-01-31;LOT-013
+TK-0797;PRJ-05;LOT-013;;Envoi des courriels;evolution;resolu;M-05;10;2026-02-02;2026-02-11;AVE-2026-001
+TK-0798;;;TMA-06;Pictogrammes;evolution;resolu;M-04;14;2026-02-02;2026-02-03;TMA-06
+TK-0799;PRJ-08;LOT-023;;Rédiger le cahier de recette;tache;resolu;M-03;6;2026-02-05;2026-02-17;LOT-023
+TK-0800;PRJ-05;LOT-014;;Maquette mobile;tache;resolu;M-04;2;2026-02-09;2026-02-20;LOT-014
+TK-0801;PRJ-13;LOT-034;;Optimisation des images;evolution;resolu;M-06;4;2026-02-09;2026-02-11;LOT-034
+TK-0802;PRJ-02;LOT-006;TMA-02;Planifier la mise en ligne;;resolu;M-03;15;2026-02-10;2026-02-16;TMA-02
+TK-0803;PRJ-08;LOT-021;;Connexion des utilisateurs;tache;resolu;M-06;15;2026-02-11;2026-02-22;LOT-021
+TK-0804;PRJ-13;LOT-034;;Formulaire de contact;evolution;resolu;M-06;1;2026-02-11;2026-02-15;LOT-034
+TK-0805;PRJ-18;LOT-045;;Filtres du catalogue;evolution;resolu;ST-02;12;2026-02-19;2026-03-03;LOT-045
+TK-0806;PRJ-16;LOT-043;;Connexion des utilisateurs;tache;resolu;ST-02;1;2026-02-20;2026-03-09;LOT-043
+TK-0807;PRJ-13;LOT-034;;Filtres du catalogue;;resolu;M-05;16;2026-02-23;2026-03-04;LOT-034
+TK-0808;PRJ-05;LOT-013;;Erreur à l'envoi du formulaire;bug;resolu;M-04;1;2026-02-25;2026-03-09;LOT-013
+TK-0809;PRJ-03;LOT-010;TMA-03;Optimisation des images;evolution;resolu;M-05;15;2026-02-27;2026-03-18;TMA-03
+TK-0810;PRJ-17;;;Connexion des utilisateurs;tache;resolu;M-05;7;2026-03-02;2026-03-05;
+TK-0811;PRJ-06;LOT-016;;Déclinaison des visuels;evolution;resolu;M-04;6;2026-03-03;2026-03-14;LOT-016
+TK-0812;PRJ-10;LOT-027;;Formulaire de contact;tache;resolu;M-06;8;2026-03-03;2026-03-07;LOT-027
+TK-0813;PRJ-17;;;Mise à jour des dépendances;tache;resolu;M-05;9;2026-03-03;2026-03-10;
+TK-0814;PRJ-04;LOT-011;;Formulaire de contact;tache;resolu;M-05;9;2026-03-04;2026-03-24;LOT-011
+TK-0815;;;TMA-07;Connexion des utilisateurs;;resolu;M-06;9;2026-03-04;2026-03-19;TMA-07
+TK-0816;PRJ-17;;;Maquette mobile;tache;en_cours;M-04;9;2026-03-06;;
+TK-0817;PRJ-04;LOT-011;;Tableau de bord;tache;resolu;M-05;4;2026-03-09;2026-03-26;LOT-011
+TK-0818;PRJ-05;LOT-014;;Tableau de bord;evolution;resolu;M-05;1;2026-03-09;2026-03-27;AVE-2026-001
+TK-0819;PRJ-06;LOT-015;;Envoi des courriels;evolution;resolu;M-06;5;2026-03-09;2026-03-23;LOT-015
+TK-0820;PRJ-10;LOT-028;;Maquette de la page d'accueil;tache;resolu;M-04;3;2026-03-10;2026-03-28;LOT-028
+TK-0821;;;TMA-08;Pagination des listes;tache;resolu;M-05;1;2026-03-12;2026-03-14;TMA-08
+TK-0822;PRJ-05;LOT-014;;Traductions des libellés;tache;resolu;M-05;12;2026-03-13;2026-03-15;LOT-014
+TK-0823;PRJ-10;LOT-028;;Connexion des utilisateurs;tache;resolu;M-06;4;2026-03-18;2026-04-07;LOT-028
+TK-0824;PRJ-08;LOT-022;;Filtres du catalogue;evolution;resolu;M-06;12;2026-03-20;2026-03-31;LOT-022
+TK-0825;PRJ-08;LOT-022;;Préparer la recette;tache;resolu;M-03;16;2026-03-24;2026-03-29;LOT-022
+TK-0826;PRJ-03;LOT-008;TMA-03;Affichage cassé sur mobile;bug;resolu;M-05;1;2026-03-24;2026-04-07;TMA-03
+TK-0827;PRJ-10;LOT-028;;Préparer la recette;evolution;resolu;M-03;11;2026-03-27;2026-04-03;LOT-028
+TK-0828;PRJ-06;LOT-015;;Connexion des utilisateurs;tache;resolu;M-06;1;2026-03-30;2026-04-19;LOT-015
+TK-0829;PRJ-13;LOT-034;;Connexion des utilisateurs;tache;resolu;M-06;16;2026-04-01;2026-04-13;LOT-034
+TK-0830;PRJ-16;LOT-043;;Optimisation des images;tache;resolu;ST-02;5;2026-04-01;2026-04-19;LOT-043
+TK-0831;PRJ-17;;;Charte des boutons;tache;resolu;M-04;10;2026-04-01;2026-04-21;
+TK-0832;PRJ-06;LOT-015;;Export CSV;tache;resolu;M-06;11;2026-04-02;2026-04-08;LOT-015
+TK-0833;PRJ-06;LOT-017;;Page de recherche;evolution;resolu;M-06;10;2026-04-03;2026-04-20;LOT-017
+TK-0834;PRJ-08;LOT-022;;Import des données;evolution;resolu;M-06;4;2026-04-03;2026-04-19;LOT-022
+TK-0835;PRJ-03;LOT-008;TMA-03;Lenteur de la page catalogue;bug;a_faire;M-05;6;2026-04-03;;TMA-03
+TK-0836;PRJ-05;LOT-013;;Planifier la mise en ligne;tache;resolu;M-03;10;2026-04-06;2026-04-19;LOT-013
+TK-0837;PRJ-04;LOT-011;;Envoi des courriels;tache;resolu;M-05;14;2026-04-08;2026-04-16;LOT-011
+TK-0838;PRJ-04;LOT-011;;Import des données;tache;resolu;M-05;8;2026-04-09;2026-04-19;LOT-011
+TK-0839;PRJ-05;LOT-012;;Lenteur de la page catalogue;bug;resolu;M-06;3;2026-04-09;2026-04-19;LOT-012
+TK-0840;PRJ-05;LOT-013;;Tableau de bord;evolution;resolu;M-05;12;2026-04-09;2026-04-13;AVE-2026-001
+TK-0841;PRJ-10;LOT-027;;Optimisation des images;tache;resolu;M-05;11;2026-04-09;2026-04-28;LOT-027
+TK-0842;PRJ-13;LOT-034;;Plan du site;tache;resolu;M-06;2;2026-04-10;2026-04-20;LOT-034
+TK-0843;PRJ-18;LOT-045;TMA-04;Erreur à l'envoi du formulaire;bug;resolu;M-06;2;2026-04-15;2026-05-01;TMA-04
+TK-0844;PRJ-06;LOT-015;;Import des données;tache;resolu;M-06;8;2026-04-17;2026-04-30;LOT-015
+TK-0845;PRJ-08;LOT-023;;Mise à jour des dépendances;evolution;resolu;M-06;5;2026-04-17;2026-04-28;LOT-023
+TK-0846;PRJ-04;LOT-011;;Optimisation des images;;resolu;M-05;15;2026-04-21;2026-05-09;LOT-011
+TK-0847;PRJ-16;LOT-043;;Maquette du formulaire;tache;a_faire;M-04;4;2026-04-22;;LOT-043
+TK-0848;PRJ-17;;;Import des données;tache;resolu;M-05;11;2026-04-22;2026-05-04;
+TK-0849;PRJ-05;LOT-014;;Formulaire de contact;evolution;resolu;M-05;7;2026-04-23;2026-05-06;AVE-2026-001
+TK-0850;PRJ-10;LOT-028;;Pagination des listes;;resolu;M-05;6;2026-04-23;2026-04-26;LOT-028
+TK-0851;;;TMA-09;Connexion des utilisateurs;tache;resolu;M-05;6;2026-04-23;2026-05-10;TMA-09
+TK-0852;PRJ-07;LOT-019;;Pictogrammes;tache;resolu;M-04;8;2026-04-24;2026-04-30;LOT-019
+TK-0853;PRJ-08;LOT-023;;Tableau de bord;tache;resolu;M-06;1;2026-04-24;2026-04-26;LOT-023
+TK-0854;PRJ-16;LOT-041;;Compte rendu du point client;;resolu;M-03;14;2026-04-24;2026-05-07;LOT-041
+TK-0855;PRJ-06;LOT-016;;Maquette du formulaire;tache;resolu;M-04;11;2026-04-27;2026-05-07;LOT-016
+TK-0856;PRJ-07;LOT-018;;Formulaire de contact;;resolu;M-05;8;2026-04-28;2026-05-07;LOT-018
+TK-0857;PRJ-13;LOT-034;;Filtres du catalogue;tache;a_faire;M-05;8;2026-04-28;;LOT-034
+TK-0858;;;TMA-09;Traductions des libellés;evolution;resolu;M-05;1;2026-04-28;2026-05-09;TMA-09
+TK-0859;;;TMA-12;Connexion des utilisateurs;;resolu;M-06;8;2026-05-01;2026-05-21;TMA-12
+TK-0860;PRJ-05;LOT-012;;Total du panier erroné;bug;resolu;M-04;6;2026-05-05;2026-05-10;LOT-012
+TK-0861;PRJ-06;LOT-017;;Maquette du formulaire;tache;resolu;M-04;12;2026-05-06;2026-05-15;LOT-017
+TK-0862;PRJ-07;LOT-019;;Formulaire de contact;evolution;resolu;ST-03;16;2026-05-08;2026-05-26;LOT-019
+TK-0863;PRJ-06;LOT-016;;Pictogrammes;tache;resolu;M-04;4;2026-05-11;2026-05-20;LOT-016
+TK-0864;PRJ-07;LOT-019;;Connexion des utilisateurs;tache;resolu;M-05;8;2026-05-11;2026-05-26;LOT-019
+TK-0865;PRJ-12;LOT-033;;Connexion des utilisateurs;;resolu;M-06;8;2026-05-13;2026-05-29;LOT-033
+TK-0866;PRJ-17;;;Maquette de la page produit;tache;resolu;M-04;9;2026-05-15;2026-05-31;
+TK-0867;PRJ-01;LOT-002;TMA-01;Formulaire de contact;tache;resolu;M-06;13;2026-05-15;2026-05-26;TMA-01
+TK-0868;PRJ-05;LOT-012;;Courriel de confirmation non reçu;bug;resolu;M-05;2;2026-05-18;2026-06-06;LOT-012
+TK-0869;PRJ-17;;;Optimisation des images;tache;resolu;M-06;4;2026-05-20;2026-05-25;
+TK-0870;PRJ-02;LOT-004;TMA-02;Affichage cassé sur mobile;bug;resolu;M-06;6;2026-05-20;2026-06-03;TMA-02
+TK-0871;PRJ-05;LOT-013;;Erreur à l'envoi du formulaire;bug;resolu;M-05;6;2026-05-21;2026-06-07;LOT-013
+TK-0872;PRJ-12;LOT-031;;Export CSV;tache;resolu;M-06;2;2026-05-22;2026-05-30;LOT-031
+TK-0873;PRJ-07;LOT-019;;Préparer la recette;tache;resolu;M-03;12;2026-05-25;2026-06-05;LOT-019
+TK-0874;PRJ-17;;;Pictogrammes;tache;resolu;M-04;4;2026-05-26;2026-06-15;
+TK-0875;PRJ-13;LOT-034;;Filtres du catalogue;tache;resolu;M-06;7;2026-05-27;2026-06-04;LOT-034
+TK-0876;PRJ-12;LOT-032;;Mise à jour des dépendances;tache;resolu;M-05;6;2026-05-28;2026-06-16;LOT-032
+TK-0877;PRJ-12;LOT-032;;Formulaire de contact;;resolu;M-05;13;2026-05-28;2026-06-10;LOT-032
+TK-0878;PRJ-16;LOT-042;;Planifier la mise en ligne;tache;resolu;M-03;5;2026-05-28;2026-06-01;LOT-042
+TK-0879;PRJ-08;LOT-023;;Maquette de la page d'accueil;tache;resolu;M-04;1;2026-05-29;2026-06-11;LOT-023
+TK-0880;PRJ-08;LOT-023;;Formulaire de contact;evolution;resolu;M-06;16;2026-05-29;2026-06-05;LOT-023
+TK-0881;PRJ-06;LOT-015;;Courriel de confirmation non reçu;bug;resolu;M-06;5;2026-06-01;2026-06-17;LOT-015
+TK-0882;PRJ-16;LOT-043;;Page de recherche;tache;resolu;M-06;5;2026-06-02;2026-06-07;LOT-043
+TK-0883;PRJ-01;LOT-003;TMA-01;Optimisation des images;evolution;en_revue;M-06;10;2026-06-02;;TMA-01
+TK-0884;;;TMA-06;Charte des boutons;evolution;resolu;M-04;1;2026-06-02;2026-06-06;TMA-06
+TK-0885;PRJ-12;LOT-031;;Plan du site;tache;resolu;M-05;7;2026-06-03;2026-06-04;LOT-031
+TK-0886;PRJ-06;LOT-017;;Maquette du formulaire;tache;resolu;M-04;5;2026-06-04;2026-06-11;LOT-017
+TK-0887;PRJ-16;LOT-042;;Maquette de la page d'accueil;tache;resolu;M-04;1;2026-06-04;2026-06-14;LOT-042
+TK-0888;PRJ-04;LOT-011;;Optimisation des images;tache;resolu;M-05;12;2026-06-05;2026-06-10;LOT-011
+TK-0889;PRJ-07;LOT-018;;Rédiger le cahier de recette;;en_cours;M-03;15;2026-06-05;;LOT-018
+TK-0890;PRJ-14;LOT-037;;Maquette de la page produit;evolution;resolu;M-04;10;2026-06-05;2026-06-20;LOT-037
+TK-0891;PRJ-12;LOT-033;;Préparer la recette;evolution;resolu;M-03;7;2026-06-08;2026-06-14;LOT-033
+TK-0892;PRJ-02;LOT-005;TMA-02;Pagination des listes;tache;en_cours;M-06;7;2026-06-08;;TMA-02
+TK-0893;PRJ-15;LOT-038;TMA-05;Total du panier erroné;bug;resolu;M-05;1;2026-06-08;2026-06-25;TMA-05
+TK-0894;PRJ-16;LOT-042;;Préparer la recette;evolution;resolu;M-03;11;2026-06-10;2026-06-11;LOT-042
+TK-0895;PRJ-07;LOT-020;;Pagination des listes;evolution;a_faire;M-05;13;2026-06-12;;LOT-020
+TK-0896;PRJ-08;LOT-021;;Maquette de la page d'accueil;evolution;resolu;M-04;11;2026-06-12;2026-06-19;LOT-021
+TK-0897;PRJ-12;LOT-033;;Rédiger le cahier de recette;tache;a_faire;M-03;14;2026-06-12;;LOT-033
+TK-0898;;;TMA-09;Traductions des libellés;tache;en_cours;M-05;8;2026-06-12;;TMA-09
+TK-0899;PRJ-17;;;Maquette de la page produit;tache;resolu;M-04;11;2026-06-15;2026-07-05;
+TK-0900;;;TMA-10;Tableau de bord;tache;resolu;M-06;8;2026-06-15;2026-06-26;TMA-10
+TK-0901;PRJ-10;LOT-027;;Plan du site;;resolu;M-05;2;2026-06-16;2026-06-19;LOT-027
+TK-0902;PRJ-10;LOT-028;;Page de recherche;tache;resolu;M-06;12;2026-06-18;2026-06-22;LOT-028
+TK-0903;PRJ-08;LOT-023;;Pagination des listes;tache;resolu;M-05;10;2026-06-19;2026-06-24;LOT-023
+TK-0904;PRJ-10;LOT-027;;Planifier la mise en ligne;tache;resolu;M-03;8;2026-06-19;2026-06-25;LOT-027
+TK-0905;PRJ-12;LOT-033;;Formulaire de contact;tache;resolu;M-05;16;2026-06-22;2026-06-25;LOT-033
+TK-0906;;;TMA-07;Export CSV;evolution;resolu;M-06;9;2026-06-22;2026-06-25;TMA-07
+TK-0907;PRJ-10;LOT-027;;Envoi des courriels;;resolu;M-06;6;2026-06-23;2026-07-13;LOT-027
+TK-0908;PRJ-12;LOT-032;;Page de recherche;tache;resolu;M-06;2;2026-06-23;2026-07-11;LOT-032
+TK-0909;PRJ-15;LOT-038;TMA-05;Courriel de confirmation non reçu;bug;resolu;M-05;4;2026-06-23;2026-06-30;TMA-05
+TK-0910;PRJ-07;LOT-020;;Formulaire de contact;tache;resolu;ST-03;14;2026-06-24;2026-07-06;LOT-020
+TK-0911;PRJ-04;LOT-011;;Optimisation des images;tache;resolu;M-05;14;2026-06-26;2026-07-16;LOT-011
+TK-0912;PRJ-10;LOT-028;;Export CSV;tache;resolu;M-06;13;2026-06-26;2026-07-12;LOT-028
+TK-0913;PRJ-14;LOT-036;;Accessibilité des formulaires;tache;a_faire;M-05;15;2026-06-26;;LOT-036
+TK-0914;PRJ-14;LOT-037;;Planifier la mise en ligne;tache;resolu;M-03;6;2026-06-26;2026-06-28;LOT-037
+TK-0915;PRJ-16;LOT-042;;Plan du site;evolution;resolu;M-06;2;2026-06-26;2026-07-07;AVE-2026-002
+TK-0916;PRJ-06;LOT-016;;Mise à jour des dépendances;evolution;resolu;M-06;14;2026-06-29;2026-06-30;LOT-016
+TK-0917;PRJ-06;LOT-016;;Mise à jour des dépendances;tache;resolu;M-06;13;2026-07-01;2026-07-09;LOT-016
+TK-0918;PRJ-08;LOT-021;;Affichage cassé sur mobile;bug;resolu;M-03;3;2026-07-01;2026-07-18;LOT-021
+TK-0919;PRJ-12;LOT-032;;Déclinaison des visuels;evolution;resolu;M-04;3;2026-07-02;2026-07-18;LOT-032
+TK-0920;PRJ-04;LOT-011;;Accessibilité des formulaires;tache;resolu;M-05;11;2026-07-03;2026-07-08;LOT-011
+TK-0921;PRJ-10;LOT-027;;Rédiger le cahier de recette;tache;resolu;M-03;11;2026-07-03;2026-07-14;LOT-027
+TK-0922;PRJ-09;LOT-025;;Traductions des libellés;evolution;resolu;M-05;11;2026-07-06;2026-07-13;LOT-025
+TK-0923;PRJ-02;LOT-004;TMA-02;Lenteur de la page catalogue;bug;resolu;M-03;3;2026-07-06;2026-07-11;TMA-02
+TK-0924;PRJ-10;LOT-027;;Mise à jour des dépendances;tache;resolu;M-05;5;2026-07-07;2026-07-16;LOT-027
+TK-0925;PRJ-04;LOT-011;;Traductions des libellés;evolution;resolu;M-05;11;2026-07-09;2026-07-26;LOT-011
+TK-0926;PRJ-06;LOT-015;;Total du panier erroné;bug;resolu;M-04;1;2026-07-10;2026-07-23;LOT-015
+TK-0927;PRJ-08;LOT-023;;Filtres du catalogue;tache;a_faire;M-06;9;2026-07-10;;LOT-023
+TK-0928;PRJ-13;LOT-034;;Formulaire de contact;tache;resolu;M-05;11;2026-07-10;2026-07-14;LOT-034
+TK-0929;PRJ-08;LOT-023;;Filtres du catalogue;;resolu;M-06;3;2026-07-13;2026-07-22;LOT-023
+TK-0930;PRJ-08;LOT-021;;Maquette de la page produit;evolution;resolu;M-04;11;2026-07-13;2026-07-19;LOT-021
+TK-0931;PRJ-09;LOT-024;;Filtres du catalogue;evolution;en_cours;M-05;7;2026-07-13;;LOT-024
+TK-0932;PRJ-12;LOT-033;;Connexion des utilisateurs;evolution;resolu;M-05;15;2026-07-13;2026-07-14;LOT-033
+TK-0933;PRJ-16;LOT-043;;Compte rendu du point client;tache;resolu;M-03;15;2026-07-13;2026-07-17;LOT-043
+TK-0934;;;TMA-09;Tableau de bord;evolution;en_cours;M-06;1;2026-07-14;;TMA-09
+TK-0935;PRJ-09;LOT-024;;Charte des boutons;evolution;resolu;M-04;15;2026-07-15;2026-07-30;LOT-024
+TK-0936;PRJ-06;LOT-017;;Traductions des libellés;;a_faire;M-06;6;2026-07-17;;LOT-017
+TK-0937;PRJ-13;LOT-034;;Envoi des courriels;tache;resolu;M-06;3;2026-07-17;2026-07-26;LOT-034
+TK-0938;PRJ-04;LOT-011;;Planifier la mise en ligne;;resolu;M-03;8;2026-07-20;2026-07-27;LOT-011
+TK-0939;PRJ-06;LOT-017;;Traductions des libellés;evolution;resolu;M-06;14;2026-07-20;2026-07-21;LOT-017
+TK-0940;PRJ-04;LOT-011;;Rédiger le cahier de recette;evolution;resolu;M-03;16;2026-07-21;2026-08-07;LOT-011
+TK-0941;PRJ-14;LOT-036;;Formulaire de contact;tache;resolu;ST-02;8;2026-07-22;2026-08-05;LOT-036
+TK-0942;PRJ-08;LOT-022;;Maquette de la page d'accueil;tache;resolu;M-04;6;2026-07-24;2026-07-26;LOT-022
+TK-0943;PRJ-04;LOT-011;;Envoi des courriels;tache;resolu;M-05;16;2026-07-27;2026-08-15;LOT-011
+TK-0944;PRJ-07;LOT-019;;Traductions des libellés;tache;resolu;M-05;5;2026-07-28;2026-08-08;LOT-019
+TK-0945;PRJ-08;LOT-021;;Préparer la recette;tache;resolu;M-03;1;2026-07-28;2026-08-11;LOT-021
+TK-0946;PRJ-13;LOT-034;;Formulaire de contact;evolution;resolu;M-05;1;2026-07-29;2026-08-08;LOT-034
+TK-0947;PRJ-08;LOT-023;;Tableau de bord;evolution;resolu;M-06;10;2026-07-30;2026-08-10;LOT-023
+TK-0948;PRJ-10;LOT-027;;Plan du site;tache;resolu;M-05;15;2026-07-30;2026-08-03;LOT-027
+TK-0949;PRJ-08;LOT-021;;Erreur à l'envoi du formulaire;bug;resolu;M-06;2;2026-07-31;2026-08-02;LOT-021
+TK-0950;PRJ-09;LOT-024;;Optimisation des images;tache;resolu;M-05;9;2026-07-31;2026-08-06;LOT-024
+TK-0951;PRJ-10;LOT-028;;Tableau de bord;evolution;resolu;M-06;1;2026-07-31;2026-08-04;LOT-028
+TK-0952;PRJ-06;LOT-015;;Total du panier erroné;bug;resolu;M-04;3;2026-08-03;2026-08-14;LOT-015
+TK-0953;PRJ-09;LOT-024;;Optimisation des images;evolution;resolu;M-05;12;2026-08-03;2026-08-14;LOT-024
+TK-0954;PRJ-10;LOT-028;;Optimisation des images;evolution;resolu;M-05;8;2026-08-03;2026-08-13;LOT-028
+TK-0955;PRJ-08;LOT-022;;Import des données;evolution;en_cours;M-06;14;2026-08-05;;LOT-022
+TK-0956;PRJ-08;LOT-023;;Filtres du catalogue;tache;en_revue;M-06;9;2026-08-05;;LOT-023
+TK-0957;PRJ-14;LOT-036;;Mise à jour des dépendances;;resolu;ST-02;4;2026-08-05;2026-08-09;LOT-036
+TK-0958;PRJ-09;LOT-026;;Préparer la recette;tache;resolu;M-03;8;2026-08-06;2026-08-09;LOT-026
+TK-0959;PRJ-04;LOT-011;;Tableau de bord;tache;en_revue;M-05;15;2026-08-07;;LOT-011
+TK-0960;PRJ-13;LOT-034;;Plan du site;tache;resolu;M-06;9;2026-08-10;2026-08-15;LOT-034
+TK-0961;PRJ-03;LOT-010;TMA-03;Total du panier erroné;bug;resolu;M-05;3;2026-08-10;2026-08-28;TMA-03
+TK-0962;PRJ-03;LOT-008;TMA-03;Pagination des listes;evolution;a_faire;M-06;7;2026-08-10;;TMA-03
+TK-0963;PRJ-07;LOT-019;;Filtres du catalogue;tache;resolu;M-05;5;2026-08-11;2026-08-18;LOT-019
+TK-0964;PRJ-09;LOT-026;;Maquette mobile;tache;resolu;M-04;2;2026-08-11;2026-08-29;LOT-026
+TK-0965;PRJ-15;LOT-038;TMA-05;Import des données;evolution;resolu;M-05;15;2026-08-11;2026-08-18;TMA-05
+TK-0966;PRJ-08;LOT-022;;Lenteur de la page catalogue;bug;resolu;M-03;1;2026-08-14;2026-08-31;LOT-022
+TK-0967;PRJ-13;LOT-034;;Formulaire de contact;tache;a_faire;M-05;9;2026-08-14;;LOT-034
+TK-0968;PRJ-14;LOT-036;;Rédiger le cahier de recette;;resolu;M-03;9;2026-08-14;2026-08-22;LOT-036
+TK-0969;PRJ-17;;;Maquette de la page produit;tache;resolu;M-04;7;2026-08-14;2026-08-31;
+TK-0970;PRJ-03;LOT-010;TMA-03;Export CSV;evolution;resolu;M-05;11;2026-08-14;2026-08-19;TMA-03
+TK-0971;PRJ-03;LOT-007;TMA-03;Lenteur de la page catalogue;bug;resolu;M-05;2;2026-08-14;2026-08-19;TMA-03
+TK-0972;PRJ-07;LOT-018;;Courriel de confirmation non reçu;bug;resolu;M-05;4;2026-08-19;2026-08-25;LOT-018
+TK-0973;PRJ-07;LOT-019;;Maquette de la page d'accueil;tache;resolu;M-04;9;2026-08-19;2026-08-21;LOT-019
+TK-0974;PRJ-16;LOT-041;;Total du panier erroné;bug;resolu;M-04;6;2026-08-19;2026-08-22;LOT-041
+TK-0975;PRJ-07;LOT-019;;Tableau de bord;tache;resolu;M-05;8;2026-08-20;2026-09-09;LOT-019
+TK-0976;PRJ-12;LOT-032;;Tableau de bord;tache;resolu;M-06;9;2026-08-20;2026-09-05;LOT-032
+TK-0977;PRJ-13;LOT-034;;Formulaire de contact;tache;en_revue;M-06;4;2026-08-20;;LOT-034
+TK-0978;PRJ-06;;;Ajouter un second formulaire pour les demandes d'urgence;evolution;resolu;M-06;3;2026-08-21;2026-08-26;
+TK-0979;PRJ-09;LOT-025;;Préparer la recette;tache;resolu;M-03;5;2026-08-21;2026-08-26;LOT-025
+TK-0980;PRJ-09;LOT-026;;Filtres du catalogue;tache;resolu;M-05;6;2026-08-24;2026-08-30;LOT-026
+TK-0981;PRJ-14;LOT-036;;Envoi des courriels;evolution;resolu;ST-02;10;2026-08-24;2026-08-27;LOT-036
+TK-0982;PRJ-04;LOT-011;;Import des données;tache;resolu;M-05;14;2026-08-26;2026-08-31;LOT-011
+TK-0983;PRJ-07;LOT-018;;Accessibilité des formulaires;;resolu;M-05;2;2026-08-26;2026-09-12;LOT-018
+TK-0984;PRJ-12;LOT-031;;Mise à jour des dépendances;;resolu;M-05;1;2026-08-26;2026-09-01;LOT-031
+TK-0985;PRJ-13;LOT-034;;Plan du site;tache;resolu;M-06;6;2026-08-28;2026-08-29;LOT-034
+TK-0986;PRJ-14;LOT-037;;Charte des boutons;tache;resolu;M-04;1;2026-08-28;2026-09-12;LOT-037
+TK-0987;PRJ-18;LOT-045;TMA-04;Formulaire de contact;evolution;resolu;M-06;12;2026-08-28;2026-09-09;TMA-04
+TK-0988;;;TMA-09;Import des données;evolution;resolu;M-05;14;2026-08-28;2026-09-03;TMA-09
+TK-0989;PRJ-14;LOT-037;;Formulaire de contact;evolution;a_faire;ST-02;1;2026-08-31;;LOT-037
+TK-0990;PRJ-14;LOT-035;;Envoi des courriels;tache;a_faire;M-05;1;2026-09-01;;LOT-035
+TK-0991;PRJ-16;LOT-042;;Accessibilité des formulaires;tache;resolu;M-06;1;2026-09-01;2026-09-19;LOT-042
+TK-0992;PRJ-04;LOT-011;;Connexion des utilisateurs;tache;resolu;M-05;2;2026-09-02;2026-09-14;LOT-011
+TK-0993;PRJ-04;LOT-011;;Export CSV;evolution;resolu;M-05;16;2026-09-02;2026-09-18;LOT-011
+TK-0994;PRJ-13;LOT-034;;Connexion des utilisateurs;tache;resolu;M-05;4;2026-09-02;2026-09-04;LOT-034
+TK-0995;PRJ-16;LOT-042;;Pictogrammes;tache;resolu;M-04;5;2026-09-02;2026-09-05;LOT-042
+TK-0996;PRJ-04;LOT-011;;Page de recherche;tache;resolu;M-05;16;2026-09-03;2026-09-11;LOT-011
+TK-0997;PRJ-07;LOT-019;;Total du panier erroné;bug;a_faire;ST-03;5;2026-09-03;;LOT-019
+TK-0998;PRJ-09;LOT-025;;Envoi des courriels;tache;resolu;M-05;1;2026-09-03;2026-09-12;LOT-025
+TK-0999;PRJ-06;LOT-016;;Affichage cassé sur mobile;bug;resolu;M-03;6;2026-09-04;2026-09-15;LOT-016
+TK-1000;PRJ-13;LOT-034;;Export CSV;tache;resolu;M-06;6;2026-09-04;2026-09-16;LOT-034
+TK-1001;;;TMA-12;Export CSV;tache;en_cours;M-06;11;2026-09-08;;TMA-12
+TK-1002;PRJ-04;LOT-011;;Formulaire de contact;tache;resolu;M-06;8;2026-09-09;2026-09-26;LOT-011
+TK-1003;PRJ-09;LOT-026;;Optimisation des images;;resolu;M-05;9;2026-09-09;2026-09-12;LOT-026
+TK-1004;PRJ-13;LOT-034;;Rédiger le cahier de recette;tache;resolu;M-03;9;2026-09-09;2026-09-28;LOT-034
+TK-1005;;;TMA-09;Maquette de la page produit;;en_cours;M-04;6;2026-09-09;;TMA-09
+TK-1006;PRJ-13;LOT-034;;Import des données;tache;resolu;M-06;13;2026-09-10;2026-09-16;LOT-034
+TK-1007;PRJ-16;LOT-042;;Accessibilité des formulaires;tache;resolu;M-06;14;2026-09-10;2026-09-15;LOT-042
+TK-1008;PRJ-16;LOT-042;;Optimisation des images;tache;resolu;ST-02;13;2026-09-10;2026-09-26;LOT-042
+TK-1009;;;TMA-10;Optimisation des images;tache;en_cours;M-06;1;2026-09-10;;TMA-10
+TK-1010;PRJ-07;LOT-019;;Erreur à l'envoi du formulaire;bug;resolu;M-04;4;2026-09-11;2026-09-16;LOT-019
+TK-1011;PRJ-04;LOT-011;;Filtres du catalogue;tache;resolu;M-05;2;2026-09-14;2026-09-25;LOT-011
+TK-1012;PRJ-12;LOT-032;;Import des données;tache;resolu;M-06;4;2026-09-14;2026-09-22;LOT-032
+TK-1013;PRJ-12;LOT-033;;Traductions des libellés;tache;resolu;M-05;2;2026-09-14;2026-09-19;LOT-033
+TK-1014;PRJ-14;LOT-037;;Filtres du catalogue;evolution;a_faire;M-05;13;2026-09-14;;LOT-037
+TK-1015;PRJ-16;LOT-043;;Traductions des libellés;tache;resolu;M-06;3;2026-09-14;2026-09-27;LOT-043
+TK-1016;PRJ-10;LOT-028;;Plan du site;evolution;resolu;M-05;12;2026-09-16;2026-10-06;LOT-028
+TK-1017;PRJ-10;LOT-027;;Maquette mobile;tache;resolu;M-04;9;2026-09-16;2026-09-25;LOT-027
+TK-1018;PRJ-10;LOT-027;;Maquette du formulaire;tache;resolu;M-04;8;2026-09-18;2026-09-30;LOT-027
+TK-1019;PRJ-07;LOT-020;;Traductions des libellés;tache;en_cours;ST-03;11;2026-09-21;;LOT-020
+TK-1020;PRJ-13;LOT-034;;Tableau de bord;tache;en_revue;M-05;3;2026-09-21;;LOT-034
+TK-1021;PRJ-13;LOT-034;;Pagination des listes;tache;en_cours;M-06;7;2026-09-21;;LOT-034
+TK-1022;PRJ-18;LOT-045;TMA-04;Courriel de confirmation non reçu;bug;resolu;M-06;4;2026-09-21;2026-09-22;TMA-04
+TK-1023;;;TMA-07;Import des données;evolution;en_cours;M-06;11;2026-09-21;;TMA-07
+TK-1024;PRJ-03;LOT-010;TMA-03;Lenteur de la page catalogue;bug;en_cours;M-05;5;2026-09-22;;TMA-03
+TK-1025;PRJ-14;LOT-035;;Rédiger le cahier de recette;tache;en_cours;M-03;15;2026-09-23;;LOT-035
+TK-1026;PRJ-14;LOT-036;;Accessibilité des formulaires;tache;a_faire;M-05;15;2026-09-23;;LOT-036
+TK-1027;PRJ-06;LOT-015;;Export CSV;;en_cours;M-06;3;2026-09-24;;LOT-015
+TK-1028;PRJ-13;LOT-034;;Plan du site;tache;en_cours;M-06;5;2026-09-24;;LOT-034
+TK-1029;PRJ-09;LOT-026;;Préparer la recette;tache;en_cours;M-03;4;2026-09-25;;LOT-026
+TK-1030;PRJ-12;LOT-031;;Lien mort dans le pied de page;bug;en_cours;M-03;3;2026-09-25;;LOT-031
+TK-1031;PRJ-04;LOT-011;;Page de recherche;evolution;resolu;M-05;8;2026-09-28;2026-10-09;LOT-011
+TK-1032;PRJ-16;LOT-042;;Pagination des listes;evolution;a_faire;ST-02;10;2026-09-28;;LOT-042
+TK-1033;PRJ-10;LOT-028;;Maquette du formulaire;tache;en_cours;M-04;16;2026-09-29;;LOT-028
+TK-1034;PRJ-07;LOT-018;;Export CSV;evolution;en_revue;M-05;11;2026-10-02;;LOT-018
+TK-1035;PRJ-11;LOT-030;;Pictogrammes;tache;a_faire;M-04;10;2026-10-02;;LOT-030
+TK-1036;PRJ-11;LOT-029;;Planifier la mise en ligne;tache;a_faire;M-03;10;2026-10-02;;LOT-029
+TK-1037;PRJ-12;LOT-032;;Import des données;evolution;a_faire;M-06;3;2026-10-02;;AVE-2026-004
+TK-1038;PRJ-14;LOT-035;;Envoi des courriels;evolution;en_revue;ST-02;5;2026-10-02;;LOT-035
+TK-1039;PRJ-16;LOT-041;;Maquette de la page produit;evolution;a_faire;M-04;10;2026-10-02;;AVE-2026-002
+TK-1040;PRJ-12;LOT-031;;Lenteur de la page catalogue;bug;en_cours;M-05;4;2026-10-05;;LOT-031
+TK-1041;PRJ-13;LOT-034;;Traductions des libellés;tache;en_cours;M-06;3;2026-10-05;;LOT-034
+TK-1042;PRJ-02;LOT-005;TMA-02;Envoyer aussi une copie du formulaire au secrétariat;;en_cours;M-06;2;2026-10-05;;TMA-02
+TK-1043;PRJ-15;LOT-040;TMA-05;Lien mort dans le pied de page;bug;en_revue;M-05;3;2026-10-05;;TMA-05
+TK-1044;PRJ-14;LOT-036;;Import des données;tache;a_faire;ST-02;13;2026-10-06;;LOT-036
+TK-1045;PRJ-14;LOT-037;;Pictogrammes;evolution;a_faire;M-04;4;2026-10-07;;LOT-037
+TK-1046;PRJ-11;LOT-030;;Pictogrammes;tache;en_cours;M-04;5;2026-10-09;;LOT-030
+TK-1047;PRJ-16;LOT-042;;Maquette du formulaire;tache;a_faire;M-04;15;2026-10-09;;LOT-042
+TK-1048;PRJ-11;LOT-029;;Planifier la mise en ligne;tache;en_revue;M-03;11;2026-10-12;;LOT-029
+TK-1049;PRJ-03;LOT-008;TMA-03;Lenteur de la page catalogue;bug;a_faire;M-05;3;2026-10-12;;TMA-03
+TK-1050;PRJ-14;LOT-036;;Le formulaire d'inscription ne s'envoie pas;bug;a_faire;M-05;3;2026-10-12;;LOT-036
