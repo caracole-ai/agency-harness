@@ -2818,6 +2818,55 @@ le sélecteur de l'interface suppose au moins un rôle non identifié (sinon
 la page s'arrête en le disant) ; les suggestions d'un rôle de l'agence web
 viendront de son `tableau`.
 
+### Phase M, mesure appariée (lot 1, règle écrite avant la mesure, 2026-10-12)
+
+Consigne de Lionel : la règle (b) de S2 comparait chaque passe au plus bas
+de deux passes de référence ; sur les 13 passes de traduction du 12 octobre,
+AP-4, AP-2, P-PLA-2 et R-2 sont rouges environ une fois sur trois quel que
+soit le code, et un lot identique à `main` aurait été refusé environ deux
+fois sur trois. Elle est remplacée par la règle ci-dessous, **fixée avant
+la mesure, qui ne s'ajuste pas après**.
+
+**Ce qu'on compare** : `main` = `12241a8` ; le lot = la tête de
+`metier-2/lot-1c` (`63bfbb2`, code identique à `58b1557`, plus ce commit) ;
+sur `exemples/client-fictif`, GLM-5.3 via GMI.
+
+**La règle.** Cinq passes de traduction et cinq d'échappée de chaque côté,
+appariées dans le temps (cinq tours de quatre passes ; `main` d'abord aux
+tours impairs, le lot d'abord aux tours pairs ; les deux passes d'un même
+éval à une minute d'écart ; un tour commence quand le précédent est fini).
+On compte, pour chaque cas, le nombre de passes rouges de chaque côté. Un
+cas est rouge si son résultat porte un écart, troncature comprise. On
+fusionne seulement si les cinq conditions sont vraies :
+
+- (a) Aucun cas, en traduction ou en échappée, n'a au moins 4 passes rouges
+  de plus sur le lot que sur `main` (sur 5).
+- (b) Moyenne des verts : traduction, lot ≥ `main` − 1,5 ; échappée, lot ≥
+  `main` − 1.
+- (c) Fuite : sur chaque passe du lot, la traduction ne fuit que sur R-2, et
+  l'échappée ne fuit sur aucun cas. Les fuites de `main` sont notées, elles
+  n'excusent rien.
+- (d) Entrées du premier appel (système, outils, premier message), comparées
+  en code cas par cas entre le lot et `main` : elles ne diffèrent que par
+  les phrases de 1a et de 1b que décrivent « Phase M, session S1 » et
+  « Phase M, session S2 ». Toute autre différence fait échouer la condition.
+- (e) Gestes : une passe sur le lot à 6/6 (un rejeu sans modèle). `pnpm
+  check` vert sur le lot et, après la fusion, sur `main`.
+
+Ce que la règle vaut, calculé sur les 13 passes du 12 octobre : un lot sans
+effet est refusé à tort environ une fois sur quinze ; un cas stable qui
+devient toujours rouge est attrapé par (a) ; un cas déjà instable qui
+devient toujours rouge n'est attrapé qu'environ une fois sur deux (la
+limite connue de la règle).
+
+**Aucune passe relancée** pour un meilleur chiffre ; seule exception, une
+passe qui s'arrête sans écrire son fichier de résultats : on relance alors
+une fois le tour entier, des deux côtés, et cette section le dit. Une passe
+qui a écrit ses résultats compte telle quelle. Si une condition est fausse,
+on ne fusionne pas et on ne corrige rien dans la session : un écart réel
+veut dire que le lot a tort, la session suivante corrige le lot, jamais
+l'étiquette.
+
 ## Commandes
 
 ```sh
