@@ -3,22 +3,25 @@ import type { Constat } from '../regles/verdict'
 import { dateFr, type Temporal } from '../temps/temporal'
 import type { Alerte } from './veiller'
 
-// Le rapport de veille, pour celui qui tient le planning chez le client. Il
-// ne parle que de ses agents, de ses vacations et des textes : rien sur la
+// Le rapport de veille, pour celui qui tient les données chez le client. Il
+// ne parle que de ses personnes, de ses objets et des textes : rien sur la
 // fabrication du harnais (relectures, veille des textes), qui ne le regarde pas.
+// La phrase d'une partie sans refus vient du domaine du métier (PLAN-METIER-2.md M7).
 
 export interface EntreeRapport {
   client: string
   aujourdhui: Temporal.PlainDate
   registre: Registre
-  /** Ce qui a été lu : « 12 agents, 5 postes, 40 vacations ». */
+  /** Ce qui a été lu, exemple : « 12 agents, 5 postes, 40 vacations ». */
   lu: string
   constats: Constat[]
   alertes: Alerte[]
   /** Les règles vérifiées, et ce que certaines ne vérifient pas encore. */
   perimetre: { regle: string; nonCouvert?: string[] }[]
-  /** Une ligne lisible pour un objet : la vacation, l'agent, le titre. */
+  /** Une ligne lisible pour un objet, exemple : la vacation, l'agent, le titre. */
   decrire(objet: string): string
+  /** La phrase de la partie « À corriger » quand elle est vide : `domaine.rienASignaler`. */
+  rienASignaler: string
 }
 
 const fr = dateFr
@@ -89,11 +92,7 @@ export function rendreRapport(e: EntreeRapport): string {
       (p) => `Pas encore vérifié (${nom(p.regle)}) : ${p.nonCouvert?.join(' ; ')}.`,
     ),
     '',
-    ...section(
-      `${PARTIES.refus} (${refus.length})`,
-      constats(refus),
-      'Aucune vacation contraire à une règle.',
-    ),
+    ...section(`${PARTIES.refus} (${refus.length})`, constats(refus), e.rienASignaler),
     ...section(`${PARTIES.aDecider} (${aDecider.length})`, constats(aDecider), 'Rien à décider.'),
     ...section(`${PARTIES.aNoter} (${aNoter.length})`, constats(aNoter), 'Rien à noter.'),
     ...section(`${PARTIES.escalades} (${escalades.length})`, echeances(escalades), 'Aucune.'),

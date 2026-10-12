@@ -10,16 +10,16 @@ import {
 } from './pseudonymes'
 
 // PLAN-PSEUDONYMES.md § 4 : des listes synthétiques, aucune donnée du client fictif.
-const AICHA = { id: 'P-1', nom: 'Aïcha Traoré' }
-const ALICIA = { id: 'P-2', nom: 'Alicia Martin' }
-const JEAN_PIERRE = { id: 'P-3', nom: 'Jean-Pierre Le Goff' }
-const MARCO = { id: 'P-4', nom: "Marco D'Angelo" }
-const KARIM_H = { id: 'P-5', nom: 'Karim Haddad' }
-const KARIM_B = { id: 'P-6', nom: 'Karim Benali' }
-const ALI = { id: 'P-7', nom: 'Ali Ndiaye' }
-const NORDINE = { id: 'P-8', nom: 'Nordine Amrani' }
-const AL = { id: 'P-9', nom: 'Al Kader' }
-const P71 = { id: 'P-71', nom: 'Sami Roux' }
+const AICHA = { id: 'P-1', nom: 'Aïcha Traoré', sorte: 'personne' as const }
+const ALICIA = { id: 'P-2', nom: 'Alicia Martin', sorte: 'personne' as const }
+const JEAN_PIERRE = { id: 'P-3', nom: 'Jean-Pierre Le Goff', sorte: 'personne' as const }
+const MARCO = { id: 'P-4', nom: "Marco D'Angelo", sorte: 'personne' as const }
+const KARIM_H = { id: 'P-5', nom: 'Karim Haddad', sorte: 'personne' as const }
+const KARIM_B = { id: 'P-6', nom: 'Karim Benali', sorte: 'personne' as const }
+const ALI = { id: 'P-7', nom: 'Ali Ndiaye', sorte: 'personne' as const }
+const NORDINE = { id: 'P-8', nom: 'Nordine Amrani', sorte: 'personne' as const }
+const AL = { id: 'P-9', nom: 'Al Kader', sorte: 'personne' as const }
+const P71 = { id: 'P-71', nom: 'Sami Roux', sorte: 'personne' as const }
 const EQUIPE = [AICHA, ALICIA, JEAN_PIERRE, MARCO, KARIM_H, KARIM_B, ALI, NORDINE, AL, P71]
 
 const m = (texte: string) => masquerTexte(texte, EQUIPE)
@@ -160,14 +160,16 @@ describe('masquerTables', () => {
   })
   it('deux personnes au même nom complet : la colonne du nom arrête tout', () => {
     const jumeaux = [
-      { id: 'P-1', nom: 'Aïcha Traoré' },
-      { id: 'P-2', nom: 'Aicha Traore' },
+      { id: 'P-1', nom: 'Aïcha Traoré', sorte: 'personne' as const },
+      { id: 'P-2', nom: 'Aicha Traore', sorte: 'personne' as const },
     ]
     expect(() => masquerTables([AGENTS], jumeaux)).toThrow(/garde un nom/)
   })
   it('un nom de moins de trois lettres : la colonne du nom arrête tout aussi', () => {
     const court = { ...AGENTS, lignes: [{ id: 'P-1', nom: 'Li', ssiap: null }] }
-    expect(() => masquerTables([court], [{ id: 'P-1', nom: 'Li' }])).toThrow(/garde un nom/)
+    expect(() =>
+      masquerTables([court], [{ id: 'P-1', nom: 'Li', sorte: 'personne' as const }]),
+    ).toThrow(/garde un nom/)
   })
 })
 

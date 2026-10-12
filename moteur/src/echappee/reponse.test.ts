@@ -132,3 +132,86 @@ describe('citations et contient (la promotion, PLAN-PROMOTION.md § 6.2)', () =>
     expect(contient('12 heures du 2026-10-12 au 2026-10-18.', '12')).toBe(true)
   })
 })
+
+describe('l’argent (PLAN-METIER-2.md § 6.4, M11)', () => {
+  const MARGE = ['projet | marge\nPRJ-01 | 12500']
+  it('« 12 500,00 € » est cité pour 12500, quel que soit le séparateur de milliers', () => {
+    for (const ecrit of ['12 500,00 €', '12\u00A0500,00 €', '12\u2009500 €', '12\u202F500,0 €']) {
+      expect(verifierReponse(`Marge de PRJ-01 : ${ecrit}`, MARGE, [])).toEqual({ ok: true })
+    }
+    expect(verifierReponse('Marge : 12.500,00 €, soit 12500.0', MARGE, [])).toEqual({ ok: true })
+    expect(contient(MARGE[0] ?? '', '12 500,00')).toBe(true)
+    expect(contient('Marge : 12 500,00 €', '12500')).toBe(true)
+  })
+  it('les décimales se comparent sans leurs zéros de fin : 7,5 ≡ 7.50, jamais 75', () => {
+    expect(verifierReponse('7,5 h, puis 1 234,66 €', ['h | total\n7.50 | 1234.66'], [])).toEqual({
+      ok: true,
+    })
+    expect(contient('heures\n7.50', '7,5')).toBe(true)
+    expect(verifierReponse('75 h', ['heures\n7.50'], [])).toEqual({ ok: false, intrus: ['75'] })
+  })
+  it('un chiffre absent des données reste refusé, avec séparateur de milliers ou décimales', () => {
+    expect(verifierReponse('12 600,00 €', MARGE, [])).toEqual({ ok: false, intrus: ['12 600,00'] })
+    expect(verifierReponse('1 250 €', MARGE, [])).toEqual({ ok: false, intrus: ['1 250'] })
+    expect(verifierReponse('125,00 €', MARGE, [])).toEqual({ ok: false, intrus: ['125,00'] })
+    expect(verifierReponse('12 500,50 €', MARGE, [])).toEqual({ ok: false, intrus: ['12 500,50'] })
+    expect(verifierReponse('12.500.000 €', MARGE, [])).toEqual({
+      ok: false,
+      intrus: ['12.500.000'],
+    })
+    expect(contient('Marge : 12 500,50 €', '12500')).toBe(false)
+    expect(contient('Marge : 1 250 €', '250')).toBe(false)
+  })
+  it('un nombre groupé par milliers ne s’accroche pas à une date : « le 13/10 500 € » cite 500', () => {
+    expect(verifierReponse('le 13/10 500 €', ['2026-10-13'], [])).toEqual({
+      ok: false,
+      intrus: ['500'],
+    })
+  })
+  it('« 2 026,00 € » et « 2026 € » ne sont pas des années ; « en 2026 » en reste une', () => {
+    const connues = ['2026-10-12']
+    expect(citations('Facture : 2 026,00 € HT', [])).toEqual(['2 026,00'])
+    expect(citations('Facture : 2026 € HT, 2026,50 euros, 1999 euros', [])).toEqual([
+      '2026',
+      '2026,50',
+      '1999',
+    ])
+    expect(citations('Chiffre de 2026 : 12 050 €', [])).toEqual(['12 050'])
+    expect(verifierReponse('2 026,00 €', [], [], connues)).toEqual({
+      ok: false,
+      intrus: ['2 026,00'],
+    })
+    expect(verifierReponse('2026 €', [], [], connues)).toEqual({ ok: false, intrus: ['2026'] })
+    expect(verifierReponse('2 026,00 €', ['montant\n2026'], [], connues)).toEqual({ ok: true })
+    expect(verifierReponse('Marge en 2026 : 12 500 €', MARGE, [], connues)).toEqual({ ok: true })
+    expect(citations('Marge en 2026 : 12 500 €', [])).toEqual(['12 500'])
+    expect(contient('Marge en 2026 : 0 €', '2026')).toBe(false)
+  })
+  it('« 3/4 » n’est pas une date ; « 13/10 », « 8/10 » et « 13/10/2026 » en restent', () => {
+    expect(citations('Les 3/4 des lots', [])).toEqual(['3', '4'])
+    expect(verifierReponse('Les 3/4 des lots', ['3 | 4'], [])).toEqual({ ok: true })
+    expect(verifierReponse('Les 3/4 des lots', ['2026-04-03'], [])).toEqual({
+      ok: false,
+      intrus: ['3', '4'],
+    })
+    expect(citations('le 13/10, le 8/10 et le 13/10/2026', [])).toEqual([])
+    expect(
+      verifierReponse('le 13/10, le 8/10 et le 13/10/2026', ['2026-10-13 | 2026-10-08'], []),
+    ).toEqual({ ok: true })
+    expect(verifierReponse('le 13/10', ['13 | 10'], [])).toEqual({ ok: false, intrus: ['13/10'] })
+  })
+  it('un mois d’un chiffre après un mot de date reste une date : une date inventée ne passe pas par ses nombres', () => {
+    expect(verifierReponse('Absent le 5/3.', ['A-5 | A-3 | 2026-10-13'], [])).toEqual({
+      ok: false,
+      intrus: ['5/3'],
+    })
+    expect(verifierReponse('Le 1/1', ['1 | 1'], [])).toEqual({ ok: false, intrus: ['1/1'] })
+    expect(verifierReponse('lundi 5/3', ['2026-03-05'], [])).toEqual({ ok: true })
+    expect(citations('Les 3/4 des lots', [])).toEqual(['3', '4'])
+  })
+  it('un nombre n’est pas trouvé dans les décimales d’un autre (« 50 » dans « 0.50 »)', () => {
+    expect(verifierReponse('Taux : 50', ['x\n0.50'], [])).toEqual({ ok: false, intrus: ['50'] })
+    expect(verifierReponse('Taux : 0,50', ['x\n0.50'], [])).toEqual({ ok: true })
+    expect(verifierReponse('16 h', ['heures | 16'], [])).toEqual({ ok: true })
+  })
+})

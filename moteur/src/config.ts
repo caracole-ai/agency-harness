@@ -15,7 +15,7 @@ export const PolitiqueSchema = z.strictObject({
 export type Politique = z.infer<typeof PolitiqueSchema>
 
 /**
- * Une délégation (G-01) : le patron confie au harnais une action précise, dans
+ * Une délégation (G-01) : le client confie au harnais une action précise, dans
  * des conditions écrites ; toutes doivent tenir, sinon la décision revient en
  * validation. Révocable en la retirant de la config. Le métier fixe le
  * catalogue des conditions ; une condition inconnue arrête le démarrage.

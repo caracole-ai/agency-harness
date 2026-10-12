@@ -1,5 +1,4 @@
 import type { Role } from '../conversation/actions'
-import { ROLES } from '../conversation/actions'
 import { TYPE_CONSIGNE, TYPE_PRECISION_ATTENDUE } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import { CONTROLE_OK, MOTIFS_ABANDON } from '../echappee/boucle'
@@ -36,7 +35,7 @@ export type Devenue =
       fin: 'reponse' | 'proposition' | 'abandon'
       /** `reponse` : le résumé du modèle a passé le contrôle, ou il a été retiré. */
       controle?: 'ok' | 'retiré'
-      /** `proposition` : la suite que le patron lui a donnée. */
+      /** `proposition` : la suite que le demandeur lui a donnée. */
       suite?: string
       /** `abandon` : le motif, par catégorie (jamais le texte du modèle). */
       abandon?: string
@@ -109,7 +108,8 @@ const dans = (l: Ligne, du: Temporal.PlainDate, au: Temporal.PlainDate) => {
   return Temporal.PlainDate.compare(j, du) >= 0 && Temporal.PlainDate.compare(j, au) <= 0
 }
 
-const estRole = (r: unknown): r is Role => ROLES.includes(r as Role)
+/** Le résumé ne connaît pas le métier : un rôle est une chaîne non vide (PLAN-METIER-2.md M1). */
+const estRole = (r: unknown): r is Role => typeof r === 'string' && r.length > 0
 
 /** Une date, une heure, un nombre : rien d'autre ne passe tel quel. */
 const SUR = /^[0-9][0-9:T\-/ .,+Z]*$/

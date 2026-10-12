@@ -2,50 +2,70 @@ import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { CAPACITES, type RoleDeclare } from '../conversation/roles'
 import { chargerPersonnes, FICHIER_PERSONNES, type Personne, recevoir } from './personnes'
 
-const PERSONNES: Personne[] = [{ role: 'patron' }, { role: 'agent', agent: 'A-11' }]
+const ROLES: RoleDeclare[] = [
+  { id: 'patron', enMots: 'le patron', identifie: false, capacites: [...CAPACITES] },
+  { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+]
+const PERSONNES: Personne[] = [{ role: 'patron' }, { role: 'agent', personne: 'A-11' }]
 
 describe('recevoir', () => {
-  it('une entrée valide : reçue, telle quelle', () => {
-    expect(recevoir(PERSONNES, { role: 'agent', agent: 'A-11' })).toEqual({
-      sorte: 'reçu',
-      identite: { role: 'agent', agent: 'A-11' },
-    })
-    expect(recevoir(PERSONNES, { role: 'patron' })).toEqual({
+  it('une entrée valide, sous l’une ou l’autre graphie : reçue, l’identifiant sous `personne`', () => {
+    for (const demandeur of [
+      { role: 'agent', personne: 'A-11' },
+      { role: 'agent', agent: 'A-11' },
+      { role: 'agent', personne: 'A-11', agent: 'A-11' },
+    ]) {
+      expect(recevoir(ROLES, PERSONNES, demandeur)).toEqual({
+        sorte: 'reçu',
+        identite: { role: 'agent', personne: 'A-11' },
+      })
+    }
+    expect(recevoir(ROLES, PERSONNES, { role: 'patron' })).toEqual({
       sorte: 'reçu',
       identite: { role: 'patron' },
     })
   })
   it('un inconnu du registre : refusé', () => {
-    expect(recevoir(PERSONNES, { role: 'agent', agent: 'A-99' })).toEqual({
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 'A-99' })).toEqual({
       sorte: 'refus',
       motif: "inconnu au registre d'accès : A-99",
     })
-    expect(recevoir([{ role: 'agent', agent: 'A-11' }], { role: 'patron' }).sorte).toBe('refus')
+    expect(recevoir(ROLES, [{ role: 'agent', personne: 'A-11' }], { role: 'patron' })).toEqual({
+      sorte: 'refus',
+      motif: "le patron n'est pas au registre d'accès",
+    })
   })
   it('un rôle faux, une identité absente : refusés', () => {
-    expect(recevoir(PERSONNES, { role: 'roi' })).toEqual({
+    expect(recevoir(ROLES, PERSONNES, { role: 'roi' })).toEqual({
       sorte: 'refus',
       motif: 'rôle inconnu : roi',
     })
-    expect(recevoir(PERSONNES, undefined).sorte).toBe('refus')
-    const long = recevoir(PERSONNES, { role: 'x'.repeat(10_000) })
+    expect(recevoir(ROLES, PERSONNES, undefined).sorte).toBe('refus')
+    const long = recevoir(ROLES, PERSONNES, { role: 'x'.repeat(10_000) })
     expect(long.sorte === 'refus' && long.motif.length).toBeLessThan(100)
-    expect(recevoir(PERSONNES, 'patron').sorte).toBe('refus')
+    expect(recevoir(ROLES, PERSONNES, 'patron').sorte).toBe('refus')
   })
   it('un agent sans identifiant, un identifiant qui n’est pas un texte : refusés', () => {
-    expect(recevoir(PERSONNES, { role: 'agent' })).toEqual({
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent' })).toEqual({
       sorte: 'refus',
-      motif: 'un agent doit dire qui il est',
+      motif: "l'agent doit donner son identifiant",
     })
-    expect(recevoir(PERSONNES, { role: 'agent', agent: 11 }).sorte).toBe('refus')
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', agent: 11 }).sorte).toBe('refus')
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 11 }).sorte).toBe('refus')
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 'A-11', agent: 'A-1' })).toEqual({
+      sorte: 'refus',
+      motif: 'deux identifiants différents',
+    })
   })
   it('un patron avec un identifiant d’agent : refusé, même si l’agent existe', () => {
-    expect(recevoir(PERSONNES, { role: 'patron', agent: 'A-11' })).toEqual({
+    expect(recevoir(ROLES, PERSONNES, { role: 'patron', agent: 'A-11' })).toEqual({
       sorte: 'refus',
-      motif: "le patron parle en son nom : pas d'identifiant d'agent",
+      motif: "le patron parle en son nom : pas d'identifiant",
     })
+    expect(recevoir(ROLES, PERSONNES, { role: 'patron', personne: 'A-11' }).sorte).toBe('refus')
   })
 })
 
@@ -57,19 +77,29 @@ describe('chargerPersonnes', () => {
   }
   it('lit le registre', () => {
     expect(
-      chargerPersonnes(dossier('personnes:\n  - role: patron\n  - { role: agent, agent: A-1 }\n')),
-    ).toEqual([{ role: 'patron' }, { role: 'agent', agent: 'A-1' }])
+      chargerPersonnes(
+        dossier(
+          'personnes:\n  - role: patron\n  - { role: agent, agent: A-1 }\n  - { role: agent, personne: A-2 }\n',
+        ),
+        ROLES,
+      ),
+    ).toEqual([
+      { role: 'patron' },
+      { role: 'agent', personne: 'A-1' },
+      { role: 'agent', personne: 'A-2' },
+    ])
   })
   it('absent, vide, en double, ou avec une clé de trop : refusé', () => {
-    expect(() => chargerPersonnes(dossier())).toThrow(/registre d'accès absent/)
-    expect(() => chargerPersonnes(dossier('personnes: []\n'))).toThrow(/invalide/)
+    expect(() => chargerPersonnes(dossier(), ROLES)).toThrow(/registre d'accès absent/)
+    expect(() => chargerPersonnes(dossier('personnes: []\n'), ROLES)).toThrow(/invalide/)
     expect(() =>
       chargerPersonnes(
         dossier('personnes:\n  - { role: agent, agent: A-1 }\n  - { role: agent, agent: A-1 }\n'),
+        ROLES,
       ),
     ).toThrow(/agent A-1 en double/)
     expect(() =>
-      chargerPersonnes(dossier('personnes:\n  - { role: patron, agent: A-1 }\n')),
+      chargerPersonnes(dossier('personnes:\n  - { role: patron, agent: A-1 }\n'), ROLES),
     ).toThrow(/invalide/)
   })
 })

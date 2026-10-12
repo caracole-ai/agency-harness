@@ -1,29 +1,32 @@
 // pnpm evals traduire|echappee|gestes|promotion|ronde --client <dossier> [--seulement id,id] [--modele simule]
 // Les évals de la conversation (PLAN-ESPACES.md § 9) et de la promotion
-// (PLAN-PROMOTION.md § 6.4) : chaque cas, écrit à la main dans `evals/`,
+// (PLAN-PROMOTION.md § 6.4) : chaque cas, écrit à la main dans
+// `metiers/<métier>/evals/` (le métier du client, PLAN-METIER-2.md M8),
 // tourne sur une copie fraîche du client (ou sur une variante dérivée de lui,
 // pour un homonyme) ; la sortie est vérifiée en code, la trace complète est
-// gardée dans `evals/traces/` (non versionné) et le tableau dans
-// `evals/resultats/`. `traduire`, `echappee` et `promotion` appellent le vrai
-// modèle : exige la clé que nomme la config (ANTHROPIC_API_KEY sans `acces`)
-// et coûte (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la fabrication, avec
-// GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
+// gardée dans `evals/traces/<horodatage>-<métier>-<quoi>/` (non versionné) et
+// le tableau dans `evals/resultats/<horodatage>-<métier>-<quoi>.md`.
+// `traduire`, `echappee` et `promotion` appellent le vrai modèle : exige la
+// clé que nomme la config (ANTHROPIC_API_KEY sans `acces`) et coûte (≈ 0,3 $
+// les deux premières passes, ≈ 0,2 $ la fabrication, avec GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
 // vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
-// porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du fichier des agents
+// porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du client (`m.noms`)
 // partis au modèle, colonne du tableau, seuil 0. `ronde` (PLAN-RONDE.md § 5.4)
-// rejoue les journaux fixés d'`evals/rondes.yaml` sur une copie et lance la
-// ronde avec le modèle d'`agence.yaml` (sous acces: claude, l'abonnement : le
+// rejoue les journaux fixés du `rondes.yaml` du métier (les journaux restent
+// dans `evals/`) sur une copie et lance la ronde avec le modèle
+// d'`agence.yaml` (sous acces: claude, l'abonnement : le
 // coût est estimé par le binaire), sans rien écrire dans `memoire/` ; tant que
 // les étiquettes sont un brouillon, le résultat aussi.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
 import { chargerAgence } from '../agence/config'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import { avecSession, type MetierConversation } from '../conversation/conversation'
+import { avecSession } from '../conversation/conversation'
+import { aCapacite } from '../conversation/roles'
 import { ecrireInstantane } from '../echappee/echappee'
 import {
   type BilanRonde,
@@ -31,6 +34,7 @@ import {
   type Etiquettes,
   ecartsEchappee,
   ecartsRonde,
+  evalsDuMetier,
   FichierEchappee,
   FichierGestes,
   FichierPromotions,
@@ -43,7 +47,6 @@ import {
   SEUILS,
 } from '../evals/evals'
 import {
-  aParis,
   apprisDuDossier,
   casDuFichier,
   configDuDossier,
@@ -53,7 +56,7 @@ import {
   type TraceCas,
 } from '../evals/traduction'
 import { lireFichiersGestes } from '../gestes/charger'
-import { type FichierGeste, gesteDe } from '../gestes/geste-appris'
+import { type FichierGeste, gesteDe, personneDuTest } from '../gestes/geste-appris'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
@@ -63,7 +66,8 @@ import { aProposer, debutFenetre, type Fabrication, intentions } from '../promot
 import { compterFabrications, promouvoir } from '../promotion/promouvoir'
 import { STATUTS_MISSION } from '../ronde/rapport'
 import { type AppelRonde, faireRonde, ISSUES_RONDE } from '../ronde/ronde'
-import { FUSEAU, Temporal } from '../temps/temporal'
+import { aParis, FUSEAU, Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const EVALS = join(RACINE, 'evals')
@@ -92,11 +96,9 @@ if (values.modele !== undefined && values.modele !== 'simule') {
 
 const source = resolve(values.client)
 const { metier } = chargerConfig(join(source, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
-const m = module.CONVERSATION
+const m = await metierDe(source)
+/** Les cas du métier du client ; `EVALS` garde les résultats, les traces et les journaux fixés. */
+const CAS = join(RACINE, evalsDuMetier(metier))
 const avecModele = quoi !== 'gestes'
 // La ronde n'appelle pas le modèle du client : celui de l'agence, préflight au moment de l'appel.
 const avecModeleClient = avecModele && quoi !== 'ronde'
@@ -117,7 +119,7 @@ const modeleDe = (config: Parameters<typeof modeleDepuisConfig>[0]): Modele =>
 const deux = (n: number) => String(n).padStart(2, '0')
 const t = Temporal.Now.zonedDateTimeISO(FUSEAU)
 const tampon = `${t.year}-${deux(t.month)}-${deux(t.day)}-${deux(t.hour)}${deux(t.minute)}`
-const dossierTraces = join(EVALS, 'traces', `${tampon}-${quoi}`)
+const dossierTraces = join(EVALS, 'traces', `${tampon}-${metier}-${quoi}`)
 mkdirSync(dossierTraces, { recursive: true })
 mkdirSync(join(EVALS, 'resultats'), { recursive: true })
 const seulement = values.seulement ? new Set(values.seulement.split(',')) : undefined
@@ -145,7 +147,7 @@ const rondes: (ResultatCas & { bilan: BilanRonde; estime: boolean })[] = []
 let etiquettes: Etiquettes = 'brouillon'
 
 if (quoi === 'traduire') {
-  const fichier = FichierTraduire.parse(parse(readFileSync(join(EVALS, 'consignes.yaml'), 'utf8')))
+  const fichier = FichierTraduire.parse(parse(readFileSync(join(CAS, 'consignes.yaml'), 'utf8')))
   const { appris, erreurs } = apprisDuDossier(m, source)
   for (const e of erreurs) console.error(e)
   if (appris.length > 0) {
@@ -162,7 +164,7 @@ if (quoi === 'traduire') {
     )),
   )
 } else if (quoi === 'echappee') {
-  const fichier = FichierEchappee.parse(parse(readFileSync(join(EVALS, 'echappees.yaml'), 'utf8')))
+  const fichier = FichierEchappee.parse(parse(readFileSync(join(CAS, 'echappees.yaml'), 'utf8')))
   const echappee = m.echappee
   if (!echappee) throw new Error(`le métier ${metier} n'a pas d'échappée`)
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
@@ -174,7 +176,7 @@ if (quoi === 'traduire') {
         strict: c.piege === true,
         ...(c.piege ? { piege: fichier.piege } : {}),
         role: c.role,
-        ...(c.agent !== undefined ? { agent: c.agent } : {}),
+        ...(c.personne !== undefined ? { personne: c.personne } : {}),
       },
       modeleDe,
       (dossier, modele, identite) =>
@@ -189,7 +191,7 @@ if (quoi === 'traduire') {
             aParis(c.maintenant ?? fichier.maintenant),
             modele,
           )
-          return { ecarts: ecartsEchappee(c.attendu, issue), issue }
+          return { ecarts: ecartsEchappee(c.attendu, issue, m.operation), issue }
         }),
     )
     resultats.push(joue.resultat)
@@ -200,7 +202,7 @@ if (quoi === 'traduire') {
   // `gestes.yaml` sont posés dans une copie avec un instantané par test, pris
   // sur les données de la copie ; puis chaque geste de la copie, ceux du
   // dossier passé en --client compris, est rejoué sur ses instantanés.
-  const fichier = FichierGestes.parse(parse(readFileSync(join(EVALS, 'gestes.yaml'), 'utf8')))
+  const fichier = FichierGestes.parse(parse(readFileSync(join(CAS, 'gestes.yaml'), 'utf8')))
   const copieMetier = m.copie
   if (!copieMetier) throw new Error(`le métier ${metier} n'expose pas sa copie`)
   const dossier = copieClient(source)
@@ -213,9 +215,10 @@ if (quoi === 'traduire') {
         mkdirSync(join(dossier, 'gestes'), { recursive: true })
         writeFileSync(join(dossier, 'gestes', `eval-${g.id}.yaml`), stringify(f))
         for (const test of g.tests) {
+          const personne = personneDuTest(test)
           const identite = {
             role: test.role,
-            ...(test.agent !== null ? { agent: test.agent } : {}),
+            ...(personne !== null ? { personne } : {}),
           }
           m.verifierIdentite(s, identite)
           ecrireInstantane(dossier, {
@@ -241,7 +244,7 @@ if (quoi === 'traduire') {
       for (const test of geste.tests) {
         const id = `${geste.id}/${test.echappee}`
         if (seulement && !seulement.has(id)) continue
-        const rejeu = await rejouerTest(geste, test, dossier)
+        const rejeu = await rejouerTest(geste, test, dossier, m)
         const ecarts =
           'erreur' in rejeu
             ? [rejeu.erreur]
@@ -258,7 +261,7 @@ if (quoi === 'traduire') {
     rmSync(dossier, { recursive: true, force: true })
   }
 } else if (quoi === 'ronde') {
-  const fichier = FichierRondes.parse(parse(readFileSync(join(EVALS, 'rondes.yaml'), 'utf8')))
+  const fichier = FichierRondes.parse(parse(readFileSync(join(CAS, 'rondes.yaml'), 'utf8')))
   etiquettes = fichier.etiquettes
   const agence = chargerAgence(RACINE)
   idModele =
@@ -341,22 +344,20 @@ if (quoi === 'traduire') {
   // d'`echappees.yaml` qui la portent ; rejoués sur une seule copie, puis la
   // promotion y fabrique et vérifie ; le cas passe si le geste est écrit avec
   // zéro écart. Pas de passe de traduction ici (elle se mesure à part). Une
-  // proposition ne compte que validée (P9) : le lanceur joue le « oui » du
-  // patron par le métier, contrôles compris (§ 10).
-  const fichier = FichierPromotions.parse(
-    parse(readFileSync(join(EVALS, 'promotions.yaml'), 'utf8')),
-  )
-  const echappees = FichierEchappee.parse(
-    parse(readFileSync(join(EVALS, 'echappees.yaml'), 'utf8')),
-  )
+  // proposition ne compte que validée (P9) : le lanceur joue le « oui » d'un
+  // rôle qui valide (PLAN-METIER-2.md M3) par le métier, contrôles compris (§ 10).
+  const fichier = FichierPromotions.parse(parse(readFileSync(join(CAS, 'promotions.yaml'), 'utf8')))
+  const echappees = FichierEchappee.parse(parse(readFileSync(join(CAS, 'echappees.yaml'), 'utf8')))
   const echappee = m.echappee
   if (!echappee) throw new Error(`le métier ${metier} n'a pas d'échappée`)
   seuil = fichier.seuil
+  const valideur = m.roles.find((r) => aCapacite(m.roles, { role: r.id }, 'valide'))
+  if (!valideur) throw new Error(`le métier ${metier} n'a pas de rôle qui valide`)
   for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
     const joue = await jouerCas(
       m,
       source,
-      { id: c.id, strict: false, role: 'patron' },
+      { id: c.id, strict: false, role: valideur.id },
       modeleDe,
       async (dossier, modele, agence) => {
         const quand = aParis(fichier.maintenant)
@@ -364,9 +365,9 @@ if (quoi === 'traduire') {
         for (const id of c.echappees) {
           const e = echappees.cas.find((x) => x.id === id)
           if (!e) throw new Error(`${c.id} : cas d'échappée inconnu : ${id}`)
-          const accueil = recevoir(chargerPersonnes(dossier), {
+          const accueil = recevoir(m.roles, chargerPersonnes(dossier, m.roles), {
             role: e.role,
-            ...(e.agent !== undefined ? { agent: e.agent } : {}),
+            ...(e.personne !== undefined ? { personne: e.personne } : {}),
           })
           if (accueil.sorte === 'refus') throw new Error(`${id} : ${accueil.motif}`)
           await avecSession(m, dossier, accueil.identite, async (s) => {
@@ -437,7 +438,7 @@ if (quoi === 'traduire') {
 }
 
 const b = bilan(resultats, seuil)
-const chemin = join(EVALS, 'resultats', `${tampon}-${quoi}.md`)
+const chemin = join(EVALS, 'resultats', `${tampon}-${metier}-${quoi}.md`)
 const TITRES: Record<Quoi, string> = {
   traduire: 'de la traduction',
   echappee: "de l'échappée",

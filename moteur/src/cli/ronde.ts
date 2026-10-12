@@ -15,15 +15,14 @@
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { chargerAgence } from '../agence/config'
 import { lancerClaude } from '../chantier/claude'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { MetierConversation } from '../conversation/conversation'
 import { dollars } from '../promotion/promotion'
 import { faireRonde } from '../ronde/ronde'
 import { Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -91,14 +90,10 @@ if (!values.client || !values.date) {
 }
 
 const dossier = resolve(values.client)
-const { metier } = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
+const metier = await metierDe(dossier)
 
 try {
-  const r = await faireRonde(module.CONVERSATION, {
+  const r = await faireRonde(metier, {
     racine: RACINE,
     dossierClient: dossier,
     date: Temporal.PlainDate.from(values.date),

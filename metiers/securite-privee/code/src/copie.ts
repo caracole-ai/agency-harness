@@ -24,8 +24,10 @@ export function tablesPour(
 ): TableCopie[] {
   // Tout ce qui n'est pas le patron ne voit que ses données (échec fermé).
   const estAgent = identite.role !== 'patron'
-  const agents = s.ctx.planning.agents.filter((a) => !estAgent || a.id === identite.agent)
-  const vacations = s.ctx.planning.vacations.filter((v) => !estAgent || v.agent === identite.agent)
+  const agents = s.ctx.planning.agents.filter((a) => !estAgent || a.id === identite.personne)
+  const vacations = s.ctx.planning.vacations.filter(
+    (v) => !estAgent || v.agent === identite.personne,
+  )
   const constats = estAgent
     ? []
     : passerVeille(VEILLER, METIER, s.dossier, maintenant.toPlainDate()).constats

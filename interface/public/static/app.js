@@ -3,6 +3,8 @@
 // `innerHTML` avec des données). PLAN-ESPACES.md § 10.2.
 
 const API = {
+  roles: '/api/roles',
+  tableau: '/api/tableau',
   etat: '/api/etat',
   journal: '/api/journal?limite=200',
   consigne: '/api/consigne',
@@ -12,27 +14,8 @@ const API = {
   retirerGeste: '/api/gestes/retirer',
 }
 const FUSEAU = 'Europe/Paris'
-const PATRON = { role: 'patron' }
 /** Le type de ligne d'un appel au modèle (moteur/src/modele/compteur.ts) : son coût est montré au journal. */
 const TYPE_APPEL = 'appel_modele'
-
-/** Des exemples de consignes, à cliquer : pour une démo, ils montrent ce que l'outil comprend. */
-const SUGGESTIONS = {
-  patron: [
-    'Aïcha ne vient pas demain',
-    'Montre-moi le planning de Karim cette semaine',
-    'Quelles échéances arrivent ?',
-    'Lance la veille',
-  ],
-  agent: ['Mon planning de la semaine', 'Mes titres', 'Je ne pourrai pas venir demain'],
-}
-
-/** Les conditions d'une délégation de remplacement, dites en mots (catalogue du métier, veille.ts). */
-const CONDITIONS = {
-  connait_site: (v) =>
-    v ? 'le remplaçant connaît déjà le site' : 'le remplaçant ne connaît pas le site',
-  prevenu_avant_heures: (v) => `l'absence est signalée au moins ${v} h avant`,
-}
 
 /** Comment montrer chaque sorte de réponse. */
 const SORTES = {
@@ -58,7 +41,12 @@ const STATUTS_GESTE = {
 const ici = {
   /** Le dernier état reçu de `/api/etat`. */
   donnees: null,
-  identite: PATRON,
+  /** Les rôles déclarés par le métier (`/api/roles`) : le sélecteur « Je suis », et qui parle. */
+  roles: [],
+  /** Ce que le métier dit à la personne choisie (`/api/tableau`) : son accueil, ses suggestions (PLAN-METIER-2.md § 3.6). */
+  tableau: null,
+  /** Le premier rôle déclaré sans identifiant, choisi au démarrage. */
+  identite: null,
   /** La conversation en cours ; absente, le serveur en ouvre une. */
   conversation: undefined,
   /** La dernière confirmation sans réponse de la conversation en cours : un « oui » tapé y répond. */
@@ -149,17 +137,24 @@ const jour = (iso) =>
     new Date(`${iso}T00:00:00Z`),
   )
 
-const memeIdentite = (a, b) => a.role === b.role && (a.agent ?? null) === (b.agent ?? null)
-const cleIdentite = (i) => (i.role === 'patron' ? 'patron' : `agent:${i.agent}`)
+const memeIdentite = (a, b) => a.role === b.role && (a.personne ?? null) === (b.personne ?? null)
+/** `role`, ou `role:personne` pour un rôle identifié : la valeur d'une option de « Je suis ». */
+const cleIdentite = (i) => (i.personne === undefined ? i.role : `${i.role}:${i.personne}`)
+const identiteDe = (cle) => {
+  const i = cle.indexOf(':')
+  return i < 0 ? { role: cle } : { role: cle.slice(0, i), personne: cle.slice(i + 1) }
+}
+const roleDe = (identite) => ici.roles.find((r) => r.id === identite.role)
+const majuscule = (texte) => texte.charAt(0).toUpperCase() + texte.slice(1)
+/** « le patron » → « patron » : pour « en tant que … ». */
+const sansArticle = (texte) => texte.replace(/^(le |la |les |l'|l’)/, '')
 
 function nomDe(identite) {
-  if (identite.role === 'patron') return 'Le patron'
-  const a = ici.donnees?.identites.find((x) => x.agent === identite.agent)
-  return a ? a.nom : identite.agent
+  const role = roleDe(identite)
+  if (!role?.identifie) return majuscule(role?.enMots ?? identite.role)
+  const a = ici.donnees?.identites.find((x) => x.personne === identite.personne)
+  return a ? a.nom : identite.personne
 }
-
-const conditions = (c) =>
-  Object.entries(c ?? {}).map(([k, v]) => (CONDITIONS[k] ? CONDITIONS[k](v) : `${k} : ${v}`))
 
 // ---------- l'état : la tête et les onglets ----------
 
@@ -190,7 +185,10 @@ function reserveBloc(message) {
     'p',
     { classe: 'vide' },
     el('b', { texte: `Accès refusé : ${message}. ` }),
-    'Choisissez « le patron » dans « Je suis » pour voir cette partie.',
+    `Choisissez ${ici.roles
+      .filter((r) => r.capacites.includes('administre'))
+      .map((r) => `« ${r.enMots} »`)
+      .join(' ou ')} dans « Je suis » pour voir cette partie.`,
   )
 }
 
@@ -227,12 +225,17 @@ function rendreTete() {
 
   const choix = $('identite')
   if (choix.options.length === 0) {
-    choix.append(el('option', { value: 'patron', texte: 'le patron' }))
-    const agents = el('optgroup', { label: 'Un agent' })
-    for (const i of d.identites.filter((x) => x.role === 'agent')) {
-      agents.append(el('option', { value: cleIdentite(i), texte: `${i.agent} ${i.nom}` }))
+    for (const r of ici.roles) {
+      if (!r.identifie) {
+        choix.append(el('option', { value: r.id, texte: r.enMots }))
+        continue
+      }
+      const groupe = el('optgroup', { label: majuscule(r.enMots) })
+      for (const i of d.identites.filter((x) => x.role === r.id)) {
+        groupe.append(el('option', { value: cleIdentite(i), texte: `${i.personne} ${i.nom}` }))
+      }
+      choix.append(groupe)
     }
-    choix.append(agents)
   }
   choix.value = cleIdentite(ici.identite)
 }
@@ -243,7 +246,7 @@ function rendreValider() {
   for (const b of fil().querySelectorAll('[data-confirmation]')) {
     boutons.set(b.dataset.confirmation, [...(boutons.get(b.dataset.confirmation) ?? []), b])
   }
-  const aDecider = confirmations.length + demandes.filter((d) => d.attendPatron).length
+  const aDecider = confirmations.length
   const compte = $('compte-valider')
   compte.hidden = aDecider === 0
   compte.textContent = String(aDecider)
@@ -270,7 +273,7 @@ function rendreValider() {
         'p',
         { classe: 'vide' },
         el('b', { texte: 'Aucune demande en cours. ' }),
-        'Une absence déclarée ouvre une demande de remplacement, suivie ici jusqu’au planning mis à jour.',
+        ici.tableau?.textes.vide ?? '',
       ),
     )
   } else {
@@ -333,6 +336,7 @@ function zoneReponse(conf, nom) {
   return zone
 }
 
+/** Une demande en cours, telle que le métier la rend (`DemandeTableau`) : son texte dit aussi la dernière étape. */
 function carteDemande(d) {
   return el(
     'li',
@@ -343,38 +347,9 @@ function carteDemande(d) {
       el('span', { classe: 'carte__titre', texte: d.id }),
       el('span', { texte: d.sorte }),
       el('span', { classe: 'pastille pastille--outil', texte: d.statut }),
-      el('time', { datetime: d.horodatage, texte: instant(d.horodatage) }),
+      el('time', { datetime: d.depuis, texte: instant(d.depuis) }),
     ),
-    el('p', { classe: 'texte', texte: d.description }),
-    d.etape ? el('p', { classe: 'carte__suite texte', texte: d.etape }) : null,
-    d.attendPatron
-      ? el(
-          'div',
-          { classe: 'actions' },
-          el('button', {
-            classe: 'bouton bouton--outil bouton--petit',
-            type: 'button',
-            texte: 'Préparer la validation',
-            onclick: () => preparer(`Je valide la proposition pour ${d.id}`, PATRON),
-          }),
-        )
-      : null,
-    // Pour la démo : se mettre à la place de l'agent sollicité, sa réponse prête dans le champ.
-    d.attendAgents.length > 0
-      ? el(
-          'div',
-          { classe: 'actions' },
-          ...d.attendAgents.map((a) =>
-            el('button', {
-              classe: 'bouton bouton--outil bouton--petit',
-              type: 'button',
-              texte: `Répondre en tant que ${a.nom}`,
-              onclick: () =>
-                preparer(`Oui, je suis d'accord pour ${d.id}`, { role: 'agent', agent: a.agent }),
-            }),
-          ),
-        )
-      : null,
+    el('p', { classe: 'texte', texte: d.texte }),
   )
 }
 
@@ -409,47 +384,17 @@ function rendreRegles() {
   )
 }
 
+/** Les propositions en attente d'une réponse (`Tableau.enAttente`), dont le texte est rendu par le métier, conditions comprises. */
 function rendreDelegations() {
-  const { accordees, proposees } = ici.donnees.delegations
-  const zone = [el('h3', { texte: 'Accordées' })]
-  if (accordees.length === 0) {
-    zone.push(
-      el(
-        'p',
-        { classe: 'vide' },
-        el('b', { texte: 'Aucune délégation. ' }),
-        'Chaque remplacement passe par vous.',
-      ),
-    )
-  } else {
-    zone.push(
-      el(
-        'ul',
-        { classe: 'liste' },
-        ...accordees.map((d) =>
-          el(
-            'li',
-            { classe: 'carte' },
-            el(
-              'div',
-              { classe: 'carte__meta' },
-              el('span', { classe: 'carte__titre', texte: d.action }),
-              el('span', { texte: `accordée le ${jour(d.accordee_le)} par ${d.par}` }),
-            ),
-            el('p', { classe: 'texte', texte: `Quand ${conditions(d.conditions).join(', et ')}.` }),
-          ),
-        ),
-      ),
-    )
-  }
-  zone.push(el('h3', { texte: 'Proposées par l’outil' }))
-  if (proposees.length === 0) {
+  const { enAttente } = ici.donnees
+  const zone = [el('h3', { texte: 'Proposées par l’outil' })]
+  if (enAttente.length === 0) {
     zone.push(
       el(
         'p',
         { classe: 'vide' },
         el('b', { texte: 'Aucune proposition. ' }),
-        'Après un remplacement réussi que vous avez validé, l’outil propose de le rendre automatique dans les mêmes conditions.',
+        'Après une décision réussie que vous avez validée, l’outil propose de la rendre automatique dans les mêmes conditions.',
       ),
     )
   } else {
@@ -457,23 +402,16 @@ function rendreDelegations() {
       el(
         'ul',
         { classe: 'liste' },
-        ...proposees.map((p) =>
+        ...enAttente.map((p) =>
           el(
             'li',
             { classe: 'carte' },
             el(
               'div',
               { classe: 'carte__meta' },
-              el('span', { classe: 'carte__titre', texte: p.demande }),
-              el('span', { texte: p.action }),
-              el('time', { datetime: p.horodatage, texte: instant(p.horodatage) }),
+              el('span', { classe: 'carte__titre', texte: p.id }),
             ),
-            el('p', { classe: 'texte', texte: p.motif }),
-            el(
-              'p',
-              { classe: 'carte__suite texte' },
-              `Conditions : ${conditions(p.conditions).join(' ; ')}.`,
-            ),
+            el('p', { classe: 'texte', texte: p.texte }),
             el('p', {
               classe: 'carte__suite',
               texte:
@@ -847,21 +785,25 @@ function bulleErreur(message) {
 const note = (texte) => ajouter(el('li', { classe: 'note', texte }))
 
 function accueil() {
-  bulleOutil(
-    {
-      sorte: 'resultat',
-      texte:
-        ici.identite.role === 'patron'
-          ? 'Bonjour. Dites-moi ce qui se passe, avec vos mots : une absence, un planning à voir, une échéance.\nCe qui touche au planning attend toujours votre oui.'
-          : `Bonjour ${nomDe(ici.identite).split(' ')[0]}. Vous pouvez voir votre planning, vos titres, déclarer une absence ou répondre à une demande.`,
-    },
-    {},
-  )
+  const texte = ici.tableau?.textes.accueil
+  if (texte) bulleOutil({ sorte: 'resultat', texte }, {})
+}
+
+/** Ce que le métier dit à la personne choisie ; une réponse qui arrive après un autre changement de « Je suis » est ignorée. */
+async function chargerTableau() {
+  const identite = ici.identite
+  let tableau = null
+  try {
+    tableau = await appeler(API.tableau, { identite })
+  } catch (erreur) {
+    bulleErreur(erreur.message)
+  }
+  if (identite === ici.identite) ici.tableau = tableau
 }
 
 function rendreSuggestions() {
   $('suggestions').replaceChildren(
-    ...SUGGESTIONS[ici.identite.role].map((s) =>
+    ...(ici.tableau?.textes.suggestions ?? []).map((s) =>
       el('button', {
         classe: 'suggestion',
         type: 'button',
@@ -957,29 +899,23 @@ async function repondre(conf, oui) {
   }
 }
 
-function changerIdentite(identite) {
+async function changerIdentite(identite) {
   if (memeIdentite(identite, ici.identite)) return
   ici.identite = identite
   ici.conversation = undefined
   ici.attente = null
   $('identite').value = cleIdentite(identite)
+  const role = roleDe(identite)
   note(
-    identite.role === 'patron'
-      ? 'Vous parlez maintenant en tant que patron. Nouvelle conversation.'
-      : `Vous parlez maintenant en tant que ${nomDe(identite)} (${identite.agent}). Nouvelle conversation.`,
+    role?.identifie
+      ? `Vous parlez maintenant en tant que ${nomDe(identite)} (${identite.personne}). Nouvelle conversation.`
+      : `Vous parlez maintenant en tant que ${sansArticle(role?.enMots ?? identite.role)}. Nouvelle conversation.`,
   )
+  await chargerTableau()
+  if (identite !== ici.identite) return
   accueil()
   rendreSuggestions()
   rafraichir()
-}
-
-/** Met une consigne dans le champ, au nom de cette identité, sans l'envoyer : on la relit d'abord. */
-function preparer(texte, identite) {
-  changerIdentite(identite)
-  const champ = $('consigne')
-  champ.value = texte
-  ajuster()
-  champ.focus()
 }
 
 function ajuster() {
@@ -990,7 +926,7 @@ function ajuster() {
 
 // ---------- démarrage ----------
 
-function demarrer() {
+async function demarrer() {
   for (const b of document.querySelectorAll('.onglet')) {
     b.addEventListener('click', () => ouvrirOnglet(b.dataset.vue))
     b.addEventListener('keydown', (e) => {
@@ -1013,10 +949,7 @@ function demarrer() {
   }
   $('rafraichir-journal').addEventListener('click', chargerJournal)
   $('rafraichir-appris').addEventListener('click', chargerGestes)
-  $('identite').addEventListener('change', (e) => {
-    const v = e.target.value
-    changerIdentite(v === 'patron' ? PATRON : { role: 'agent', agent: v.slice('agent:'.length) })
-  })
+  $('identite').addEventListener('change', (e) => changerIdentite(identiteDe(e.target.value)))
   $('formulaire').addEventListener('submit', (e) => {
     e.preventDefault()
     envoyer($('consigne').value)
@@ -1028,6 +961,22 @@ function demarrer() {
     }
   })
   $('consigne').addEventListener('input', ajuster)
+  try {
+    ici.roles = await appeler(API.roles, {})
+  } catch (erreur) {
+    bulleErreur(erreur.message)
+    return
+  }
+  // On entre sous le premier rôle sans identifiant que le métier déclare (la sécurité : le patron).
+  const premier = ici.roles.find((r) => !r.identifie)
+  if (!premier) {
+    bulleErreur(
+      'Ce métier ne déclare aucun rôle sans identifiant : la page ne sait pas qui choisir.',
+    )
+    return
+  }
+  ici.identite = { role: premier.id }
+  await chargerTableau()
   rendreSuggestions()
   chargerEtat().then(() => {
     if (fil().children.length === 0) accueil()

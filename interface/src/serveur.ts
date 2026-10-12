@@ -7,8 +7,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { type Modele, modeleDepuisConfig, modeleSimule, type Scripte } from '@harnais/moteur'
-import { CONVERSATION } from '@harnais/securite-privee'
+import {
+  type MetierConversation,
+  type Modele,
+  metierDe,
+  modeleDepuisConfig,
+  modeleSimule,
+  type Scripte,
+} from '@harnais/moteur'
 import { serve } from '@hono/node-server'
 import { creerApp, HOTE } from './app'
 
@@ -46,20 +52,23 @@ function script(): Scripte[] {
 }
 
 /** Le modèle : simulé (sans clé), ou celui de la config du client. */
-function modele(): Modele {
+function modele(m: MetierConversation<unknown>): Modele {
   if (values.modele === 'simule') return modeleSimule(script())
-  const s = CONVERSATION.ouvrir(dossier)
+  const s = m.ouvrir(dossier)
   try {
-    return modeleDepuisConfig(CONVERSATION.config(s), process.env)
+    return modeleDepuisConfig(m.config(s), process.env)
   } finally {
-    CONVERSATION.fermer(s)
+    m.fermer(s)
   }
 }
 
 try {
+  // Le métier du client, chargé depuis son `config.yaml` (PLAN-METIER-2.md M10).
+  const metier = await metierDe(dossier)
   const app = creerApp({
     dossier,
-    modele: modele(),
+    metier,
+    modele: modele(metier),
     ...(values.maintenant ? { maintenant: values.maintenant } : {}),
   })
   serve({ fetch: app.fetch, hostname: HOTE, port }, (info) => {

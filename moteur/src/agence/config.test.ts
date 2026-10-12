@@ -4,11 +4,13 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parse, stringify } from 'yaml'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import {
   assertEnv,
   chargerAgence,
   type Executer,
   FICHIER_AGENCE,
+  PLACE_METIER,
   preflight,
   prixAgence,
 } from './config'
@@ -50,6 +52,21 @@ describe('agence.yaml', () => {
   it('un réglage manquant refuse', () => {
     const { ronde: _ronde, ...sans } = brut()
     expect(() => chargerAgence(racineAvec(sans))).toThrow(/invalide/)
+  })
+
+  it('le client des évals de chaque métier est un client de ce métier (PLAN-METIER-2.md M9)', () => {
+    const { evals_clients } = chargerAgence(RACINE).chantier
+    expect(Object.keys(evals_clients)).toContain('securite-privee')
+    for (const [metier, client] of Object.entries(evals_clients)) {
+      expect(chargerConfig(join(RACINE, client, FICHIER_CONFIG), ConfigBase).metier).toBe(metier)
+    }
+  })
+
+  it('un chemin autorisé sous metiers/ sans la place du métier refuse (PLAN-METIER-2.md M9)', () => {
+    const a = brut() as { chantier: { chemins_autorises: string[] } }
+    expect(a.chantier.chemins_autorises.some((c) => c.includes(PLACE_METIER))).toBe(true)
+    a.chantier.chemins_autorises = [...a.chantier.chemins_autorises, 'metiers/*/code/src/**']
+    expect(() => chargerAgence(racineAvec(a))).toThrow(/porte/)
   })
 
   it('un modèle sous acces: anthropic sans prix refuse', () => {

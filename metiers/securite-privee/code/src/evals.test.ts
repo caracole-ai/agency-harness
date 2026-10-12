@@ -10,12 +10,14 @@ import {
   type GesteAppris,
   gesteDe,
   lireFichiersGestes,
+  personneDuTest,
   TESTS_MIN,
 } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ACTIONS } from './actions'
 import { INTENTIONS } from './conversation'
+import { OPERATION_REAFFECTER } from './operation-reaffecter'
 
 // Les fichiers d'étiquettes des évals (`evals/`) se lisent et couvrent ce que
 // le plan exige (PLAN-ESPACES.md § 9.1) : sans appel au modèle, cette garde
@@ -23,7 +25,7 @@ import { INTENTIONS } from './conversation'
 // client fictif s'il en a) passent le même test d'honnêteté que les gestes
 // codés (PLAN-PROMOTION.md § 7.3, P13).
 
-const evals = fileURLToPath(new URL('../../../../evals', import.meta.url))
+const evals = fileURLToPath(new URL('../../evals', import.meta.url))
 const fictif = fileURLToPath(new URL('../../../../exemples/client-fictif', import.meta.url))
 const traduire = FichierTraduire.parse(parse(readFileSync(`${evals}/consignes.yaml`, 'utf8')))
 const echappee = FichierEchappee.parse(parse(readFileSync(`${evals}/echappees.yaml`, 'utf8')))
@@ -66,8 +68,8 @@ describe('les consignes de l’éval de traduction', () => {
     }
   })
   it('les agents nommés existent au client fictif', () => {
-    for (const c of traduire.cas.filter((x) => x.agent))
-      expect(agentsFictif, c.id).toContain(`${c.agent};`)
+    for (const c of traduire.cas.filter((x) => x.personne))
+      expect(agentsFictif, c.id).toContain(`${c.personne};`)
   })
 })
 
@@ -94,7 +96,7 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
           `${g.id} ${t.echappee}`,
         ).toBeGreaterThan(0)
         expect(
-          t.role === 'agent' ? t.agent !== null : t.agent === null,
+          t.role === 'agent' ? personneDuTest(t) !== null : personneDuTest(t) === null,
           `${g.id} ${t.echappee}`,
         ).toBe(true)
       }
@@ -115,8 +117,10 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
   it('les agents de ses tests existent au client fictif', () => {
     for (const g of gestes) {
       for (const t of g.tests) {
-        const reaffectes = (t.modifications ?? []).map((m) => m.agent)
-        for (const id of [t.agent, ...Object.values(t.params), ...reaffectes].filter(
+        const reaffectes = (t.modifications ?? []).map(
+          (m) => OPERATION_REAFFECTER.modification.parse(m).agent,
+        )
+        for (const id of [personneDuTest(t), ...Object.values(t.params), ...reaffectes].filter(
           (v): v is string => typeof v === 'string' && /^A-\d+$/.test(v),
         )) {
           expect(agentsFictif, `${g.id} ${t.echappee}`).toContain(`${id};`)

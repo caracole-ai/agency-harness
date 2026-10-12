@@ -5,6 +5,7 @@ import type { Action, Intention } from '../conversation/actions'
 import type { ConfigConversation } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
 import { TYPE_CONSIGNE, TYPE_PRECISION_ATTENDUE } from '../conversation/conversation'
+import type { Domaine } from '../conversation/domaine'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
@@ -16,8 +17,8 @@ import { TYPE_APPEL } from '../modele/compteur'
 
 export const CLIENT_ESSAI = 'client essai'
 export const PERSONNES_ESSAI = [
-  { id: 'A-1', nom: 'Rosalie Vernet' },
-  { id: 'A-2', nom: 'Octave Brunel' },
+  { id: 'A-1', nom: 'Rosalie Vernet', sorte: 'personne' as const },
+  { id: 'A-2', nom: 'Octave Brunel', sorte: 'personne' as const },
 ]
 /** Ce qui ne doit jamais sortir du journal vers la ronde. */
 export const SECRETS_ESSAI = {
@@ -57,6 +58,17 @@ export const INTENTIONS_ESSAI: Intention[] = [
   { id: 'liberer_un_jour', description: "libérer un agent d'une journée", ecrit: true },
 ]
 
+/** Le domaine du métier d'essai : celui du métier livré, recopié, pour que la ronde d'essai reçoive le même système qu'avant (PLAN-METIER-2.md M7). */
+export const DOMAINE_ESSAI: Domaine = {
+  cadre: "l'outil de planning d'une entreprise de sécurité privée",
+  objets: 'le planning et les agents',
+  modifications:
+    'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
+  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
+  identifiants: /\bA-\d+\b/g,
+  rienASignaler: 'Aucune vacation contraire à une règle.',
+}
+
 export interface Session {
   dossier: string
   journal: Journal
@@ -75,7 +87,19 @@ export const METIER_ESSAI: MetierConversation<Session> = {
   }),
   actions: [VOIR_PLANNING],
   intentions: INTENTIONS_ESSAI,
-  vocabulaire: () => ({ agents: PERSONNES_ESSAI }),
+  roles: [
+    {
+      id: 'patron',
+      enMots: 'le patron',
+      identifie: false,
+      capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+    },
+    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+  ],
+  vocabulaire: () => ({ noms: PERSONNES_ESSAI }),
+  noms: () => PERSONNES_ESSAI,
+  typesParametre: [],
+  domaine: DOMAINE_ESSAI,
   verifierIdentite: () => undefined,
 }
 

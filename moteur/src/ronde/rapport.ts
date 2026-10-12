@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { interdits, type MissionRetiree } from '../chantier/memoire'
 import { FORMAT_INTENTION, schemaJson } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
+import { type Domaine, motifPourTester } from '../conversation/domaine'
 import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, type Resume } from './resume'
 
 // Le rapport de la ronde (PLAN-RONDE.md § 5.2, R3) : un schéma strict, l'outil
@@ -49,26 +50,28 @@ export const MissionRonde = z.strictObject({
     .array(z.string().regex(FORMAT_INTENTION))
     .max(10)
     .describe('les intentions du catalogue concernées, ou un slug neuf'),
-  consignes_types: z
-    .array(z.string().min(1).max(200))
-    .min(1)
-    .max(5)
-    .describe(
-      'la demande réécrite avec des places entre chevrons (<agent>, <du>, <au>, <site>), sans aucun identifiant ni nom',
-    ),
-  ecrit: z.boolean().describe('vrai si la demande modifie le planning'),
+  consignes_types: z.array(z.string().min(1).max(200)).min(1).max(5),
+  ecrit: z.boolean().describe('vrai si la demande modifie les données'),
   estimation: z.enum(ESTIMATIONS),
 })
 export type MissionRonde = z.infer<typeof MissionRonde>
 
-/** Le schéma du rapport, borné par la config (`ronde.missions_max`). */
-export const schemaRapport = (missionsMax: number) =>
+/** La mission telle que le modèle la voit : ses consignes-types citent les places du métier (PLAN-METIER-2.md M7). */
+const missionRonde = (places: string[]) =>
+  MissionRonde.extend({
+    consignes_types: MissionRonde.shape.consignes_types.describe(
+      `la demande réécrite avec des places entre chevrons (${places.join(', ')}), sans aucun identifiant ni nom`,
+    ),
+  })
+
+/** Le schéma du rapport, borné par la config (`ronde.missions_max`), avec les places du métier. */
+export const schemaRapport = (missionsMax: number, places: string[]) =>
   z.strictObject({
     observations: z
       .array(z.string().max(OBSERVATION_LONGUEUR_MAX))
       .max(OBSERVATIONS_MAX)
       .describe('ce que la ronde a remarqué, en phrases courtes'),
-    missions: z.array(MissionRonde).max(missionsMax),
+    missions: z.array(missionRonde(places)).max(missionsMax),
     rien_a_signaler: z.boolean().describe('vrai si et seulement si aucune mission'),
   })
 export type RapportDeRonde = z.infer<ReturnType<typeof schemaRapport>>
@@ -77,15 +80,16 @@ const DESCRIPTION_OUTIL =
   'Rends le rapport de la ronde : observations, missions désignées par identifiants, ou rien à signaler.'
 
 /** L'outil de la ronde sous acces: anthropic (un seul appel, schéma strict). */
-export const outilRapport = (missionsMax: number): Anthropic.Tool => ({
+export const outilRapport = (missionsMax: number, places: string[]): Anthropic.Tool => ({
   name: OUTIL_RAPPORT,
   description: DESCRIPTION_OUTIL,
-  input_schema: schemaJson(schemaRapport(missionsMax)),
+  input_schema: schemaJson(schemaRapport(missionsMax, places)),
   strict: true,
 })
 
 /** Le même schéma, pour `--json-schema` du binaire (§ 0.a). */
-export const schemaJsonRapport = (missionsMax: number) => schemaJson(schemaRapport(missionsMax))
+export const schemaJsonRapport = (missionsMax: number, places: string[]) =>
+  schemaJson(schemaRapport(missionsMax, places))
 
 /** Deux listes d'intentions non vides, aux mêmes éléments. */
 export const memesIntentions = (a: string[], b: string[]) =>
@@ -115,15 +119,21 @@ export type Revalidation =
  * Les règles de R3, en code. `retirees` : les missions retirées (mémoire,
  * G2), reconnues par leur identifiant ou par leurs intentions ; `personnes` :
  * toutes celles du client, pour qu'aucune consigne-type ne porte un nom ou un
- * identifiant.
+ * identifiant ; `domaine` : le motif des identifiants du métier.
  */
 export function revalider(
   rapport: RapportDeRonde,
   resume: Resume,
   catalogue: Catalogue,
-  config: { missionsMax: number; retirees: MissionRetiree[]; personnes: Designable[] },
+  config: {
+    missionsMax: number
+    retirees: MissionRetiree[]
+    personnes: Designable[]
+    domaine: Domaine
+  },
 ): Revalidation {
   const ecarts: string[] = []
+  const identifiant = motifPourTester(config.domaine)
   const vues = new Set(
     resume.demandes.flatMap((d) =>
       d.devenue.sorte === 'demande_nouvelle' ? [d.devenue.echappee] : [],
@@ -143,8 +153,8 @@ export function revalider(
     }
     for (const c of m.consignes_types) {
       const trouves = interdits(c, config.personnes)
-      // R3 : `fuites`, les identifiants connus, et toute forme d'identifiant d'agent.
-      if (trouves.length > 0 || /\bA-\d+\b/.test(c)) {
+      // R3 : `fuites`, les identifiants connus, et toute forme d'identifiant du métier.
+      if (trouves.length > 0 || identifiant.test(c)) {
         ecarts.push(`${m.id} : une consigne-type porte un identifiant ou un nom`)
         break
       }

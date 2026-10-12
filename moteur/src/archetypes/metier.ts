@@ -23,7 +23,7 @@ export interface MetierVeiller<Contexte, Config extends ConfigClient> {
   config: z.ZodType<Config>
   /** Le connecteur de lecture : les données du client vers le modèle du métier. */
   lire(dossierClient: string, config: Config): Contexte
-  /** « 12 agents, 5 postes, 40 vacations » */
+  /** Ce qui a été lu, en mots (exemple : « 12 agents, 5 postes, 40 vacations ») */
   resume(ctx: Contexte): string
   controles: Controle<Contexte>[]
   /** Les règles tenues par des échéances plutôt que par des contrôles. */

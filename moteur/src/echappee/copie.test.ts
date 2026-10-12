@@ -85,6 +85,38 @@ describe('decrireTables', () => {
     expect(texte).toContain('(2 lignes)')
     expect(texte).toContain('(1 ligne)')
   })
+  it('une colonne en euros : arrondie à deux décimales dans la copie, et dite telle (M11)', () => {
+    const euros: TableCopie = {
+      nom: 'factures',
+      description: 'les factures',
+      colonnes: [
+        { nom: 'montant', type: 'REAL', description: 'montant hors taxes', decimales: 2 },
+        { nom: 'taux', type: 'REAL', description: 'taux horaire' },
+      ],
+      lignes: [{ montant: 0.1 + 0.2, taux: 0.1 + 0.2 }, { montant: 1234.5678 }],
+    }
+    const texte = decrireTables([euros])
+    expect(texte).toContain('- montant (REAL, en euros, deux décimales) : montant hors taxes')
+    expect(texte).toContain('- taux (REAL) : taux horaire')
+    const copie = creerCopie([euros])
+    expect(copie.db.prepare('SELECT montant, taux FROM factures').all()).toEqual([
+      { montant: 0.3, taux: 0.1 + 0.2 },
+      { montant: 1234.57, taux: null },
+    ])
+    copie.fermer()
+  })
+  it('des décimales sur une colonne qui n’est pas REAL lèvent', () => {
+    expect(() =>
+      creerCopie([
+        {
+          nom: 'factures',
+          description: 'les factures',
+          colonnes: [{ nom: 'montant', type: 'INTEGER', description: 'centimes', decimales: 2 }],
+          lignes: [],
+        },
+      ]),
+    ).toThrow(/décimales sans être REAL/)
+  })
   it('la copie porte la même description', () => {
     const copie = creerCopie(TABLES)
     expect(copie.description).toBe(decrireTables(TABLES))

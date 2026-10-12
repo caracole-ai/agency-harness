@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import type { Identite } from '../conversation/actions'
 import { type ConfigConversation, prixDe } from '../conversation/config'
 import type { Designable } from '../conversation/designation'
+import type { Domaine } from '../conversation/domaine'
 import { idEchappee } from '../conversation/id'
 import { FRONTIERE } from '../conversation/traduire'
 import type { Evenement, Journal } from '../journal/journal'
@@ -47,8 +48,10 @@ export interface CadreEchappee {
   journal: Journal
   config: ConfigConversation
   identite: Identite
-  /** « le patron », « l'agent A-2 » : jamais un nom (PLAN-PSEUDONYMES.md S8). */
+  /** Qui parle, jamais un nom (PLAN-PSEUDONYMES.md S8), exemple : « le patron », « l'agent A-2 ». */
   quiParle: string
+  /** Le domaine du métier : ce qu'une modification peut faire (PLAN-METIER-2.md M7). */
+  domaine: Domaine
 }
 
 /** Ce que le métier fournit à une échappée. */
@@ -57,11 +60,11 @@ export interface EchappeeDuMetier<Modif> {
   outils: Omit<OutilsEchappee<Modif>, 'requete'>
   /** Les interdits codés, ceux qu'une proposition doit respecter. */
   regles: { id: string; nom: string }[]
-  /** Les préférences du patron, en mots : des critères de qualité, pas de validité. */
+  /** Les préférences de l'entreprise, en mots : des critères de qualité, pas de validité. */
   preferences: string
   /** Les personnes visibles du rôle : le contrôle les connaît par leur identifiant, le texte montré par leur nom (S4). */
   personnes: Designable[]
-  /** Toutes les personnes du client : aucun de leurs noms ne part au modèle, pas même celui d'un collègue qu'un agent écrit (S7). */
+  /** Toutes les personnes du client : aucun de leurs noms ne part au modèle, pas même celui d'un collègue que le demandeur écrit (S7). */
   toutes: Designable[]
 }
 
@@ -83,7 +86,7 @@ export interface Instantane {
   echappee: string
   horodatage: string
   role: Identite['role']
-  agent?: string
+  personne?: string
   tables: TableCopie[]
 }
 
@@ -96,13 +99,17 @@ export function systemeEchappee(
   regles: { id: string; nom: string }[],
   preferences: string,
   proposer: boolean,
+  domaine: Domaine,
 ): string {
   return [
     `Tu travailles pour ${quiParle} sur une copie de ses données. Rien de ce que tu fais ne modifie quoi que ce soit : tu proposes, une personne décide.`,
     '',
-    'Tu ne calcules rien de tête. Chaque chiffre de ta réponse vient d’un résultat de requete : fais faire les sommes et les comptes par SQL. Si tu n’as pas la donnée, tu le dis. Recopie les nombres, les dates et les heures tels que les résultats les écrivent. Ta réponse est courte : les chiffres demandés et les noms, sans recopier la date ni l’heure du message, ni les bornes de tes requêtes. Réponds à la question posée, rien de plus : pas de détail par vacation si on demande un total, pas de remarque ajoutée.',
+    'Tu ne calcules rien de tête. Chaque chiffre de ta réponse vient d’un résultat de requete : fais faire les sommes et les comptes par SQL. Si tu n’as pas la donnée, tu le dis. Recopie les nombres, les dates et les heures tels que les résultats les écrivent. Ta réponse est courte : les chiffres demandés et les noms, sans recopier la date ni l’heure du message, ni les bornes de tes requêtes. Réponds à la question posée, rien de plus : pas de détail ligne par ligne si on demande un total, pas de remarque ajoutée.',
     proposer
-      ? 'Tu finis toujours par un appel d’outil, repondre, proposer ou abandonner, jamais par du texte. Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.'
+      ? [
+          'Tu finis toujours par un appel d’outil, repondre, proposer ou abandonner, jamais par du texte.',
+          ...(domaine.modifications !== null ? [domaine.modifications] : []),
+        ].join(' ')
       : 'Tu finis toujours par un appel d’outil, repondre ou abandonner, jamais par du texte. Tu ne peux rien proposer de changer.',
     '',
     'Les tables (SQLite) :',
@@ -114,7 +121,7 @@ export function systemeEchappee(
           ...regles.map((r) => `- ${r.id} — ${r.nom}`),
           'verifier te dit ce qu’une modification enfreint ; une proposition qui enfreint une règle est refusée.',
           '',
-          `Les préférences du patron, pour choisir entre des propositions qui respectent toutes les règles : ${preferences}.`,
+          `Les préférences de l’entreprise, pour choisir entre des propositions qui respectent toutes les règles : ${preferences}.`,
         ]
       : []),
     '',
@@ -172,8 +179,8 @@ export async function echappee<Modif>(
   const horodatage = maintenant.toInstant().toString()
   const id = idEchappee(maintenant)
   const prix = prixDe(cadre.config)
-  const { role, agent } = cadre.identite
-  const qui = { role, ...(agent !== undefined ? { agent } : {}) }
+  const { role, personne } = cadre.identite
+  const qui = { role, ...(personne !== undefined ? { personne } : {}) }
   const ecrire = (e: Omit<Evenement, 'client' | 'objet'>) =>
     cadre.journal.ecrire([{ ...e, client: cadre.client, objet: cadre.conversation }], horodatage)
   const journaliser = (e: EvenementBoucle) => {
@@ -224,6 +231,7 @@ export async function echappee<Modif>(
         metier.regles,
         metier.preferences,
         metier.outils.proposer,
+        cadre.domaine,
       ),
       consigneModele,
       intentionModele,

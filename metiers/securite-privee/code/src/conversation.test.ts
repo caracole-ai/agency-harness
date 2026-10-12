@@ -50,12 +50,16 @@ const exemple = fileURLToPath(new URL('../../../../exemples/client-fictif', impo
 const maintenant = aParis('2026-10-10T21:40')
 /** Une identité passée par la porte, sur le registre d'accès du client fictif. */
 function verifiee(demandeur: Identite, dossier = exemple): IdentiteVerifiee {
-  const accueil = recevoir(chargerPersonnes(dossier), demandeur)
+  const accueil = recevoir(
+    CONVERSATION.roles,
+    chargerPersonnes(dossier, CONVERSATION.roles),
+    demandeur,
+  )
   if (accueil.sorte === 'refus') throw new Error(accueil.motif)
   return accueil.identite
 }
 const PATRON = verifiee({ role: 'patron' })
-const agent = (id: string) => verifiee({ role: 'agent', agent: id })
+const agent = (id: string) => verifiee({ role: 'agent', personne: id })
 
 const planningDe = (s: Session) => readFileSync(join(s.dossier, 'planning.csv'), 'utf8')
 
@@ -255,7 +259,7 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
     expect(lignes.map((l) => [l.type, l.motif])).toEqual([
       [TYPE_ACCES_REFUSE, "inconnu au registre d'accès : A-99"],
       [TYPE_ACCES_REFUSE, 'rôle inconnu : x'],
-      [TYPE_ACCES_REFUSE, "le patron parle en son nom : pas d'identifiant d'agent"],
+      [TYPE_ACCES_REFUSE, "le patron parle en son nom : pas d'identifiant"],
     ])
     expect(JSON.parse(lignes[0]?.donnees ?? '{}')).toEqual({
       identite: '{"role":"agent","agent":"A-99"}',
@@ -268,7 +272,7 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
       join(s.dossier, FICHIER_PERSONNES),
       'personnes:\n  - { role: agent, agent: A-99 }\n',
     )
-    const fantome = verifiee({ role: 'agent', agent: 'A-99' }, s.dossier)
+    const fantome = verifiee({ role: 'agent', personne: 'A-99' }, s.dossier)
     const { r } = await tour(s, fantome, outil('mes_titres', {}))
     expect(r.sorte).toBe('refus')
     expect(r.texte).toMatch(/A-99/)
@@ -582,8 +586,8 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
       sorte: 'precision',
       texte: 'Vous parlez de qui : Aïcha Traoré ou Aïcha Mansouri ?',
       candidats: [
-        { id: 'A-11', nom: 'Aïcha Traoré' },
-        { id: 'A-14', nom: 'Aïcha Mansouri' },
+        { id: 'A-11', nom: 'Aïcha Traoré', sorte: 'personne' },
+        { id: 'A-14', nom: 'Aïcha Mansouri', sorte: 'personne' },
       ],
     })
     expect(premier.modele.appels).toHaveLength(1)
@@ -703,7 +707,7 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     expect(premier.r).toEqual({
       sorte: 'precision',
       texte: 'Vous parlez de qui : Karim Haddad ?',
-      candidats: [{ id: 'A-1', nom: 'Karim Haddad' }],
+      candidats: [{ id: 'A-1', nom: 'Karim Haddad', sorte: 'personne' }],
     })
     expect(premier.modele.appels).toHaveLength(1)
     expect(appelsEchappee(s, premier.conversation)).toEqual([])
@@ -940,12 +944,7 @@ describe('un geste appris qui écrit : la réaffectation groupée en un appel (P
   // Le geste écrit à la main de l'éval de rejeu (`evals/gestes.yaml`, calculs
   // à la main) : le mardi 13 de Karim, V-03, va à Aïcha (A-11).
   const geste = FichierGestes.parse(
-    parse(
-      readFileSync(
-        fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
-        'utf8',
-      ),
-    ),
+    parse(readFileSync(fileURLToPath(new URL('../../evals/gestes.yaml', import.meta.url)), 'utf8')),
   ).gestes.find((g) => g.id === 'liberer_un_jour')
   if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
   const jeton = empreinteGeste(geste)
@@ -1049,10 +1048,7 @@ describe('un geste appris qui écrit, refusé par les règles : rien n’est ouv
   it('Sophie (carte expirée) pour V-03 : la proposition est refusée par le métier, au journal, sans attente', async () => {
     const geste = FichierGestes.parse(
       parse(
-        readFileSync(
-          fileURLToPath(new URL('../../../../evals/gestes.yaml', import.meta.url)),
-          'utf8',
-        ),
+        readFileSync(fileURLToPath(new URL('../../evals/gestes.yaml', import.meta.url)), 'utf8'),
       ),
     ).gestes.find((g) => g.id === 'liberer_un_jour')
     if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')

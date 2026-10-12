@@ -2,25 +2,38 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { PERSONNES_ESSAI } from '../ronde/essai'
+import { PLACE_METIER } from '../agence/config'
+import { PERSONNES_ESSAI } from '../ronde/essai.test.fixture'
 import { commandeSync } from './arbre'
-import { creerDepots, gesteVert, TEST_ESSAI } from './essai'
-import { casParGesteNouveau, garderDiff, motifChemin } from './garde'
+import { creerDepots, gesteVert, MISSION_ESSAI, TEST_ESSAI } from './essai.test.fixture'
+import {
+  casParGesteNouveau,
+  fichierConsignes,
+  garderDiff,
+  motifChemin,
+  resoudreMetier,
+} from './garde'
 
 // PLAN-RONDE.md § 6.2 (garderDiff) et PLAN-GENERAL.md G1, conditions 1, 2, 4
-// et 7 : sur un vrai dépôt git, une branche qui touche ce qu'elle ne doit pas.
+// et 7 : sur un vrai dépôt git, une branche qui touche ce qu'elle ne doit pas ;
+// les chemins résolus avec le métier de la mission (PLAN-METIER-2.md M9).
 
 const CONFIG = {
   chemins_autorises: [
-    'metiers/*/code/src/**',
-    'evals/consignes.yaml',
-    'evals/gestes.yaml',
-    'metiers/*/fiche.md',
+    `metiers/${PLACE_METIER}/code/src/**`,
+    `metiers/${PLACE_METIER}/evals/consignes.yaml`,
+    `metiers/${PLACE_METIER}/evals/gestes.yaml`,
+    `metiers/${PLACE_METIER}/fiche.md`,
     'memoire/**',
   ],
-  chemins_interdits: ['metiers/*/code/src/controles.ts', 'metiers/*/code/src/connecteurs/**'],
+  chemins_interdits: [
+    `metiers/${PLACE_METIER}/code/src/controles.ts`,
+    `metiers/${PLACE_METIER}/code/src/connecteurs/**`,
+  ],
   lignes_max: 600,
 }
+const METIER = MISSION_ESSAI.metier
+const CONSIGNES = fichierConsignes(METIER)
 
 const git = (cwd: string, ...args: string[]) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -40,7 +53,13 @@ function branche(ecrire: Record<string, string>, supprimer: string[] = [], ligne
   git(depot, 'add', '-A')
   git(depot, 'commit', '-q', '--allow-empty', '-m', 'essai')
   return {
-    garde: garderDiff(commandeSync, depot, { ...CONFIG, lignes_max: lignesMax }, PERSONNES_ESSAI),
+    garde: garderDiff(
+      commandeSync,
+      depot,
+      { ...CONFIG, lignes_max: lignesMax },
+      PERSONNES_ESSAI,
+      METIER,
+    ),
     depot,
   }
 }
@@ -55,6 +74,20 @@ describe('motifChemin', () => {
       false,
     )
     expect(motifChemin('evals/consignes.yaml').test('evals/consignesXyaml')).toBe(false)
+  })
+})
+
+describe('resoudreMetier', () => {
+  it('remplace la place du métier ; un nom qui ouvrirait d’autres chemins lève', () => {
+    expect(resoudreMetier(`metiers/${PLACE_METIER}/code/src/**`, 'agence-web')).toBe(
+      'metiers/agence-web/code/src/**',
+    )
+    expect(resoudreMetier('memoire/**', 'essai')).toBe('memoire/**')
+    for (const faux of ['*', '../essai', 'a/b', '']) {
+      expect(() => resoudreMetier(`metiers/${PLACE_METIER}/fiche.md`, faux)).toThrow(
+        /pas un nom de métier/,
+      )
+    }
   })
 })
 
@@ -77,6 +110,21 @@ describe('garderDiff', () => {
       'metiers/essai/regles.yaml': 'x\n',
     })
     expect(garde.chemins.horsBande).toEqual(['metiers/essai/regles.yaml', 'moteur/src/moteur.ts'])
+    expect(garde.chemins.ok).toBe(false)
+  })
+
+  it('un autre métier que celui de la mission, même son code ou ses cas : hors de la bande (PLAN-METIER-2.md M9)', () => {
+    const { garde } = branche({
+      ...gesteVert(),
+      'metiers/securite-privee/code/src/actions.ts': 'x\n',
+      'metiers/securite-privee/evals/consignes.yaml': 'x\n',
+      'metiers/securite-privee/fiche.md': 'x\n',
+    })
+    expect(garde.chemins.horsBande).toEqual([
+      'metiers/securite-privee/code/src/actions.ts',
+      'metiers/securite-privee/evals/consignes.yaml',
+      'metiers/securite-privee/fiche.md',
+    ])
     expect(garde.chemins.ok).toBe(false)
   })
 
@@ -139,17 +187,17 @@ describe('garderDiff', () => {
           `  - { id: S-${n}, role: patron, consigne: "s ${n}", attendu: { sorte: action, action: geste_neuf } }\n`,
       )
       .join('')
+    expect(branche({ [CONSIGNES]: 'maintenant: "x"\ncas: []\n' }).garde.tests.disparus).toEqual(
+      expect.arrayContaining([expect.stringMatching(/P-1 a disparu/)]),
+    )
     expect(
-      branche({ 'evals/consignes.yaml': 'maintenant: "x"\ncas: []\n' }).garde.tests.disparus,
-    ).toEqual(expect.arrayContaining([expect.stringMatching(/P-1 a disparu/)]))
-    expect(
-      branche({ 'evals/consignes.yaml': consignes('{ sorte: action, action: autre }') }).garde.tests
+      branche({ [CONSIGNES]: consignes('{ sorte: action, action: autre }') }).garde.tests
         .disparus[0],
     ).toMatch(/P-1 a été réécrite/)
     // Sur main, P-1 attend voir_planning (pas une demande nouvelle) : la réécrire vers le geste neuf reste interdit.
     expect(
-      branche({ 'evals/consignes.yaml': consignes('{ sorte: action, action: geste_neuf }', trois) })
-        .garde.tests.disparus[0],
+      branche({ [CONSIGNES]: consignes('{ sorte: action, action: geste_neuf }', trois) }).garde
+        .tests.disparus[0],
     ).toMatch(/P-1 a été réécrite/)
   })
 
@@ -163,7 +211,7 @@ describe('garderDiff', () => {
 describe('casParGesteNouveau', () => {
   it('les actions attendues qui ne l’étaient pas sur main, et leurs cas', () => {
     const { depot } = branche(gesteVert())
-    expect(casParGesteNouveau(commandeSync, depot)).toEqual([
+    expect(casParGesteNouveau(commandeSync, depot, METIER)).toEqual([
       { geste: 'simuler_absence_code', cas: 3 },
     ])
   })

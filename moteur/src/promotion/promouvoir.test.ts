@@ -18,6 +18,11 @@ import {
 import { masquerTexte } from '../echappee/pseudonymes'
 import { ISSUE_GESTE, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
+import {
+  DOMAINE_EXEMPLE,
+  OPERATION_EXEMPLE,
+  TYPES_EXEMPLE,
+} from '../gestes/geste-appris.test.fixture'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { modeleSimule, type Scripte } from '../modele/simule'
@@ -132,7 +137,11 @@ const PROPOSE_LIBERER = {
     date: { type: 'date', description: 'le jour à libérer' },
   },
   requetes: [{ nom: 'liberer', sql: SQL_LIBERER }],
-  modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'vacation', agent: 'agent' } },
+  modifications: {
+    pour_chaque: 'liberer',
+    operation: 'reaffecter',
+    colonnes: { vacation: 'vacation', agent: 'agent' },
+  },
   reponse: { ligne: null, tableau: 'liberer', vide: 'Aucune vacation ce jour-là.' },
   tests: [
     { echappee: 'E-1', params: { agent: 'A-1', date: '2026-10-07' } },
@@ -212,6 +221,12 @@ interface Session {
   journal: Journal
 }
 
+const PERSONNES = AGENTS.lignes.map((a) => ({
+  id: String(a.id),
+  nom: String(a.nom),
+  sorte: 'personne' as const,
+}))
+
 /** Un métier minimal : un journal, une copie, deux intentions. */
 const METIER: MetierConversation<Session> = {
   ouvrir: (dossier) => ({ dossier, journal: new Journal(join(dossier, 'journal.sqlite')) }),
@@ -227,9 +242,20 @@ const METIER: MetierConversation<Session> = {
   actions: [VOIR_PLANNING],
   intentions: INTENTIONS,
   copie: () => [AGENTS, VACATIONS],
-  vocabulaire: () => ({
-    agents: AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) })),
-  }),
+  roles: [
+    {
+      id: 'patron',
+      enMots: 'le patron',
+      identifie: false,
+      capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+    },
+    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+  ],
+  typesParametre: TYPES_EXEMPLE,
+  operation: OPERATION_EXEMPLE,
+  domaine: DOMAINE_EXEMPLE,
+  vocabulaire: () => ({ noms: PERSONNES }),
+  noms: () => PERSONNES,
   verifierIdentite: () => undefined,
 }
 
@@ -237,7 +263,11 @@ const METIER: MetierConversation<Session> = {
 function dossierAvecEchappees(intention = 'heures_par_agent'): Session {
   const dossier = mkdtempSync(join(tmpdir(), 'promouvoir-'))
   const s = METIER.ouvrir(dossier)
-  const personnes = AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) }))
+  const personnes = AGENTS.lignes.map((a) => ({
+    id: String(a.id),
+    nom: String(a.nom),
+    sorte: 'personne' as const,
+  }))
   const cas: [string, string, string][] = [
     ['E-1', "Combien d'heures Karim a-t-il fait cette semaine ?", 'Karim Haddad : 24 heures.'],
     ['E-2', "Combien d'heures Julien a-t-il fait cette semaine ?", 'Julien Lefèvre : 16 heures.'],
@@ -307,7 +337,7 @@ describe('promouvoir', () => {
     expect(existsSync(join(s.dossier, DOSSIER_GESTES))).toBe(false)
     METIER.fermer(s)
   })
-  it('une intention qui écrit, au seuil : fabriquée depuis les propositions validées, sans aucun nom ; le geste propose et rejoue les réaffectations', async () => {
+  it('une intention qui écrit, au seuil : fabriquée depuis les propositions validées, relues dans le journal par l’opération, sans aucun nom ; le geste propose et rejoue les modifications', async () => {
     const s = dossierAvecPropositions()
     const modele = modeleSimule([proposer(PROPOSE_LIBERER)])
     const { dossier, fabrication } = await promouvoir(
@@ -331,20 +361,20 @@ describe('promouvoir', () => {
     ])
     expect(readFileSync(dossier, 'utf8')).toContain('Vérification : 3/3')
 
-    // Ce que la fabrication a lu : les consignes masquées, les vérifications, les réaffectations validées ; aucun nom.
+    // Ce que la fabrication a lu : les consignes masquées, les vérifications, les modifications validées ; aucun nom.
     const [appel] = modele.appels
     const message = JSON.stringify(appel?.messages)
     expect(message).toContain('Libère le jeudi 8 de A-2.')
     expect(message).toContain('Vérification 1 :')
     expect(message).toContain(
-      'Réaffectations validées par le patron (vacation → agent) :\\nV-4 → A-1',
+      'Modifications validées par le patron (vacation → agent) :\\nV-4 → A-1',
     )
     expect(`${message}${appel?.systeme}`).not.toMatch(/Karim|Julien|Haddad|Lefèvre/)
     expect(appel?.systeme).toContain('Les rôles : patron seulement')
     expect(Object.keys(appel?.outils[0]?.input_schema.properties ?? {})).toContain('modifications')
     METIER.fermer(s)
   })
-  it('une intention qui écrit : un rejeu qui ajoute une réaffectation est un écart de fond', async () => {
+  it('une intention qui écrit : un rejeu qui ajoute une modification est un écart de fond', async () => {
     const s = dossierAvecPropositions()
     const { fabrication } = await promouvoir(
       METIER,

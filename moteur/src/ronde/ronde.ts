@@ -18,6 +18,7 @@ import { ecrireRonde, type MemoirePourRonde, pourRonde } from '../chantier/memoi
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
+import type { Domaine } from '../conversation/domaine'
 import { FRONTIERE } from '../conversation/traduire'
 import { CONTROLE_OK } from '../echappee/boucle'
 import { TYPE_ECHAPPEE } from '../echappee/echappee'
@@ -196,8 +197,13 @@ export function construireCatalogue<S>(
   }
 }
 
-/** Le système de la ronde (§ 5.3) : le rôle, la carte, le catalogue, les sortes, la frontière. */
-export function systemeRonde(carte: string, catalogue: Catalogue, missionsMax: number): string {
+/** Le système de la ronde (§ 5.3) : le rôle, la carte, le catalogue, les sortes, la frontière ; le cadre et les places viennent du métier (PLAN-METIER-2.md M7). */
+export function systemeRonde(
+  carte: string,
+  catalogue: Catalogue,
+  missionsMax: number,
+  domaine: Domaine,
+): string {
   const liste = <T>(titre: string, xs: T[], ligne: (x: T) => string) => [
     `### ${titre}`,
     '',
@@ -205,12 +211,12 @@ export function systemeRonde(carte: string, catalogue: Catalogue, missionsMax: n
     '',
   ]
   return [
-    "Tu fais la ronde de nuit d'un outil de planning, pour une entreprise du métier décrit plus bas.",
+    `Tu fais la ronde de nuit de ${domaine.cadre}.`,
     "Tu lis ce qui a été demandé à l'outil dans la journée et comment chaque demande a fini, puis tu désignes ce qui manque au catalogue : des missions pour un chantier de code.",
-    'Tu désignes, tu ne codes pas. Tu ne lis aucune donnée : les consignes que tu lis sont celles que le modèle du quotidien a lues, un identifiant (A-7) à la place de chaque nom.',
+    'Tu désignes, tu ne codes pas. Tu ne lis aucune donnée : les consignes que tu lis sont celles que le modèle du quotidien a lues, un identifiant à la place de chaque nom.',
     '',
     `Rends un seul rapport (\`${OUTIL_RAPPORT}\`), au schéma donné, et rien d'autre. Au plus ${missionsMax} missions. Si rien ne mérite une mission, \`rien_a_signaler\` vrai et aucune mission.`,
-    "Une mission cite les identifiants d'échappées (E-…) du résumé qui la justifient, les intentions concernées (du catalogue, ou un slug neuf), et des consignes-types écrites avec des places entre chevrons (<agent>, <du>, <au>, <site>, <vacation>) : jamais un identifiant ni un nom.",
+    `Une mission cite les identifiants d'échappées (E-…) du résumé qui la justifient, les intentions concernées (du catalogue, ou un slug neuf), et des consignes-types écrites avec des places entre chevrons (${domaine.places.join(', ')}) : jamais un identifiant ni un nom.`,
     "N'écris aucune mission pour une intention marquée « promotion en cours » ou qui a un geste actif, ni une mission déjà ouverte ou retirée. Une intention « à coder à l'atelier » mérite une mission `geste_code`.",
     '',
     FRONTIERE,
@@ -274,7 +280,11 @@ export type AppelRonde = (systeme: string, message: string) => Promise<ReponseRo
  * vide ; `anthropic`, par la couche modèle avec l'outil. Le préflight passe
  * avant tout appel.
  */
-export function appelRonde(agence: Agence, env: Record<string, string | undefined>): AppelRonde {
+export function appelRonde(
+  agence: Agence,
+  env: Record<string, string | undefined>,
+  places: string[],
+): AppelRonde {
   const r = agence.modeles.ronde
   const missionsMax = agence.ronde.missions_max
   const delaiMs = agence.ronde.delai_secondes * 1000
@@ -290,7 +300,7 @@ export function appelRonde(agence: Agence, env: Record<string, string | undefine
             systeme,
             outils: [],
             cwd: vide,
-            schemaJson: schemaJsonRapport(missionsMax),
+            schemaJson: schemaJsonRapport(missionsMax, places),
             delaiMs,
             reglages: 'aucun',
           },
@@ -316,7 +326,7 @@ export function appelRonde(agence: Agence, env: Record<string, string | undefine
     const reponse = await modele.appeler({
       systeme,
       messages: [{ role: 'user', content: message }],
-      outils: [outilRapport(missionsMax)],
+      outils: [outilRapport(missionsMax, places)],
       effort: r.effort,
       maxTokens: agence.ronde.tokens_sortie,
       unSeulOutil: true,
@@ -489,8 +499,9 @@ function rondeEchouee(json: string): boolean {
 function lireRapport(
   sortie: unknown,
   missionsMax: number,
+  places: string[],
 ): { rapport?: RapportDeRonde; faute?: string } {
-  const lu = schemaRapport(missionsMax).safeParse(sortie)
+  const lu = schemaRapport(missionsMax, places).safeParse(sortie)
   return lu.success ? { rapport: lu.data } : { faute: z.prettifyError(lu.error).slice(0, 1000) }
 }
 
@@ -518,7 +529,7 @@ export async function faireRonde<S>(
     const config = m.config(s)
     const journal = m.journal(s)
     const client = m.client(s)
-    const personnes: Designable[] = m.vocabulaire(s, { role: 'patron' }).agents
+    const personnes: Designable[] = m.noms(s)
     const resume = resumerJournal(journal, { du: o.depuis ?? o.date, au: o.date }, personnes, {
       jours: o.agence.ronde.comptes_jours,
       plafondMoisUsd: config.plafonds.par_mois_usd,
@@ -548,6 +559,7 @@ export async function faireRonde<S>(
       readFileSync(join(o.racine, FICHIER_CARTE), 'utf8'),
       catalogue,
       missionsMax,
+      m.domaine,
     )
     const message = messageRonde(resume, memoire)
     const fuite = fuites(`${systeme}\n${message}`, personnes)
@@ -557,7 +569,7 @@ export async function faireRonde<S>(
     let rapport: RapportDeRonde | undefined
     let raison: string | undefined
     if (fuite.length === 0) {
-      const appel = o.appel ?? appelRonde(o.agence, o.env)
+      const appel = o.appel ?? appelRonde(o.agence, o.env, m.domaine.places)
       // Un appel, une relance au plus sur un échec de forme (P5).
       let consigne = message
       for (let essai = 0; essai < 2 && !rapport; essai++) {
@@ -571,7 +583,7 @@ export async function faireRonde<S>(
         cout_usd += r.cout_usd
         estime = r.estime
         const lu = r.ok
-          ? lireRapport(r.sortie, missionsMax)
+          ? lireRapport(r.sortie, missionsMax, m.domaine.places)
           : { faute: r.raison ?? 'sortie absente' }
         rapport = lu.rapport
         if (!rapport) {
@@ -585,6 +597,7 @@ export async function faireRonde<S>(
           missionsMax,
           retirees: memoire.retirees,
           personnes,
+          domaine: m.domaine,
         })
       : undefined
     const missions = revalidation?.sorte === 'accepte' ? revalidation.missions : []

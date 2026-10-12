@@ -8,9 +8,11 @@ import {
   executerSync,
   preflight,
 } from '../agence/config'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
+import type { Domaine } from '../conversation/domaine'
 import { dollars } from '../promotion/promotion'
 import { construireCatalogue } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -24,7 +26,7 @@ import {
 } from './arbre'
 import { envEnfant, type IssueClaude, type Lancer, lancerClaude, lancerProcessus } from './claude'
 import { CONDITIONS, type Condition, conclure, type IssueFusion, raisonRefus } from './fusion'
-import { casParGesteNouveau, type Garde, garderDiff } from './garde'
+import { casParGesteNouveau, fichierConsignes, type Garde, garderDiff } from './garde'
 import {
   coutEcrit,
   ecrireChantier,
@@ -66,6 +68,9 @@ export const ISSUES_CHANTIER = {
 } as const
 
 export const NIVEAUX = ['bloquant', 'à corriger', 'remarque'] as const
+
+/** La condition 4 d'une mission dont le métier n'a pas de client d'évals dans `agence.yaml` (PLAN-METIER-2.md M9). */
+export const AUCUN_CLIENT_EVALS = "aucun client d'évals pour ce métier"
 
 export const PlanChantier = z.strictObject({
   faisable: z
@@ -179,6 +184,11 @@ export async function faireChantier<S>(
 ): Promise<IssueChantier> {
   const debut = Date.now()
   const { mission, dossierClient } = lireMission(o.mission)
+  // Le métier de la mission décide de la bande et du client d'évals (M9) : il doit être celui du client qui l'a demandée.
+  const { metier } = chargerConfig(join(dossierClient, FICHIER_CONFIG), ConfigBase)
+  if (mission.metier !== metier) {
+    throw new Error(`mission ${mission.id} du métier ${mission.metier}, client du métier ${metier}`)
+  }
   const c = o.commande ?? commandeSync
   const lancer = o.lancer ?? lancerProcessus
   const executer = o.executer ?? executerSync
@@ -197,7 +207,7 @@ export async function faireChantier<S>(
     const config = m.config(s)
     const journal = m.journal(s)
     const client = m.client(s)
-    const personnes: Designable[] = m.vocabulaire(s, { role: 'patron' }).agents
+    const personnes: Designable[] = m.noms(s)
     const catalogue = construireCatalogue(
       m,
       dossierClient,
@@ -215,7 +225,7 @@ export async function faireChantier<S>(
 
     if (decision.sorte !== 'chantier') {
       // La même décision le même jour : rien de plus au journal (la nuit relancée ne refait rien).
-      const contenu = rendreDecision(mission, decision, jour)
+      const contenu = rendreDecision(mission, decision, jour, m.domaine)
       const deja = existsSync(dossier) && readFileSync(dossier, 'utf8') === contenu
       writeFileSync(dossier, contenu)
       if (!o.sansModele && !deja) {
@@ -232,7 +242,7 @@ export async function faireChantier<S>(
           o.agence.ronde.memoire.index_lignes,
         )
       : { index: [], conventions: '', chantiers: [] }
-    const missionTexte = missionPourModele(mission)
+    const missionTexte = missionPourModele(mission, m.domaine)
     const memoireTexte = [
       '### L’index (les dernières lignes)',
       '',
@@ -250,7 +260,12 @@ export async function faireChantier<S>(
     if (fuite.length > 0) {
       writeFileSync(
         dossier,
-        rendreDecision(mission, { sorte: 'ecartee', motif: ISSUES_CHANTIER.fuite }, jour),
+        rendreDecision(
+          mission,
+          { sorte: 'ecartee', motif: ISSUES_CHANTIER.fuite },
+          jour,
+          m.domaine,
+        ),
       )
       if (!o.sansModele) journaliser(ISSUES_CHANTIER.fuite, { fuite: fuite.length, cout_usd: 0 })
       return { sorte: 'fuite', fuite, dossier }
@@ -272,7 +287,7 @@ export async function faireChantier<S>(
       writeFileSync(
         dossier,
         [
-          rendreDecision(mission, decision, jour),
+          rendreDecision(mission, decision, jour, m.domaine),
           '## Ce que le plan recevrait (sans modèle : aucun appel)',
           '',
           promptPlan,
@@ -369,7 +384,7 @@ export async function faireChantier<S>(
     }
     const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
     const verifier = () => {
-      garde = garderDiff(c, cwd, ch, personnes)
+      garde = garderDiff(c, cwd, ch, personnes, mission.metier)
       const r = pnpm(['check'])
       check = { ok: r.code === 0, sortie: fin(`${r.sortie}\n${r.erreur}`, 15) }
     }
@@ -423,7 +438,16 @@ export async function faireChantier<S>(
         const motif = `question pour l'atelier : ${nettoyer(plan.raison, personnes)}`
         writeFileSync(
           dossier,
-          rendreDossier({ mission, jour, plan, etapes, conditions, constats, issue: motif }),
+          rendreDossier({
+            mission,
+            domaine: m.domaine,
+            jour,
+            plan,
+            etapes,
+            conditions,
+            constats,
+            issue: motif,
+          }),
         )
         journaliser(motif, { decision: 'question', cout_usd: round(cout()), cout_estime: true })
         return {
@@ -453,7 +477,7 @@ export async function faireChantier<S>(
         '',
         memoire.conventions.trim() || '(aucune)',
         '',
-        "Pour chaque geste nouveau : trois cas de traduction au moins dans `evals/consignes.yaml`, un test par règle d'exécution. Lance `pnpm check` jusqu'au vert. Finis par les trois sections : « ## Vérifié », « ## Non vérifié, risque », « ## Ce que j'ai appris ».",
+        `Pour chaque geste nouveau : trois cas de traduction au moins dans \`${fichierConsignes(mission.metier)}\`, un test par règle d'exécution. Lance \`pnpm check\` jusqu'au vert. Finis par les trois sections : « ## Vérifié », « ## Non vérifié, risque », « ## Ce que j'ai appris ».`,
       ].join('\n')
       const rImpl = await appeler(
         'implémentation',
@@ -506,7 +530,13 @@ export async function faireChantier<S>(
       ).length
 
       if (garde?.chemins.ok && check?.ok && relu && bloquantsRestants === 0) {
-        honnetete = mesurerHonnetete(c, cwd, o.env, ch.evals_client)
+        honnetete = mesurerHonnetete(
+          c,
+          cwd,
+          o.env,
+          mission.metier,
+          ch.evals_clients[mission.metier],
+        )
       }
 
       const echecsBornes = etapes.filter(
@@ -630,6 +660,7 @@ export async function faireChantier<S>(
       dossier,
       rendreDossier({
         mission,
+        domaine: m.domaine,
         jour,
         ...(plan ? { plan } : {}),
         etapes,
@@ -678,17 +709,22 @@ const round = (x: number) => Math.round(x * 1_000_000) / 1_000_000
 
 /**
  * Condition 4 de G1 : au moins trois cas de traduction par geste nouveau,
- * puis `pnpm evals traduire` dans l'arbre, avec le modèle du quotidien (la
- * clé que nomme la config du client des évals) : sa dernière ligne porte le
- * compte et le seuil, le taux décide.
+ * puis `pnpm evals traduire` dans l'arbre, sur le client des évals du métier
+ * de la mission (PLAN-METIER-2.md M9 ; aucun : refus), avec le modèle du
+ * quotidien (la clé que nomme sa config) : sa dernière ligne porte le compte
+ * et le seuil, le taux décide.
  */
 function mesurerHonnetete(
   c: Commande,
   arbre: string,
   env: Record<string, string | undefined>,
-  client: string,
+  metier: string,
+  client: string | undefined,
 ): { ok: boolean; mesure: string } {
-  const nouveaux = casParGesteNouveau(c, arbre)
+  if (client === undefined) {
+    return { ok: false, mesure: `${AUCUN_CLIENT_EVALS} (${metier})` }
+  }
+  const nouveaux = casParGesteNouveau(c, arbre, metier)
   const courts = nouveaux.filter((g) => g.cas < 3)
   const gestes =
     nouveaux.length === 0
@@ -764,7 +800,12 @@ function sectionsMemoire(x: {
 const sec = (ms: number) => `${Math.round(ms / 1000)} s`
 
 /** Le dossier d'une mission qui ne lance rien (promotion en cours, question, écartée). */
-function rendreDecision(mission: Mission, decision: Decision, jour: string): string {
+function rendreDecision(
+  mission: Mission,
+  decision: Decision,
+  jour: string,
+  domaine: Domaine,
+): string {
   return [
     `# Chantier \`${mission.id}\` — ${jour}`,
     '',
@@ -774,7 +815,7 @@ function rendreDecision(mission: Mission, decision: Decision, jour: string): str
     '',
     '## La mission',
     '',
-    missionPourModele(mission),
+    missionPourModele(mission, domaine),
     '',
   ].join('\n')
 }
@@ -782,6 +823,7 @@ function rendreDecision(mission: Mission, decision: Decision, jour: string): str
 /** Le dossier d'un chantier (§ 6.3) : chez le client, pour Lionel. */
 function rendreDossier(x: {
   mission: Mission
+  domaine: Domaine
   jour: string
   plan?: PlanChantier
   etapes: Etape[]
@@ -804,7 +846,7 @@ function rendreDossier(x: {
     '',
     `Ronde du ${x.mission.date}, sorte ${x.mission.sorte}.`,
     '',
-    missionPourModele(x.mission),
+    missionPourModele(x.mission, x.domaine),
     '',
     '## Le plan',
     '',

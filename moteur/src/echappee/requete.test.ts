@@ -209,4 +209,73 @@ describe('rendreResultat', () => {
       'erreur : no such table: inconnue',
     )
   })
+  it('un nombre non entier a deux décimales, un entier reste entier (M11)', () => {
+    expect(
+      rendreResultat({
+        colonnes: ['heures', 'montant', 'ratio', 'n'],
+        lignes: [[7.5, 12500, 1 / 3, 16]],
+        tronque: false,
+      }),
+    ).toBe('heures | montant | ratio | n\n7.50 | 12500 | 0.33 | 16')
+  })
+})
+
+describe('l’argent (PLAN-METIER-2.md § 6.4, M11)', () => {
+  const montants = creerCopie([
+    {
+      nom: 'factures',
+      description: 'les factures',
+      colonnes: [
+        { nom: 'id', type: 'TEXT', description: 'identifiant' },
+        { nom: 'type', type: 'TEXT', description: 'nature' },
+        { nom: 'montant', type: 'REAL', description: 'montant hors taxes', decimales: 2 },
+      ],
+      lignes: [
+        { id: 'FAC-2026-001', type: 'update', montant: 1234.56 },
+        { id: 'FAC-2026-002', type: 'creation', montant: 0.1 },
+      ],
+    },
+  ])
+  afterAll(() => montants.fermer())
+
+  it('SUM de 1234.56 + 0.1 rend 1234.66, pas un flottant brut', async () => {
+    const r = await executerRequete(montants, 'SELECT SUM(montant) AS total FROM factures')
+    expect(rendreResultat(r)).toBe('total\n1234.66')
+  })
+  it("WHERE type='update' est accepté : un mot refusé dans une chaîne n'est pas du SQL", async () => {
+    expect(await executerRequete(montants, "SELECT id FROM factures WHERE type='update'")).toEqual({
+      colonnes: ['id'],
+      lignes: [['FAC-2026-001']],
+      tronque: false,
+    })
+    expect(
+      await executerRequete(
+        montants,
+        `SELECT "type" AS "delete" FROM factures WHERE id = 'x''drop'`,
+      ),
+    ).toEqual({ colonnes: ['delete'], lignes: [], tronque: false })
+  })
+  it('UPDATE t est refusé', async () => {
+    expect(await executerRequete(montants, 'UPDATE t SET a = 1')).toHaveProperty('erreur')
+    expect(await executerRequete(montants, "SELECT 'a'; DELETE FROM factures")).toHaveProperty(
+      'erreur',
+    )
+  })
+  it.each([
+    "SELECT 'a' FROM factures WHERE 1 = 1 OR replace(type, 'u', 'v')",
+    "WITH x AS (SELECT 'update') DELETE FROM factures",
+    "SELECT 'a' || 'b FROM factures WHERE pragma",
+    "SELECT 'it''s', zeroblob(10)",
+    "SELECT 1 /* ' */, zeroblob(10) /* ' */",
+    "SELECT 1 -- '\n, zeroblob(10) -- '",
+    "SELECT [a'], zeroblob(10), ['b] FROM factures",
+    "SELECT `a'`, zeroblob(10), `'b` FROM factures",
+  ])(
+    'un mot refusé hors des chaînes reste refusé, une chaîne ne le cache pas : %s',
+    async (sql) => {
+      expect(await executerRequete(montants, sql)).toEqual({
+        erreur: expect.stringMatching(/^mot refusé/),
+      })
+    },
+  )
 })

@@ -6,46 +6,35 @@
 // (PLAN-ESPACES.md § 10, D4, D12).
 import { fileURLToPath } from 'node:url'
 import {
+  aCapacite,
   accueillir,
   activerGeste,
+  aParis,
   avecSession,
+  type Capacite,
   chargerPersonnes,
   confirmer,
   coutDuMois,
   ErreurAtelier,
   FUSEAU,
   type Identite,
+  IdentiteSchema,
   type IdentiteVerifiee,
   idConversation,
   type Ligne,
   listerGestes,
+  type MetierConversation,
   type Modele,
   type Personne,
   retirerGeste,
+  roleDe,
+  type Tableau,
   Temporal,
   TYPE_CONFIRMATION,
   TYPE_CONFIRMATION_ATTENDUE,
   traiterConsigne,
   verifierRegistre,
 } from '@harnais/moteur'
-import {
-  agentSollicite,
-  aParis,
-  attendus,
-  CONVERSATION,
-  decrire,
-  decrireModifications,
-  reaffectation,
-  reaffectationFinie,
-  remplacementFini,
-  type Session,
-  STATUT,
-  STATUT_R,
-  statut,
-  statutReaffectation,
-  TYPE_DELEGATION_PROPOSEE,
-  vacationDe,
-} from '@harnais/securite-privee'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { csrf } from 'hono/csrf'
@@ -81,9 +70,25 @@ interface Attente {
   empreinte: string
 }
 
-/** Tout le planning et tout le journal : des lectures réservées au patron. */
-function exigerPatron(identite: IdentiteVerifiee): void {
-  if (identite.role !== 'patron') throw new ErreurAcces('réservé au patron')
+/** Le métier du dossier, chargé depuis `config.yaml` par `metierDe` (PLAN-METIER-2.md M10). */
+type Metier = MetierConversation<unknown>
+
+/** Un métier sans `tableau` n'a ni suggestions, ni accueil, ni textes. */
+const SANS_TEXTES: Tableau['textes'] = { suggestions: [], accueil: '', vide: '', conditions: {} }
+
+/** « au patron », « à la cheffe de projet » : à qui une route est réservée, en mots. */
+const aQui = (enMots: string) =>
+  enMots.startsWith('le ')
+    ? `au ${enMots.slice(3)}`
+    : enMots.startsWith('les ')
+      ? `aux ${enMots.slice(4)}`
+      : `à ${enMots}`
+
+/** Tout le planning et tout le journal : des lectures réservées aux rôles qui ont cette capacité. */
+function exigerCapacite(m: Metier, identite: IdentiteVerifiee, c: Capacite): void {
+  if (aCapacite(m.roles, identite, c)) return
+  const roles = m.roles.filter((r) => r.capacites.includes(c)).map((r) => aQui(r.enMots))
+  throw new ErreurAcces(roles.length > 0 ? `réservé ${roles.join(' ou ')}` : `réservé : ${c}`)
 }
 
 async function lireCorps(requete: Request): Promise<Record<string, unknown>> {
@@ -105,11 +110,17 @@ async function lireCorps(requete: Request): Promise<Record<string, unknown>> {
   return corps as Record<string, unknown>
 }
 
-const nomDe = (s: Session, identite: Identite) =>
-  identite.role === 'patron' ? 'le patron' : s.ctx.agent(identite.agent ?? '').nom
+/** Le nom à afficher : le rôle en mots, ou le nom de la personne parmi les noms du métier. Il ne part jamais au modèle. */
+function nomDe(m: Metier, s: unknown, identite: Identite): string {
+  const role = roleDe(m.roles, identite)
+  if (!role.identifie) return role.enMots
+  const nom = m.noms(s).find((n) => n.id === identite.personne)?.nom
+  if (nom === undefined) throw new Error(`inconnu : ${identite.personne ?? '?'}`)
+  return nom
+}
 
 /** Les confirmations en attente : la dernière ligne `confirmation_attendue`/`confirmation` de chaque conversation est une attente. */
-function confirmationsEnAttente(s: Session, lignes: Ligne[]) {
+function confirmationsEnAttente(m: Metier, s: unknown, lignes: Ligne[]) {
   const dernieres = new Map<string, Ligne>()
   for (const l of lignes) {
     if ((l.type === TYPE_CONFIRMATION_ATTENDUE || l.type === TYPE_CONFIRMATION) && l.objet) {
@@ -122,10 +133,12 @@ function confirmationsEnAttente(s: Session, lignes: Ligne[]) {
     .map((l) => {
       const attente = donnees<Attente>(l)
       if (!attente) throw new Error(`ligne ${l.id} : confirmation attendue sans données`)
+      // Une ligne d'avant porte `identite.agent` (PLAN-METIER-2.md M2) : relue sous les deux graphies.
+      const identite = IdentiteSchema.parse(attente.identite)
       return {
         conversation: l.objet,
-        identite: attente.identite,
-        nom: nomDe(s, attente.identite),
+        identite,
+        nom: nomDe(m, s, identite),
         texte: l.motif ?? '',
         empreinte: attente.empreinte,
         sorte: attente.demande.sorte === 'reaffectation' ? 'proposition' : 'action',
@@ -134,93 +147,34 @@ function confirmationsEnAttente(s: Session, lignes: Ligne[]) {
     })
 }
 
-interface DemandeEnCours {
-  id: string
-  sorte: 'remplacement' | 'réaffectation'
-  statut: string
-  /** La demande attend la validation du patron (une proposition de remplaçant). */
-  attendPatron: boolean
-  /** Les agents dont la réponse est attendue (sollicités, pas encore répondu). */
-  attendAgents: { agent: string; nom: string }[]
-  description: string
-  /** Le motif de la dernière étape : la proposition, le message envoyé… */
-  etape: string
-  horodatage: string
-}
-
-/** Les demandes de remplacement (D-) et de réaffectation (R-) qui ne sont pas finies, les plus récentes d'abord. */
-function demandesEnCours(s: Session, lignes: Ligne[]): DemandeEnCours[] {
-  const ids = [
-    ...new Set(
-      lignes
-        .map((l) => l.objet)
-        .filter((o): o is string => o !== null && (o.startsWith('D-') || o.startsWith('R-'))),
-    ),
-  ].reverse()
-  const derniere = (id: string) => s.journal.historique(id).at(-1)
-  const agents = (ids: string[]) => ids.map((agent) => ({ agent, nom: s.ctx.agent(agent).nom }))
-  return ids.flatMap((id): DemandeEnCours[] => {
-    if (id.startsWith('D-')) {
-      const st = statut(s, id)
-      if (st === undefined || remplacementFini(s, id)) return []
-      return [
-        {
-          id,
-          sorte: 'remplacement',
-          statut: st,
-          attendPatron: st === STATUT.proposee,
-          attendAgents:
-            st === STATUT.demandee
-              ? agents([agentSollicite(s, id)].filter((a) => a !== undefined))
-              : [],
-          description: decrire(s.ctx, vacationDe(s, id).id),
-          etape: derniere(id)?.motif ?? '',
-          horodatage: derniere(id)?.horodatage ?? '',
-        },
-      ]
-    }
-    const st = statutReaffectation(s, id)
-    if (st === undefined || reaffectationFinie(s, id)) return []
-    return [
-      {
-        id,
-        sorte: 'réaffectation',
-        statut: st,
-        attendPatron: false,
-        attendAgents: st === STATUT_R.demandee ? agents(attendus(s, id)) : [],
-        description: decrireModifications(s, reaffectation(s, id).modifications),
-        etape: derniere(id)?.motif ?? '',
-        horodatage: derniere(id)?.horodatage ?? '',
-      },
-    ]
-  })
-}
-
-/** L'état de la page : qui peut parler (le registre d'accès), ce qui attend, les règles, les délégations, le coût de l'IA. */
+/** L'état de la page : qui peut parler (le registre d'accès), ce qui attend, les règles, les délégations proposées, le coût de l'IA. */
 function etat(
-  s: Session,
+  m: Metier,
+  s: unknown,
+  identite: Identite,
   personnes: Personne[],
   maintenant: Temporal.ZonedDateTime,
   modele: Modele,
 ) {
-  const lignes = s.journal.lire()
-  const config = CONVERSATION.config(s)
-  const ia = coutDuMois(s.journal, maintenant.toString().slice(0, 7))
+  const lignes = m.journal(s).lire()
+  const config = m.config(s)
+  const ia = coutDuMois(m.journal(s), maintenant.toString().slice(0, 7))
+  const tableau = m.tableau?.(s, identite, maintenant)
   return {
-    client: s.config.client,
+    client: m.client(s),
     /** `simulé` en démo sans clé : la page le dit. */
     modele: modele.id,
     consigneMax: CONSIGNE_MAX,
     /** L'heure murale de Paris, `AAAA-MM-JJTHH:MM`. */
     maintenant: maintenant.toPlainDateTime().toString({ smallestUnit: 'minute' }),
     identites: personnes.map((p) =>
-      p.role === 'patron' ? p : { ...p, nom: s.ctx.agent(p.agent).nom },
+      roleDe(m.roles, p).identifie ? { ...p, nom: nomDe(m, s, p) } : p,
     ),
     aValider: {
-      confirmations: confirmationsEnAttente(s, lignes),
-      demandes: demandesEnCours(s, lignes),
+      confirmations: confirmationsEnAttente(m, s, lignes),
+      demandes: tableau?.demandes ?? [],
     },
-    regles: s.registre.interdits.map((i) => ({
+    regles: (m.registre?.(s).interdits ?? []).map((i) => ({
       id: i.id,
       nom: i.nom,
       interdit: i.interdit,
@@ -228,24 +182,19 @@ function etat(
       // La politique, en lecture seule : la lecture qui décide, quand le texte en admet plusieurs.
       ...(i.lectures ? { lecture: i.lectures.find((l) => l.reference)?.source } : {}),
     })),
-    delegations: {
-      accordees: s.config.delegations ?? [],
-      proposees: lignes
-        .filter((l) => l.type === TYPE_DELEGATION_PROPOSEE)
-        .reverse()
-        .map((l) => ({
-          demande: l.objet,
-          motif: l.motif,
-          horodatage: l.horodatage,
-          ...donnees<{ action: string; conditions: Record<string, boolean | number> }>(l),
-        })),
-    },
+    /** Les lignes en attente d'une réponse, rendues par le métier (la sécurité : les délégations proposées). */
+    enAttente: tableau?.enAttente ?? [],
     ia: { coutMois: ia.usd, plafond: config.plafonds.par_mois_usd, appels: ia.appels },
   }
 }
 
-export function creerApp(options: { dossier: string; maintenant?: string; modele: Modele }): Hono {
-  const { dossier, modele } = options
+export function creerApp(options: {
+  dossier: string
+  maintenant?: string
+  modele: Modele
+  metier: Metier
+}): Hono {
+  const { dossier, modele, metier: m } = options
   const fixe = options.maintenant ? aParis(options.maintenant) : undefined
   /** L'heure de la démo, figée par `--maintenant`, sinon l'heure réelle. */
   const maintenant = () => fixe ?? Temporal.Now.zonedDateTimeISO(FUSEAU)
@@ -256,7 +205,7 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
    * requête : retirer quelqu'un vaut tout de suite, sans redémarrer.
    */
   function entrer(demandeur: unknown, conversation?: string): IdentiteVerifiee {
-    const accueil = accueillir(CONVERSATION, dossier, {
+    const accueil = accueillir(m, dossier, {
       demandeur,
       canal: 'web',
       maintenant: maintenant(),
@@ -267,16 +216,16 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
   }
 
   /** Une session par requête, pour qui a passé la porte : le planning et le journal relus, fermés quoi qu'il arrive. */
-  const session = <T>(identite: IdentiteVerifiee, f: (s: Session) => T | Promise<T>) =>
-    avecSession(CONVERSATION, dossier, identite, f)
+  const session = <T>(identite: IdentiteVerifiee, f: (s: unknown) => T | Promise<T>) =>
+    avecSession(m, dossier, identite, f)
 
   // Au démarrage : un dossier illisible, un registre d'accès absent ou qui
   // nomme un agent inconnu arrêtent tout de suite, pas à la première requête.
-  const demarrage = CONVERSATION.ouvrir(dossier)
+  const demarrage = m.ouvrir(dossier)
   try {
-    verifierRegistre(CONVERSATION, demarrage, chargerPersonnes(dossier))
+    verifierRegistre(m, demarrage, chargerPersonnes(dossier, m.roles))
   } finally {
-    CONVERSATION.fermer(demarrage)
+    m.fermer(demarrage)
   }
 
   const app = new Hono()
@@ -311,11 +260,33 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
   // comme pour une consigne, qu'une page tierce ne peut pas envoyer sans
   // pré-vol (un GET avec l'identité dans l'adresse écrirait des refus au
   // journal depuis n'importe quel site).
+  // Les rôles que le métier déclare, pour le sélecteur « Je suis » : une
+  // déclaration du code, lue avant toute porte ; le dossier n'est pas ouvert.
+  app.post('/api/roles', (c) => c.json(m.roles))
+
+  // Ce que le métier dit à celui qui parle : son nom, son accueil, ses
+  // suggestions (`Tableau.textes`). Tout rôle qui passe la porte le reçoit ;
+  // les demandes et l'attente, elles, ne passent que par /api/etat.
+  app.post('/api/tableau', async (c) => {
+    const identite = entrer((await lireCorps(c.req.raw)).identite)
+    return c.json(
+      await session(identite, (s) => {
+        const tableau = m.tableau?.(s, identite, maintenant())
+        return {
+          nom: tableau?.nom ?? nomDe(m, s, identite),
+          textes: tableau?.textes ?? SANS_TEXTES,
+        }
+      }),
+    )
+  })
+
   app.post('/api/etat', async (c) => {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
-    exigerPatron(identite)
+    exigerCapacite(m, identite, 'administre')
     return c.json(
-      await session(identite, (s) => etat(s, chargerPersonnes(dossier), maintenant(), modele)),
+      await session(identite, (s) =>
+        etat(m, s, identite, chargerPersonnes(dossier, m.roles), maintenant(), modele),
+      ),
     )
   })
 
@@ -327,8 +298,8 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
       throw new ErreurRequete(`limite : un entier de 1 à ${LIMITE_JOURNAL.max}`)
     }
     const identite = entrer(corps.identite)
-    exigerPatron(identite)
-    return c.json(await session(identite, (s) => s.journal.lire().slice(-limite).reverse()))
+    exigerCapacite(m, identite, 'administre')
+    return c.json(await session(identite, (s) => m.journal(s).lire().slice(-limite).reverse()))
   })
 
   app.post('/api/consigne', async (c) => {
@@ -345,7 +316,7 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
     const quand = maintenant()
     const conversation = (corps.conversation as string | undefined) ?? idConversation(quand)
     // La session s'ouvre dans traiterConsigne, après la traduction : le modèle ne reçoit que la phrase.
-    const reponse = await traiterConsigne(CONVERSATION, dossier, modele, {
+    const reponse = await traiterConsigne(m, dossier, modele, {
       identite,
       consigne,
       maintenant: quand,
@@ -361,8 +332,8 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
   // jamais un champ du corps.
   app.post('/api/gestes', async (c) => {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
-    exigerPatron(identite)
-    return c.json(await session(identite, (s) => listerGestes(dossier, s.journal)))
+    exigerCapacite(m, identite, 'administre')
+    return c.json(await session(identite, (s) => listerGestes(dossier, m.journal(s))))
   })
 
   /** Le geste visé par un corps : son identifiant, ou le nom de son fichier. */
@@ -377,10 +348,10 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
     const corps = await lireCorps(c.req.raw)
     const id = cibleGeste(corps)
     const identite = entrer(corps.identite)
-    exigerPatron(identite)
+    exigerCapacite(m, identite, 'administre')
     return c.json(
       await session(identite, (s) =>
-        activerGeste(dossier, s.journal, s.config.client, id, identite.role, maintenant()),
+        activerGeste(dossier, m.journal(s), m.client(s), id, identite.role, maintenant()),
       ),
     )
   })
@@ -391,10 +362,10 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
     const motif = typeof corps.motif === 'string' ? corps.motif.trim() : ''
     if (motif === '') throw new ErreurRequete('motif attendu')
     const identite = entrer(corps.identite)
-    exigerPatron(identite)
+    exigerCapacite(m, identite, 'administre')
     return c.json(
       await session(identite, (s) =>
-        retirerGeste(dossier, s.journal, s.config.client, id, motif, identite.role, maintenant()),
+        retirerGeste(dossier, m.journal(s), m.client(s), id, motif, identite.role, maintenant()),
       ),
     )
   })
@@ -411,7 +382,7 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
     }
     const identite = entrer(corps.identite, conversation)
     const reponse = await session(identite, (s) =>
-      confirmer(CONVERSATION, s, identite, conversation, empreinte, oui, maintenant()),
+      confirmer(m, s, identite, conversation, empreinte, oui, maintenant()),
     )
     return c.json({ reponse })
   })

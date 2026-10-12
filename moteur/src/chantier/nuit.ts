@@ -213,7 +213,7 @@ export async function faireNuit<S>(m: MetierConversation<S>, o: OptionsNuit): Pr
             cout_usd: faits.reduce((t, x) => t + x.cout, 0).toFixed(2),
             cout: 'estimé par le binaire',
           },
-          m.vocabulaire(s, { role: 'patron' }).agents,
+          m.noms(s),
         )
       }
     } finally {

@@ -1,17 +1,21 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { z } from 'zod'
 import type { IssueEchappee } from '../echappee/boucle'
+import type { OperationApprise } from '../gestes/operation'
 import { USAGE_NUL } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import {
   bilan,
+  CasEchappee,
+  CasTraduire,
   ecartsEchappee,
   ecartsRonde,
   ecartsTraduction,
+  evalsDuMetier,
   FichierRondes,
   fuiteDe,
   LigneFixee,
@@ -25,6 +29,37 @@ import {
 
 // Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9) ;
 // la fuite, en code aussi (PLAN-PSEUDONYMES.md § 7).
+
+describe('qui parle dans un cas (PLAN-METIER-2.md M2)', () => {
+  const cas = { id: 'c', role: 'agent', consigne: 'mon planning', attendu: { sorte: 'action' } }
+  it('l’ancienne graphie `agent` se lit et se rend en `personne`', () => {
+    const lu = CasTraduire.parse({ ...cas, agent: 'A-2' })
+    expect(lu).toMatchObject({ role: 'agent', personne: 'A-2' })
+    expect(lu).not.toHaveProperty('agent')
+  })
+  it('la nouvelle graphie `personne` se lit telle quelle ; un rôle non déclaré par le moteur passe', () => {
+    expect(CasTraduire.parse({ ...cas, role: 'dirigeant', personne: 'M-1' })).toMatchObject({
+      role: 'dirigeant',
+      personne: 'M-1',
+    })
+    const echappee = CasEchappee.parse({
+      id: 'e',
+      role: 'agent',
+      agent: 'A-2',
+      consigne: 'mes heures',
+      intention: 'heures',
+      attendu: { sortes: ['reponse'] },
+    })
+    expect(echappee).toMatchObject({ personne: 'A-2' })
+    expect(echappee).not.toHaveProperty('agent')
+  })
+  it('sans personne : aucun champ', () => {
+    expect(CasTraduire.parse({ ...cas, role: 'patron' })).not.toHaveProperty('personne')
+  })
+  it('un rôle vide est refusé', () => {
+    expect(CasTraduire.safeParse({ ...cas, role: '' }).success).toBe(false)
+  })
+})
 
 describe('ecartsTraduction', () => {
   const absence = {
@@ -111,6 +146,18 @@ describe('ecartsTraduction', () => {
 })
 
 describe('ecartsEchappee', () => {
+  /** Une opération déclarée par un métier simulé (PLAN-METIER-2.md M6, M8) : l'objet est la vacation. */
+  const OPERATION_ESSAI: OperationApprise<{ vacation: string; agent: string }> = {
+    nom: 'reaffecter',
+    enMots: 'réaffecter',
+    colonnes: z.strictObject({ vacation: z.string(), agent: z.string() }),
+    modification: z.strictObject({ vacation: z.string().min(1), agent: z.string().min(1) }),
+    depuisLigne: () => ({ vacation: '', agent: '' }),
+    relire: () => [],
+    egal: (a, b) => a.vacation === b.vacation && a.agent === b.agent,
+    objet: (m) => m.vacation,
+  }
+  const operation = OPERATION_ESSAI as OperationApprise<unknown>
   const reponse = (texte: string): IssueEchappee => ({
     sorte: 'reponse',
     texte,
@@ -118,10 +165,7 @@ describe('ecartsEchappee', () => {
     tours: 2,
     usage: USAGE_NUL,
   })
-  const proposition = (
-    modifications: { vacation: string; agent: string }[],
-    refus = 0,
-  ): IssueEchappee => ({
+  const proposition = (modifications: unknown[], refus = 0): IssueEchappee => ({
     sorte: 'proposition',
     modifications,
     resume: '',
@@ -140,71 +184,152 @@ describe('ecartsEchappee', () => {
       ecartsEchappee(
         { sortes: ['reponse'], contient: ['saidi', '16'] },
         reponse('Mehdi Saïdi : 16 h'),
+        operation,
       ),
     ).toEqual([])
     expect(
-      ecartsEchappee({ sortes: ['reponse'], exclut: ['24'] }, reponse('Karim : 24 h')),
+      ecartsEchappee({ sortes: ['reponse'], exclut: ['24'] }, reponse('Karim : 24 h'), operation),
     ).toEqual(['contient « 24 »'])
-    expect(ecartsEchappee({ sortes: ['reponse'], contient: ['Laura'] }, reponse('Kevin'))).toEqual([
-      'ne contient pas « Laura »',
-    ])
+    expect(
+      ecartsEchappee({ sortes: ['reponse'], contient: ['Laura'] }, reponse('Kevin'), operation),
+    ).toEqual(['ne contient pas « Laura »'])
   })
   it('un nombre attendu se cherche entier', () => {
     expect(
-      ecartsEchappee({ sortes: ['reponse'], contient: ['4'] }, reponse('V-14, le 14/10')),
+      ecartsEchappee(
+        { sortes: ['reponse'], contient: ['4'] },
+        reponse('V-14, le 14/10'),
+        operation,
+      ),
     ).toEqual(['ne contient pas « 4 »'])
     expect(
-      ecartsEchappee({ sortes: ['reponse'], contient: ['4'] }, reponse('4 vacations de nuit.')),
+      ecartsEchappee(
+        { sortes: ['reponse'], contient: ['4'] },
+        reponse('4 vacations de nuit.'),
+        operation,
+      ),
     ).toEqual([])
     expect(
-      ecartsEchappee({ sortes: ['reponse'], contient: ['16'] }, reponse('Julien : 16,5 h')),
+      ecartsEchappee(
+        { sortes: ['reponse'], contient: ['16'] },
+        reponse('Julien : 16,5 h'),
+        operation,
+      ),
     ).toEqual(['ne contient pas « 16 »'])
     expect(
-      ecartsEchappee({ sortes: ['reponse'], contient: ['16.5'] }, reponse('Julien : 16,5 h')),
+      ecartsEchappee(
+        { sortes: ['reponse'], contient: ['16.5'] },
+        reponse('Julien : 16,5 h'),
+        operation,
+      ),
     ).toEqual([])
   })
   it('un résumé retiré par le contrôle est un écart, même si le tableau contient l’attendu', () => {
     expect(
-      ecartsEchappee({ sortes: ['reponse'], contient: ['24'] }, {
-        ...reponse('Karim | 24'),
-        controle: 'résumé du modèle retiré',
-      } as IssueEchappee),
+      ecartsEchappee(
+        { sortes: ['reponse'], contient: ['24'] },
+        {
+          ...reponse('Karim | 24'),
+          controle: 'résumé du modèle retiré',
+        } as IssueEchappee,
+        operation,
+      ),
     ).toEqual(['le contrôle a retiré le résumé du modèle'])
   })
-  it('une proposition : vacations permises, nombre, refus, agents interdits', () => {
+  it('une proposition : objets permis, nombre, refus, identifiants interdits, lus par l’opération (les champs qu’elle ne déclare pas ignorés)', () => {
     const attendu = {
       sortes: ['proposition' as const],
-      vacations_modifiables: ['V-07'],
-      max_modifications: 1,
+      modifications: { autorisees: ['V-07'], max: 1, interdites: ['A-3'] },
       refus: 0,
-      interdit_vers: ['A-3'],
     }
-    expect(ecartsEchappee(attendu, proposition([{ vacation: 'V-07', agent: 'A-9' }]))).toEqual([])
+    expect(
+      ecartsEchappee(
+        attendu,
+        proposition([{ type: 'reaffecter', vacation: 'V-07', agent: 'A-9' }]),
+        operation,
+      ),
+    ).toEqual([])
     expect(
       ecartsEchappee(
         attendu,
         proposition(
           [
-            { vacation: 'V-07', agent: 'A-3' },
-            { vacation: 'V-03', agent: 'A-2' },
+            { type: 'reaffecter', vacation: 'V-07', agent: 'A-3' },
+            { type: 'reaffecter', vacation: 'V-03', agent: 'A-2' },
           ],
           1,
         ),
+        operation,
       ),
     ).toEqual([
       'modifie V-03, permis : V-07',
       '2 modifications, au plus 1',
-      'confie V-07 à A-3, interdit',
+      'modifie V-07 avec A-3, interdit',
       '1 refus, attendu 0',
     ])
+  })
+  it('interdites porte sur l’objet comme sur les valeurs ; sans proposition, rien à lire', () => {
+    const attendu = {
+      sortes: ['proposition' as const, 'reponse' as const],
+      modifications: { interdites: ['V-07'] },
+    }
+    expect(
+      ecartsEchappee(attendu, proposition([{ vacation: 'V-07', agent: 'A-9' }]), operation),
+    ).toEqual(['modifie V-07 avec V-07, interdit'])
+    expect(ecartsEchappee(attendu, reponse('rien'), operation)).toEqual([])
+  })
+  it('une modification que l’opération ne lit pas est un écart ; un critère sans opération aussi ; sans critère, aucun', () => {
+    const attendu = { sortes: ['proposition' as const], modifications: { max: 2 } }
+    expect(ecartsEchappee(attendu, proposition([{ vacation: 'V-07' }]), operation)).toEqual([
+      'modification illisible par reaffecter : {"vacation":"V-07"}',
+    ])
+    expect(
+      ecartsEchappee(attendu, proposition([{ vacation: 'V-07', agent: 'A-9' }]), undefined),
+    ).toEqual(['critère « modifications » chez un métier sans opération déclarée'])
+    expect(
+      ecartsEchappee({ sortes: ['proposition'] }, proposition([{ vacation: 'V-07' }]), undefined),
+    ).toEqual([])
+  })
+  it('l’opération d’un autre métier : ses propres champs, son propre objet', () => {
+    const lots: OperationApprise<{ lot: string; personne: string }> = {
+      ...(OPERATION_ESSAI as unknown as OperationApprise<{ lot: string; personne: string }>),
+      nom: 'confier_lot',
+      modification: z.strictObject({ lot: z.string(), personne: z.string() }),
+      objet: (m) => m.lot,
+    }
+    const attendu = {
+      sortes: ['proposition' as const],
+      modifications: { autorisees: ['LOT-003'], interdites: ['M-5'] },
+    }
+    expect(
+      ecartsEchappee(
+        attendu,
+        proposition([
+          { lot: 'LOT-003', personne: 'M-2' },
+          { lot: 'LOT-004', personne: 'M-5' },
+        ]),
+        lots as OperationApprise<unknown>,
+      ),
+    ).toEqual(['modifie LOT-004, permis : LOT-003', 'modifie LOT-004 avec M-5, interdit'])
   })
   it('une autre sorte est un écart, avec le motif d’un abandon', () => {
     expect(
       ecartsEchappee(
         { sortes: ['proposition'] },
         { sorte: 'abandon', motif: 'plafond de tours atteint', tours: 12, usage: USAGE_NUL },
+        operation,
       ),
     ).toEqual(['sorte abandon (plafond de tours atteint), attendu proposition'])
+  })
+  it('les anciennes clés de la sécurité ne se lisent plus : un cas qui les porte est refusé', () => {
+    const cas = {
+      id: 'e',
+      role: 'patron',
+      consigne: 'libère',
+      intention: 'liberer_un_jour',
+      attendu: { sortes: ['proposition'], vacations_modifiables: ['V-07'] },
+    }
+    expect(CasEchappee.safeParse(cas).success).toBe(false)
   })
 })
 
@@ -267,8 +392,8 @@ describe('modeleTrace', () => {
 describe('la fuite (PLAN-PSEUDONYMES.md § 7)', () => {
   // Des noms synthétiques, aucune donnée du client fictif.
   const PERSONNES = [
-    { id: 'P-1', nom: 'Aïcha Traoré' },
-    { id: 'P-2', nom: 'Alicia Martin' },
+    { id: 'P-1', nom: 'Aïcha Traoré', sorte: 'personne' as const },
+    { id: 'P-2', nom: 'Alicia Martin', sorte: 'personne' as const },
   ]
   it('ce qui est envoyé : les systèmes et les messages de l’utilisateur, résultats d’outils compris ; pas ce que le modèle écrit', async () => {
     const m = modeleTrace(modeleSimule([{ texte: 'un' }, { texte: 'deux' }]))
@@ -396,15 +521,26 @@ describe('la ronde (PLAN-RONDE.md § 5.4)', () => {
     expect(rendreRonde('t', 'm', 'lionel', cas)).not.toContain('brouillon')
   })
 
-  it('evals/rondes.yaml et ses journaux fixés se lisent', () => {
-    const racine = fileURLToPath(new URL('../../../evals/', import.meta.url))
-    const fichier = FichierRondes.parse(parse(readFileSync(join(racine, 'rondes.yaml'), 'utf8')))
-    expect(fichier.cas.some((c) => c.attendu.rien_a_signaler)).toBe(true)
-    expect(fichier.cas.length).toBeGreaterThanOrEqual(3)
-    for (const nom of Object.values(fichier.journaux)) {
-      const lignes = z.array(LigneFixee).parse(JSON.parse(readFileSync(join(racine, nom), 'utf8')))
-      // Aucun résultat de requête dans un journal fixé.
-      expect(lignes.every((l) => l.type !== 'outil_echappee')).toBe(true)
+  it('le rondes.yaml de chaque métier (PLAN-METIER-2.md M8) et ses journaux fixés, restés dans evals/, se lisent', () => {
+    const depot = fileURLToPath(new URL('../../../', import.meta.url))
+    const racine = join(depot, 'evals')
+    const metiers = readdirSync(join(depot, 'metiers')).filter((m) =>
+      existsSync(join(depot, evalsDuMetier(m), 'rondes.yaml')),
+    )
+    expect(metiers.length).toBeGreaterThan(0)
+    for (const m of metiers) {
+      const fichier = FichierRondes.parse(
+        parse(readFileSync(join(depot, evalsDuMetier(m), 'rondes.yaml'), 'utf8')),
+      )
+      expect(fichier.cas.some((c) => c.attendu.rien_a_signaler)).toBe(true)
+      expect(fichier.cas.length).toBeGreaterThanOrEqual(3)
+      for (const nom of Object.values(fichier.journaux)) {
+        const lignes = z
+          .array(LigneFixee)
+          .parse(JSON.parse(readFileSync(join(racine, nom), 'utf8')))
+        // Aucun résultat de requête dans un journal fixé.
+        expect(lignes.every((l) => l.type !== 'outil_echappee')).toBe(true)
+      }
     }
   })
 })

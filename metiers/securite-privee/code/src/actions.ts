@@ -7,6 +7,7 @@ import {
   veilleDuClient,
 } from '@harnais/moteur'
 import { z } from 'zod'
+import { DOMAINE } from './domaine'
 import { NOMS_ACTIVITES } from './modele'
 import {
   attendus,
@@ -37,7 +38,7 @@ import { decrire, VEILLER } from './veille'
 
 // Les gestes du quotidien de la sécurité privée (espace 1) : la liste fermée
 // que le modèle choisit et que le code exécute. Pour le rôle `agent`, chaque
-// geste travaille sur `identite.agent` et ignore tout autre agent demandé :
+// geste travaille sur `identite.personne` et ignore tout autre agent demandé :
 // c'est structurel, pas un filtre (PLAN-ESPACES.md § 5.2, D4). Un paramètre
 // qui désigne une personne (`personnes`) est montré au modèle comme la
 // mention écrite ; le moteur la résout en identifiant (REFLEXIONS.md, décidé le 2026-10-08).
@@ -47,7 +48,7 @@ const Jour = z.iso.date()
 
 /** L'absent d'une déclaration : un agent ne déclare que la sienne ; le patron nomme l'absent. */
 function absentVise(identite: Identite, demande: string | null): string | undefined {
-  if (identite.role === 'agent' && demande !== null && demande !== identite.agent) {
+  if (identite.role === 'agent' && demande !== null && demande !== identite.personne) {
     throw new Error('Tu ne peux déclarer que ta propre absence.')
   }
   return agentVise(identite, demande)
@@ -55,7 +56,7 @@ function absentVise(identite: Identite, demande: string | null): string | undefi
 
 /** L'agent sur qui porte un geste : soi-même pour un agent, celui que nomme le patron sinon. */
 function agentVise(identite: Identite, demande: string | null): string | undefined {
-  return identite.role === 'agent' ? identite.agent : (demande ?? undefined)
+  return identite.role === 'agent' ? identite.personne : (demande ?? undefined)
 }
 
 const nomDe = (s: Session, agent: string) => s.ctx.agent(agent).nom
@@ -77,7 +78,7 @@ function reponseEnregistree(oui: boolean, statut: string, demande: string): stri
 
 /** Lève si la sollicitation de cette demande ne vise pas cet agent. */
 function exigerSollicite(s: Session, identite: Identite, demande: string): void {
-  if (!identite.agent || agentSollicite(s, demande) !== identite.agent) {
+  if (!identite.personne || agentSollicite(s, demande) !== identite.personne) {
     throw new Error('cette sollicitation ne vous est pas adressée')
   }
 }
@@ -233,9 +234,9 @@ function decrireEtape2(id: string, e: Etape2): string {
 /** Lève si cette réaffectation n'attend pas la réponse de cet agent. */
 function exigerAttendu(s: Session, identite: Identite, id: string): void {
   if (
-    !identite.agent ||
+    !identite.personne ||
     statutReaffectation(s, id) !== STATUT_R.demandee ||
-    !attendus(s, id).includes(identite.agent)
+    !attendus(s, id).includes(identite.personne)
   ) {
     throw new Error('cette sollicitation ne vous est pas adressée')
   }
@@ -255,13 +256,13 @@ const repondreAReaffectation: Action<Session, z.infer<typeof RepondreReaffectati
   reformuler: (s, identite, p) => {
     exigerAttendu(s, identite, p.reaffectation)
     const vacations = reaffectation(s, p.reaffectation)
-      .modifications.filter((m) => m.agent === identite.agent)
+      .modifications.filter((m) => m.agent === identite.personne)
       .map((m) => vacationPourAgent(s, m.vacation))
     return `Tu confirmes : ${p.accepte ? 'OUI' : 'NON'} pour ${vacations.join(' et ')} ?`
   },
   executer: (s, identite, p, maintenant) => {
     exigerAttendu(s, identite, p.reaffectation)
-    const agent = identite.agent ?? ''
+    const agent = identite.personne ?? ''
     const e = repondreReaffectation(s, p.reaffectation, agent, p.accepte, maintenant)
     const siens = reaffectation(s, p.reaffectation)
       .modifications.filter((m) => m.agent === agent)
@@ -380,7 +381,7 @@ const mesTitres: Action<Session, z.infer<typeof SansParametre>> = {
   ecrit: false,
   reformuler: () => 'Je montre tes titres et leurs échéances.',
   executer: (s, identite, _p, maintenant) => {
-    const agent = identite.agent
+    const agent = identite.personne
     if (!agent) throw new Error('agent inconnu')
     return { texte: [...alertes(s, maintenant, agent), ...titres(s, agent)].join('\n') }
   },
@@ -399,7 +400,10 @@ const lancerVeille: Action<Session, z.infer<typeof LancerVeille>> = {
   reformuler: () => 'Je lance la veille du planning et des échéances.',
   executer: (s, _identite, p, maintenant) => {
     const jour = p.date ? Temporal.PlainDate.from(p.date) : maintenant.toPlainDate()
-    return { texte: veilleDuClient(VEILLER, METIER, s.dossier, jour, s.journal).rapport }
+    return {
+      texte: veilleDuClient(VEILLER, METIER, s.dossier, jour, s.journal, DOMAINE.rienASignaler)
+        .rapport,
+    }
   },
 }
 

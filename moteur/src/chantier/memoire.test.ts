@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { personnesFictives, RACINE_DEPOT } from '../agence/fictif'
+import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
 import { Temporal } from '../temps/temporal'
 import {
   ajouterConvention,
@@ -25,8 +25,8 @@ import {
 // identifiant ; et le test de fuite sur tout `memoire/` du dépôt.
 
 const personnes = [
-  { id: 'A-1', nom: 'Rosalie Vernet' },
-  { id: 'A-11', nom: 'Octave Brunel' },
+  { id: 'A-1', nom: 'Rosalie Vernet', sorte: 'personne' as const },
+  { id: 'A-11', nom: 'Octave Brunel', sorte: 'personne' as const },
 ]
 const racine = () => mkdtempSync(join(tmpdir(), 'memoire-'))
 const CLIENT = 'client essai (sécurité)'
@@ -236,15 +236,18 @@ describe('memoire/ du dépôt', () => {
     })
   }
 
-  it('ne porte aucun nom ni identifiant des personnes du client fictif (R10)', () => {
-    const fictives = personnesFictives()
-    const tous = fichiers(join(RACINE_DEPOT, DOSSIER_MEMOIRE))
-    expect(tous.length).toBeGreaterThan(0)
-    for (const f of tous) {
-      expect({ fichier: f, interdits: interdits(readFileSync(f, 'utf8'), fictives) }).toEqual({
-        fichier: f,
-        interdits: [],
-      })
-    }
-  })
+  it.each(CLIENTS_FICTIFS)(
+    'ne porte aucun nom ni identifiant des personnes du client fictif %s (R10)',
+    async (client) => {
+      const fictives = await personnesFictives(client)
+      const tous = fichiers(join(RACINE_DEPOT, DOSSIER_MEMOIRE))
+      expect(tous.length).toBeGreaterThan(0)
+      for (const f of tous) {
+        expect({ fichier: f, interdits: interdits(readFileSync(f, 'utf8'), fictives) }).toEqual({
+          fichier: f,
+          interdits: [],
+        })
+      }
+    },
+  )
 })

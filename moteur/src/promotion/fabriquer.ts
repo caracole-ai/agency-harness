@@ -10,6 +10,8 @@ import {
   distance,
   normaliserNom,
 } from '../conversation/designation'
+import type { Domaine } from '../conversation/domaine'
+import { aCapacite, type Capacite, quiParle, type RoleDeclare } from '../conversation/roles'
 import { entreDonnees, FRONTIERE, jourSemaine } from '../conversation/traduire'
 import { semaineDe } from '../echappee/boucle'
 import { creerCopie, type TableCopie } from '../echappee/copie'
@@ -19,16 +21,19 @@ import { executerGeste, liaisonDe } from '../gestes/action-apprise'
 import {
   CLES_PERIODE,
   clesDe,
+  type DeclarationsGeste,
   DOSSIER_GESTES,
   type FichierGeste,
   GesteAppris,
-  ModificationsApprises,
-  type Reaffectation,
+  ModificationsOperation,
+  personneDuTest,
   TESTS_MIN,
   type TestAppris,
-  TYPES_PARAMETRE,
   verifierGabarit,
 } from '../gestes/geste-appris'
+import { type OperationApprise, SANS_OPERATION } from '../gestes/operation'
+import { TYPES_MOTEUR, typeDe } from '../gestes/types-parametre'
+import type { Journal } from '../journal/journal'
 import {
   additionner,
   type Effort,
@@ -49,9 +54,11 @@ import type { EchappeeJournalisee } from './promotion'
 // `gestes/<id>.yaml` au statut `propose`. Un écart de fond ne relance pas :
 // l'atelier le lit. Le modèle reçoit les échappées entières, jamais
 // l'instantané (P10). Une intention qui écrit se fabrique de la même façon,
-// depuis les propositions validées par le patron : le geste rend une
-// réaffectation par ligne, et le rejeu compare les réaffectations, pas un
-// texte (PLAN-PROMOTION.md § 10, PLAN-GENERAL.md G5).
+// depuis les propositions validées : le geste rend une modification de
+// l'opération du métier par ligne, et le rejeu compare les modifications, pas
+// un texte (PLAN-PROMOTION.md § 10, PLAN-GENERAL.md G5, PLAN-METIER-2.md M6).
+// Le prompt dit le domaine, l'opération et les types que le métier déclare
+// (M5, M7) : aucune phrase d'un métier n'est écrite ici.
 
 export const OUTIL_PROPOSER_GESTE = 'proposer_geste'
 /** Deux appels au plus : le premier, et une relance (P5). */
@@ -92,7 +99,7 @@ export const GestePropose = z.strictObject({
         params: z
           .record(z.string(), ValeurParam)
           .describe(
-            'les valeurs que cette demande donne aux paramètres, par clé (du et au pour une période) ; pour un agent, la personne telle que la demande l’écrit, ou null',
+            'les valeurs que cette demande donne aux paramètres, par clé (du et au pour une période) ; pour une personne, telle que la demande l’écrit, ou null',
           ),
       }),
     )
@@ -101,10 +108,10 @@ export const GestePropose = z.strictObject({
 })
 export type GestePropose = z.infer<typeof GestePropose>
 
-/** Ce que le modèle propose pour une intention qui écrit : le même geste, plus ses modifications. */
+/** Ce que le modèle propose pour une intention qui écrit : le même geste, plus ses modifications (l'opération et ses colonnes : `schemaPropose`). */
 export const GesteProposeEcriture = GestePropose.extend({
-  modifications: ModificationsApprises.describe(
-    'pour_chaque : la requête qui rend une ligne par réaffectation ; reaffecter : ses deux colonnes, vacation (vacations.id) et agent (agents.id de celui qui la prend)',
+  modifications: ModificationsOperation.describe(
+    'pour_chaque : la requête qui rend une ligne par modification ; operation : le nom de l’opération ; colonnes : pour chaque clé de l’opération, la colonne de cette requête qui la rend',
   ),
 })
 export type GesteProposeEcriture = z.infer<typeof GesteProposeEcriture>
@@ -131,8 +138,14 @@ export interface CadreFabrication {
   /** Les échappées finies proprement de cette intention ; seules les réponses servent, ou les propositions validées pour une intention qui écrit. */
   echappees: EchappeeJournalisee[]
   gestesExistants: { id: string; description: string }[]
-  /** Les personnes que le patron peut désigner : pour résoudre un agent des tests et extraire les noms cités. */
+  /** Tous les noms du client (`m.noms`) : pour résoudre une personne des tests et extraire les noms cités. */
   personnes: Designable[]
+  /** Les rôles, les types de paramètre et l'opération que le métier déclare (PLAN-METIER-2.md M1, M5, M6). */
+  declarations: DeclarationsGeste
+  /** Le domaine que le prompt dit (PLAN-METIER-2.md M7). */
+  domaine: Domaine
+  /** Pour une intention qui écrit : les modifications validées y sont relues par l'opération (M6). */
+  journal: Journal
   dossierClient: string
   /** Les tables de la copie, sans ligne : le gabarit s'y vérifie. */
   copieVide: TableCopie[]
@@ -156,14 +169,30 @@ export type IssueFabrication = {
   | { sorte: 'echec'; raison: string; injoignable: boolean }
 )
 
-const TYPES_EN_MOTS: Record<(typeof TYPES_PARAMETRE)[number], string> = {
-  agent:
-    'une personne nommée dans la demande, ou null pour celui qui parle ; liée par son identifiant (agents.id)',
-  date: 'un jour, AAAA-MM-JJ',
-  periode: `deux bornes, ${CLES_PERIODE.join(' et ')}, AAAA-MM-JJ, les deux incluses ; un geste n'en a qu'une`,
-  site: 'un site, tel que les données l’écrivent',
-  poste: 'un poste, tel que les données l’écrivent',
-  nombre: 'un entier',
+/** Les types de paramètre en mots, ceux du métier puis ceux du moteur (PLAN-METIER-2.md M5). */
+const typesEnMots = (declarations: DeclarationsGeste) =>
+  [...declarations.typesParametre.map((t) => t.nom), ...TYPES_MOTEUR]
+    .map((nom) => `${nom} (${typeDe(declarations.typesParametre, nom).enMots})`)
+    .join(' ; ')
+
+/** Les rôles qui ont une capacité. */
+const rolesQui = (roles: RoleDeclare[], c: Capacite) =>
+  roles.filter((r) => aCapacite(roles, { role: r.id }, c))
+
+/** Ceux qui valident une proposition, en mots, pour le prompt. */
+const valideurs = (roles: RoleDeclare[]) =>
+  rolesQui(roles, 'valide')
+    .map((r) => r.enMots)
+    .join(' ou ')
+
+/** Les colonnes que l'opération lit, chacune avec la description que le métier lui donne. */
+function colonnesEnMots(operation: OperationApprise<unknown>): string {
+  const { properties = {} } = z.toJSONSchema(operation.colonnes) as {
+    properties?: Record<string, { description?: string }>
+  }
+  return Object.entries(properties)
+    .map(([cle, p]) => (p.description ? `${cle} (${p.description})` : cle))
+    .join(', ')
 }
 
 /** Les tables pour le modèle de fabrication : noms, colonnes, descriptions ; aucune ligne, aucun compte. */
@@ -178,46 +207,61 @@ export function schemaDesTables(tables: TableCopie[]): string {
     .join('\n\n')
 }
 
-/** Le système de la fabrication (§ 6.1). Rien de volatil : il se met en cache. Aucune donnée du client, seulement le schéma des tables. */
+/**
+ * Le système de la fabrication (§ 6.1). Rien de volatil : il se met en cache.
+ * Aucune donnée du client, seulement le schéma des tables ; le domaine,
+ * l'opération, les types et les rôles sont ceux que le métier déclare
+ * (PLAN-METIER-2.md M5 à M7).
+ */
 export function systemeFabriquer(
   intention: Intention,
   roles: Role[],
   tables: string,
   gestesExistants: { id: string; description: string }[],
+  declarations: DeclarationsGeste,
+  domaine: Domaine,
 ): string {
   const { ecrit } = intention
+  const { operation } = declarations
+  if (ecrit && !operation) throw new Error(SANS_OPERATION)
+  const qui = valideurs(declarations.roles)
+  const sansTout = declarations.roles.filter(
+    (r) => !aCapacite(declarations.roles, { role: r.id }, 'voit_tout'),
+  )
   return [
     ecrit
-      ? "Tu fabriques un geste pour l'outil de planning d'une entreprise de sécurité privée. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL, a proposé des réaffectations de vacations, et le patron les a validées. Le geste proposera désormais ces réaffectations sans modèle, pour ces demandes et celles de la même sorte : des requêtes SQL paramétrées, dont une rend une ligne par réaffectation ; le code fait passer la proposition par les règles, puis par l'accord du patron et de chaque agent."
-      : "Tu fabriques un geste pour l'outil de planning d'une entreprise de sécurité privée. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL et a répondu. Le geste répondra désormais sans modèle, à ces demandes et à celles de la même sorte : des requêtes SQL paramétrées, un gabarit rendu par le code.",
+      ? `Tu fabriques un geste pour ${domaine.cadre}. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL, a proposé des modifications (${operation?.enMots}), et ${qui} les a validées. Le geste proposera désormais ces modifications sans modèle, pour ces demandes et celles de la même sorte : des requêtes SQL paramétrées, dont une rend une ligne par modification ; le code fait passer la proposition par les règles, puis par les accords qu'elle demande.`
+      : `Tu fabriques un geste pour ${domaine.cadre}. La même sorte de demande est revenue plusieurs fois ; chaque fois, un modèle a lu une copie des données par des requêtes SQL et a répondu. Le geste répondra désormais sans modèle, à ces demandes et à celles de la même sorte : des requêtes SQL paramétrées, un gabarit rendu par le code.`,
     '',
     `Le geste : ${intention.id} : ${intention.description}. Sa description, en une phrase de ${DESCRIPTION_MAX} caractères au plus, garde toute cette portée et ne ressemble à aucun geste existant :`,
     ...gestesExistants.map((g) => `- ${g.id} : ${g.description}`),
     '',
-    `Les paramètres, d'une liste fermée de types, pas de texte libre : ${TYPES_PARAMETRE.map((t) => `${t} (${TYPES_EN_MOTS[t]})`).join(' ; ')}. Chaque paramètre a un nom en minuscules et une description pour le modèle qui lira la demande.`,
+    `Les paramètres, d'une liste fermée de types, pas de texte libre : ${typesEnMots(declarations)}. Chaque paramètre a un nom en minuscules et une description pour le modèle qui lira la demande.`,
     '',
-    `Les requêtes, une à cinq, nommées : SQLite, en lecture (SELECT ou WITH), sur les tables ci-dessous. Chaque valeur qui vient de la demande est un paramètre lié (:agent, :${CLES_PERIODE.join(', :')}, :nom_du_parametre), jamais une valeur en dur : ni identifiant, ni nom, ni date, ni site. Fais faire les sommes et les comptes par SQL.`,
+    `Les requêtes, une à cinq, nommées : SQLite, en lecture (SELECT ou WITH), sur les tables ci-dessous. Chaque valeur qui vient de la demande est un paramètre lié (:nom_du_parametre, :${CLES_PERIODE.join(', :')} pour une période), jamais une valeur en dur : ni identifiant, ni nom, ni date, ni aucune autre valeur de la demande. Fais faire les sommes et les comptes par SQL.`,
     '',
-    ...(ecrit
+    ...(ecrit && operation
       ? [
-          'Les modifications : pour_chaque, le nom de la requête qui rend une ligne par réaffectation ; reaffecter, les noms de ses deux colonnes : vacation (vacations.id, V-07) et agent (agents.id de l’agent qui la prend, A-9). Pour chaque demande, le geste propose exactement les vacations validées, chacune à un agent que le patron a validé pour elle ; aucune de plus. Ce qui a fait choisir l’agent (qui est libre, ce que les vérifications ont refusé, les préférences du patron) se code en SQL.',
+          `Les modifications : pour_chaque, le nom de la requête qui rend une ligne par modification ; operation, ${operation.nom} ; colonnes, pour chaque clé de l’opération, le nom de la colonne de cette requête qui la rend : ${colonnesEnMots(operation)}. Pour chaque demande, le geste propose exactement les modifications validées, chacune telle que ${qui} l’a validée ; aucune de plus. Ce qui a fait choisir chaque valeur (ce que les données permettent, ce que les vérifications ont refusé, les préférences exprimées) se code en SQL.`,
           '',
           'La réponse : tableau, le nom de la requête de pour_chaque, ligne à null ; et vide, la phrase montrée quand elle ne rend aucune ligne (rien à changer).',
           '',
-          'Les rôles : patron seulement ; un agent ne propose pas de réaffectation.',
+          `Les rôles : ${rolesQui(declarations.roles, 'ecrit')
+            .map((r) => r.id)
+            .join(', ')} seulement ; les autres ne proposent pas de modification.`,
           '',
           'Les tests : une entrée par demande, avec les valeurs que cette demande donne à chaque paramètre.',
           '',
-          'Dans les demandes, une personne est écrite par son identifiant (A-1), qui tient lieu de son nom ; la colonne agent rend agents.id, jamais agents.nom.',
+          'Dans les demandes, une personne est écrite par son identifiant, qui tient lieu de son nom ; une colonne de l’opération qui désigne une personne rend son identifiant, jamais son nom.',
         ]
       : [
           'La réponse, une forme et une seule : ligne, une phrase qui cite {{requete.colonne}} (la première ligne du résultat de cette requête) et {{parametre}} ({{du}}, {{au}} pour une période), tableau à null ; ou tableau, le nom d’une requête rendue en tableau, ligne à null. Et vide : la phrase montrée quand une requête citée ne rend aucune ligne. Pas de condition, pas de boucle, pas de calcul dans le gabarit. Chaque nombre et chaque nom de chaque réponse montrée doit apparaître dans ce que le geste rend ; si une réponse détaille, choisis un tableau qui rend le détail.',
           '',
-          `Les rôles : ceux des demandes (${roles.join(', ')}), au moins ; agent seulement si la demande a un sens pour un agent, qui ne voit que ses propres données.`,
+          `Les rôles : ceux des demandes (${roles.join(', ')}), au moins${sansTout.map((r) => ` ; ${r.id} seulement si la demande a un sens pour ${r.enMots}, qui ne voit que ses propres données`).join('')}.`,
           '',
           'Les tests : une entrée par demande, avec les valeurs que cette demande donne à chaque paramètre.',
           '',
-          'Dans les demandes et les réponses, une personne est écrite par son identifiant (A-1), qui tient lieu de son nom ; les données que le geste lira portent les vrais noms (agents.nom) : là où une réponse cite une personne, le geste rend agents.nom.',
+          'Dans les demandes et les réponses, une personne est écrite par son identifiant, qui tient lieu de son nom ; les données que le geste lira portent les vrais noms : là où une réponse cite une personne, le geste rend son nom tel que les données l’écrivent.',
         ]),
     '',
     'Les tables (SQLite) :',
@@ -229,14 +273,31 @@ export function systemeFabriquer(
   ].join('\n')
 }
 
-/** L'outil de la fabrication : le schéma du geste proposé, strict ; avec ses modifications pour une intention qui écrit. */
-export function outilProposerGeste(ecrit = false): Anthropic.Tool {
+/** Le schéma de la proposition ; pour une intention qui écrit, ses modifications portent l'opération du métier et ses colonnes (PLAN-METIER-2.md M6). */
+function schemaPropose(declarations: DeclarationsGeste, ecrit: boolean) {
+  if (!ecrit) return GestePropose
+  const { operation } = declarations
+  if (!operation) throw new Error(SANS_OPERATION)
+  return GesteProposeEcriture.extend({
+    modifications: ModificationsOperation.extend({
+      operation: z.literal(operation.nom),
+      colonnes: operation.colonnes,
+    }).describe(GesteProposeEcriture.shape.modifications.description ?? ''),
+  })
+}
+
+/** L'outil de la fabrication : le schéma du geste proposé, strict ; avec ses modifications pour une intention qui écrit ; ses rôles, ceux que le métier déclare (PLAN-METIER-2.md M1). */
+export function outilProposerGeste(declarations: DeclarationsGeste, ecrit = false): Anthropic.Tool {
+  const declares = z
+    .array(z.enum(declarations.roles.map((r) => r.id)))
+    .min(1)
+    .describe(GestePropose.shape.roles.description ?? '')
   return {
     name: OUTIL_PROPOSER_GESTE,
     description: ecrit
       ? 'Proposer le geste : ses paramètres, ses requêtes, ses modifications, sa réponse, ses tests.'
       : 'Proposer le geste : ses paramètres, ses requêtes, sa réponse, ses tests.',
-    input_schema: schemaJson(ecrit ? GesteProposeEcriture : GestePropose),
+    input_schema: schemaJson(schemaPropose(declarations, ecrit).extend({ roles: declares })),
     strict: true,
   }
 }
@@ -262,31 +323,29 @@ const estMasquee = (e: EchappeeJournalisee): e is EchappeeMasquee =>
   e.consigneModele !== undefined &&
   (e.issue === 'proposition' ? e.modifications !== undefined : e.texteModele !== undefined)
 
-/** Les réaffectations d'une proposition journalisée, lues sans connaître le métier ; rien si elles n'en ont pas la forme. */
-function reaffectationsJournalisees(e: EchappeeJournalisee): Reaffectation[] | undefined {
-  const lu = z
-    .array(z.looseObject({ vacation: z.string().min(1), agent: z.string().min(1) }))
-    .min(1)
-    .safeParse(e.modifications)
-  return lu.success ? lu.data.map(({ vacation, agent }) => ({ vacation, agent })) : undefined
-}
+/** Les modifications validées d'une échappée qui a proposé, relues par l'opération du métier (`OperationApprise.relire`). */
+export type ValideesDe = (e: EchappeeJournalisee) => unknown[]
 
-/** Une réaffectation en une ligne, pour le modèle et pour un écart : `V-03 → A-11`. */
-const enLigne = (r: Reaffectation) => `${r.vacation} → ${r.agent}`
+/** Une modification en une ligne, pour le modèle et pour un écart : ses valeurs jointes par « → » (exemple : `V-03 → A-11`). */
+const enLigne = (m: unknown) => Object.values(m as Record<string, unknown>).join(' → ')
 
 /**
  * Le message : les échappées entières entre les balises des données, telles
  * que le modèle de l'échappée les a lues et écrites, sans aucun nom (P10,
  * PLAN-PSEUDONYMES.md S5).
  */
-export function messageFabriquer(echappees: EchappeeMasquee[]): string {
+export function messageFabriquer(
+  echappees: EchappeeMasquee[],
+  declarations: DeclarationsGeste,
+  validees: ValideesDe,
+): string {
   const blocs = echappees.map((e) => {
     const z = aParis(e.horodatage)
     const { lundi, dimanche } = semaineDe(z)
     const moment = `${z.toPlainDate().toString()}T${deux(z.hour)}:${deux(z.minute)} (${jourSemaine(z)}) ; semaine en cours du ${lundi} au ${dimanche}`
     return [
       `### ${e.echappee}`,
-      `Demandeur : ${e.role === 'patron' ? 'le patron' : `l'agent ${e.agent ?? '?'}`}`,
+      `Demandeur : ${quiParle(declarations.roles, { role: e.role, ...(e.personne !== undefined ? { personne: e.personne } : {}) })}`,
       `Moment : ${moment}`,
       `Consigne : ${e.consigneModele}`,
       ...e.requetes.flatMap((r, i) => [
@@ -295,21 +354,25 @@ export function messageFabriquer(echappees: EchappeeMasquee[]): string {
         `Résultat ${i + 1} :`,
         r.erreur !== undefined ? `erreur : ${r.erreur}` : r.sortie,
       ]),
-      // Une réponse : son texte ; une proposition (une intention qui écrit) : ses vérifications, puis ce que le patron a validé.
-      ...('texteModele' in e
-        ? ['Réponse montrée :', e.texteModele]
-        : [
-            ...(e.verifications ?? []).flatMap((v, i) => [
-              `Vérification ${i + 1} :`,
-              v.modifications,
-              `Résultat de la vérification ${i + 1} :`,
-              v.erreur !== undefined ? `erreur : ${v.erreur}` : v.sortie,
-            ]),
-            'Réaffectations validées par le patron (vacation → agent) :',
-            ...(reaffectationsJournalisees(e) ?? []).map(enLigne),
-          ]),
+      // Une réponse : son texte ; une proposition (une intention qui écrit) : ses vérifications, puis ce qui a été validé.
+      ...('texteModele' in e ? ['Réponse montrée :', e.texteModele] : proposition(e)),
     ].join('\n')
   })
+  function proposition(e: EchappeeMasquee): string[] {
+    const modifications = validees(e)
+    const [premiere] = modifications
+    const cles = premiere ? ` (${Object.keys(premiere as object).join(' → ')})` : ''
+    return [
+      ...(e.verifications ?? []).flatMap((v, i) => [
+        `Vérification ${i + 1} :`,
+        v.modifications,
+        `Résultat de la vérification ${i + 1} :`,
+        v.erreur !== undefined ? `erreur : ${v.erreur}` : v.sortie,
+      ]),
+      `Modifications validées par ${valideurs(declarations.roles)}${cles} :`,
+      ...modifications.map(enLigne),
+    ]
+  }
   return [
     `Les demandes (${echappees.length}), dans l'ordre, avec ce qui a été fait et la réponse montrée :`,
     entreDonnees(blocs.join('\n\n')),
@@ -360,7 +423,7 @@ type Lecture =
   | { ok: false; raison: string; relance: boolean }
 
 /** Lit la réponse du modèle, comme `traduire.lire` : refus, troncature, zéro ou deux outils, forme → échec. */
-function lire(message: Anthropic.Message, ecrit: boolean): Lecture {
+function lire(message: Anthropic.Message, schema: ReturnType<typeof schemaPropose>): Lecture {
   if (message.stop_reason === 'refusal') {
     return { ok: false, raison: 'le modèle a refusé', relance: false }
   }
@@ -376,7 +439,7 @@ function lire(message: Anthropic.Message, ecrit: boolean): Lecture {
   if (bloc.name !== OUTIL_PROPOSER_GESTE) {
     return { ok: false, raison: `outil inconnu : ${bloc.name}`, relance: true }
   }
-  const lu = (ecrit ? GesteProposeEcriture : GestePropose).safeParse(relireNuls(bloc.input))
+  const lu = schema.safeParse(relireNuls(bloc.input))
   return lu.success
     ? { ok: true, propose: lu.data }
     : { ok: false, raison: `forme : ${z.prettifyError(lu.error)}`, relance: true }
@@ -385,15 +448,25 @@ function lire(message: Anthropic.Message, ecrit: boolean): Lecture {
 const estId = (v: unknown, personnes: Designable[]) =>
   typeof v === 'string' && personnes.some((p) => p.id === v)
 
+/** Un paramètre proposé qui désigne une personne ; un type inconnu, non (`verifierGabarit` le dira). */
+function designePersonne(declarations: DeclarationsGeste, type: string | undefined): boolean {
+  if (type === undefined) return false
+  try {
+    return typeDe(declarations.typesParametre, type).sorte === 'personne'
+  } catch {
+    return false
+  }
+}
+
 /**
  * Complète la proposition en un geste (§ 6.1) : l'identifiant est
  * l'intention ; chaque test cite une échappée d'origine, dont il reçoit la
- * consigne, le rôle, l'agent, l'instantané, et `contient` : les nombres et
- * les noms du texte montré que la consigne ne portait pas déjà ; pour un
- * geste qui écrit, `modifications` : les réaffectations que le patron a
- * validées. Un agent des paramètres est résolu comme pour les gestes codés ;
- * pour le rôle `agent`, c'est celui qui parle (D4). Chaque échappée d'origine
- * a son test (écart 2).
+ * consigne, le rôle, qui a demandé, l'instantané, et `contient` : les nombres
+ * et les noms du texte montré que la consigne ne portait pas déjà ; pour un
+ * geste qui écrit, `modifications` : celles qui ont été validées (`validees`).
+ * Une personne des paramètres est résolue comme pour les gestes codés ; pour
+ * un rôle qui ne désigne pas autrui, c'est celui qui parle (D4,
+ * PLAN-METIER-2.md M3, M5). Chaque échappée d'origine a son test (écart 2).
  */
 export function completerGeste(
   propose: GestePropose | GesteProposeEcriture,
@@ -401,6 +474,8 @@ export function completerGeste(
   echappees: EchappeeJournalisee[],
   personnes: Designable[],
   origine: GesteAppris['origine'],
+  declarations: DeclarationsGeste,
+  validees: ValideesDe,
 ): { geste?: GesteAppris; ecarts: EcartGeste[] } {
   const ecarts: EcartGeste[] = []
   const ecart = (texte: string) => ecarts.push({ texte })
@@ -427,13 +502,12 @@ export function completerGeste(
     let valide = true
     for (const cle of cles) {
       const v = t.params[cle] ?? null
-      const type = propose.parametres[cle]?.type
-      if (type !== 'agent') {
+      if (!designePersonne(declarations, propose.parametres[cle]?.type)) {
         params[cle] = v
         continue
       }
-      if (e.role === 'agent') {
-        params[cle] = e.agent ?? null
+      if (!aCapacite(declarations.roles, { role: e.role }, 'designe_autrui')) {
+        params[cle] = e.personne ?? null
       } else if (v === null || estId(v, personnes)) {
         params[cle] = v
       } else {
@@ -454,17 +528,17 @@ export function completerGeste(
       echappee: e.echappee,
       consigne: e.consigne,
       role: e.role,
-      agent: e.agent ?? null,
+      personne: e.personne ?? null,
       params,
       instantane: e.instantane,
     }
     if ('modifications' in propose) {
-      const validees = reaffectationsJournalisees(e)
-      if (!validees) {
-        ecart(`${e.echappee} : aucune réaffectation validée à reproduire`)
+      const modifications = validees(e)
+      if (modifications.length === 0) {
+        ecart(`${e.echappee} : aucune modification validée à reproduire`)
         continue
       }
-      tests.push({ ...test, contient: [], modifications: validees })
+      tests.push({ ...test, contient: [], modifications })
       continue
     }
     const attendus = citations(e.texte, noms).filter((c) => !contient(e.consigne, c))
@@ -488,17 +562,19 @@ export function completerGeste(
 
 /**
  * Le rejeu d'un test sur son instantané : le texte rendu et ce qui y manque,
- * ou l'erreur. Pour un geste qui écrit (PLAN-PROMOTION.md § 10), le texte est
- * la liste des réaffectations rendues : chaque vacation du test doit y être
- * (`manque` sinon : la vacation), et chaque réaffectation rendue doit être une que le
- * patron a validée pour cette vacation, dans ce test ou un autre du geste
- * (`enTrop` sinon, comme une vacation de plus) : le patron qui a validé deux
- * agents pour la même vacation les a acceptés tous les deux.
+ * ou l'erreur. Pour un geste qui écrit (PLAN-PROMOTION.md § 10,
+ * PLAN-METIER-2.md M6), le texte est la liste des modifications rendues :
+ * l'objet de chaque modification du test doit y être (`manque` sinon :
+ * l'objet), et chaque modification rendue doit être égale à une modification
+ * validée, dans ce test ou un autre du geste, pour un objet du test, et une
+ * seule par objet (`enTrop` sinon) : deux modifications validées pour le même
+ * objet ont été acceptées toutes les deux.
  */
 export async function rejouerTest(
   geste: GesteAppris,
   test: TestAppris,
   dossierClient: string,
+  declarations: DeclarationsGeste,
 ): Promise<
   { texte: string; manque: string[]; enTrop: string[] } | { erreur: string; requete?: string }
 > {
@@ -510,31 +586,42 @@ export async function rejouerTest(
   }
   const copie = creerCopie(instantane.tables)
   try {
-    const identite = { role: test.role, ...(test.agent !== null ? { agent: test.agent } : {}) }
-    const e = await executerGeste(geste, copie, liaisonDe(geste, identite, test.params))
+    const personne = personneDuTest(test)
+    const identite = { role: test.role, ...(personne !== null ? { personne } : {}) }
+    const { operation } = declarations
+    const e = await executerGeste(
+      geste,
+      copie,
+      liaisonDe(geste, identite, test.params, declarations),
+      operation,
+    )
     if ('erreur' in e) {
       return { erreur: e.erreur, ...(e.requete !== undefined ? { requete: e.requete } : {}) }
     }
-    if (e.reaffectations === undefined) {
+    if (e.modifications === undefined || !operation) {
       return {
         texte: e.texte,
         manque: test.contient.filter((mot) => !contient(e.texte, mot)),
         enTrop: [],
       }
     }
-    const attendues = test.modifications ?? []
-    const vacations = attendues.map((r) => r.vacation)
-    const validees = new Set(geste.tests.flatMap((t) => (t.modifications ?? []).map(enLigne)))
-    const rendues = e.reaffectations
+    const lues = z.array(operation.modification)
+    const attendues = lues.safeParse(test.modifications ?? [])
+    const validees = lues.safeParse(geste.tests.flatMap((t) => t.modifications ?? []))
+    if (!attendues.success || !validees.success) {
+      return { erreur: 'une modification attendue n’a pas la forme de l’opération' }
+    }
+    const objets = attendues.data.map((m) => operation.objet(m))
+    const rendues = e.modifications
     return {
-      texte: rendues.length > 0 ? rendues.map(enLigne).join(', ') : 'aucune réaffectation',
-      manque: vacations.filter((v) => !rendues.some((r) => r.vacation === v)),
+      texte: rendues.length > 0 ? rendues.map(enLigne).join(', ') : 'aucune modification',
+      manque: objets.filter((o) => !rendues.some((m) => operation.objet(m) === o)),
       enTrop: rendues
         .filter(
-          (r, i) =>
-            !vacations.includes(r.vacation) ||
-            !validees.has(enLigne(r)) ||
-            rendues.findIndex((x) => x.vacation === r.vacation) !== i,
+          (m, i) =>
+            !objets.includes(operation.objet(m)) ||
+            !validees.data.some((v) => operation.egal(v, m)) ||
+            rendues.findIndex((x) => operation.objet(x) === operation.objet(m)) !== i,
         )
         .map(enLigne),
     }
@@ -555,6 +642,7 @@ export async function verifierGeste(
     copieVide: TableCopie[]
     consignes: string[]
     personnes: Designable[]
+    declarations: DeclarationsGeste
     gestesExistants: { id: string; description: string }[]
   },
 ): Promise<{ ecarts: EcartGeste[]; rejeu: Rejeu }> {
@@ -562,12 +650,12 @@ export async function verifierGeste(
   const rejeu: Rejeu = { ok: 0, total: geste.tests.length }
 
   // 1. Le gabarit, puis les colonnes de chaque requête, lues sur la copie vide.
-  const statiques = verifierGabarit(geste)
+  const statiques = verifierGabarit(contexte.declarations, geste)
   const vide = creerCopie(contexte.copieVide)
   let colonnes: Map<string, string[]> | undefined = new Map()
   try {
     const nuls = Object.fromEntries(clesDe(geste).map((c) => [c, null]))
-    const e = await executerGeste(geste, vide, nuls)
+    const e = await executerGeste(geste, vide, nuls, contexte.declarations.operation)
     if ('erreur' in e && e.requete !== undefined) {
       ecarts.push({
         texte: `la requête « ${e.requete} » échoue : ${e.erreur}`,
@@ -585,14 +673,18 @@ export async function verifierGeste(
     vide.fermer()
   }
   ecarts.push(
-    ...(colonnes ? verifierGabarit(geste, colonnes) : statiques).map((texte) => ({ texte })),
+    ...(colonnes ? verifierGabarit(contexte.declarations, geste, colonnes) : statiques).map(
+      (texte) => ({
+        texte,
+      }),
+    ),
   )
   // Une requête qui ne s'exécute même pas sur la copie vide : rien d'autre à vérifier.
   if (!colonnes) return { ecarts, rejeu }
 
   // 3. Chaque test rejoué sur son instantané.
   for (const t of geste.tests) {
-    const r = await rejouerTest(geste, t, contexte.dossierClient)
+    const r = await rejouerTest(geste, t, contexte.dossierClient, contexte.declarations)
     if ('erreur' in r) {
       ecarts.push({
         texte: `${t.echappee} : ${r.requete !== undefined ? `la requête « ${r.requete} » échoue : ` : ''}${r.erreur}`,
@@ -717,6 +809,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     appels,
     relance: appels > 1,
   })
+  if (ecrit && !cadre.declarations.operation) return echec(SANS_OPERATION)
   if (reponses.length < TESTS_MIN) {
     const ecartees = anciennes.length > 0 ? ` (${ANTERIEURE} : ${anciennes.join(', ')})` : ''
     return echec(
@@ -729,8 +822,15 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     roles,
     schemaDesTables(cadre.copieVide),
     cadre.gestesExistants,
+    cadre.declarations,
+    cadre.domaine,
   )
-  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: messageFabriquer(reponses) }]
+  const validees: ValideesDe = (e) =>
+    cadre.declarations.operation?.relire(cadre.journal, e.conversation) ?? []
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: messageFabriquer(reponses, cadre.declarations, validees) },
+  ]
+  const schema = schemaPropose(cadre.declarations, ecrit)
   const conversations = [...new Set(reponses.map((e) => e.conversation))]
   const consignes = reponses.map((e) => e.consigne)
 
@@ -741,7 +841,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
       reponse = await cadre.modele.appeler({
         systeme,
         messages,
-        outils: [outilProposerGeste(ecrit)],
+        outils: [outilProposerGeste(cadre.declarations, ecrit)],
         effort: cadre.effort,
         maxTokens: cadre.maxTokens,
         unSeulOutil: true,
@@ -755,7 +855,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     if (reponse.usageBorne) usageBorne = true
     cadre.journaliser(reponse, relance)
 
-    const lu = lire(reponse.message, ecrit)
+    const lu = lire(reponse.message, schema)
     let motif: string
     let raison: string
     if (!lu.ok) {
@@ -774,6 +874,8 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
           cout_usd: cadre.cout(usage),
           conversations,
         },
+        cadre.declarations,
+        validees,
       )
       let rejeu: Rejeu = { ok: 0, total: lu.propose.tests.length }
       if (geste) {
@@ -782,6 +884,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
           copieVide: cadre.copieVide,
           consignes,
           personnes: cadre.personnes,
+          declarations: cadre.declarations,
           gestesExistants: cadre.gestesExistants,
         })
         ecarts.push(...v.ecarts)

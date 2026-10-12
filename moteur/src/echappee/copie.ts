@@ -14,6 +14,8 @@ export interface ColonneCopie {
   description: string
   /** Une colonne qui porte le nom d'une personne : sa description dans la copie masquée, où l'identifiant tient lieu de nom (PLAN-PSEUDONYMES.md S2). */
   masquee?: string
+  /** Des euros : une colonne `REAL` dont les valeurs sont arrondies à deux décimales dans la copie, et décrites comme telles (PLAN-METIER-2.md § 1, M11). */
+  decimales?: 2
 }
 
 export interface TableCopie {
@@ -42,7 +44,12 @@ function validerNom(nom: string): string {
 export function creerCopie(tables: TableCopie[]): Copie {
   for (const table of tables) {
     validerNom(table.nom)
-    for (const colonne of table.colonnes) validerNom(colonne.nom)
+    for (const colonne of table.colonnes) {
+      validerNom(colonne.nom)
+      if (colonne.decimales !== undefined && colonne.type !== 'REAL') {
+        throw new Error(`copie : « ${colonne.nom} » a des décimales sans être REAL`)
+      }
+    }
   }
   const dossier = mkdtempSync(join(tmpdir(), 'copie-'))
   const chemin = join(dossier, 'copie.sqlite')
@@ -85,7 +92,12 @@ function remplir(db: DatabaseSync, table: TableCopie): void {
     if (inconnue !== undefined) {
       throw new Error(`copie : colonne « ${inconnue} » absente de la table « ${table.nom} »`)
     }
-    inserer.run(...noms.map((nom) => ligne[nom] ?? null))
+    inserer.run(
+      ...table.colonnes.map((c) => {
+        const v = ligne[c.nom] ?? null
+        return c.decimales !== undefined && typeof v === 'number' ? Math.round(v * 100) / 100 : v
+      }),
+    )
   }
 }
 
@@ -96,7 +108,10 @@ export function decrireTables(tables: TableCopie[]): string {
       const n = table.lignes.length
       return [
         `Table ${table.nom} : ${table.description} (${n} ligne${n > 1 ? 's' : ''})`,
-        ...table.colonnes.map((c) => `- ${c.nom} (${c.type}) : ${c.description}`),
+        ...table.colonnes.map(
+          (c) =>
+            `- ${c.nom} (${c.type}${c.decimales !== undefined ? ', en euros, deux décimales' : ''}) : ${c.description}`,
+        ),
       ].join('\n')
     })
     .join('\n\n')

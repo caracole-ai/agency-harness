@@ -22,7 +22,7 @@ import {
 // ou qu'elle écrive (§ 10, PLAN-GENERAL.md G5), la fabrication (relance
 // comprise), la vérification en code,
 // l'écriture du geste au statut `propose` si zéro écart, puis la passe de
-// traduction avec modèle, parce que c'est le patron qui active (P6) : il ne
+// traduction avec modèle, parce que c'est un humain qui active (P6) : il ne
 // doit voir que du vérifié. Tout est dit au dossier et au journal.
 
 export interface OptionsPromotion {
@@ -130,7 +130,10 @@ async function fabriquer<S>(
     intention,
     echappees,
     gestesExistants,
-    personnes: m.vocabulaire(s, { role: 'patron' }).agents,
+    personnes: m.noms(s),
+    declarations: m,
+    domaine: m.domaine,
+    journal,
     dossierClient,
     copieVide,
     fabriqueLe: maintenant.toPlainDate().toString(),

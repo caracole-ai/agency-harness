@@ -10,7 +10,13 @@ import type { TableCopie } from '../echappee/copie'
 import { ecrireInstantane } from '../echappee/echappee'
 import { chargerGestesAppris, ISSUE_GESTE, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { DOSSIER_GESTES, empreinteGeste, type FichierGeste } from '../gestes/geste-appris'
-import { GESTE_EXEMPLE as GESTE } from '../gestes/geste-appris.exemple'
+import {
+  DECLARATIONS_EXEMPLE,
+  DOMAINE_EXEMPLE,
+  GESTE_EXEMPLE as GESTE,
+  OPERATION_EXEMPLE,
+  TYPES_EXEMPLE,
+} from '../gestes/geste-appris.test.fixture'
 import { Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -90,6 +96,12 @@ interface Session {
   journal: Journal
 }
 
+const PERSONNES = AGENTS.lignes.map((a) => ({
+  id: String(a.id),
+  nom: String(a.nom),
+  sorte: 'personne' as const,
+}))
+
 const METIER: MetierConversation<Session> = {
   ouvrir: (dossier) => ({ dossier, journal: new Journal(join(dossier, 'journal.sqlite')) }),
   fermer: (s) => s.journal.fermer(),
@@ -104,9 +116,20 @@ const METIER: MetierConversation<Session> = {
   actions: [VOIR_PLANNING],
   intentions: [],
   copie: () => [AGENTS, VACATIONS],
-  vocabulaire: () => ({
-    agents: AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) })),
-  }),
+  roles: [
+    {
+      id: 'patron',
+      enMots: 'le patron',
+      identifie: false,
+      capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+    },
+    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+  ],
+  typesParametre: TYPES_EXEMPLE,
+  operation: OPERATION_EXEMPLE,
+  domaine: DOMAINE_EXEMPLE,
+  vocabulaire: () => ({ noms: PERSONNES }),
+  noms: () => PERSONNES,
   verifierIdentite: () => undefined,
 }
 
@@ -280,6 +303,7 @@ describe('activerGeste', () => {
     const { actifs, ecartes } = chargerGestesAppris(s.dossier, {
       client: CLIENT,
       journal: s.journal,
+      declarations: DECLARATIONS_EXEMPLE,
     })
     expect(ecartes).toEqual([])
     expect(actifs.map((g) => g.id)).toEqual([GESTE.id])
@@ -326,7 +350,11 @@ describe('retirerGeste', () => {
     verifie(s, bilanOk)
     activerGeste(s.dossier, s.journal, CLIENT, GESTE.id, 'Lionel', MAINTENANT)
     expect(
-      chargerGestesAppris(s.dossier, { client: CLIENT, journal: s.journal }).actifs,
+      chargerGestesAppris(s.dossier, {
+        client: CLIENT,
+        journal: s.journal,
+        declarations: DECLARATIONS_EXEMPLE,
+      }).actifs,
     ).toHaveLength(1)
     expect(
       retirerGeste(s.dossier, s.journal, CLIENT, GESTE.id, 'trop large', 'patron', MAINTENANT),
@@ -341,7 +369,13 @@ describe('retirerGeste', () => {
       fichier: join(DOSSIER_GESTES, FICHIER),
       par: 'patron',
     })
-    expect(chargerGestesAppris(s.dossier, { client: CLIENT, journal: s.journal })).toEqual({
+    expect(
+      chargerGestesAppris(s.dossier, {
+        client: CLIENT,
+        journal: s.journal,
+        declarations: DECLARATIONS_EXEMPLE,
+      }),
+    ).toEqual({
       actifs: [],
       ecartes: [],
     })

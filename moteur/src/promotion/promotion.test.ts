@@ -275,6 +275,11 @@ describe('echappeesDe', () => {
           consigne_modele: 'Combien d’heures ?',
           texte_modele: 'A-2 : 16 heures.',
         }),
+        echappee('C-9', 'E-9', AUTRE, 'reponse', 'Mes heures ?', {
+          ...ok,
+          personne: 'A-3',
+          role: 'agent',
+        }),
       ],
       '2026-10-07T16:30:00Z',
     )
@@ -295,11 +300,14 @@ describe('echappeesDe', () => {
       texte: 'texte de E-8a',
       instantane: join(DOSSIER_ECHAPPEES, 'E-8a.json'),
     })
-    const [b] = echappeesDe(journal, AUTRE, DEPUIS)
+    const [b, c] = echappeesDe(journal, AUTRE, DEPUIS)
+    // E-8b porte l'ancienne graphie `agent`, E-9 la nouvelle : les deux se relisent en `personne` (PLAN-METIER-2.md M2).
+    expect(b).not.toHaveProperty('agent')
+    expect(c).toMatchObject({ echappee: 'E-9', role: 'agent', personne: 'A-3' })
     expect(b).toMatchObject({
       echappee: 'E-8b',
       role: 'agent',
-      agent: 'A-2',
+      personne: 'A-2',
       requetes: [{ sql: SQL_B, sortie: 'b\n2' }],
       // Les versions du modèle, sans aucun nom (PLAN-PSEUDONYMES.md § 6) ; absentes de E-8a, d'avant.
       consigneModele: 'Combien d’heures ?',

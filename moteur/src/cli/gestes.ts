@@ -6,17 +6,16 @@
 // l'activation (la clé au journal, que le chargement exige) et le retrait.
 // `<id>` est l'identifiant du geste, ou le nom de son fichier quand plusieurs
 // le portent. `--par` n'a pas de valeur par défaut : activer engage quelqu'un.
-// Le patron fait la même chose dans l'interface (§ 7.2). Exige la clé que
+// L'interface fait la même chose (§ 7.2). Exige la clé que
 // nomme la config pour --avec-modele seulement. Travailler sur une copie du
 // client fictif, jamais sur `exemples/`.
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse } from 'yaml'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { MetierConversation } from '../conversation/conversation'
-import { FichierTraduire } from '../evals/evals'
+import { evalsDuMetier, FichierTraduire } from '../evals/evals'
 import { passeTraduction } from '../evals/traduction'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import {
@@ -29,9 +28,9 @@ import {
 } from '../promotion/atelier'
 import { dollars } from '../promotion/promotion'
 import { dateFr, FUSEAU, Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
-const EVALS = join(RACINE, 'evals')
 const COMMANDES = ['lister', 'verifier', 'activer', 'retirer'] as const
 type Commande = (typeof COMMANDES)[number]
 
@@ -57,12 +56,12 @@ if (commande === 'activer' && !values.par) usage()
 if (commande === 'retirer' && !values.motif) usage()
 
 const dossier = resolve(values.client as string)
-const { metier } = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
-const m = module.CONVERSATION
+const m = await metierDe(dossier)
+/** Les cas de traduction du métier du client (PLAN-METIER-2.md M8). */
+const EVALS = join(
+  RACINE,
+  evalsDuMetier(chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase).metier),
+)
 const maintenant = Temporal.Now.zonedDateTimeISO(FUSEAU)
 const pourCent = (taux: number) => `${Math.round(taux * 100)} %`
 
@@ -156,7 +155,7 @@ try {
       }
       console.log(
         issue.activable
-          ? `Activable : oui (pnpm gestes activer ${issue.geste.id} --client ${dossier} --par <nom>, ou le patron dans l’interface).`
+          ? `Activable : oui (pnpm gestes activer ${issue.geste.id} --client ${dossier} --par <nom>, ou dans l’interface).`
           : 'Activable : non.',
       )
       break

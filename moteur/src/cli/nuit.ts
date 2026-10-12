@@ -10,14 +10,13 @@
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; les promotions et la
 // mesure d'honnêteté appellent le modèle du quotidien (sa clé).
-import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { chargerAgence } from '../agence/config'
 import { faireNuit } from '../chantier/nuit'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { MetierConversation } from '../conversation/conversation'
 import { FUSEAU, Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -30,13 +29,9 @@ if (!values.client) {
 }
 
 const dossier = resolve(values.client)
-const { metier } = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
+const metier = await metierDe(dossier)
 
-const r = await faireNuit(module.CONVERSATION, {
+const r = await faireNuit(metier, {
   racine: RACINE,
   agence: chargerAgence(RACINE),
   dossierClient: dossier,

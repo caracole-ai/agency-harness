@@ -2,14 +2,16 @@ import { spawnSync } from 'node:child_process'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { RACINE_DEPOT } from '../agence/fictif'
-import { METIER_ESSAI, PERSONNES_ESSAI } from '../ronde/essai'
+import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
+import { fuites } from '../echappee/pseudonymes'
+import { METIER_ESSAI, PERSONNES_ESSAI } from '../ronde/essai.test.fixture'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { commandeSync } from './arbre'
-import { faireChantier, type OptionsChantier, TYPE_CHANTIER } from './chantier'
+import { AUCUN_CLIENT_EVALS, faireChantier, type OptionsChantier, TYPE_CHANTIER } from './chantier'
 import {
   agenceEssai,
   binaireSimule,
+  CLIENT_EVALS_ESSAI,
   clientAvecMission,
   commandeSimulee,
   creerDepots,
@@ -19,7 +21,7 @@ import {
   MISSION_ESSAI,
   type PnpmSimule,
   type Scenario,
-} from './essai'
+} from './essai.test.fixture'
 import {
   type Condition,
   conclure,
@@ -28,6 +30,7 @@ import {
   refEtiquette,
   retirerFusion,
 } from './fusion'
+import { fichierConsignes } from './garde'
 import { ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
 import type { Mission } from './mission'
 
@@ -90,10 +93,17 @@ const lignesChantier = (dossier: string) => {
 
 describe('G1 : huit conditions vertes, la fusion', () => {
   it('fusionne --no-ff dans main du clone, pose l’étiquette, pousse, écrit la mémoire à part et le journal', async () => {
-    const { issue, appels, depots, dossier } = await lancer()
+    const { issue, appels, emises, depots, dossier } = await lancer()
     expect(issue.sorte).toBe('fait')
     if (issue.sorte !== 'fait') return
     expect(issue.issue).toBe('fusionné')
+    // La condition 4 mesure sur le client des évals du métier de la mission (PLAN-METIER-2.md M9).
+    expect(emises.find((x) => x.commande === 'pnpm' && x.args[0] === 'evals')?.args).toEqual([
+      'evals',
+      'traduire',
+      '--client',
+      CLIENT_EVALS_ESSAI,
+    ])
     expect(issue.conditions.map((k) => [k.id, k.ok])).toEqual([
       ['chemins', true],
       ['tests', true],
@@ -143,14 +153,19 @@ describe('G1 : huit conditions vertes, la fusion', () => {
 
   it('ce qui part au modèle : la mission par types, ni échappée ni nom ; le chantier sous les réglages du projet', async () => {
     const { appels } = await lancer()
+    const fictives = await Promise.all(CLIENTS_FICTIFS.map(personnesFictives))
     for (const a of appels()) {
       expect(a.entree).not.toMatch(/E-2026/)
       for (const p of PERSONNES_ESSAI) expect(a.entree).not.toContain(p.nom.split(' ')[0])
+      // Ni un nom d'un client fictif du dépôt (PLAN-METIER-2.md M9).
+      for (const personnes of fictives) expect(fuites(a.entree, personnes)).toEqual([])
       expect(a.args[a.args.indexOf('--setting-sources') + 1]).toBe('project')
       expect(a.args[a.args.indexOf('--permission-mode') + 1]).toBe('dontAsk')
       expect(a.cwd).toMatch(/chantier-simuler_absence$/)
     }
     const [plan, impl, relecture] = appels()
+    // Les cas de traduction s'écrivent dans les consignes du métier de la mission (PLAN-METIER-2.md M8).
+    expect(impl?.entree).toContain(`\`${fichierConsignes(MISSION_ESSAI.metier)}\``)
     expect(plan?.args).not.toContain('Edit(./**)')
     expect(relecture?.args).not.toContain('Write(./**)')
     expect(impl?.args).toContain('Write(./**)')
@@ -232,16 +247,61 @@ describe('G1 : une condition rouge, aucun merge', () => {
 
   it('4. deux cas de traduction seulement pour le geste nouveau : refusé, sans passe de traduction', async () => {
     const geste = gesteVert()
-    const deux = (geste['evals/consignes.yaml'] ?? '').split('\n').slice(0, -2).join('\n')
+    const consignes = fichierConsignes(MISSION_ESSAI.metier)
+    const deux = (geste[consignes] ?? '').split('\n').slice(0, -2).join('\n')
     const r = await refuse(
       {
         scenario: {
-          implementations: [{ ecrire: { ...geste, 'evals/consignes.yaml': `${deux}\n` } }],
+          implementations: [{ ecrire: { ...geste, [consignes]: `${deux}\n` } }],
         },
       },
       'honnetete',
     )
     expect(r.emises.some((x) => x.commande === 'pnpm' && x.args[0] === 'evals')).toBe(false)
+  })
+
+  it('4. le métier de la mission sans client d’évals dans agence.yaml : refusé, sans passe de traduction (PLAN-METIER-2.md M9)', async () => {
+    const r = await refuse(
+      { chantier: { evals_clients: { autre: CLIENT_EVALS_ESSAI } } },
+      'honnetete',
+    )
+    expect(
+      r.issue.sorte === 'fait' && r.issue.conditions.find((k) => k.id === 'honnetete'),
+    ).toEqual({
+      id: 'honnetete',
+      ok: false,
+      mesure: `${AUCUN_CLIENT_EVALS} (${MISSION_ESSAI.metier})`,
+    })
+    expect(r.emises.some((x) => x.commande === 'pnpm' && x.args[0] === 'evals')).toBe(false)
+  })
+
+  it('une mission d’un autre métier que celui du client lève avant tout appel (PLAN-METIER-2.md M9)', async () => {
+    await expect(
+      lancer({ mission: { ...MISSION_ESSAI, metier: 'securite-privee' } }),
+    ).rejects.toThrow(
+      `mission ${MISSION_ESSAI.id} du métier securite-privee, client du métier essai`,
+    )
+  })
+
+  it('1. un fichier d’un autre métier que celui de la mission : refusé (PLAN-METIER-2.md M9)', async () => {
+    const r = await refuse(
+      {
+        scenario: {
+          implementations: [
+            {
+              ecrire: {
+                ...gesteVert(),
+                'metiers/securite-privee/code/src/actions.ts': 'export const ACTIONS = []\n',
+              },
+            },
+          ],
+        },
+      },
+      'chemins',
+    )
+    expect(r.issue.sorte === 'fait' && r.issue.conditions[0]?.mesure).toBe(
+      'hors bande : metiers/securite-privee/code/src/actions.ts',
+    )
   })
 
   it('4. la traduction sous le seuil avec le modèle du quotidien : refusé', async () => {
@@ -599,7 +659,7 @@ describe('aucun merge ni push hors de fusion.ts', () => {
     const fautifs = fichiers(join(RACINE_DEPOT, 'moteur', 'src'))
       .filter((f) => !f.endsWith('.test.ts') && !f.endsWith(join('chantier', 'fusion.ts')))
       // Les aides de test montent leurs faux dépôts avec git, poussées comprises.
-      .filter((f) => !f.endsWith('essai.ts'))
+      .filter((f) => !f.endsWith('essai.test.fixture.ts'))
       .filter((f) => /['"`](?:merge|push)['"`]/.test(readFileSync(f, 'utf8')))
     expect(fautifs).toEqual([])
   })

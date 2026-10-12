@@ -1,6 +1,7 @@
 import { parse } from 'yaml'
+import { PLACE_METIER } from '../agence/config'
 import type { Designable } from '../conversation/designation'
-import { type CasTraduire, FichierTraduire } from '../evals/evals'
+import { type CasTraduire, evalsDuMetier, FichierTraduire } from '../evals/evals'
 import { BRANCHE_PRINCIPALE, type Commande, git } from './arbre'
 import { DOSSIER_MEMOIRE, FICHIER_CONVENTIONS, interdits } from './memoire'
 
@@ -8,6 +9,8 @@ import { DOSSIER_MEMOIRE, FICHIER_CONVENTIONS, interdits } from './memoire'
 // PLAN-GENERAL.md G1, conditions 1, 2 et 7) : la hiérarchie de Lionel
 // appliquée par le code, pas promise par un prompt. Le diff de la branche
 // depuis `main` : chaque fichier dans les chemins autorisés d'`agence.yaml`,
+// résolus avec le métier de la mission (PLAN-METIER-2.md M9 : un chantier ne
+// touche jamais un autre métier),
 // la mémoire touchée seulement par des lignes ajoutées à `CONVENTIONS.md`
 // (jamais retirées, jamais un nom) ; aucun fichier de test supprimé, aucun
 // test de moins dans un fichier de test existant, aucun `.skip` ni `.only` de
@@ -15,7 +18,7 @@ import { DOSSIER_MEMOIRE, FICHIER_CONVENTIONS, interdits } from './memoire'
 // réécrit (sauf une demande nouvelle qui devient le geste de la branche) ; au
 // plus `lignes_max` lignes ; jamais un chemin interdit (les contrôles des
 // règles, même dans la bande). Et le compte des cas de traduction de chaque
-// geste nouveau (condition 4, première moitié).
+// geste nouveau (condition 4, première moitié), dans les consignes du métier.
 
 const FICHIER_TEST = /\.test\.ts$/
 /** Un test (`it(`, `test(`, `it.each(`) ; `it.skip(` n'en est pas un. */
@@ -23,7 +26,17 @@ const MOTIF_TEST = /\b(?:it|test)(?:\.each)?\s*\(/g
 /** Ce qui fait taire un test ou tous les autres. */
 const MOTIF_TAIRE = /\.(?:skip|only|todo)\s*\(/g
 const CONVENTIONS = `${DOSSIER_MEMOIRE}/${FICHIER_CONVENTIONS}`
-export const FICHIER_CONSIGNES = 'evals/consignes.yaml'
+/** Les cas de traduction du métier de la mission (PLAN-METIER-2.md M8, M9). */
+export const fichierConsignes = (metier: string): string =>
+  `${evalsDuMetier(metier)}/consignes.yaml`
+/** Un nom de métier : rien qu'un motif de chemin lirait autrement (`*`, `/`, `..`). */
+const NOM_METIER = /^[a-z0-9][a-z0-9-]*$/
+
+/** Un motif d'`agence.yaml` avec `${metier}` remplacé par le métier de la mission ; lève sur un nom de métier qui n'en est pas un. */
+export function resoudreMetier(motif: string, metier: string): string {
+  if (!NOM_METIER.test(metier)) throw new Error(`métier « ${metier} » : pas un nom de métier`)
+  return motif.replaceAll(PLACE_METIER, metier)
+}
 
 /** Un chemin autorisé d'`agence.yaml` en expression : `**` traverse les dossiers, `*` non. */
 export function motifChemin(glob: string): RegExp {
@@ -63,12 +76,13 @@ const aRevision = (c: Commande, arbre: string, rev: string, chemin: string) => {
   return r.code === 0 ? r.sortie : ''
 }
 
-/** La garde du diff commis de la branche (`main...HEAD`), dans l'arbre de travail. */
+/** La garde du diff commis de la branche (`main...HEAD`), dans l'arbre de travail, pour une mission de ce métier. */
 export function garderDiff(
   c: Commande,
   arbre: string,
   config: { chemins_autorises: string[]; chemins_interdits: string[]; lignes_max: number },
   personnes: Designable[],
+  metier: string,
 ): Garde {
   const base = git(c, arbre, ['merge-base', BRANCHE_PRINCIPALE, 'HEAD']).trim()
   const fichiers = git(c, arbre, ['diff', '--name-status', '--no-renames', base, 'HEAD'])
@@ -79,8 +93,10 @@ export function garderDiff(
       return { statut, chemin }
     })
   // Les interdits l'emportent : les contrôles des règles vivent dans la bande métier, jamais au chantier.
-  const motifs = config.chemins_autorises.map(motifChemin)
-  const interditsChemins = config.chemins_interdits.map(motifChemin)
+  const motifs = config.chemins_autorises.map((m) => motifChemin(resoudreMetier(m, metier)))
+  const interditsChemins = config.chemins_interdits.map((m) =>
+    motifChemin(resoudreMetier(m, metier)),
+  )
   const horsBande = fichiers
     .map((f) => f.chemin)
     .filter(
@@ -138,7 +154,7 @@ export function garderDiff(
   }
 
   // Les cas d'éval existants sont des tests aussi : aucun ne disparaît ni ne change (§ 6.4 de la méthode).
-  disparus.push(...casModifies(c, arbre, base))
+  disparus.push(...casModifies(c, arbre, base, metier))
 
   // Un fichier binaire (« - ») compte comme hors borne : il n'a rien à faire dans la bande métier.
   const total = [...numstat.values()].reduce(
@@ -174,29 +190,29 @@ function casParId(texte: string): Map<string, CasTraduire> {
  * qui devient un geste nouveau de la branche, sa consigne et son rôle
  * intacts (une factorisation sert désormais la demande).
  */
-function casModifies(c: Commande, arbre: string, base: string): string[] {
-  const avant = casParId(aRevision(c, arbre, base, FICHIER_CONSIGNES))
-  const apres = casParId(aRevision(c, arbre, 'HEAD', FICHIER_CONSIGNES))
-  const nouveaux = new Set(casParGesteNouveau(c, arbre).map((g) => g.geste))
+function casModifies(c: Commande, arbre: string, base: string, metier: string): string[] {
+  const consignes = fichierConsignes(metier)
+  const avant = casParId(aRevision(c, arbre, base, consignes))
+  const apres = casParId(aRevision(c, arbre, 'HEAD', consignes))
+  const nouveaux = new Set(casParGesteNouveau(c, arbre, metier).map((g) => g.geste))
   const ecarts: string[] = []
   for (const [id, a] of avant) {
     const b = apres.get(id)
     if (!b) {
-      ecarts.push(`${FICHIER_CONSIGNES} : le cas ${id} a disparu`)
+      ecarts.push(`${consignes} : le cas ${id} a disparu`)
       continue
     }
     const { attendu: attenduA, ...restA } = a
     const { attendu: attenduB, ...restB } = b
     if (JSON.stringify(restA) !== JSON.stringify(restB)) {
-      ecarts.push(`${FICHIER_CONSIGNES} : le cas ${id} a changé de consigne ou de rôle`)
+      ecarts.push(`${consignes} : le cas ${id} a changé de consigne ou de rôle`)
     } else if (JSON.stringify(attenduA) !== JSON.stringify(attenduB)) {
       const devientGeste =
         [attenduA.sorte].flat().includes('nouvelle') &&
         attenduB.sorte === 'action' &&
         attenduB.action !== undefined &&
         nouveaux.has(attenduB.action)
-      if (!devientGeste)
-        ecarts.push(`${FICHIER_CONSIGNES} : l'étiquette du cas ${id} a été réécrite`)
+      if (!devientGeste) ecarts.push(`${consignes} : l'étiquette du cas ${id} a été réécrite`)
     }
   }
   return ecarts
@@ -214,13 +230,17 @@ function casParAction(texte: string): Map<string, number> {
 }
 
 /**
- * Les gestes nouveaux de la branche (une action attendue par `consignes.yaml`
- * qui ne l'était pas sur `main`) et leurs cas de traduction : G1 en exige au
- * moins trois par geste nouveau (condition 4).
+ * Les gestes nouveaux de la branche (une action attendue par le `consignes.yaml`
+ * du métier qui ne l'était pas sur `main`) et leurs cas de traduction : G1 en
+ * exige au moins trois par geste nouveau (condition 4).
  */
-export function casParGesteNouveau(c: Commande, arbre: string): { geste: string; cas: number }[] {
+export function casParGesteNouveau(
+  c: Commande,
+  arbre: string,
+  metier: string,
+): { geste: string; cas: number }[] {
   const base = git(c, arbre, ['merge-base', BRANCHE_PRINCIPALE, 'HEAD']).trim()
-  const avant = casParAction(aRevision(c, arbre, base, FICHIER_CONSIGNES))
-  const apres = casParAction(aRevision(c, arbre, 'HEAD', FICHIER_CONSIGNES))
+  const avant = casParAction(aRevision(c, arbre, base, fichierConsignes(metier)))
+  const apres = casParAction(aRevision(c, arbre, 'HEAD', fichierConsignes(metier)))
   return [...apres].filter(([geste]) => !avant.has(geste)).map(([geste, cas]) => ({ geste, cas }))
 }

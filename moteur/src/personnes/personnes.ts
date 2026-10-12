@@ -2,7 +2,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { z } from 'zod'
-import { type Identite, ROLES, type Role } from '../conversation/actions'
+import {
+  type Identite,
+  identifiantRecu,
+  type RoleDeclare,
+  schemaRegistre,
+} from '../conversation/roles'
 
 // Qui a le droit de parler à l'outil chez un client : le registre d'accès,
 // `personnes.yaml` dans le dossier du client. Il appartient au harnais, pas
@@ -13,32 +18,14 @@ import { type Identite, ROLES, type Role } from '../conversation/actions'
 
 export const FICHIER_PERSONNES = 'personnes.yaml'
 
-const Personne = z.discriminatedUnion('role', [
-  z.strictObject({ role: z.literal('patron') }),
-  z.strictObject({ role: z.literal('agent'), agent: z.string().min(1) }),
-])
-export type Personne = z.infer<typeof Personne>
+/** Une personne du registre : une identité, validée par `schemaRegistre` (PLAN-METIER-2.md § 3.1). */
+export type Personne = Identite
 
-const cle = (i: Identite) => (i.role === 'patron' ? 'patron' : `agent ${i.agent}`)
-
-export const RegistrePersonnes = z.strictObject({
-  personnes: z
-    .array(Personne)
-    .min(1)
-    .superRefine((personnes, ctx) => {
-      const vues = new Set<string>()
-      for (const p of personnes) {
-        if (vues.has(cle(p))) ctx.addIssue({ code: 'custom', message: `${cle(p)} en double` })
-        vues.add(cle(p))
-      }
-    }),
-})
-
-/** Le registre d'accès d'un client ; absent ou invalide, rien ne démarre. */
-export function chargerPersonnes(dossierClient: string): Personne[] {
+/** Le registre d'accès d'un client, pour les rôles de son métier ; absent ou invalide, rien ne démarre. */
+export function chargerPersonnes(dossierClient: string, roles: RoleDeclare[]): Personne[] {
   const chemin = join(dossierClient, FICHIER_PERSONNES)
   if (!existsSync(chemin)) throw new Error(`registre d'accès absent, accès refusé : ${chemin}`)
-  const r = RegistrePersonnes.safeParse(parse(readFileSync(chemin, 'utf8')))
+  const r = schemaRegistre(roles).safeParse(parse(readFileSync(chemin, 'utf8')))
   if (!r.success) {
     throw new Error(
       `registre d'accès invalide, accès refusé : ${chemin}\n${z.prettifyError(r.error)}`,
@@ -62,25 +49,32 @@ export type Accueil =
 /** Ce qui vient de l'extérieur, cité dans un motif (au journal, en ajout seul) : borné. */
 const borne = (valeur: unknown) => String(valeur).slice(0, 80)
 
-/** La porte : la forme de l'identité reçue, puis sa présence au registre d'accès. Ne lit rien d'autre. */
-export function recevoir(personnes: Personne[], demandeur: unknown): Accueil {
+/**
+ * La porte : la forme de l'identité reçue, contre les rôles du métier, puis
+ * sa présence au registre d'accès. Ne lit rien d'autre. L'identifiant se lit
+ * sous ses deux graphies par `identifiantRecu` (PLAN-METIER-2.md, M2).
+ */
+export function recevoir(roles: RoleDeclare[], personnes: Personne[], demandeur: unknown): Accueil {
   const refus = (motif: string): Accueil => ({ sorte: 'refus', motif })
   if (typeof demandeur !== 'object' || demandeur === null) return refus('identité absente')
-  const { role, agent } = demandeur as Record<string, unknown>
-  if (!ROLES.includes(role as Role)) return refus(`rôle inconnu : ${borne(role)}`)
-  if (agent !== undefined && typeof agent !== 'string') {
-    return refus("l'identifiant d'agent doit être un texte")
+  const { role } = demandeur as Record<string, unknown>
+  const declare = roles.find((r) => r.id === role)
+  if (!declare) return refus(`rôle inconnu : ${borne(role)}`)
+  const lu = identifiantRecu(demandeur as Record<string, unknown>)
+  if ('motif' in lu) return refus(lu.motif)
+  const { id } = lu
+  if (!declare.identifie && id !== undefined) {
+    return refus(`${declare.enMots} parle en son nom : pas d'identifiant`)
   }
-  if (role === 'patron' && agent !== undefined) {
-    return refus("le patron parle en son nom : pas d'identifiant d'agent")
+  if (declare.identifie && id === undefined) {
+    return refus(`${declare.enMots} doit donner son identifiant`)
   }
-  if (role === 'agent' && agent === undefined) return refus('un agent doit dire qui il est')
-  const identite: Identite = { role: role as Role, ...(agent !== undefined ? { agent } : {}) }
-  if (!personnes.some((p) => cle(p) === cle(identite))) {
+  const identite: Identite = { role: declare.id, ...(id !== undefined ? { personne: id } : {}) }
+  if (!personnes.some((p) => p.role === identite.role && p.personne === identite.personne)) {
     return refus(
-      identite.role === 'patron'
-        ? "le patron n'est pas au registre d'accès"
-        : `inconnu au registre d'accès : ${borne(identite.agent)}`,
+      declare.identifie
+        ? `inconnu au registre d'accès : ${borne(id)}`
+        : `${declare.enMots} n'est pas au registre d'accès`,
     )
   }
   return { sorte: 'reçu', identite: identite as IdentiteVerifiee }

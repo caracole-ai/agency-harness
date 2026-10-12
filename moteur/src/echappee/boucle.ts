@@ -78,7 +78,7 @@ export interface OutilsEchappee<Modif> {
   decrire(modifications: Modif[]): string
   /** Le nom d'une règle, pour dire au modèle ce qu'une proposition enfreint. */
   nomRegle(id: string): string
-  /** false : le demandeur ne peut que questionner (un agent) ; `verifier` et `proposer` ne lui sont pas donnés. */
+  /** false : le demandeur ne peut que questionner (exemple : un agent) ; `verifier` et `proposer` ne lui sont pas donnés. */
   proposer: boolean
 }
 
@@ -137,10 +137,10 @@ const Abandonner = z.strictObject({
 
 function schemas<Modif>(outils: OutilsEchappee<Modif>) {
   const Verifier = z.strictObject({
-    modifications: outils.schemaModifications.describe('les réaffectations à essayer'),
+    modifications: outils.schemaModifications.describe('les modifications à essayer'),
   })
   const Proposer = z.strictObject({
-    modifications: outils.schemaModifications.describe('les réaffectations proposées'),
+    modifications: outils.schemaModifications.describe('les modifications proposées'),
     resume: z
       .string()
       .describe('ce que la proposition change, en une ou deux phrases, sans chiffre inventé'),
@@ -167,7 +167,7 @@ export function outilsEchappee<Modif>(outils: OutilsEchappee<Modif>): Anthropic.
       ? [
           outil(
             OUTIL_VERIFIER,
-            'Essayer des réaffectations : dit ce qui change et les règles qu’elles enfreindraient. Ne modifie rien.',
+            'Essayer des modifications : dit ce qui change et les règles qu’elles enfreindraient. Ne modifie rien.',
             Verifier,
           ),
         ]
@@ -181,7 +181,7 @@ export function outilsEchappee<Modif>(outils: OutilsEchappee<Modif>): Anthropic.
       ? [
           outil(
             OUTIL_PROPOSER,
-            'Finir par une proposition de réaffectations, que le patron validera ou non.',
+            'Finir par une proposition de modifications, que le demandeur validera ou non.',
             Proposer,
           ),
         ]
@@ -332,7 +332,7 @@ export async function boucle<Modif>(
             resultat(sortie, r.erreur)
           } else {
             sources.push(sortie)
-            // Le nombre de lignes d'un résultat entier se cite (« 4 agents ») :
+            // Le nombre de lignes d'un résultat entier se cite (exemple : « 4 agents ») :
             // le code l'a compté, pas le modèle.
             if (!r.tronque && rendu === complet) sources.push(String(r.lignes.length))
             tableaux.push(rendu)
