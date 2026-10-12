@@ -10,6 +10,7 @@ import {
   type GesteAppris,
   gesteDe,
   lireFichiersGestes,
+  personneDuTest,
   TESTS_MIN,
 } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
@@ -95,7 +96,7 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
           `${g.id} ${t.echappee}`,
         ).toBeGreaterThan(0)
         expect(
-          t.role === 'agent' ? t.agent !== null : t.agent === null,
+          t.role === 'agent' ? personneDuTest(t) !== null : personneDuTest(t) === null,
           `${g.id} ${t.echappee}`,
         ).toBe(true)
       }
@@ -119,7 +120,7 @@ describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
         const reaffectes = (t.modifications ?? []).map(
           (m) => OPERATION_REAFFECTER.modification.parse(m).agent,
         )
-        for (const id of [t.agent, ...Object.values(t.params), ...reaffectes].filter(
+        for (const id of [personneDuTest(t), ...Object.values(t.params), ...reaffectes].filter(
           (v): v is string => typeof v === 'string' && /^A-\d+$/.test(v),
         )) {
           expect(agentsFictif, `${g.id} ${t.echappee}`).toContain(`${id};`)

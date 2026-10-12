@@ -20,6 +20,7 @@ import {
   type Reponse,
   type Scripte,
   TYPE_ACCES_REFUSE,
+  TYPE_CONFIRMATION_ATTENDUE,
   TYPE_GESTE_APPRIS,
 } from '@harnais/moteur'
 import { CONVERSATION } from '@harnais/securite-privee'
@@ -63,7 +64,7 @@ function journalDe(dossier: string): Ligne[] {
 interface Etat {
   client: string
   maintenant: string
-  identites: { role: string; agent?: string; nom?: string }[]
+  identites: { role: string; personne?: string; nom?: string }[]
   aValider: {
     confirmations: { conversation: string; empreinte: string; sorte: string; texte: string }[]
     demandes: { id: string; statut: string }[]
@@ -87,6 +88,33 @@ describe('POST /api/etat', async () => {
   it('ne montre rien à valider sur un journal vierge', () => {
     expect(etat.aValider).toEqual({ confirmations: [], demandes: [] })
     expect(etat.ia).toEqual({ coutMois: 0, plafond: 30, appels: 0 })
+  })
+  it('relit une confirmation en attente écrite avant PLAN-METIER-2.md (identite.agent, M2)', async () => {
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire([
+      {
+        type: TYPE_CONFIRMATION_ATTENDUE,
+        client: 'client fictif (sécurité privée)',
+        objet: 'C-ancienne',
+        issue: 'mes_titres',
+        motif: 'Je montre tes titres et leurs échéances.',
+        donnees: {
+          identite: { role: 'agent', agent: 'A-2' },
+          demande: { sorte: 'action', action: 'mes_titres', params: {} },
+          empreinte: 'e',
+        },
+      },
+    ])
+    j.fermer()
+    const r = await lire(app([], dossier), '/api/etat')
+    expect(r.status).toBe(200)
+    const lu = (await r.json()) as Etat & {
+      aValider: { confirmations: { identite: Identite; nom: string }[] }
+    }
+    expect(lu.aValider.confirmations).toMatchObject([
+      { identite: { role: 'agent', personne: 'A-2' }, nom: 'Julien Lefèvre' },
+    ])
   })
 })
 

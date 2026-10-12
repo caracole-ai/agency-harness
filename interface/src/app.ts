@@ -15,6 +15,7 @@ import {
   ErreurAtelier,
   FUSEAU,
   type Identite,
+  IdentiteSchema,
   type IdentiteVerifiee,
   idConversation,
   type Ligne,
@@ -122,10 +123,12 @@ function confirmationsEnAttente(s: Session, lignes: Ligne[]) {
     .map((l) => {
       const attente = donnees<Attente>(l)
       if (!attente) throw new Error(`ligne ${l.id} : confirmation attendue sans données`)
+      // Une ligne d'avant porte `identite.agent` (PLAN-METIER-2.md M2) : relue sous les deux graphies.
+      const identite = IdentiteSchema.parse(attente.identite)
       return {
         conversation: l.objet,
-        identite: attente.identite,
-        nom: nomDe(s, attente.identite),
+        identite,
+        nom: nomDe(s, identite),
         texte: l.motif ?? '',
         empreinte: attente.empreinte,
         sorte: attente.demande.sorte === 'reaffectation' ? 'proposition' : 'action',
