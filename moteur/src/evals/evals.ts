@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { ROLES } from '../conversation/actions'
 import { type Designable, normaliserNom } from '../conversation/designation'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
@@ -34,24 +33,40 @@ export const Variante = z.strictObject({
 })
 export type Variante = z.infer<typeof Variante>
 
-export const CasTraduire = z.strictObject({
-  id: z.string().min(1),
-  role: z.enum(ROLES),
-  agent: z.string().optional(),
-  maintenant: z.string().optional(),
-  /** Le nom d'une variante du fichier (`variantes`) : le cas tourne sur elle. */
-  variante: z.string().optional(),
-  categorie: z.literal(CATEGORIE_AGENT_PATRON).optional(),
-  consigne: z.string().min(1),
-  attendu: z.strictObject({
-    sorte: z.union([z.enum(SORTES_DEMANDE), z.array(z.enum(SORTES_DEMANDE)).min(1)]),
-    action: z.string().optional(),
-    params: z.record(z.string(), z.unknown()).optional(),
-    intention: z.array(z.string()).min(1).optional(),
-    /** Pour une `precision` : les identifiants des candidats proposés, dans n'importe quel ordre. */
-    candidats: z.array(z.string()).optional(),
-  }),
-})
+/**
+ * Qui parle dans un cas : `personne`, ou `agent`, la graphie des fichiers
+ * d'avant, qu'on ne réécrit pas (PLAN-METIER-2.md M2) ; rend `personne`.
+ */
+function avecPersonne<C extends { agent?: string; personne?: string }>({
+  agent,
+  personne,
+  ...cas
+}: C) {
+  const qui = personne ?? agent
+  return { ...cas, ...(qui !== undefined ? { personne: qui } : {}) }
+}
+
+export const CasTraduire = z
+  .strictObject({
+    id: z.string().min(1),
+    role: z.string().min(1),
+    agent: z.string().optional(),
+    personne: z.string().optional(),
+    maintenant: z.string().optional(),
+    /** Le nom d'une variante du fichier (`variantes`) : le cas tourne sur elle. */
+    variante: z.string().optional(),
+    categorie: z.literal(CATEGORIE_AGENT_PATRON).optional(),
+    consigne: z.string().min(1),
+    attendu: z.strictObject({
+      sorte: z.union([z.enum(SORTES_DEMANDE), z.array(z.enum(SORTES_DEMANDE)).min(1)]),
+      action: z.string().optional(),
+      params: z.record(z.string(), z.unknown()).optional(),
+      intention: z.array(z.string()).min(1).optional(),
+      /** Pour une `precision` : les identifiants des candidats proposés, dans n'importe quel ordre. */
+      candidats: z.array(z.string()).optional(),
+    }),
+  })
+  .transform(avecPersonne)
 export type CasTraduire = z.infer<typeof CasTraduire>
 
 export const FichierTraduire = z.strictObject({
@@ -61,24 +76,27 @@ export const FichierTraduire = z.strictObject({
 })
 export type FichierTraduire = z.infer<typeof FichierTraduire>
 
-export const CasEchappee = z.strictObject({
-  id: z.string().min(1),
-  role: z.enum(ROLES),
-  agent: z.string().optional(),
-  maintenant: z.string().optional(),
-  piege: z.boolean().optional(),
-  consigne: z.string().min(1),
-  intention: z.string().min(1),
-  attendu: z.strictObject({
-    sortes: z.array(z.enum(SORTES_ECHAPPEE)).min(1),
-    contient: z.array(z.string()).optional(),
-    exclut: z.array(z.string()).optional(),
-    vacations_modifiables: z.array(z.string()).optional(),
-    refus: z.number().int().nonnegative().optional(),
-    max_modifications: z.number().int().nonnegative().optional(),
-    interdit_vers: z.array(z.string()).optional(),
-  }),
-})
+export const CasEchappee = z
+  .strictObject({
+    id: z.string().min(1),
+    role: z.string().min(1),
+    agent: z.string().optional(),
+    personne: z.string().optional(),
+    maintenant: z.string().optional(),
+    piege: z.boolean().optional(),
+    consigne: z.string().min(1),
+    intention: z.string().min(1),
+    attendu: z.strictObject({
+      sortes: z.array(z.enum(SORTES_ECHAPPEE)).min(1),
+      contient: z.array(z.string()).optional(),
+      exclut: z.array(z.string()).optional(),
+      vacations_modifiables: z.array(z.string()).optional(),
+      refus: z.number().int().nonnegative().optional(),
+      max_modifications: z.number().int().nonnegative().optional(),
+      interdit_vers: z.array(z.string()).optional(),
+    }),
+  })
+  .transform(avecPersonne)
 export type CasEchappee = z.infer<typeof CasEchappee>
 
 export const FichierEchappee = z.strictObject({

@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Action, Identite, Resultat } from '../conversation/actions'
+import { aCapacite, type RoleDeclare } from '../conversation/roles'
 import { type Copie, creerCopie, type TableCopie } from '../echappee/copie'
 import { executerRequete, type ParametresRequete, type ResultatRequete } from '../echappee/requete'
 import type { Temporal } from '../temps/temporal'
@@ -70,19 +71,20 @@ function personnesDe(geste: GesteAppris): Record<string, string> | undefined {
   return Object.keys(personnes).length > 0 ? personnes : undefined
 }
 
-/** Les valeurs à lier : les paramètres relus, un agent valant celui qui parle pour le rôle `agent`. */
+/** Les valeurs à lier : les paramètres relus, une personne valant celui qui parle pour un rôle qui ne désigne pas autrui (PLAN-METIER-2.md M3). */
 export function liaisonDe(
   geste: GesteAppris,
   identite: Identite,
   params: Record<string, unknown>,
+  roles: RoleDeclare[],
 ): ParametresRequete {
   const liaison: ParametresRequete = {}
   for (const [cle, v] of Object.entries(params)) {
     liaison[cle] = typeof v === 'string' || typeof v === 'number' ? v : null
   }
-  if (identite.role === 'agent') {
+  if (!aCapacite(roles, identite, 'designe_autrui')) {
     for (const [nom, p] of Object.entries(geste.parametres)) {
-      if (p.type === 'agent') liaison[nom] = identite.agent ?? null
+      if (p.type === 'agent') liaison[nom] = identite.personne ?? null
     }
   }
   return liaison
@@ -148,6 +150,7 @@ export async function executerGeste(
 export function actionApprise<S>(
   geste: GesteAppris,
   copie: (s: S, identite: Identite, maintenant: Temporal.ZonedDateTime) => TableCopie[],
+  roles: RoleDeclare[],
 ): Action<S, Record<string, unknown>> {
   const personnes = personnesDe(geste)
   const ecrit = ecritDe(geste)
@@ -165,7 +168,7 @@ export function actionApprise<S>(
     executer: async (s, identite, params, maintenant): Promise<Resultat> => {
       const c = creerCopie(copie(s, identite, maintenant))
       try {
-        const e = await executerGeste(geste, c, liaisonDe(geste, identite, params))
+        const e = await executerGeste(geste, c, liaisonDe(geste, identite, params, roles))
         if ('erreur' in e) {
           const erreur =
             e.requete !== undefined ? `requête « ${e.requete} » : ${e.erreur}` : e.erreur

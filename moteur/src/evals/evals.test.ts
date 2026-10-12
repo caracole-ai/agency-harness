@@ -9,6 +9,8 @@ import { USAGE_NUL } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import {
   bilan,
+  CasEchappee,
+  CasTraduire,
   ecartsEchappee,
   ecartsRonde,
   ecartsTraduction,
@@ -25,6 +27,37 @@ import {
 
 // Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9) ;
 // la fuite, en code aussi (PLAN-PSEUDONYMES.md § 7).
+
+describe('qui parle dans un cas (PLAN-METIER-2.md M2)', () => {
+  const cas = { id: 'c', role: 'agent', consigne: 'mon planning', attendu: { sorte: 'action' } }
+  it('l’ancienne graphie `agent` se lit et se rend en `personne`', () => {
+    const lu = CasTraduire.parse({ ...cas, agent: 'A-2' })
+    expect(lu).toMatchObject({ role: 'agent', personne: 'A-2' })
+    expect(lu).not.toHaveProperty('agent')
+  })
+  it('la nouvelle graphie `personne` se lit telle quelle ; un rôle non déclaré par le moteur passe', () => {
+    expect(CasTraduire.parse({ ...cas, role: 'dirigeant', personne: 'M-1' })).toMatchObject({
+      role: 'dirigeant',
+      personne: 'M-1',
+    })
+    const echappee = CasEchappee.parse({
+      id: 'e',
+      role: 'agent',
+      agent: 'A-2',
+      consigne: 'mes heures',
+      intention: 'heures',
+      attendu: { sortes: ['reponse'] },
+    })
+    expect(echappee).toMatchObject({ personne: 'A-2' })
+    expect(echappee).not.toHaveProperty('agent')
+  })
+  it('sans personne : aucun champ', () => {
+    expect(CasTraduire.parse({ ...cas, role: 'patron' })).not.toHaveProperty('personne')
+  })
+  it('un rôle vide est refusé', () => {
+    expect(CasTraduire.safeParse({ ...cas, role: '' }).success).toBe(false)
+  })
+})
 
 describe('ecartsTraduction', () => {
   const absence = {
@@ -267,8 +300,8 @@ describe('modeleTrace', () => {
 describe('la fuite (PLAN-PSEUDONYMES.md § 7)', () => {
   // Des noms synthétiques, aucune donnée du client fictif.
   const PERSONNES = [
-    { id: 'P-1', nom: 'Aïcha Traoré' },
-    { id: 'P-2', nom: 'Alicia Martin' },
+    { id: 'P-1', nom: 'Aïcha Traoré', sorte: 'personne' as const },
+    { id: 'P-2', nom: 'Alicia Martin', sorte: 'personne' as const },
   ]
   it('ce qui est envoyé : les systèmes et les messages de l’utilisateur, résultats d’outils compris ; pas ce que le modèle écrit', async () => {
     const m = modeleTrace(modeleSimule([{ texte: 'un' }, { texte: 'deux' }]))

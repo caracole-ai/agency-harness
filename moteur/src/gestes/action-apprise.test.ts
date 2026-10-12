@@ -9,7 +9,11 @@ import {
   parametresAppris,
   RIEN_A_PROPOSER,
 } from './action-apprise'
-import { GESTE_ECRIT_EXEMPLE as ECRIT, GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
+import {
+  GESTE_ECRIT_EXEMPLE as ECRIT,
+  GESTE_EXEMPLE as GESTE,
+  ROLES_EXEMPLE,
+} from './geste-appris.exemple'
 
 // Un geste appris comme action : ses paramètres à plat pour le modèle, son
 // exécution sans modèle sur la copie du rôle, l'agent qui parle pour le rôle
@@ -48,12 +52,12 @@ const copie = (_s: null, identite: Identite) =>
   identite.role === 'patron'
     ? [AGENTS, VACATIONS]
     : [
-        { ...AGENTS, lignes: AGENTS.lignes.filter((a) => a.id === identite.agent) },
-        { ...VACATIONS, lignes: VACATIONS.lignes.filter((v) => v.agent === identite.agent) },
+        { ...AGENTS, lignes: AGENTS.lignes.filter((a) => a.id === identite.personne) },
+        { ...VACATIONS, lignes: VACATIONS.lignes.filter((v) => v.agent === identite.personne) },
       ]
 const maintenant = Temporal.PlainDateTime.from('2026-10-10T21:40').toZonedDateTime(FUSEAU)
 const PATRON: Identite = { role: 'patron' }
-const SOPHIE: Identite = { role: 'agent', agent: 'A-3' }
+const SOPHIE: Identite = { role: 'agent', personne: 'A-3' }
 const PERIODE = { du: '2026-10-05', au: '2026-10-11' }
 
 describe('parametresAppris', () => {
@@ -90,7 +94,7 @@ describe('parametresAppris', () => {
 })
 
 describe('actionApprise', () => {
-  const action = actionApprise(GESTE, copie)
+  const action = actionApprise(GESTE, copie, ROLES_EXEMPLE)
   it('une action qui lit, ouverte aux rôles du geste, l’agent comme personne à résoudre', () => {
     expect(action).toMatchObject({
       id: 'heures_par_agent',
@@ -128,6 +132,7 @@ describe('actionApprise', () => {
     const casse = actionApprise(
       { ...GESTE, requetes: [{ nom: 'heures', sql: 'SELECT * FROM absente WHERE a = :agent' }] },
       copie,
+      ROLES_EXEMPLE,
     )
     const r = await casse.executer(null, PATRON, { agent: 'A-2', ...PERIODE }, maintenant)
     expect(r.texte).toMatch(
@@ -155,7 +160,7 @@ describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
       { id: 'V-07', agent: 'A-3', jour: '2026-10-14' },
     ],
   }
-  const action = actionApprise(ECRIT, () => [PLANNING])
+  const action = actionApprise(ECRIT, () => [PLANNING], ROLES_EXEMPLE)
   it('écrit et propose : ouvert au patron seul', () => {
     expect(action).toMatchObject({
       id: 'liberer_un_jour',
@@ -190,6 +195,7 @@ describe('actionApprise, un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
         ],
       },
       () => [PLANNING],
+      ROLES_EXEMPLE,
     )
     const r = await sans.executer(null, PATRON, { agent: 'A-1', date: '2026-10-13' }, maintenant)
     expect(r.texte).toBe(`${RIEN_A_PROPOSER} : aucun agent trouvé pour V-03`)

@@ -8,12 +8,7 @@ import { chargerGestesAppris } from '../gestes/charger'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
-import {
-  chargerPersonnes,
-  type IdentiteVerifiee,
-  type Personne,
-  recevoir,
-} from '../personnes/personnes'
+import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
 import type { Temporal } from '../temps/temporal'
 import {
   type Action,
@@ -31,6 +26,7 @@ import {
   normaliserNom,
   proches,
 } from './designation'
+import { aCapacite, IdentiteSchema, type RoleDeclare, roleDe } from './roles'
 import {
   type Demande,
   designer,
@@ -86,7 +82,11 @@ export interface MetierConversation<Session> {
   actions: Action<Session, unknown>[]
   /** Les sortes de demandes nouvelles déjà connues, que le modèle réutilise comme mot-clé d'intention. */
   intentions: Intention[]
+  /** Les rôles que le métier déclare, avec leurs capacités (PLAN-METIER-2.md § 3.1, M1, M3). */
+  roles: RoleDeclare[]
   vocabulaire(s: Session, identite: Identite): Vocabulaire
+  /** Tout nom qui ne part jamais au modèle (PLAN-METIER-2.md § 3.2, M4). */
+  noms(s: Session): Designable[]
   /**
    * Contrôle de cohérence, en seconde ligne : l'identité, déjà passée par le
    * registre d'accès, existe encore dans les données du client. Lève sinon. Il
@@ -183,7 +183,7 @@ export function accueillir<S>(
     conversation?: string
   },
 ): ReturnType<typeof recevoir> {
-  const accueil = recevoir(chargerPersonnes(dossier), demande.demandeur)
+  const accueil = recevoir(m.roles, chargerPersonnes(dossier, m.roles), demande.demandeur)
   if (accueil.sorte === 'refus') {
     const { client, journal } = m.ouvrirJournal(dossier)
     try {
@@ -207,7 +207,7 @@ export function accueillir<S>(
 }
 
 /** Au démarrage : chaque personne du registre d'accès existe dans les données du client, sinon rien ne démarre. */
-export function verifierRegistre<S>(m: MetierConversation<S>, s: S, personnes: Personne[]): void {
+export function verifierRegistre<S>(m: MetierConversation<S>, s: S, personnes: Identite[]): void {
   for (const p of personnes) {
     try {
       m.verifierIdentite(s, p)
@@ -235,9 +235,15 @@ export async function avecSession<S, T>(
   }
 }
 
-/** Une identité comparable : le rôle, et l'agent ou rien. */
+/** Une identité comparable : le rôle, et la personne ou rien. */
 const memeIdentite = (a: Identite, b: Identite) =>
-  a.role === b.role && (a.agent ?? null) === (b.agent ?? null)
+  a.role === b.role && (a.personne ?? null) === (b.personne ?? null)
+
+/** Une identité relue au journal, sous l'une ou l'autre graphie (PLAN-METIER-2.md, M2), comparée à celle-ci. */
+const memeIdentiteLue = (lue: unknown, b: Identite) => {
+  const r = IdentiteSchema.safeParse(lue)
+  return r.success && memeIdentite(r.data, b)
+}
 
 /** Où écrire : le journal du client, ouvert seul (avant le dossier) ou par la session. */
 interface Cible {
@@ -298,7 +304,7 @@ function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | u
     .historique(tour.conversation)
     .filter((l) => l.type === TYPE_CONSIGNE || l.type === TYPE_PRECISION_ATTENDUE)
     .map((l) => ({ type: l.type, donnees: l.donnees ? JSON.parse(l.donnees) : undefined }))
-    .filter((l) => l.donnees?.identite && memeIdentite(l.donnees.identite, tour.identite))
+    .filter((l) => l.donnees?.identite && memeIdentiteLue(l.donnees.identite, tour.identite))
     .at(-1)
   return derniere?.type === TYPE_PRECISION_ATTENDUE
     ? (derniere.donnees as PrecisionAttendue)
@@ -337,9 +343,9 @@ async function avantLeDossier<S>(
     const appris: Action<S, unknown>[] = copie
       ? chargerGestesAppris(
           dossier,
-          { ...ici, codes: m.actions.map((a) => a.id) },
+          { ...ici, roles: m.roles, codes: m.actions.map((a) => a.id) },
           tour.maintenant.toInstant().toString(),
-        ).actifs.map((g) => actionApprise(g, copie))
+        ).actifs.map((g) => actionApprise(g, copie, m.roles))
       : []
 
     const attendue = precisionEnAttente(journal, tour)
@@ -355,7 +361,7 @@ async function avantLeDossier<S>(
       traduite = await traduire(
         modele,
         config.modele.effort.traduire,
-        systemeTraduire(role, actions, intentions),
+        systemeTraduire(roleDe(m.roles, tour.identite), actions, intentions),
         outilsDe(toutes, role),
         tour.consigne,
         tour.maintenant,
@@ -425,7 +431,7 @@ async function apresLeDossier<S>(
     case 'inconnue': {
       ecrire(ici, tour, [ligneConsigne(tour, 'inconnue', { demande })])
       // La raison peut venir du modèle : montrée seulement si elle ne cite rien d'autre que la consigne.
-      const noms = m.vocabulaire(s, tour.identite).agents.map((a) => a.nom)
+      const noms = m.vocabulaire(s, tour.identite).noms.map((a) => a.nom)
       const raison = verifierReponse(demande.raison, [tour.consigne], noms).ok
         ? demande.raison
         : 'la consigne ne correspond à aucun geste'
@@ -473,11 +479,11 @@ async function echapper<S>(
     ecrire(ici, tour, [ligneConsigne(tour, issueLigne, donnees)])
     return { sorte: 'je_ne_sais_pas', texte: 'Je ne sais pas encore faire ça.' }
   }
-  if (tour.identite.role === 'patron') {
-    const personnes = m.vocabulaire(s, tour.identite).agents
+  if (aCapacite(m.roles, tour.identite, 'designe_autrui')) {
+    const personnes = m.vocabulaire(s, tour.identite).noms
     const { precision } = masquerConsigne(consigne, personnes, precisions)
     if (precision) {
-      const texte = question(tour, precision.mention, precision.candidats)
+      const texte = question(m.roles, tour, precision.mention, precision.candidats)
       const attendue: PrecisionEchappee = {
         identite: tour.identite,
         candidats: precision.candidats,
@@ -591,7 +597,7 @@ export async function resoudre<S>(
   params: Record<string, unknown>,
   resolus: string[] = [],
 ): Promise<Resolution> {
-  const personnes = m.vocabulaire(s, tour.identite).agents
+  const personnes = m.vocabulaire(s, tour.identite).noms.filter((n) => n.sorte === 'personne')
   const p = { ...params }
   const faits = [...resolus]
   for (const champ of Object.keys(action.personnes ?? {})) {
@@ -612,7 +618,7 @@ export async function resoudre<S>(
       let trouve = exacts[0]
       // Un agent ne désigne que lui-même (D4) : pas de niveau 2, où le modèle
       // dirait « oui, c'est lui » pour un collègue au nom proche.
-      if (!trouve && tour.identite.role === 'agent') return precision([])
+      if (!trouve && !aCapacite(m.roles, tour.identite, 'designe_autrui')) return precision([])
       if (!trouve) {
         const liste = proches(mention, personnes)
         if (liste.length === 0) return precision([])
@@ -656,8 +662,13 @@ const citer = (tour: Tour, mention: string) =>
     : 'la personne nommée'
 
 /** La question du niveau 3, rendue par le code. */
-function question(tour: Tour, mention: string, candidats: Designable[]): string {
-  const tu = tour.identite.role === 'agent'
+function question(
+  roles: RoleDeclare[],
+  tour: Tour,
+  mention: string,
+  candidats: Designable[],
+): string {
+  const tu = roleDe(roles, tour.identite).tutoie === true
   if (candidats.length === 0) {
     return `Je ne trouve personne qui corresponde à ${citer(tour, mention)}. ${tu ? 'Redis' : 'Redites'} la consigne avec le prénom et le nom.`
   }
@@ -687,14 +698,18 @@ async function agir<S>(
   const ici = cibleDe(m, s)
   const issue = resolus === undefined ? 'action' : 'precision'
   const r = await resoudre(m, s, modele, tour, action, demande.params, resolus)
-  if (r.sorte === 'precision' && r.candidats.length === 0 && tour.identite.role === 'agent') {
+  if (
+    r.sorte === 'precision' &&
+    r.candidats.length === 0 &&
+    !aCapacite(m.roles, tour.identite, 'designe_autrui')
+  ) {
     // Un agent ne peut désigner que lui-même (D4) : rien à lui proposer, rien à lui apprendre.
     const texte = `Tu ne peux désigner que toi-même : ${citer(tour, r.mention)} ne te désigne pas.`
     ecrire(ici, tour, [ligneConsigne(tour, issue, { demande, erreur: texte })])
     return { sorte: 'refus', texte }
   }
   if (r.sorte === 'precision') {
-    const texte = question(tour, r.mention, r.candidats)
+    const texte = question(m.roles, tour, r.mention, r.candidats)
     const attendue: PrecisionGeste = {
       identite: tour.identite,
       action: action.id,
@@ -817,7 +832,7 @@ export async function confirmer<S>(
   if (
     !attente ||
     attente.empreinte !== empreinteRecue ||
-    !memeIdentite(attente.identite, identite)
+    !memeIdentiteLue(attente.identite, identite)
   ) {
     return { sorte: 'refus', texte: 'aucune confirmation en attente pour ce contenu' }
   }

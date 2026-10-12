@@ -6,11 +6,9 @@
 // de noms ressemblants, au seuil large, que le modèle départage ; elle ne
 // décide jamais seule. Le reste (niveau 3) revient à l'humain.
 
-/** Une personne que le rôle peut désigner : son identifiant et son nom complet. */
-export interface Designable {
-  id: string
-  nom: string
-}
+import type { Designable } from './noms'
+
+export type { Designable } from './noms'
 
 /** Au plus ce nombre de candidats proposés au niveau 2. */
 export const CANDIDATS_MAX = 3

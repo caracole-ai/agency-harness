@@ -6,7 +6,7 @@ import type { ConfigConversation } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
 import { ecrireInstantane } from '../echappee/echappee'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
-import { GESTE_EXEMPLE } from '../gestes/geste-appris.exemple'
+import { GESTE_EXEMPLE, ROLES_EXEMPLE } from '../gestes/geste-appris.exemple'
 import { Journal } from '../journal/journal'
 import { modeleSimule } from '../modele/simule'
 import { FICHIER_PERSONNES } from '../personnes/personnes'
@@ -54,7 +54,17 @@ const METIER: MetierConversation<Session> = {
   actions: [],
   intentions: [],
   copie: () => [],
-  vocabulaire: () => ({ agents: [{ id: 'A-2', nom: 'Julien Lefèvre' }] }),
+  roles: [
+    {
+      id: 'patron',
+      enMots: 'le patron',
+      identifie: false,
+      capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+    },
+    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+  ],
+  vocabulaire: () => ({ noms: [{ id: 'A-2', nom: 'Julien Lefèvre', sorte: 'personne' }] }),
+  noms: () => [{ id: 'A-2', nom: 'Julien Lefèvre', sorte: 'personne' }],
   verifierIdentite: () => undefined,
 }
 
@@ -146,7 +156,7 @@ describe('casDuGeste', () => {
         ...(n === 2 ? { role: 'agent' as const, agent: 'A-2' } : {}),
       })),
     }
-    const cas = casDuGeste(geste, dossier)
+    const cas = casDuGeste(geste, dossier, ROLES_EXEMPLE)
     expect(cas.map((c) => c.id)).toEqual([
       'G-heures_par_agent-1',
       'G-heures_par_agent-2',
@@ -166,12 +176,12 @@ describe('casDuGeste', () => {
     expect(cas[1]?.quand.day).toBe(11)
     expect(cas[2]).toMatchObject({
       role: 'agent',
-      agent: 'A-2',
+      personne: 'A-2',
       attendu: { params: { du: '2026-10-05', au: '2026-10-11' } },
     })
-    expect(() => casDuGeste(GESTE_EXEMPLE, mkdtempSync(join(tmpdir(), 'vide-')))).toThrow(
-      'instantané absent',
-    )
+    expect(() =>
+      casDuGeste(GESTE_EXEMPLE, mkdtempSync(join(tmpdir(), 'vide-')), ROLES_EXEMPLE),
+    ).toThrow('instantané absent')
   })
 })
 
@@ -185,7 +195,7 @@ describe('casDuFichier', () => {
           {
             id: 'X',
             role: 'agent',
-            agent: 'A-2',
+            personne: 'A-2',
             variante: 'homonyme',
             categorie: 'agent_patron',
             consigne: 'x',
@@ -206,7 +216,7 @@ describe('casDuFichier', () => {
       id: 'X',
       strict: true,
       piege: { fichier: 'agents.csv' },
-      agent: 'A-2',
+      personne: 'A-2',
     })
     expect(cas[0]?.quand.hour).toBe(21)
     expect(cas[1]?.quand.day).toBe(11)

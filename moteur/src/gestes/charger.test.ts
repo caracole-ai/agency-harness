@@ -13,7 +13,7 @@ import {
   TYPE_GESTE_APPRIS,
 } from './charger'
 import { DOSSIER_GESTES, empreinteGeste, type FichierGeste } from './geste-appris'
-import { GESTE_EXEMPLE as GESTE } from './geste-appris.exemple'
+import { GESTE_EXEMPLE as GESTE, ROLES_EXEMPLE } from './geste-appris.exemple'
 
 // Un fichier de geste ne vaut que par sa clé (PLAN-PROMOTION.md § 5.5, P7) :
 // jamais activé, un octet changé, retiré → écarté, refusé au journal, alerte ;
@@ -56,7 +56,11 @@ const retirer = (journal: Journal, jeton = empreinteGeste(GESTE)) =>
     },
   ])
 const charger = (dossier: string, journal: Journal) =>
-  chargerGestesAppris(dossier, { client: CLIENT, journal }, '2026-10-10T19:40:00Z')
+  chargerGestesAppris(
+    dossier,
+    { client: CLIENT, journal, roles: ROLES_EXEMPLE },
+    '2026-10-10T19:40:00Z',
+  )
 const refus = (journal: Journal) =>
   journal.lire().filter((l) => l.type === TYPE_GESTE_APPRIS && l.issue === ISSUE_GESTE.refuse)
 
@@ -117,7 +121,7 @@ describe('chargerGestesAppris', () => {
     activer(journal)
     const { actifs, ecartes } = chargerGestesAppris(
       dossier,
-      { client: CLIENT, journal, codes: [GESTE.id] },
+      { client: CLIENT, journal, roles: ROLES_EXEMPLE, codes: [GESTE.id] },
       '2026-10-10T19:40:00Z',
     )
     expect(actifs).toEqual([])

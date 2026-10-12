@@ -197,7 +197,7 @@ export async function faireChantier<S>(
     const config = m.config(s)
     const journal = m.journal(s)
     const client = m.client(s)
-    const personnes: Designable[] = m.vocabulaire(s, { role: 'patron' }).agents
+    const personnes: Designable[] = m.noms(s)
     const catalogue = construireCatalogue(
       m,
       dossierClient,

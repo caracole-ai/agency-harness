@@ -84,7 +84,7 @@ try {
     const s = m.ouvrir(dossier)
     try {
       const client = m.client(s)
-      const personnes = m.vocabulaire(s, { role: 'patron' }).agents
+      const personnes = m.noms(s)
       const r = retirerFusion({
         commande: commandeSync,
         depot,

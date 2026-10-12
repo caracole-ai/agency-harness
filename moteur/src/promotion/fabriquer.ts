@@ -10,6 +10,7 @@ import {
   distance,
   normaliserNom,
 } from '../conversation/designation'
+import { aCapacite, quiParle, type RoleDeclare } from '../conversation/roles'
 import { entreDonnees, FRONTIERE, jourSemaine } from '../conversation/traduire'
 import { semaineDe } from '../echappee/boucle'
 import { creerCopie, type TableCopie } from '../echappee/copie'
@@ -23,6 +24,7 @@ import {
   type FichierGeste,
   GesteAppris,
   ModificationsApprises,
+  personneDuTest,
   type Reaffectation,
   TESTS_MIN,
   type TestAppris,
@@ -133,6 +135,8 @@ export interface CadreFabrication {
   gestesExistants: { id: string; description: string }[]
   /** Les personnes que le patron peut désigner : pour résoudre un agent des tests et extraire les noms cités. */
   personnes: Designable[]
+  /** Les rôles que le métier déclare (PLAN-METIER-2.md M1). */
+  roles: RoleDeclare[]
   dossierClient: string
   /** Les tables de la copie, sans ligne : le gabarit s'y vérifie. */
   copieVide: TableCopie[]
@@ -229,14 +233,20 @@ export function systemeFabriquer(
   ].join('\n')
 }
 
-/** L'outil de la fabrication : le schéma du geste proposé, strict ; avec ses modifications pour une intention qui écrit. */
-export function outilProposerGeste(ecrit = false): Anthropic.Tool {
+/** L'outil de la fabrication : le schéma du geste proposé, strict ; avec ses modifications pour une intention qui écrit ; ses rôles, ceux que le métier déclare (PLAN-METIER-2.md M1). */
+export function outilProposerGeste(roles: RoleDeclare[], ecrit = false): Anthropic.Tool {
+  const declares = z
+    .array(z.enum(roles.map((r) => r.id)))
+    .min(1)
+    .describe(GestePropose.shape.roles.description ?? '')
   return {
     name: OUTIL_PROPOSER_GESTE,
     description: ecrit
       ? 'Proposer le geste : ses paramètres, ses requêtes, ses modifications, sa réponse, ses tests.'
       : 'Proposer le geste : ses paramètres, ses requêtes, sa réponse, ses tests.',
-    input_schema: schemaJson(ecrit ? GesteProposeEcriture : GestePropose),
+    input_schema: schemaJson(
+      (ecrit ? GesteProposeEcriture : GestePropose).extend({ roles: declares }),
+    ),
     strict: true,
   }
 }
@@ -279,14 +289,14 @@ const enLigne = (r: Reaffectation) => `${r.vacation} → ${r.agent}`
  * que le modèle de l'échappée les a lues et écrites, sans aucun nom (P10,
  * PLAN-PSEUDONYMES.md S5).
  */
-export function messageFabriquer(echappees: EchappeeMasquee[]): string {
+export function messageFabriquer(echappees: EchappeeMasquee[], roles: RoleDeclare[]): string {
   const blocs = echappees.map((e) => {
     const z = aParis(e.horodatage)
     const { lundi, dimanche } = semaineDe(z)
     const moment = `${z.toPlainDate().toString()}T${deux(z.hour)}:${deux(z.minute)} (${jourSemaine(z)}) ; semaine en cours du ${lundi} au ${dimanche}`
     return [
       `### ${e.echappee}`,
-      `Demandeur : ${e.role === 'patron' ? 'le patron' : `l'agent ${e.agent ?? '?'}`}`,
+      `Demandeur : ${quiParle(roles, { role: e.role, ...(e.personne !== undefined ? { personne: e.personne } : {}) })}`,
       `Moment : ${moment}`,
       `Consigne : ${e.consigneModele}`,
       ...e.requetes.flatMap((r, i) => [
@@ -401,6 +411,7 @@ export function completerGeste(
   echappees: EchappeeJournalisee[],
   personnes: Designable[],
   origine: GesteAppris['origine'],
+  roles: RoleDeclare[],
 ): { geste?: GesteAppris; ecarts: EcartGeste[] } {
   const ecarts: EcartGeste[] = []
   const ecart = (texte: string) => ecarts.push({ texte })
@@ -432,8 +443,8 @@ export function completerGeste(
         params[cle] = v
         continue
       }
-      if (e.role === 'agent') {
-        params[cle] = e.agent ?? null
+      if (!aCapacite(roles, { role: e.role }, 'designe_autrui')) {
+        params[cle] = e.personne ?? null
       } else if (v === null || estId(v, personnes)) {
         params[cle] = v
       } else {
@@ -454,7 +465,7 @@ export function completerGeste(
       echappee: e.echappee,
       consigne: e.consigne,
       role: e.role,
-      agent: e.agent ?? null,
+      personne: e.personne ?? null,
       params,
       instantane: e.instantane,
     }
@@ -499,6 +510,7 @@ export async function rejouerTest(
   geste: GesteAppris,
   test: TestAppris,
   dossierClient: string,
+  roles: RoleDeclare[],
 ): Promise<
   { texte: string; manque: string[]; enTrop: string[] } | { erreur: string; requete?: string }
 > {
@@ -510,8 +522,9 @@ export async function rejouerTest(
   }
   const copie = creerCopie(instantane.tables)
   try {
-    const identite = { role: test.role, ...(test.agent !== null ? { agent: test.agent } : {}) }
-    const e = await executerGeste(geste, copie, liaisonDe(geste, identite, test.params))
+    const personne = personneDuTest(test)
+    const identite = { role: test.role, ...(personne !== null ? { personne } : {}) }
+    const e = await executerGeste(geste, copie, liaisonDe(geste, identite, test.params, roles))
     if ('erreur' in e) {
       return { erreur: e.erreur, ...(e.requete !== undefined ? { requete: e.requete } : {}) }
     }
@@ -555,6 +568,7 @@ export async function verifierGeste(
     copieVide: TableCopie[]
     consignes: string[]
     personnes: Designable[]
+    roles: RoleDeclare[]
     gestesExistants: { id: string; description: string }[]
   },
 ): Promise<{ ecarts: EcartGeste[]; rejeu: Rejeu }> {
@@ -562,7 +576,7 @@ export async function verifierGeste(
   const rejeu: Rejeu = { ok: 0, total: geste.tests.length }
 
   // 1. Le gabarit, puis les colonnes de chaque requête, lues sur la copie vide.
-  const statiques = verifierGabarit(geste)
+  const statiques = verifierGabarit(contexte.roles, geste)
   const vide = creerCopie(contexte.copieVide)
   let colonnes: Map<string, string[]> | undefined = new Map()
   try {
@@ -585,14 +599,16 @@ export async function verifierGeste(
     vide.fermer()
   }
   ecarts.push(
-    ...(colonnes ? verifierGabarit(geste, colonnes) : statiques).map((texte) => ({ texte })),
+    ...(colonnes ? verifierGabarit(contexte.roles, geste, colonnes) : statiques).map((texte) => ({
+      texte,
+    })),
   )
   // Une requête qui ne s'exécute même pas sur la copie vide : rien d'autre à vérifier.
   if (!colonnes) return { ecarts, rejeu }
 
   // 3. Chaque test rejoué sur son instantané.
   for (const t of geste.tests) {
-    const r = await rejouerTest(geste, t, contexte.dossierClient)
+    const r = await rejouerTest(geste, t, contexte.dossierClient, contexte.roles)
     if ('erreur' in r) {
       ecarts.push({
         texte: `${t.echappee} : ${r.requete !== undefined ? `la requête « ${r.requete} » échoue : ` : ''}${r.erreur}`,
@@ -730,7 +746,9 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     schemaDesTables(cadre.copieVide),
     cadre.gestesExistants,
   )
-  const messages: Anthropic.MessageParam[] = [{ role: 'user', content: messageFabriquer(reponses) }]
+  const messages: Anthropic.MessageParam[] = [
+    { role: 'user', content: messageFabriquer(reponses, cadre.roles) },
+  ]
   const conversations = [...new Set(reponses.map((e) => e.conversation))]
   const consignes = reponses.map((e) => e.consigne)
 
@@ -741,7 +759,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
       reponse = await cadre.modele.appeler({
         systeme,
         messages,
-        outils: [outilProposerGeste(ecrit)],
+        outils: [outilProposerGeste(cadre.roles, ecrit)],
         effort: cadre.effort,
         maxTokens: cadre.maxTokens,
         unSeulOutil: true,
@@ -774,6 +792,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
           cout_usd: cadre.cout(usage),
           conversations,
         },
+        cadre.roles,
       )
       let rejeu: Rejeu = { ok: 0, total: lu.propose.tests.length }
       if (geste) {
@@ -782,6 +801,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
           copieVide: cadre.copieVide,
           consignes,
           personnes: cadre.personnes,
+          roles: cadre.roles,
           gestesExistants: cadre.gestesExistants,
         })
         ecarts.push(...v.ecarts)

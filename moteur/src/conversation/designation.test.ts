@@ -10,11 +10,16 @@ import {
 } from './designation'
 
 // Des listes synthétiques : aucune donnée du client fictif.
-const AICHA = { id: 'P-1', nom: 'Aïcha Traoré' }
-const ALICIA = { id: 'P-2', nom: 'Alicia Martin' }
-const JEAN_PIERRE = { id: 'P-3', nom: 'Jean-Pierre Le Goff' }
-const AICHA_BIS = { id: 'P-4', nom: 'Aïcha Mansouri' }
-const EQUIPE = [AICHA, ALICIA, JEAN_PIERRE, { id: 'P-5', nom: 'Karim Haddad' }]
+const AICHA = { id: 'P-1', nom: 'Aïcha Traoré', sorte: 'personne' as const }
+const ALICIA = { id: 'P-2', nom: 'Alicia Martin', sorte: 'personne' as const }
+const JEAN_PIERRE = { id: 'P-3', nom: 'Jean-Pierre Le Goff', sorte: 'personne' as const }
+const AICHA_BIS = { id: 'P-4', nom: 'Aïcha Mansouri', sorte: 'personne' as const }
+const EQUIPE = [
+  AICHA,
+  ALICIA,
+  JEAN_PIERRE,
+  { id: 'P-5', nom: 'Karim Haddad', sorte: 'personne' as const },
+]
 
 const ids = (ps: { id: string }[]) => ps.map((p) => p.id)
 
@@ -61,7 +66,11 @@ describe('niveau 2 : la liste courte, qui ne doit pas rater le bon nom', () => {
   })
   it('rien qui ressemble : liste vide ; jamais plus de trois', () => {
     expect(proches('Bidule', EQUIPE)).toEqual([])
-    const many = Array.from({ length: 6 }, (_, i) => ({ id: `Q-${i}`, nom: `Aicha Nom${i}` }))
+    const many = Array.from({ length: 6 }, (_, i) => ({
+      id: `Q-${i}`,
+      nom: `Aicha Nom${i}`,
+      sorte: 'personne' as const,
+    }))
     expect(proches('Aisha', many)).toHaveLength(CANDIDATS_MAX)
   })
   it('la clé phonétique rapproche les écritures d’un même son', () => {
@@ -90,7 +99,7 @@ describe('niveau 3 : la réponse à « vous parlez de qui ? »', () => {
     expect(choisirParmi('3', candidats)).toBeUndefined()
   })
   it('deux candidats au même nom complet : l’identifiant tranche', () => {
-    const jumeaux = [AICHA, { id: 'P-9', nom: 'Aïcha Traoré' }]
+    const jumeaux = [AICHA, { id: 'P-9', nom: 'Aïcha Traoré', sorte: 'personne' as const }]
     expect(choisirParmi('Aïcha Traoré', jumeaux)).toBeUndefined()
     expect(choisirParmi('P-9', jumeaux)?.id).toBe('P-9')
   })

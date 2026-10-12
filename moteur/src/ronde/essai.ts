@@ -16,8 +16,8 @@ import { TYPE_APPEL } from '../modele/compteur'
 
 export const CLIENT_ESSAI = 'client essai'
 export const PERSONNES_ESSAI = [
-  { id: 'A-1', nom: 'Rosalie Vernet' },
-  { id: 'A-2', nom: 'Octave Brunel' },
+  { id: 'A-1', nom: 'Rosalie Vernet', sorte: 'personne' as const },
+  { id: 'A-2', nom: 'Octave Brunel', sorte: 'personne' as const },
 ]
 /** Ce qui ne doit jamais sortir du journal vers la ronde. */
 export const SECRETS_ESSAI = {
@@ -75,7 +75,17 @@ export const METIER_ESSAI: MetierConversation<Session> = {
   }),
   actions: [VOIR_PLANNING],
   intentions: INTENTIONS_ESSAI,
-  vocabulaire: () => ({ agents: PERSONNES_ESSAI }),
+  roles: [
+    {
+      id: 'patron',
+      enMots: 'le patron',
+      identifie: false,
+      capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+    },
+    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+  ],
+  vocabulaire: () => ({ noms: PERSONNES_ESSAI }),
+  noms: () => PERSONNES_ESSAI,
   verifierIdentite: () => undefined,
 }
 

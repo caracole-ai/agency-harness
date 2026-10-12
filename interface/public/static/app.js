@@ -149,13 +149,13 @@ const jour = (iso) =>
     new Date(`${iso}T00:00:00Z`),
   )
 
-const memeIdentite = (a, b) => a.role === b.role && (a.agent ?? null) === (b.agent ?? null)
-const cleIdentite = (i) => (i.role === 'patron' ? 'patron' : `agent:${i.agent}`)
+const memeIdentite = (a, b) => a.role === b.role && (a.personne ?? null) === (b.personne ?? null)
+const cleIdentite = (i) => (i.role === 'patron' ? 'patron' : `agent:${i.personne}`)
 
 function nomDe(identite) {
   if (identite.role === 'patron') return 'Le patron'
-  const a = ici.donnees?.identites.find((x) => x.agent === identite.agent)
-  return a ? a.nom : identite.agent
+  const a = ici.donnees?.identites.find((x) => x.personne === identite.personne)
+  return a ? a.nom : identite.personne
 }
 
 const conditions = (c) =>
@@ -230,7 +230,7 @@ function rendreTete() {
     choix.append(el('option', { value: 'patron', texte: 'le patron' }))
     const agents = el('optgroup', { label: 'Un agent' })
     for (const i of d.identites.filter((x) => x.role === 'agent')) {
-      agents.append(el('option', { value: cleIdentite(i), texte: `${i.agent} ${i.nom}` }))
+      agents.append(el('option', { value: cleIdentite(i), texte: `${i.personne} ${i.nom}` }))
     }
     choix.append(agents)
   }
@@ -370,7 +370,10 @@ function carteDemande(d) {
               type: 'button',
               texte: `Répondre en tant que ${a.nom}`,
               onclick: () =>
-                preparer(`Oui, je suis d'accord pour ${d.id}`, { role: 'agent', agent: a.agent }),
+                preparer(`Oui, je suis d'accord pour ${d.id}`, {
+                  role: 'agent',
+                  personne: a.agent,
+                }),
             }),
           ),
         )
@@ -966,7 +969,7 @@ function changerIdentite(identite) {
   note(
     identite.role === 'patron'
       ? 'Vous parlez maintenant en tant que patron. Nouvelle conversation.'
-      : `Vous parlez maintenant en tant que ${nomDe(identite)} (${identite.agent}). Nouvelle conversation.`,
+      : `Vous parlez maintenant en tant que ${nomDe(identite)} (${identite.personne}). Nouvelle conversation.`,
   )
   accueil()
   rendreSuggestions()
@@ -1015,7 +1018,7 @@ function demarrer() {
   $('rafraichir-appris').addEventListener('click', chargerGestes)
   $('identite').addEventListener('change', (e) => {
     const v = e.target.value
-    changerIdentite(v === 'patron' ? PATRON : { role: 'agent', agent: v.slice('agent:'.length) })
+    changerIdentite(v === 'patron' ? PATRON : { role: 'agent', personne: v.slice('agent:'.length) })
   })
   $('formulaire').addEventListener('submit', (e) => {
     e.preventDefault()

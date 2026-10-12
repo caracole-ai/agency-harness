@@ -406,7 +406,8 @@ export async function verifierGesteAppris<S>(
     dossierClient,
     copieVide,
     consignes: geste.tests.map((t) => t.consigne),
-    personnes: m.vocabulaire(s, { role: 'patron' }).agents,
+    personnes: m.noms(s),
+    roles: m.roles,
     gestesExistants,
   })
   const journal = m.journal(s)

@@ -66,8 +66,8 @@ describe('les consignes de l’éval de traduction', () => {
     }
   })
   it('les agents nommés existent au client fictif', () => {
-    for (const c of traduire.cas.filter((x) => x.agent))
-      expect(agentsFictif, c.id).toContain(`${c.agent};`)
+    for (const c of traduire.cas.filter((x) => x.personne))
+      expect(agentsFictif, c.id).toContain(`${c.personne};`)
   })
 })
 

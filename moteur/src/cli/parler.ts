@@ -1,4 +1,4 @@
-// pnpm parler --client <dossier> --role patron|agent [--agent A-2] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule]
+// pnpm parler --client <dossier> --role <rôle du métier> [--personne <id>] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule]
 //   --consigne "…" [--conversation <C-…>]                   une consigne, une réponse (dans une conversation déjà ouverte : répondre à une question)
 //   --confirmer <empreinte> --conversation <C-…> --oui|--non la réponse à une confirmation en attente
 //   --interactif                                            une conversation au clavier, « quitter » pour sortir
@@ -11,8 +11,6 @@ import { createInterface } from 'node:readline/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { Role } from '../conversation/actions'
-import { ROLES } from '../conversation/actions'
 import {
   accueillir,
   avecSession,
@@ -35,6 +33,7 @@ const { values } = parseArgs({
   options: {
     client: { type: 'string' },
     role: { type: 'string' },
+    personne: { type: 'string' },
     agent: { type: 'string' },
     maintenant: { type: 'string' },
     modele: { type: 'string' },
@@ -48,11 +47,11 @@ const { values } = parseArgs({
 })
 const usage = (): never => {
   console.error(
-    'usage : pnpm parler --client <dossier> --role patron|agent [--agent A-…] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule] --consigne "…" [--conversation <C-…>] | --confirmer <empreinte> --conversation <C-…> --oui|--non | --interactif',
+    'usage : pnpm parler --client <dossier> --role <rôle du métier> [--personne <id>] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule] --consigne "…" [--conversation <C-…>] | --confirmer <empreinte> --conversation <C-…> --oui|--non | --interactif',
   )
   process.exit(2)
 }
-if (!values.client || !ROLES.includes(values.role as Role)) usage()
+if (!values.client || !values.role) usage()
 const modes = [values.consigne !== undefined, values.confirmer !== undefined, values.interactif]
 if (modes.filter(Boolean).length !== 1) usage()
 
@@ -63,10 +62,14 @@ const module = (await import(
 )) as { CONVERSATION?: MetierConversation<unknown> }
 if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
 const m = module.CONVERSATION
+if (!m.roles.some((r) => r.id === values.role)) usage()
+// `--agent` : l'ancienne graphie de `--personne`, encore lue (PLAN-METIER-2.md, M2).
+if (values.personne && values.agent && values.personne !== values.agent) usage()
+const personne = values.personne ?? values.agent
 
 const demandeur = {
-  role: values.role as Role,
-  ...(values.agent ? { agent: values.agent } : {}),
+  role: values.role as string,
+  ...(personne ? { personne } : {}),
 }
 /** L'heure de la démo, figée par `--maintenant`, sinon l'heure réelle. */
 const maintenant = () =>
@@ -100,7 +103,7 @@ function entrer(conversation?: string): IdentiteVerifiee | undefined {
   }
   const s = m.ouvrir(dossier)
   try {
-    verifierRegistre(m, s, chargerPersonnes(dossier))
+    verifierRegistre(m, s, chargerPersonnes(dossier, m.roles))
   } finally {
     m.fermer(s)
   }
@@ -111,12 +114,12 @@ function afficher(r: Reponse, conversation: string): void {
   console.log(`Réponse (${r.sorte}) : ${r.texte}`)
   if (r.sorte === 'precision' && r.candidats.length > 0 && !values.interactif) {
     console.log(
-      `\nRépondre : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.agent ? ` --agent ${demandeur.agent}` : ''} --conversation ${conversation} --consigne "<le nom, ou son rang>"`,
+      `\nRépondre : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.personne ? ` --personne ${demandeur.personne}` : ''} --conversation ${conversation} --consigne "<le nom, ou son rang>"`,
     )
   }
   if ((r.sorte === 'confirmation' || r.sorte === 'proposition') && !values.interactif) {
     console.log(
-      `\nConfirmer : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.agent ? ` --agent ${demandeur.agent}` : ''} --confirmer ${r.empreinte} --conversation ${conversation} --oui | --non`,
+      `\nConfirmer : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.personne ? ` --personne ${demandeur.personne}` : ''} --confirmer ${r.empreinte} --conversation ${conversation} --oui | --non`,
     )
   }
 }

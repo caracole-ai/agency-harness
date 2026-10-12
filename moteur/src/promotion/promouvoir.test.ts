@@ -212,6 +212,12 @@ interface Session {
   journal: Journal
 }
 
+const PERSONNES = AGENTS.lignes.map((a) => ({
+  id: String(a.id),
+  nom: String(a.nom),
+  sorte: 'personne' as const,
+}))
+
 /** Un métier minimal : un journal, une copie, deux intentions. */
 const METIER: MetierConversation<Session> = {
   ouvrir: (dossier) => ({ dossier, journal: new Journal(join(dossier, 'journal.sqlite')) }),
@@ -227,9 +233,17 @@ const METIER: MetierConversation<Session> = {
   actions: [VOIR_PLANNING],
   intentions: INTENTIONS,
   copie: () => [AGENTS, VACATIONS],
-  vocabulaire: () => ({
-    agents: AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) })),
-  }),
+  roles: [
+    {
+      id: 'patron',
+      enMots: 'le patron',
+      identifie: false,
+      capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+    },
+    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+  ],
+  vocabulaire: () => ({ noms: PERSONNES }),
+  noms: () => PERSONNES,
   verifierIdentite: () => undefined,
 }
 
@@ -237,7 +251,11 @@ const METIER: MetierConversation<Session> = {
 function dossierAvecEchappees(intention = 'heures_par_agent'): Session {
   const dossier = mkdtempSync(join(tmpdir(), 'promouvoir-'))
   const s = METIER.ouvrir(dossier)
-  const personnes = AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) }))
+  const personnes = AGENTS.lignes.map((a) => ({
+    id: String(a.id),
+    nom: String(a.nom),
+    sorte: 'personne' as const,
+  }))
   const cas: [string, string, string][] = [
     ['E-1', "Combien d'heures Karim a-t-il fait cette semaine ?", 'Karim Haddad : 24 heures.'],
     ['E-2', "Combien d'heures Julien a-t-il fait cette semaine ?", 'Julien Lefèvre : 16 heures.'],

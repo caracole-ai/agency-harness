@@ -17,6 +17,7 @@ import { tablesPour } from './copie'
 import { constatsNouveaux, decrireModifications, Modification } from './modifications'
 import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
 import { evaluer, ouvrir, type Session } from './remplacement'
+import { ROLES } from './roles'
 import { ConfigSecurite, type PREFERENCES } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
@@ -145,14 +146,16 @@ export const CONVERSATION: MetierConversation<Session> = {
   },
   actions: ACTIONS,
   intentions: INTENTIONS,
+  roles: ROLES,
   copie: tablesPour,
   vocabulaire: (s, identite) => ({
-    agents: s.ctx.planning.agents
-      .filter((a) => identite.role === 'patron' || a.id === identite.agent)
-      .map((a) => ({ id: a.id, nom: a.nom })),
+    noms: s.ctx.planning.agents
+      .filter((a) => identite.role === 'patron' || a.id === identite.personne)
+      .map((a) => ({ id: a.id, nom: a.nom, sorte: 'personne' })),
   }),
+  noms: (s) => s.ctx.planning.agents.map((a) => ({ id: a.id, nom: a.nom, sorte: 'personne' })),
   verifierIdentite: (s, identite: Identite) => {
-    if (identite.role === 'agent') s.ctx.agent(identite.agent ?? '')
+    if (identite.role === 'agent') s.ctx.agent(identite.personne ?? '')
   },
   proposition: {
     ouvrir: (s, conversation, modifications, maintenant) => {
@@ -166,9 +169,13 @@ export const CONVERSATION: MetierConversation<Session> = {
     },
   },
   echappee: (s, identite, conversation, consigne, intention, maintenant, modele, precisions) => {
-    const personne = (a: { id: string; nom: string }) => ({ id: a.id, nom: a.nom })
+    const personne = (a: { id: string; nom: string }) => ({
+      id: a.id,
+      nom: a.nom,
+      sorte: 'personne' as const,
+    })
     const visibles = s.ctx.planning.agents.filter(
-      (a) => identite.role === 'patron' || a.id === identite.agent,
+      (a) => identite.role === 'patron' || a.id === identite.personne,
     )
     const codees = new Set(CONTROLES.map((c) => c.regle))
     const preferences = (s.config.remplacement?.preferences ?? []).map(
@@ -182,7 +189,7 @@ export const CONVERSATION: MetierConversation<Session> = {
         journal: s.journal,
         config: configDe(s),
         identite,
-        quiParle: quiParle(identite),
+        quiParle: quiParle(ROLES, identite),
       },
       {
         tables: tablesPour(s, identite, maintenant),

@@ -106,7 +106,7 @@ async function lireCorps(requete: Request): Promise<Record<string, unknown>> {
 }
 
 const nomDe = (s: Session, identite: Identite) =>
-  identite.role === 'patron' ? 'le patron' : s.ctx.agent(identite.agent ?? '').nom
+  identite.role === 'patron' ? 'le patron' : s.ctx.agent(identite.personne ?? '').nom
 
 /** Les confirmations en attente : la dernière ligne `confirmation_attendue`/`confirmation` de chaque conversation est une attente. */
 function confirmationsEnAttente(s: Session, lignes: Ligne[]) {
@@ -214,7 +214,7 @@ function etat(
     /** L'heure murale de Paris, `AAAA-MM-JJTHH:MM`. */
     maintenant: maintenant.toPlainDateTime().toString({ smallestUnit: 'minute' }),
     identites: personnes.map((p) =>
-      p.role === 'patron' ? p : { ...p, nom: s.ctx.agent(p.agent).nom },
+      p.role === 'patron' ? p : { ...p, nom: s.ctx.agent(p.personne ?? '').nom },
     ),
     aValider: {
       confirmations: confirmationsEnAttente(s, lignes),
@@ -274,7 +274,7 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
   // nomme un agent inconnu arrêtent tout de suite, pas à la première requête.
   const demarrage = CONVERSATION.ouvrir(dossier)
   try {
-    verifierRegistre(CONVERSATION, demarrage, chargerPersonnes(dossier))
+    verifierRegistre(CONVERSATION, demarrage, chargerPersonnes(dossier, CONVERSATION.roles))
   } finally {
     CONVERSATION.fermer(demarrage)
   }
@@ -315,7 +315,9 @@ export function creerApp(options: { dossier: string; maintenant?: string; modele
     const identite = entrer((await lireCorps(c.req.raw)).identite)
     exigerPatron(identite)
     return c.json(
-      await session(identite, (s) => etat(s, chargerPersonnes(dossier), maintenant(), modele)),
+      await session(identite, (s) =>
+        etat(s, chargerPersonnes(dossier, CONVERSATION.roles), maintenant(), modele),
+      ),
     )
   })
 

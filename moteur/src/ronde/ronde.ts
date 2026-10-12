@@ -518,7 +518,7 @@ export async function faireRonde<S>(
     const config = m.config(s)
     const journal = m.journal(s)
     const client = m.client(s)
-    const personnes: Designable[] = m.vocabulaire(s, { role: 'patron' }).agents
+    const personnes: Designable[] = m.noms(s)
     const resume = resumerJournal(journal, { du: o.depuis ?? o.date, au: o.date }, personnes, {
       jours: o.agence.ronde.comptes_jours,
       plafondMoisUsd: config.plafonds.par_mois_usd,

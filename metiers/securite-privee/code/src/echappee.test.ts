@@ -29,7 +29,7 @@ import { aParis, evaluer, type Session } from './remplacement'
 const exemple = fileURLToPath(new URL('../../../../exemples/client-fictif', import.meta.url))
 const maintenant = aParis('2026-10-10T21:40')
 const PATRON: Identite = { role: 'patron' }
-const agent = (id: string): Identite => ({ role: 'agent', agent: id })
+const agent = (id: string): Identite => ({ role: 'agent', personne: id })
 
 /** Une copie neuve du client fictif, sans journal ni sorties. */
 function copieDuClient(): string {
@@ -224,7 +224,11 @@ describe('une échappée de bout en bout (modèle simulé)', () => {
 describe('aucun nom du fichier des agents ne part au modèle', () => {
   it('le patron : agents, constats, une vérification, la consigne ; tout est masqué', async () => {
     const s = session()
-    const personnes = s.ctx.planning.agents.map((a) => ({ id: a.id, nom: a.nom }))
+    const personnes = s.ctx.planning.agents.map((a) => ({
+      id: a.id,
+      nom: a.nom,
+      sorte: 'personne' as const,
+    }))
     const { modele } = await echapper(
       s,
       PATRON,

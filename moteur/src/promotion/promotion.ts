@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { VALIDEE } from '../approbation/jeton'
-import { ROLES, type Role } from '../conversation/actions'
+import type { Role } from '../conversation/actions'
 import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE, OUTIL_VERIFIER } from '../echappee/boucle'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
@@ -75,7 +75,7 @@ export interface EchappeeJournalisee {
   conversation: string
   horodatage: string
   role: Role
-  agent?: string
+  personne?: string
   consigne: string
   intention: string
   issue: 'reponse' | 'proposition'
@@ -99,6 +99,8 @@ interface DonneesEchappee {
   echappee?: string
   intention?: string
   role?: string
+  personne?: string
+  /** L'ancienne graphie de `personne`, dans les lignes d'avant (PLAN-METIER-2.md M2) : se lit, ne s'écrit plus. */
   agent?: string
   cout_usd?: number
   modifications?: unknown[]
@@ -236,7 +238,8 @@ const nomFichier = (intention: string) => intention.replace(/[^A-Za-z0-9_-]/g, '
 export const debutFenetre = (maintenant: Temporal.ZonedDateTime, jours: number) =>
   maintenant.toPlainDate().subtract({ days: jours - 1 })
 
-const estRole = (r: unknown): r is Role => ROLES.includes(r as Role)
+/** Le métier n'est pas connu ici : un rôle est une chaîne non vide (PLAN-METIER-2.md M1). */
+const estRole = (r: unknown): r is Role => typeof r === 'string' && r.length > 0
 
 /** La suite donnée à la proposition d'une conversation : lue sur les objets (`R-…`) qui la citent. */
 export function suiteDe(lignes: Ligne[], conversation: string): string {
@@ -277,6 +280,7 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
         suiteDe(lignes, l.objet) !== SUITE_NON_VALIDEE
   if (!propre) return undefined
   const id = d.echappee
+  const personne = d.personne ?? d.agent
   const outils = (nom: string) =>
     lignes.filter(
       (o) => o.type === TYPE_OUTIL_ECHAPPEE && o.issue === nom && donneesDe(o).echappee === id,
@@ -307,7 +311,7 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
     conversation: l.objet,
     horodatage: l.horodatage,
     role: d.role,
-    ...(typeof d.agent === 'string' ? { agent: d.agent } : {}),
+    ...(typeof personne === 'string' ? { personne } : {}),
     consigne: l.motif ?? '',
     intention: d.intention,
     issue: l.issue as EchappeeJournalisee['issue'],

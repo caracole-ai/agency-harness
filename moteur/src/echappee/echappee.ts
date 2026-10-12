@@ -83,7 +83,7 @@ export interface Instantane {
   echappee: string
   horodatage: string
   role: Identite['role']
-  agent?: string
+  personne?: string
   tables: TableCopie[]
 }
 
@@ -172,8 +172,8 @@ export async function echappee<Modif>(
   const horodatage = maintenant.toInstant().toString()
   const id = idEchappee(maintenant)
   const prix = prixDe(cadre.config)
-  const { role, agent } = cadre.identite
-  const qui = { role, ...(agent !== undefined ? { agent } : {}) }
+  const { role, personne } = cadre.identite
+  const qui = { role, ...(personne !== undefined ? { personne } : {}) }
   const ecrire = (e: Omit<Evenement, 'client' | 'objet'>) =>
     cadre.journal.ecrire([{ ...e, client: cadre.client, objet: cadre.conversation }], horodatage)
   const journaliser = (e: EvenementBoucle) => {

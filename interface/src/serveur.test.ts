@@ -80,7 +80,7 @@ describe('POST /api/etat', async () => {
     expect(etat.client).toBe('client fictif (sécurité privée)')
     expect(etat.maintenant).toBe(MAINTENANT)
     expect(etat.identites[0]).toEqual({ role: 'patron' })
-    expect(etat.identites).toContainEqual({ role: 'agent', agent: 'A-1', nom: 'Karim Haddad' })
+    expect(etat.identites).toContainEqual({ role: 'agent', personne: 'A-1', nom: 'Karim Haddad' })
     expect(etat.regles).toHaveLength(21)
     expect(etat.regles[0]).toMatchObject({ id: 'I-01', nom: 'carte professionnelle valide' })
   })

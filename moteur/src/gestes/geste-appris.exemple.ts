@@ -1,9 +1,21 @@
+import type { RoleDeclare } from '../conversation/roles'
 import type { GesteAppris } from './geste-appris'
 
 // Des gestes appris de référence pour les tests du dossier (jamais exportés
 // par le moteur), sur les tables de la copie de la sécurité privée : les
 // heures d'un agent sur une période (PLAN-PROMOTION.md § 5.5) ; libérer un
 // agent d'un jour, un geste qui écrit (§ 10).
+
+/** Les rôles de ces gestes, déclarés comme la sécurité privée les déclare (PLAN-METIER-2.md M1, M3). */
+export const ROLES_EXEMPLE: RoleDeclare[] = [
+  {
+    id: 'patron',
+    enMots: 'le patron',
+    identifie: false,
+    capacites: ['voit_tout', 'designe_autrui', 'propose', 'ecrit', 'valide', 'administre'],
+  },
+  { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+]
 
 const TEST = {
   echappee: 'E-1',

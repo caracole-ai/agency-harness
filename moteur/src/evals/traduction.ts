@@ -12,11 +12,12 @@ import { join, relative } from 'node:path'
 import { type Action, actionsDe, outilsDe, type Role, schemaMontre } from '../conversation/actions'
 import { type ConfigConversation, prixDe } from '../conversation/config'
 import { avecSession, type MetierConversation, resoudre } from '../conversation/conversation'
+import { aCapacite, type RoleDeclare, roleDe } from '../conversation/roles'
 import { systemeTraduire, traduire } from '../conversation/traduire'
 import type { Instantane } from '../echappee/echappee'
 import { actionApprise } from '../gestes/action-apprise'
 import { lireFichiersGestes } from '../gestes/charger'
-import { type GesteAppris, gesteDe } from '../gestes/geste-appris'
+import { type GesteAppris, gesteDe, personneDuTest } from '../gestes/geste-appris'
 import { cout, type Modele } from '../modele/modele'
 import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -51,7 +52,7 @@ export interface CasTraduction {
   strict: boolean
   piege?: Variante
   role: Role
-  agent?: string
+  personne?: string
   quand: Temporal.ZonedDateTime
   consigne: string
   attendu: CasTraduire['attendu']
@@ -108,7 +109,7 @@ export const aParis = (s: string) => Temporal.PlainDateTime.from(s).toZonedDateT
 export async function jouerCas<S>(
   m: MetierConversation<S>,
   source: string,
-  cas: { id: string; strict: boolean; piege?: Variante; role: string; agent?: string },
+  cas: { id: string; strict: boolean; piege?: Variante; role: string; personne?: string },
   modeleDe: (config: ConfigConversation) => Modele,
   jouer: (
     dossier: string,
@@ -117,9 +118,9 @@ export async function jouerCas<S>(
   ) => Promise<{ ecarts: string[]; issue: unknown; permis?: string }>,
 ): Promise<{ resultat: ResultatCas; trace: TraceCas; idModele: string }> {
   const dossier = copieClient(source, cas.piege)
-  const accueil = recevoir(chargerPersonnes(dossier), {
+  const accueil = recevoir(m.roles, chargerPersonnes(dossier, m.roles), {
     role: cas.role,
-    ...(cas.agent ? { agent: cas.agent } : {}),
+    ...(cas.personne ? { personne: cas.personne } : {}),
   })
   if (accueil.sorte === 'refus') {
     rmSync(dossier, { recursive: true, force: true })
@@ -146,12 +147,7 @@ export async function jouerCas<S>(
     // Tous les agents de la copie (le patron les voit tous), variante comprise ;
     // une fuite qu'on ne peut pas mesurer compte comme une fuite.
     try {
-      const personnes = await avecSession(
-        m,
-        dossier,
-        accueil.identite,
-        (s) => m.vocabulaire(s, { role: 'patron' }).agents,
-      )
+      const personnes = await avecSession(m, dossier, accueil.identite, (s) => m.noms(s))
       fuite = fuiteDe(textesEnvoyes(modele), personnes, permis)
     } catch (erreur) {
       fuite = [`non mesurée : ${(erreur as Error).message}`]
@@ -195,7 +191,7 @@ export function casDuFichier(fichier: FichierTraduire, seulement?: Set<string>):
         strict: c.categorie === CATEGORIE_AGENT_PATRON,
         ...(variante ? { piege: variante } : {}),
         role: c.role,
-        ...(c.agent !== undefined ? { agent: c.agent } : {}),
+        ...(c.personne !== undefined ? { personne: c.personne } : {}),
         quand: aParis(c.maintenant ?? fichier.maintenant),
         consigne: c.consigne,
         attendu: c.attendu,
@@ -207,10 +203,14 @@ export function casDuFichier(fichier: FichierTraduire, seulement?: Set<string>):
  * Les tests d'un geste appris comme cas de traduction (P13) : la consigne
  * d'origine, au moment de l'échappée (lu dans son instantané : « cette
  * semaine » se calcule depuis là), doit choisir le geste avec ses paramètres.
- * Pour le rôle `agent`, un paramètre `agent` vaut toujours celui qui parle
- * (D4) : il n'est pas comparé.
+ * Pour un rôle qui ne désigne pas autrui, un paramètre `agent` vaut toujours
+ * celui qui parle (D4, PLAN-METIER-2.md M3) : il n'est pas comparé.
  */
-export function casDuGeste(geste: GesteAppris, dossierClient: string): CasTraduction[] {
+export function casDuGeste(
+  geste: GesteAppris,
+  dossierClient: string,
+  roles: RoleDeclare[],
+): CasTraduction[] {
   const agents = Object.entries(geste.parametres)
     .filter(([, p]) => p.type === 'agent')
     .map(([nom]) => nom)
@@ -218,14 +218,16 @@ export function casDuGeste(geste: GesteAppris, dossierClient: string): CasTraduc
     const chemin = join(dossierClient, t.instantane)
     if (!existsSync(chemin)) throw new Error(`${geste.id} : instantané absent : ${t.instantane}`)
     const { horodatage } = JSON.parse(readFileSync(chemin, 'utf8')) as Instantane
+    const soiMeme = !aCapacite(roles, { role: t.role }, 'designe_autrui')
     const params = Object.fromEntries(
-      Object.entries(t.params).filter(([cle]) => t.role !== 'agent' || !agents.includes(cle)),
+      Object.entries(t.params).filter(([cle]) => !soiMeme || !agents.includes(cle)),
     )
+    const personne = personneDuTest(t)
     return {
       id: `G-${geste.id}-${n + 1}`,
       strict: false,
       role: t.role,
-      ...(t.agent !== null ? { agent: t.agent } : {}),
+      ...(personne !== null ? { personne } : {}),
       quand: Temporal.Instant.from(horodatage).toZonedDateTimeISO(FUSEAU),
       consigne: t.consigne,
       attendu: { sorte: 'action', action: geste.id, params },
@@ -249,7 +251,7 @@ export function apprisDuDossier<S>(
   const appris = lireFichiersGestes(dossier).flatMap((f) => {
     if (f.erreur !== undefined) erreurs.push(`gestes/${f.fichier} : ${f.erreur}`)
     return f.contenu && f.contenu.statut !== 'retire'
-      ? [actionApprise(gesteDe(f.contenu), copie)]
+      ? [actionApprise(gesteDe(f.contenu), copie, m.roles)]
       : []
   })
   return { appris, erreurs }
@@ -279,7 +281,7 @@ export async function jouerTraduction<S>(
       const { demande } = await traduire(
         modele,
         configDuDossier(m, dossier).modele.effort.traduire,
-        systemeTraduire(c.role, actions, intentions),
+        systemeTraduire(roleDe(m.roles, identite), actions, intentions),
         outilsDe(toutes, c.role),
         c.consigne,
         c.quand,
@@ -355,7 +357,7 @@ export async function passeTraduction<S>(
   const resultats = await jouerTraduction(
     m,
     dossier,
-    [...casDuFichier(consignes), ...casDuGeste(geste, dossier)],
+    [...casDuFichier(consignes), ...casDuGeste(geste, dossier, m.roles)],
     appris,
     modeleDe,
     (r, trace, id) => {

@@ -20,6 +20,6 @@ export function personnesFictives(): Designable[] {
   if (id < 0 || nom < 0) throw new Error('agents.csv : colonnes id et nom attendues')
   return lignes.slice(1).map((l) => {
     const c = l.split(';')
-    return { id: c[id] ?? '', nom: c[nom] ?? '' }
+    return { id: c[id] ?? '', nom: c[nom] ?? '', sorte: 'personne' as const }
   })
 }

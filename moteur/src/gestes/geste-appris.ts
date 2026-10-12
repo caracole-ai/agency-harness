@@ -1,7 +1,8 @@
 import { isAbsolute } from 'node:path'
 import { z } from 'zod'
 import { empreinte } from '../approbation/jeton'
-import { DESCRIPTION_MAX, FORMAT_INTENTION, ROLES } from '../conversation/actions'
+import { DESCRIPTION_MAX, FORMAT_INTENTION } from '../conversation/actions'
+import { aCapacite, type RoleDeclare } from '../conversation/roles'
 import {
   type ParametresRequete,
   parametresNommes,
@@ -73,31 +74,42 @@ export const Reaffectation = z.strictObject({
 })
 export type Reaffectation = z.infer<typeof Reaffectation>
 
-export const TestAppris = z.strictObject({
-  /** L'identifiant de l'échappée d'origine. */
-  echappee: z.string().min(1),
-  consigne: z.string().min(1),
-  role: z.enum(ROLES),
-  agent: z.string().nullable(),
-  params: z.record(z.string(), z.union([z.string(), z.number(), z.null()])),
-  /** `echappees/<id>.json`, relatif au dossier du client : ni absolu, ni `..`. */
-  instantane: z
-    .string()
-    .min(1)
-    .refine((p) => !isAbsolute(p) && !p.split(/[\\/]/).includes('..'), {
-      message: 'un chemin relatif au dossier du client, sans « .. »',
-    }),
-  /** Les nombres et les noms du texte validé, que le rejeu doit reproduire ; vide pour un geste qui écrit. */
-  contient: z.array(z.string()),
-  /** Un geste qui écrit : les réaffectations que le patron a validées, que le rejeu doit reproduire exactement. */
-  modifications: z.array(Reaffectation).min(1).optional(),
-})
+export const TestAppris = z
+  .strictObject({
+    /** L'identifiant de l'échappée d'origine. */
+    echappee: z.string().min(1),
+    consigne: z.string().min(1),
+    role: z.string().min(1),
+    /** Qui a fait la demande d'origine (null : un rôle non identifié). Les tests d'avant l'écrivent `agent` (PLAN-METIER-2.md M2) : la graphie lue n'est jamais réécrite, l'empreinte d'un geste ne change pas. */
+    personne: z.string().nullable().optional(),
+    agent: z.string().nullable().optional(),
+    params: z.record(z.string(), z.union([z.string(), z.number(), z.null()])),
+    /** `echappees/<id>.json`, relatif au dossier du client : ni absolu, ni `..`. */
+    instantane: z
+      .string()
+      .min(1)
+      .refine((p) => !isAbsolute(p) && !p.split(/[\\/]/).includes('..'), {
+        message: 'un chemin relatif au dossier du client, sans « .. »',
+      }),
+    /** Les nombres et les noms du texte validé, que le rejeu doit reproduire ; vide pour un geste qui écrit. */
+    contient: z.array(z.string()),
+    /** Un geste qui écrit : les réaffectations que le patron a validées, que le rejeu doit reproduire exactement. */
+    modifications: z.array(Reaffectation).min(1).optional(),
+  })
+  .refine((t) => (t.personne === undefined) !== (t.agent === undefined), {
+    message:
+      'un test dit qui a fait la demande : personne (ou agent, la graphie d’avant), pas les deux',
+  })
 export type TestAppris = z.infer<typeof TestAppris>
+
+/** Qui a fait la demande d'origine d'un test, quelle que soit sa graphie (PLAN-METIER-2.md M2). */
+export const personneDuTest = (t: Pick<TestAppris, 'personne' | 'agent'>): string | null =>
+  t.personne !== undefined ? t.personne : (t.agent ?? null)
 
 export const GesteAppris = z.strictObject({
   id: z.string().regex(FORMAT_INTENTION),
   description: z.string().min(1).max(DESCRIPTION_MAX),
-  roles: z.array(z.enum(ROLES)).min(1),
+  roles: z.array(z.string().min(1)).min(1),
   parametres: z.record(z.string().regex(FORMAT_NOM), ParametreAppris),
   requetes: z.array(RequeteApprise).min(1).max(5),
   reponse: ReponseApprise,
@@ -155,15 +167,21 @@ const malForme = (ligne: string) => /\{\{|\}\}/.test(ligne.replace(REFERENCE, ''
  * noms de requêtes uniques ; chaque référence du gabarit vers une requête ou
  * un paramètre qui existe ; chaque paramètre nommé dans un SQL déclaré ; des
  * tests qui attendent un texte (un geste qui lit) ou des réaffectations (un
- * geste qui écrit, ouvert au patron seul, dont la réponse est le tableau de sa
- * requête `pour_chaque`). Avec `colonnes` (celles que chaque requête rend,
- * lues sur une copie vide), les colonnes citées sont vérifiées aussi.
+ * geste qui écrit, ouvert aux seuls rôles qui ont la capacité `ecrit`, dont
+ * la réponse est le tableau de sa requête `pour_chaque`) ; des rôles que le
+ * métier déclare (PLAN-METIER-2.md M1). Avec `colonnes` (celles que chaque
+ * requête rend, lues sur une copie vide), les colonnes citées sont vérifiées
+ * aussi.
  */
 export function verifierGabarit(
+  roles: RoleDeclare[],
   geste: GesteAppris,
   colonnes?: ReadonlyMap<string, readonly string[]>,
 ): string[] {
   const ecarts: string[] = []
+  for (const r of geste.roles.filter((r) => !roles.some((d) => d.id === r))) {
+    ecarts.push(`rôle inconnu : ${r}`)
+  }
   const { reponse } = geste
   if ((reponse.ligne === null) === (reponse.tableau === null)) {
     ecarts.push('la réponse est une ligne ou un tableau, pas les deux ni aucun')
@@ -206,13 +224,14 @@ export function verifierGabarit(
       ecarts.push(`la ligne cite une colonne que « ${requete} » ne rend pas : ${colonne}`)
     }
   }
-  ecarts.push(...ecartsEcriture(geste, noms, colonnes))
+  ecarts.push(...ecartsEcriture(geste, roles, noms, colonnes))
   return ecarts
 }
 
 /** Ce que `verifierGabarit` exige de plus selon que le geste lit ou écrit. */
 function ecartsEcriture(
   geste: GesteAppris,
+  roles: RoleDeclare[],
   noms: string[],
   colonnes?: ReadonlyMap<string, readonly string[]>,
 ): string[] {
@@ -223,8 +242,8 @@ function ecartsEcriture(
       : []
   }
   const ecarts: string[] = []
-  if (geste.roles.length !== 1 || geste.roles[0] !== 'patron') {
-    ecarts.push('un geste qui écrit n’est ouvert qu’au patron')
+  if (!geste.roles.every((role) => aCapacite(roles, { role }, 'ecrit'))) {
+    ecarts.push('un geste qui écrit n’est ouvert qu’aux rôles qui écrivent')
   }
   if (!noms.includes(m.pour_chaque)) {
     ecarts.push(`les modifications citent une requête inconnue : ${m.pour_chaque}`)

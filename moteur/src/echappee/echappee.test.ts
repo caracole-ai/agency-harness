@@ -44,7 +44,7 @@ const CONFIG: ConfigConversation = {
   promotion: { occurrences: 3, jours: 30, conservation_jours: 90 },
 }
 const PATRON: Identite = { role: 'patron' }
-const JULIEN: Identite = { role: 'agent', agent: 'A-2' }
+const JULIEN: Identite = { role: 'agent', personne: 'A-2' }
 const maintenant = Temporal.PlainDateTime.from('2026-10-10T21:40').toZonedDateTime(FUSEAU)
 
 const AGENTS: TableCopie = {
@@ -78,8 +78,8 @@ const tablesPour = (identite: Identite): TableCopie[] =>
   identite.role === 'patron'
     ? [AGENTS, VACATIONS]
     : [
-        { ...AGENTS, lignes: AGENTS.lignes.filter((a) => a.id === identite.agent) },
-        { ...VACATIONS, lignes: VACATIONS.lignes.filter((v) => v.agent === identite.agent) },
+        { ...AGENTS, lignes: AGENTS.lignes.filter((a) => a.id === identite.personne) },
+        { ...VACATIONS, lignes: VACATIONS.lignes.filter((v) => v.agent === identite.personne) },
       ]
 
 const REQUETE: Scripte = {
@@ -90,7 +90,11 @@ const REQUETE: Scripte = {
 }
 const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
 
-const PERSONNES = AGENTS.lignes.map((a) => ({ id: String(a.id), nom: String(a.nom) }))
+const PERSONNES = AGENTS.lignes.map((a) => ({
+  id: String(a.id),
+  nom: String(a.nom),
+  sorte: 'personne' as const,
+}))
 
 async function echapper(
   identite: Identite,
@@ -129,7 +133,7 @@ async function echapper(
     },
     regles: [],
     preferences: 'aucune',
-    personnes: PERSONNES.filter((p) => identite.role === 'patron' || p.id === identite.agent),
+    personnes: PERSONNES.filter((p) => identite.role === 'patron' || p.id === identite.personne),
     toutes: PERSONNES,
   }
   const modele = modeleSimule(script)
@@ -168,7 +172,7 @@ describe('le journal se souvient de l’échappée', () => {
       texte: 'Julien Lefèvre : 16 heures.',
       instantane: cheminInstantane(e.echappee),
     })
-    expect(e).not.toHaveProperty('agent')
+    expect(e).not.toHaveProperty('personne')
     const instantane = JSON.parse(readFileSync(join(dossier, e.instantane), 'utf8')) as Instantane
     expect(instantane).toEqual({
       echappee: e.echappee,
@@ -190,9 +194,9 @@ describe('le journal se souvient de l’échappée', () => {
   it('un agent : l’instantané ne contient que sa ligne, la ligne echappee porte son identifiant', async () => {
     const { dossier, donnees } = await echapper(JULIEN, [REQUETE, repondre('16 heures.')])
     const [e] = donnees(TYPE_ECHAPPEE)
-    expect(e).toMatchObject({ role: 'agent', agent: 'A-2' })
+    expect(e).toMatchObject({ role: 'agent', personne: 'A-2' })
     const instantane = JSON.parse(readFileSync(join(dossier, e.instantane), 'utf8')) as Instantane
-    expect(instantane).toMatchObject({ role: 'agent', agent: 'A-2' })
+    expect(instantane).toMatchObject({ role: 'agent', personne: 'A-2' })
     expect(instantane.tables.find((t) => t.nom === 'agents')?.lignes).toEqual([
       { id: 'A-2', nom: 'Julien Lefèvre' },
     ])

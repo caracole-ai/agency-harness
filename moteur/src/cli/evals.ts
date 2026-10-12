@@ -53,7 +53,7 @@ import {
   type TraceCas,
 } from '../evals/traduction'
 import { lireFichiersGestes } from '../gestes/charger'
-import { type FichierGeste, gesteDe } from '../gestes/geste-appris'
+import { type FichierGeste, gesteDe, personneDuTest } from '../gestes/geste-appris'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
@@ -174,7 +174,7 @@ if (quoi === 'traduire') {
         strict: c.piege === true,
         ...(c.piege ? { piege: fichier.piege } : {}),
         role: c.role,
-        ...(c.agent !== undefined ? { agent: c.agent } : {}),
+        ...(c.personne !== undefined ? { personne: c.personne } : {}),
       },
       modeleDe,
       (dossier, modele, identite) =>
@@ -213,9 +213,10 @@ if (quoi === 'traduire') {
         mkdirSync(join(dossier, 'gestes'), { recursive: true })
         writeFileSync(join(dossier, 'gestes', `eval-${g.id}.yaml`), stringify(f))
         for (const test of g.tests) {
+          const personne = personneDuTest(test)
           const identite = {
             role: test.role,
-            ...(test.agent !== null ? { agent: test.agent } : {}),
+            ...(personne !== null ? { personne } : {}),
           }
           m.verifierIdentite(s, identite)
           ecrireInstantane(dossier, {
@@ -241,7 +242,7 @@ if (quoi === 'traduire') {
       for (const test of geste.tests) {
         const id = `${geste.id}/${test.echappee}`
         if (seulement && !seulement.has(id)) continue
-        const rejeu = await rejouerTest(geste, test, dossier)
+        const rejeu = await rejouerTest(geste, test, dossier, m.roles)
         const ecarts =
           'erreur' in rejeu
             ? [rejeu.erreur]
@@ -364,9 +365,9 @@ if (quoi === 'traduire') {
         for (const id of c.echappees) {
           const e = echappees.cas.find((x) => x.id === id)
           if (!e) throw new Error(`${c.id} : cas d'échappée inconnu : ${id}`)
-          const accueil = recevoir(chargerPersonnes(dossier), {
+          const accueil = recevoir(m.roles, chargerPersonnes(dossier, m.roles), {
             role: e.role,
-            ...(e.agent !== undefined ? { agent: e.agent } : {}),
+            ...(e.personne !== undefined ? { personne: e.personne } : {}),
           })
           if (accueil.sorte === 'refus') throw new Error(`${id} : ${accueil.motif}`)
           await avecSession(m, dossier, accueil.identite, async (s) => {

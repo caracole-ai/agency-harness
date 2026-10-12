@@ -10,6 +10,7 @@ import type { TableCopie } from '../echappee/copie'
 import { ecrireInstantane } from '../echappee/echappee'
 import { fuites, masquerTexte } from '../echappee/pseudonymes'
 import { FichierGeste, type GesteAppris, gesteDe } from '../gestes/geste-appris'
+import { ROLES_EXEMPLE } from '../gestes/geste-appris.exemple'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import {
   ANTERIEURE,
@@ -68,6 +69,7 @@ const VACATIONS: TableCopie = {
 const PERSONNES: Designable[] = AGENTS.lignes.map((a) => ({
   id: String(a.id),
   nom: String(a.nom),
+  sorte: 'personne',
 }))
 const INTENTION: Intention = {
   id: 'heures_par_agent',
@@ -109,7 +111,7 @@ function dossierAvecInstantanes(): string {
     echappee: 'E-3',
     horodatage: '2026-10-10T19:42:00Z',
     role: 'agent',
-    agent: 'A-3',
+    personne: 'A-3',
     tables: tables('A-3'),
   })
   return dossier
@@ -119,13 +121,13 @@ const echappee = (
   id: string,
   consigne: string,
   texte: string,
-  qui: { role: 'patron' | 'agent'; agent?: string } = { role: 'patron' },
+  qui: { role: 'patron' | 'agent'; personne?: string } = { role: 'patron' },
 ): EchappeeMasquee => ({
   echappee: id,
   conversation: `C-${id}`,
   horodatage: '2026-10-10T19:40:00Z',
   role: qui.role,
-  ...(qui.agent !== undefined ? { agent: qui.agent } : {}),
+  ...(qui.personne !== undefined ? { personne: qui.personne } : {}),
   consigne,
   intention: INTENTION.id,
   issue: 'reponse',
@@ -148,7 +150,7 @@ const ECHAPPEES: EchappeeMasquee[] = [
   ),
   echappee('E-3', "Combien d'heures j'ai fait cette semaine ?", 'Tu as fait 12 heures.', {
     role: 'agent',
-    agent: 'A-3',
+    personne: 'A-3',
   }),
 ]
 const COPIE_VIDE: TableCopie[] = [
@@ -198,6 +200,7 @@ function cadre(
     echappees: ECHAPPEES,
     gestesExistants: GESTES_EXISTANTS,
     personnes: PERSONNES,
+    roles: ROLES_EXEMPLE,
     dossierClient,
     copieVide: COPIE_VIDE,
     fabriqueLe: '2026-10-10',
@@ -224,7 +227,7 @@ describe('systemeFabriquer et messageFabriquer', () => {
     expect(s).toContain(OUTIL_PROPOSER_GESTE)
   })
   it('le message met les échappées entières entre les balises des données, avec le moment et la semaine', () => {
-    const m = messageFabriquer(ECHAPPEES)
+    const m = messageFabriquer(ECHAPPEES, ROLES_EXEMPLE)
     expect(m).toMatch(/^Les demandes \(3\)/)
     expect(m).toContain('<donnees>### E-1')
     expect(m).toContain(
@@ -243,7 +246,14 @@ describe('systemeFabriquer et messageFabriquer', () => {
 
 describe('completerGeste', () => {
   it('l’identifiant est l’intention ; chaque test reçoit consigne, rôle, agent, instantané, et contient : les nombres et noms du texte hors consigne ; l’agent est résolu, celui qui parle pour un agent', () => {
-    const { geste, ecarts } = completerGeste(PROPOSE, INTENTION.id, ECHAPPEES, PERSONNES, ORIGINE)
+    const { geste, ecarts } = completerGeste(
+      PROPOSE,
+      INTENTION.id,
+      ECHAPPEES,
+      PERSONNES,
+      ORIGINE,
+      ROLES_EXEMPLE,
+    )
     expect(ecarts).toEqual([])
     expect(geste?.id).toBe('heures_par_agent')
     expect(geste?.tests).toEqual([
@@ -251,7 +261,7 @@ describe('completerGeste', () => {
         echappee: 'E-1',
         consigne: "Combien d'heures Karim a-t-il fait cette semaine ?",
         role: 'patron',
-        agent: null,
+        personne: null,
         params: { agent: 'A-1', du: DU, au: AU },
         instantane: 'echappees/E-1.json',
         contient: ['24', 'Haddad'],
@@ -260,7 +270,7 @@ describe('completerGeste', () => {
         echappee: 'E-2',
         consigne: "Combien d'heures Julien a-t-il fait du 5 au 11 octobre ?",
         role: 'patron',
-        agent: null,
+        personne: null,
         params: { agent: 'A-2', du: DU, au: AU },
         instantane: 'echappees/E-2.json',
         contient: ['16', 'Lefèvre'],
@@ -269,7 +279,7 @@ describe('completerGeste', () => {
         echappee: 'E-3',
         consigne: "Combien d'heures j'ai fait cette semaine ?",
         role: 'agent',
-        agent: 'A-3',
+        personne: 'A-3',
         params: { agent: 'A-3', du: DU, au: AU },
         instantane: 'echappees/E-3.json',
         contient: ['12'],
@@ -292,6 +302,7 @@ describe('completerGeste', () => {
       ECHAPPEES,
       PERSONNES,
       ORIGINE,
+      ROLES_EXEMPLE,
     )
     expect(geste).toBeUndefined()
     expect(ecarts.map((e) => e.texte)).toEqual([
@@ -309,10 +320,11 @@ describe('completerGeste', () => {
       [
         ECHAPPEES[0] as EchappeeJournalisee,
         ECHAPPEES[1] as EchappeeJournalisee,
-        echappee('E-3', 'Et moi ?', 'Aucune vacation.', { role: 'agent', agent: 'A-3' }),
+        echappee('E-3', 'Et moi ?', 'Aucune vacation.', { role: 'agent', personne: 'A-3' }),
       ],
       PERSONNES,
       ORIGINE,
+      ROLES_EXEMPLE,
     )
     expect(ecarts.map((e) => e.texte)).toContain(
       'E-3 : rien à vérifier dans le texte montré (ni nombre ni nom)',
@@ -322,7 +334,14 @@ describe('completerGeste', () => {
 
 describe('verifierGeste et rejouerTest', () => {
   const geste = (): GesteAppris => {
-    const { geste: g } = completerGeste(PROPOSE, INTENTION.id, ECHAPPEES, PERSONNES, ORIGINE)
+    const { geste: g } = completerGeste(
+      PROPOSE,
+      INTENTION.id,
+      ECHAPPEES,
+      PERSONNES,
+      ORIGINE,
+      ROLES_EXEMPLE,
+    )
     if (!g) throw new Error('fixture')
     return g
   }
@@ -331,6 +350,7 @@ describe('verifierGeste et rejouerTest', () => {
     copieVide: COPIE_VIDE,
     consignes: ECHAPPEES.map((e) => e.consigne),
     personnes: PERSONNES,
+    roles: ROLES_EXEMPLE,
     gestesExistants: GESTES_EXISTANTS,
   })
   it('un geste juste : zéro écart, rejeu 3/3', async () => {
@@ -345,23 +365,32 @@ describe('verifierGeste et rejouerTest', () => {
     const g = geste()
     const [t1, , t3] = g.tests
     if (!t1 || !t3) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
       texte: 'Karim Haddad : 24 heures du 2026-10-05 au 2026-10-11.',
       manque: [],
       enTrop: [],
     })
-    expect(await rejouerTest(g, { ...t1, contient: ['24', '99'] }, dossier)).toMatchObject({
+    expect(
+      await rejouerTest(g, { ...t1, contient: ['24', '99'] }, dossier, ROLES_EXEMPLE),
+    ).toMatchObject({
       manque: ['99'],
     })
     // L'agent : sa copie n'a que ses lignes, et c'est lui qui est lié (D4).
     expect(
-      await rejouerTest(g, { ...t3, params: { ...t3.params, agent: 'A-1' } }, dossier),
+      await rejouerTest(
+        g,
+        { ...t3, params: { ...t3.params, agent: 'A-1' } },
+        dossier,
+        ROLES_EXEMPLE,
+      ),
     ).toEqual({
       texte: 'Sophie Marchand : 12 heures du 2026-10-05 au 2026-10-11.',
       manque: [],
       enTrop: [],
     })
-    expect(await rejouerTest(g, { ...t1, instantane: 'echappees/E-0.json' }, dossier)).toEqual({
+    expect(
+      await rejouerTest(g, { ...t1, instantane: 'echappees/E-0.json' }, dossier, ROLES_EXEMPLE),
+    ).toEqual({
       erreur: 'instantané absent : echappees/E-0.json',
     })
   })
@@ -448,7 +477,14 @@ describe('verifierGeste et rejouerTest', () => {
 describe('ecrireGeste', () => {
   it('écrit gestes/<id>.yaml au statut proposé, sans validation, relisible ; un second du même id prend la date', () => {
     const dossier = mkdtempSync(join(tmpdir(), 'fabriquer-'))
-    const { geste } = completerGeste(PROPOSE, INTENTION.id, ECHAPPEES, PERSONNES, ORIGINE)
+    const { geste } = completerGeste(
+      PROPOSE,
+      INTENTION.id,
+      ECHAPPEES,
+      PERSONNES,
+      ORIGINE,
+      ROLES_EXEMPLE,
+    )
     if (!geste) throw new Error('fixture')
     expect(ecrireGeste(dossier, geste)).toBe(join('gestes', 'heures_par_agent.yaml'))
     const lu = FichierGeste.parse(
@@ -697,25 +733,33 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
     const g = ecrit('A-3')
     const [t1, t2] = g.tests
     if (!t1 || !t2) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
       texte: 'V-01 → A-3',
       manque: [],
       enTrop: [],
     })
-    expect(await rejouerTest(g, t2, dossier)).toMatchObject({ manque: [], enTrop: [] })
+    expect(await rejouerTest(g, t2, dossier, ROLES_EXEMPLE)).toMatchObject({
+      manque: [],
+      enTrop: [],
+    })
   })
   it('un agent jamais validé pour cette vacation, une vacation absente : écarts, et la vérification le dit', async () => {
     const dossier = dossierAvecInstantanes()
     const g = ecrit('A-1')
     const [t1, , t3] = g.tests
     if (!t1 || !t3) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
       texte: 'V-01 → A-1',
       manque: [],
       enTrop: ['V-01 → A-1'],
     })
     expect(
-      await rejouerTest(g, { ...t3, params: { agent: 'A-1', date: '2026-10-20' } }, dossier),
+      await rejouerTest(
+        g,
+        { ...t3, params: { agent: 'A-1', date: '2026-10-20' } },
+        dossier,
+        ROLES_EXEMPLE,
+      ),
     ).toEqual({
       texte: 'aucune réaffectation',
       manque: ['V-02'],
@@ -726,6 +770,7 @@ describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
       copieVide: COPIE_VIDE,
       consignes: [],
       personnes: PERSONNES,
+      roles: ROLES_EXEMPLE,
       gestesExistants: GESTES_EXISTANTS,
     })
     expect(rejeu).toEqual({ ok: 0, total: 3 })
@@ -752,18 +797,24 @@ describe('le message de fabrication, selon que l’intention lit ou écrit', () 
     instantane: 'echappees/E-1.json',
   }
   it('une proposition : ses vérifications, puis les réaffectations validées', () => {
-    const m = messageFabriquer([
-      {
-        ...base,
-        issue: 'proposition',
-        modifications: [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }],
-      },
-    ])
+    const m = messageFabriquer(
+      [
+        {
+          ...base,
+          issue: 'proposition',
+          modifications: [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }],
+        },
+      ],
+      ROLES_EXEMPLE,
+    )
     expect(m).toContain('Vérification 1 :')
     expect(m).toContain('Réaffectations validées par le patron (vacation → agent) :\nV-03 → A-9')
   })
   it('une réponse : le message d’avant la phase C, sans les vérifications', () => {
-    const m = messageFabriquer([{ ...base, issue: 'reponse', texteModele: 'A-1 : 24 heures.' }])
+    const m = messageFabriquer(
+      [{ ...base, issue: 'reponse', texteModele: 'A-1 : 24 heures.' }],
+      ROLES_EXEMPLE,
+    )
     expect(m).not.toContain('Vérification')
     expect(m).toContain('Réponse montrée :\nA-1 : 24 heures.')
   })
@@ -802,7 +853,7 @@ describe('le message de fabrication, selon que l’intention lit ou écrit', () 
     }
     const [t1] = g.tests
     if (!t1) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier)).toEqual({
+    expect(await rejouerTest(g, t1, dossier, ROLES_EXEMPLE)).toEqual({
       texte: 'V-01 → A-2, V-01 → A-2',
       manque: [],
       enTrop: ['V-01 → A-2'],

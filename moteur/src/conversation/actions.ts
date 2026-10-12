@@ -1,6 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import type { Temporal } from '../temps/temporal'
+import type { Identite, Role } from './roles'
 
 // Les gestes du quotidien (espace 1) : une liste fermée d'actions codées, que
 // le modèle ne fait que choisir. Le métier les écrit (`ACTIONS`) ; ce fichier
@@ -11,14 +12,7 @@ import type { Temporal } from '../temps/temporal'
 // jamais comme un identifiant : le modèle ne voit aucun nom, le moteur trouve
 // la personne (REFLEXIONS.md, décidé le 2026-10-08, `designation.ts`).
 
-export const ROLES = ['patron', 'agent'] as const
-export type Role = (typeof ROLES)[number]
-
-/** Qui parle. `agent` est obligatoire pour le rôle `agent` et doit exister dans le planning. */
-export interface Identite {
-  role: Role
-  agent?: string
-}
+export type { Identite, Role } from './roles'
 
 export interface Resultat {
   /** Rendu par le code, montré tel quel au demandeur. */
