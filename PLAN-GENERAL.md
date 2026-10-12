@@ -176,6 +176,18 @@ en simulé (binaire `claude` simulé) puis pour de vrai sur deux missions du
 client fictif. Deux sessions : D1 (lots 0 et 1), D2 (lots 2 et 3, relecture,
 fusion) ; la consigne de chacune est dans `SESSION-D.md`.
 
+### Phase M — Le second métier, une agence web (`PLAN-METIER-2.md`, ajoutée le 2026-10-12)
+
+Demandée par Lionel après la phase D : prouver que le moteur est
+agnostique (un second métier tourne avec le même moteur, la sécurité ne
+bouge pas) et mesurer ce que le système produit seul pour un métier dont
+le cœur est Rapprocher. Lots 1a à 1c (le moteur rendu agnostique :
+`methode/audit-second-metier-2026-10-12.md`), 2a et 2b (le métier et son
+client fictif), 3 (Rapprocher), 4 (la mesure). Sur l'abonnement (G10,
+amendé : la bascule vers la clé est reportée, elle reste due avant un
+client réel). Cinq sessions ; E peut tourner sur la sécurité pendant les
+trois dernières.
+
 ### Phase E — La nuit en service continu, et la période d'observation
 
 - **E0** `pnpm nuit` au cron de la machine de l'agence, chaque nuit, sur le
@@ -245,10 +257,13 @@ Toutes les mesures s'écrivent dans `evals/resultats/` (les passes) et dans
 
 ## 5. Ordre, sessions, parallélisme
 
-A → B → C → D → E, puis F, G, H dans cet ordre (H dépend de G pour le
-canal, et de F pour l'onglet et la config du patron). E tourne pendant F, G
-et H : une nuit qui propose un chantier sur une phase en cours est une
-mission comme une autre, dans la bande métier seulement.
+A → B → C → D → M → E, puis F, G, H dans cet ordre (H dépend de G pour le
+canal, et de F pour l'onglet et la config du patron ; M avant F parce que
+F construit les confirmations et l'authentification sur le modèle des
+rôles, que M rend déclarable). E tourne pendant M (sur la sécurité, dès le
+lot 1 de M fusionné), F, G et H : une nuit qui propose un chantier sur une
+phase en cours est une mission comme une autre, dans la bande métier
+seulement.
 
 Une session = une phase au plus (A et C tiennent en une ; B, D, F, H en
 deux). Dans une phase, les sous-agents suivent le § 9 du plan appelé. À la
