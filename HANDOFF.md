@@ -7,6 +7,57 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-12 : phase M, session S2 faite (lot 1c de `PLAN-METIER-2.md`,
+  relecture du lot 1 entier, corrections, mesure finale), branche
+  `metier-2/lot-1c` partie de `metier-2/lot-1b` ; LE LOT 1 N'EST PAS
+  FUSIONNÉ NI POUSSÉ : la mesure finale ne tient pas la règle (b) de la
+  consigne** (une passe de traduction à 56/60, sous le plus bas de la
+  référence, 58). Détail, choix, portes, captures et tableau : « Phase M,
+  session S2 » sous « Choix faits faute de consigne ». `pnpm check` vert sur
+  `metier-2/lot-1c` (`58b1557`) : 597 tests moteur (+33), 135 métier, 24
+  interface (+3), registre cohérent.
+  - Lot 1c : les évals vivent chez le métier (`metiers/<métier>/evals/`,
+    M8, critères `modifications: { autorisees, interdites, max }`) ; le
+    chantier connaît le métier (`evals_clients`, chemins en `${metier}`,
+    M9) ; l'interface charge le métier depuis `config.yaml` et ne dépend
+    plus de la sécurité (`cli/metier.ts`, `Tableau`, `exigerCapacite`, M10) ;
+    l'argent (M11). Arbitrages de Lionel faits : les trois fixtures en
+    `*.test.fixture.ts` ; la graphie `agent` lue à trois endroits seulement
+    (`roles.ts`, `geste-appris.ts`, `cli/parler.ts`).
+  - **Portes** : porte 1 réduite à ces trois endroits ; porte 2 vide.
+    Interface vérifiée à l'écran (absence, confirmation, passage à un agent,
+    délégation proposée).
+  - **Relecture indépendante** : aucun contrôle relâché par une porte, un
+    rôle, la garde ou la CSRF ; trois défauts de code corrigés avec un test
+    rouge chacun (deux trous du contrôle des chiffres ouverts par M11, la
+    mission d'un autre métier que le client) ; le reste noté.
+  - **Mesuré, GLM-5.3 via GMI**, sur `exemples/client-fictif` :
+
+    | | traduire | échappée | gestes |
+    |---|---|---|---|
+    | référence (`main`) | 58, 58 | 17, 17 | 6, 6 |
+    | après 6.4 | 58, 60 | 18, 18 | 6, 6 |
+    | après 1c | 57, 59 | 17, 17 | 6, 6 |
+    | **final** (`58b1557`) | **58, 59, 56** | **18, 17, 17** | **6** |
+
+    Fuite : traduction R-2 seulement à chaque passe (connu), échappée 0.
+    Règle (a) tenue : aucun cas stable de la référence rouge sur deux des
+    trois passes finales ; (c) tenue ; **(b) non tenue** : la troisième
+    passe de traduction compte 56. Ses quatre rouges (AP-4, P-PLA-2, R-2,
+    R-9) : P-PLA-2, R-2, R-9 ont reçu des entrées **identiques octet pour
+    octet** à la référence, AP-4 diffère par la seule phrase de 1a (« Tu
+    parles avec l'agent ») ; P-PLA-2, R-2 et AP-4 basculent déjà entre les
+    deux passes de référence ; R-9 (« Le planning de A-4, s'il te plaît »)
+    est parti en intention `planning_par_site`. Lecture de la session : du
+    bruit de GLM, la référence de deux passes ne mesure pas sa variance ;
+    mais la porte dit 58 et la session ne relance pas une passe pour
+    obtenir un meilleur chiffre. ≈ 2,5 $ de GLM dans la session.
+  - **À Lionel** : (1) fusionner quand même (`git merge --no-ff
+    metier-2/lot-1c` dans `main`, `pnpm check`, push), en jugeant le 56 du
+    bruit ; ou (2) recommandé : une référence plus longue (cinq passes de
+    `pnpm evals traduire` sur `main` et cinq sur `metier-2/lot-1c`, chacune
+    depuis un arbre à part, ≈ 1,5 $), puis la règle (b) relue sur cette
+    référence. S3 (lots 2a, 2b) attend cette fusion.
 - **2026-10-12 : phase M, session S1 faite (lots 1a et 1b de
   `PLAN-METIER-2.md` : le moteur rendu agnostique au métier), branches
   `metier-2/lot-1a` puis `metier-2/lot-1b`, trois commits (« Métier 2, lot
@@ -1036,6 +1087,30 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Phase M, S2, le lot 1 n'est pas fusionné** : la règle (b) de la mesure
+  finale n'est pas tenue (traduction 56 sur une passe sur trois) ; tant que
+  Lionel n'a pas tranché, `main` n'a ni le lot 1, ni la ronde et le chantier
+  multi-métiers ; S3 ne peut pas partir de `main`.
+- **S2, l'interface ne montre plus** les délégations accordées (aucun
+  client n'en a ; `config.yaml` les porte et le remplacement les applique),
+  ni de compteur ou de bouton pour une demande « proposée » qui attend le
+  patron (il la voit dans « Demandes en cours » et la valide en le disant) :
+  conséquence du `Tableau` du § 3.6, qu'on n'élargit pas. Un client à
+  délégations accordées ne les verrait plus dans la page.
+- **S2, `registre?` est optionnel** dans `MetierConversation` (le plan écrit
+  `registre(s): Registre`), et `textes.conditions` est rendu sans être lu
+  par la page ; les chapeaux de `index.html` sont devenus neutres au lieu
+  de venir de `textes`.
+- **S2, contrôle des chiffres (M11)** : une tolérance ancienne reste (« 16 »
+  trouvé dans « 16.5 ») ; « A-1 120 h » se lit 1120 (refus à tort, prudent) ;
+  un mois d'un chiffre sans mot de date avant (« 13/9 » nu) se lit en
+  nombres. La forme des nombres rendus au modèle a changé (`7.50`) : aucune
+  différence mesurée sur la sécurité (pas de nombre décimal dans ses cas).
+- **S2, `pnpm remplacer`** passe par `pnpm --filter` et `INIT_CWD` : `pnpm
+  exec` ne le pose pas (le script échoue en le disant).
+- **S2, la sorte `'reaffectation'`** d'une confirmation en attente reste un
+  mot de la sécurité dans `conversation.ts` et `interface/src/app.ts` (forme
+  persistée, gardée) : la porte 1 ne la voit pas.
 - **Phase M, S1, la règle 3 est lue autrement qu'à la lettre** (détail :
   « Phase M, session S1 ») : deux passes de chaque côté, bruit mesuré entre
   les deux passes de référence ; une mesure plus longue reste possible avant
@@ -2456,6 +2531,293 @@ mesure de la règle 3 (référence : les fichiers `reference-securite-*`) ; les
 portes 1 et 2 ; les captures de l'interface ; la relecture du lot 1 entier ;
 puis la fusion `--no-ff` de `metier-2/lot-1c` dans `main` et le push.
 
+### Phase M, session S2 (`PLAN-METIER-2.md` lot 1c, relecture du lot 1, fusion refusée par la mesure finale, 2026-10-12)
+
+**Branche et commits** : `metier-2/lot-1c`, partie de `metier-2/lot-1b`.
+Sept commits : les deux arbitrages (`7a3d23b`) ; ce que E, F, G se
+partagent, écrit avant eux (`86e3862` : `cli/metier.ts`, `conversation/
+tableau.ts`, `tableau?` et `registre?` sur `MetierConversation`, `aParis`
+dans `temps/temporal.ts`) ; 6.4 (`b975e35`) ; 6.3 (`0d1f0af`) ; 6.1
+(`c62efa3`) ; 6.2 (`3e59428`) ; les corrections de la relecture
+(`58b1557`). Trois sous-agents en parallèle (E : 6.1 et 6.2 ; F : 6.3 ;
+G : 6.4), chacun dans un arbre de travail du scratchpad, leurs commits
+repris par `cherry-pick` ; aucun fichier touché par deux d'entre eux.
+
+**Les deux arbitrages (délégués par Lionel), faits avant les sous-agents :**
+1. Les trois fixtures de test qui simulent la sécurité dans `moteur/src`
+   s'appellent `gestes/geste-appris.test.fixture.ts`,
+   `ronde/essai.test.fixture.ts`, `chantier/essai.test.fixture.ts`
+   (`git mv`, contenu inchangé à l'arbitrage). Vitest ne les collecte pas
+   (45 fichiers de test, comme avant) ; aucun code de production ne les
+   importe (seule `chantier/essai.test.fixture.ts` importe l'autre
+   fixture) ; le test « aucun autre module n'emploie git merge ni push »
+   les reconnaît à leur nouveau nom.
+2. **L'ancienne graphie `agent` ne se lit plus qu'à trois endroits** :
+   - `moteur/src/conversation/roles.ts` : `IdentiteSchema`, et les aides
+     exportées `identifiantRecu` (la porte, `personnes.ts`),
+     `personneLue` (les lignes d'échappée, `promotion.ts`),
+     `CHAMPS_PERSONNE` et `avecPersonne` (les cas d'éval, `evals.ts`) ;
+   - `moteur/src/gestes/geste-appris.ts` : `TestAppris` et `personneDuTest` ;
+   - `moteur/src/cli/parler.ts` : l'option `--agent` (exigée par le § 4).
+   Code déplacé, même comportement : les tests des deux graphies restent
+   verts sans changement.
+
+**Choix faits faute de consigne :**
+- **`Tableau` exactement comme au § 3.6, sans champ de plus.** Trois
+  conséquences, voulues faute de place dans la signature et notées comme
+  risques : (a) les délégations **accordées** (`config.yaml: delegations`)
+  ne sont plus montrées (aucun client n'en a ; le remplacement les applique
+  comme avant) ; l'onglet « Délégations » ne montre que les **proposées**
+  (`tableau.enAttente`, texte rendu par la sécurité, conditions comprises) ;
+  (b) `DemandeTableau` n'a ni `attendPatron` ni `attendAgents` : le texte
+  porte la description et la dernière étape, `depuis` l'horodatage ; les
+  boutons « Préparer la validation » et « Répondre en tant que … » des
+  cartes de demande ont disparu, et le compteur « À valider » ne compte plus
+  que les confirmations ; le patron valide en le disant (« Je valide la
+  proposition pour D-V-17 », vérifié à l'écran) ; (c) `textes.conditions`
+  porte les libellés (`{v}` = la valeur), que la sécurité applique
+  elle-même dans `enAttente` ; l'interface ne le lit pas.
+- `registre?` est optionnel dans `MetierConversation` (le plan écrit
+  `registre(s): Registre`) : sinon tous les métiers simulés des tests
+  devaient le déclarer ; absent, l'onglet « Règles » est vide.
+- `cli/metier.ts` : `metierDe` (déplacé de `cli/chantier.ts`, même
+  signature) et `moduleDe` (le nom et le module, pour `pnpm veiller` qui lit
+  `VEILLER`) ; exportés par `@harnais/moteur` pour l'interface.
+- Interface : deux routes nouvelles, `POST /api/roles` (les rôles déclarés,
+  sans porte, sans ouvrir le dossier : la page en a besoin pour choisir sa
+  première identité) et `POST /api/tableau` (`{ nom, textes }` de qui parle,
+  après la porte, tout rôle : l'accueil et les suggestions d'un agent lui
+  sont servis alors que `/api/etat` reste à `administre`). `exigerCapacite`
+  compose son refus depuis `enMots` des rôles qui ont la capacité :
+  « réservé au patron », mot pour mot comme avant. Le sélecteur « Je suis »
+  : un rôle non identifié est une option (`enMots`), un rôle identifié un
+  groupe (« L'agent » ; « Un agent » avant). La page part sur le premier
+  rôle non identifié.
+- `pnpm remplacer` → `pnpm --filter @harnais/securite-privee remplacer` ; le
+  script du paquet fait `cd "$INIT_CWD"` puis lance `tsx` sur
+  `$OLDPWD/src/cli/remplacer.ts`, pour que `--client <chemin relatif>` reste
+  relatif à la racine sans réécrire `remplacer.ts` (vérifié pour de vrai sur
+  une copie : `absence`, `valider`, `reponse`, `suivre`). `pnpm exec` ne pose
+  pas `INIT_CWD`, `pnpm run` si : le script échoue en le disant.
+- Critères d'échappée (M8) : `modifications: { autorisees, interdites, max }`,
+  chaque modification lue par `m.operation` (`operation.modification`, avec
+  `.strip()` quand c'est un objet zod : l'échappée de la sécurité propose
+  `{ type, vacation, agent }`). **`interdites` = aucune modification ne
+  porte cet identifiant, ni comme objet ni comme valeur** : l'ancien
+  `interdit_vers` portait sur la cible (« aucun agent de cette liste ne
+  reçoit de vacation ») ; le lire sur l'objet seul aurait vidé la porte.
+  Écart reformulé : « modifie V-07 avec A-3, interdit ». Les anciennes clés
+  sont refusées par le schéma strict (une clé périmée ne vide pas une
+  porte en silence). Dans `metiers/securite-privee/evals/echappees.yaml`,
+  seules ces clés et le commentaire qui les explique sont réécrits (git le
+  voit renommé à 84 %).
+- Noms des sorties d'évals : `evals/resultats/<horodatage>-<métier>-<quoi>.md`
+  et `evals/traces/<horodatage>-<métier>-<quoi>/` ; rien d'ancien renommé ;
+  les journaux fixés de la ronde restent dans `evals/rondes/`.
+- `personnesFictives(dossierClient)` charge le métier par `metierDe`, ouvre
+  une copie du client (ouvrir écrit un journal) et rend `m.noms(s)` ;
+  `CLIENTS_FICTIFS` = chaque dossier d'`exemples/` qui a un `config.yaml` :
+  le client du lot 2a y entrera sans retoucher les tests de fuite.
+- Chantier (M9) : le schéma de `agence.yaml` refuse un chemin autorisé sous
+  `metiers/` sans `${metier}` ; `resoudreMetier` refuse un nom de métier qui
+  contient `*`, `/` ou `..` ; le refus de la condition 4 dit le métier
+  (« aucun client d'évals pour ce métier (essai) ») ; après la relecture,
+  **une mission dont le métier n'est pas celui du `config.yaml` du client
+  lève avant tout appel** (`faireChantier`).
+- L'argent (M11) : séparateurs de milliers acceptés : espace, U+00A0,
+  U+2009, U+202F, point (le même entre chaque groupe de trois) ; forme
+  canonique sans les zéros de tête retirés (« 08 » ≠ « 8 ») ; l'ancienne
+  comparaison littérale gardée, la canonique ajoutée (rien de ce qui
+  passait ne se refuse) ; la règle des années vaut aussi dans
+  `verifierReponse` ; les dates masquées avant la lecture des nombres ; un
+  petit lexer (commentaires, crochets, accents graves gardés ; chaînes
+  blanchies) avant `MOTS_REFUSES` ; `decimales` sur une colonne non `REAL`
+  lève. **`DATE`** : le plan exige à la fois « 3/4 n'est pas une date » et
+  « mois ≤ 12, jour ≤ 31 » ; lu ainsi : un mois sur deux chiffres est une
+  date ; un mois d'un chiffre n'en est une **qu'après un mot de date** (le,
+  du, au, un jour de la semaine), sinon c'est une fraction dont chaque
+  nombre se cite (correction de la relecture : « Absent le 5/3 » passait
+  par ses deux nombres).
+- Ce que le modèle de la sécurité reçoit de différent avec M11 : aucune
+  description de table (la sécurité ne déclare pas `decimales`) ; un nombre
+  non entier d'un résultat SQL a deux décimales (`7.5` → `7.50`, une
+  moyenne `10.333…` → `10.33`) ; un entier, même `REAL`, reste tel quel.
+
+**Pièges :**
+- **`pnpm install --offline` dans le clone principal** a supprimé
+  `node_modules` puis échoué : le magasin pnpm du volume SSD n'a pas
+  `vitest 5.0.0`. Réparé par `CI=true pnpm install --offline
+  --frozen-lockfile --store-dir ~/Library/pnpm/store/v10` (le magasin des
+  arbres du scratchpad). Sans `CI=true`, pnpm refuse de vider `node_modules`
+  hors d'un terminal.
+- Une passe d'évals écrit désormais `…-securite-privee-…` : un script qui
+  cherche `…-traduire` sans le métier ne voit plus rien.
+- `git cherry-pick` depuis un arbre de travail : les SHA changent (6.4 :
+  `735a939` dans l'arbre de G, `b975e35` sur la branche).
+
+**Les portes (§ 0, règle 6)**, sur `58b1557` :
+
+```
+$ grep -rniE "sécurité privée|vacation|carte pro|patron|agents?" moteur/src --include='*.ts' | grep -v '\.test\.' | grep -v "exemple :"
+moteur/src/cli/parler.ts:33:    agent: { type: 'string' },
+moteur/src/cli/parler.ts:57:// `--agent` : l'ancienne graphie de `--personne`, encore lue (PLAN-METIER-2.md, M2).
+moteur/src/cli/parler.ts:58:if (values.personne && values.agent && values.personne !== values.agent) usage()
+moteur/src/cli/parler.ts:59:const personne = values.personne ?? values.agent
+moteur/src/gestes/geste-appris.ts:93:    /** Qui a fait la demande d'origine (null : un rôle non identifié). Les tests d'avant l'écrivent `agent` (PLAN-METIER-2.md M2) : la graphie lue n'est jamais réécrite, l'empreinte d'un geste ne change pas. */
+moteur/src/gestes/geste-appris.ts:95:    agent: z.string().nullable().optional(),
+moteur/src/gestes/geste-appris.ts:109:  .refine((t) => (t.personne === undefined) !== (t.agent === undefined), {
+moteur/src/gestes/geste-appris.ts:111:      'un test dit qui a fait la demande : personne (ou agent, la graphie d’avant), pas les deux',
+moteur/src/gestes/geste-appris.ts:116:export const personneDuTest = (t: Pick<TestAppris, 'personne' | 'agent'>): string | null =>
+moteur/src/gestes/geste-appris.ts:117:  t.personne !== undefined ? t.personne : (t.agent ?? null)
+moteur/src/conversation/roles.ts:7:// s'écrit `personne` ; l'ancienne graphie `agent` se lit encore (M2).
+moteur/src/conversation/roles.ts:55:/** Lit `{ role, personne?, agent? }` et rend `{ role, personne? }` : la lecture des deux graphies, partout. */
+moteur/src/conversation/roles.ts:60:    agent: z.string().min(1).optional(),
+moteur/src/conversation/roles.ts:62:  .refine((i) => i.personne === undefined || i.agent === undefined || i.personne === i.agent, {
+moteur/src/conversation/roles.ts:65:  .transform(({ role, personne, agent }): Identite => {
+moteur/src/conversation/roles.ts:66:    const id = personne ?? agent
+moteur/src/conversation/roles.ts:77:  const { personne, agent } = d
+moteur/src/conversation/roles.ts:78:  if ([personne, agent].some((v) => v !== undefined && typeof v !== 'string')) {
+moteur/src/conversation/roles.ts:81:  if (personne !== undefined && agent !== undefined && personne !== agent) {
+moteur/src/conversation/roles.ts:84:  return { id: (personne ?? agent) as string | undefined }
+moteur/src/conversation/roles.ts:88:export const personneLue = (d: { personne?: string; agent?: string }): string | undefined =>
+moteur/src/conversation/roles.ts:89:  d.personne ?? d.agent
+moteur/src/conversation/roles.ts:93:  agent: z.string().optional(),
+moteur/src/conversation/roles.ts:98: * Qui parle dans un cas : `personne`, ou `agent`, la graphie des fichiers
+moteur/src/conversation/roles.ts:101:export function avecPersonne<C extends { agent?: string; personne?: string }>({
+moteur/src/conversation/roles.ts:102:  agent,
+moteur/src/conversation/roles.ts:106:  const qui = personne ?? agent
+moteur/src/conversation/roles.ts:112:/** Le schéma zod de `personnes.yaml` pour ces rôles : un rôle non identifié est unique ; un rôle identifié exige `personne` (ancienne graphie `agent` acceptée et renommée). */
+```
+
+Porte 2, les deux commandes telles quelles, sorties vides :
+
+```
+$ grep -rn "securite-privee" moteur/src interface/src --include='*.ts' | grep -v '\.test\.' | grep -v fictif
+$ grep -n "harnais/securite-privee" interface/package.json
+```
+
+**Les chaînes de l'interface déplacées dans `Tableau.textes`** (§ 3.6),
+toutes dans `metiers/securite-privee/code/src/conversation.ts` :
+
+| Texte d'origine | Origine | Arrivée |
+|---|---|---|
+| « Aïcha ne vient pas demain », « Montre-moi le planning de Karim cette semaine », « Quelles échéances arrivent ? », « Lance la veille » | `app.js` (`SUGGESTIONS.patron`) | `textes.suggestions` du patron |
+| « Mon planning de la semaine », « Mes titres », « Je ne pourrai pas venir demain » | `app.js` (`SUGGESTIONS.agent`) | `textes.suggestions` d'un agent |
+| « Bonjour. Dites-moi ce qui se passe, avec vos mots : une absence, un planning à voir, une échéance.\nCe qui touche au planning attend toujours votre oui. » | `app.js` (accueil) | `textes.accueil` du patron |
+| « Bonjour ${prénom}. Vous pouvez voir votre planning, vos titres, déclarer une absence ou répondre à une demande. » | `app.js` (accueil) | `textes.accueil` d'un agent (prénom calculé côté serveur) |
+| « Une absence déclarée ouvre une demande de remplacement, suivie ici jusqu’au planning mis à jour. » | `app.js` (état vide des demandes) | `textes.vide` |
+| `connait_site` → « le remplaçant connaît déjà le site » ; `prevenu_avant_heures` → « l'absence est signalée au moins {v} h avant » | `app.js` (`CONDITIONS`) | `textes.conditions` |
+| « le patron » / le nom de l'agent (`nomDe`) | `app.ts` | `tableau.nom` |
+| `demandesEnCours` (préfixes `D-`/`R-`, « remplacement », « réaffectation »), le filtre `TYPE_DELEGATION_PROPOSEE` | `app.ts` | `tableau.demandes`, `tableau.enAttente` |
+
+Venues des rôles déclarés (`enMots`), plus de `textes` : l'option « le
+patron », le groupe « Un agent » (devenu « L'agent »), la clé `patron` /
+`agent:${id}` (devenue `role` / `role:personne`), « Le patron » de
+l'historique, « … en tant que patron. », « Choisissez « le patron » … »,
+`PATRON = { role: 'patron' }` (le premier rôle non identifié), « réservé au
+patron » (`app.ts`). Retirées : les boutons de demande (« Préparer la
+validation », « Je valide la proposition pour … », « Répondre en tant que
+… », « Oui, je suis d'accord pour … »), le bloc « Accordées » (« Aucune
+délégation. », « Chaque remplacement passe par vous. », « accordée le … par
+… », « Quand …, et … »), le libellé « le remplaçant ne connaît pas le site »
+(jamais écrit : `proposerDelegation` n'écrit que `connait_site: true`).
+Réécrites au neutre faute de champ : `index.html` « Rien ne s'écrit dans le
+planning sans un oui. » → « Rien ne s'écrit sans un oui. » ; le chapeau des
+délégations → « Une délégation laisse l'outil valider seul, dans des
+conditions écrites. Elle s'accorde dans la configuration, révocable à tout
+moment : ici, celles que l'outil vous propose. » ; « Après un remplacement
+réussi … » → « Après une décision réussie que vous avez validée, l'outil
+propose de la rendre automatique dans les mêmes conditions. »
+
+**L'interface à l'écran** (playwright-cli, `pnpm interface` sur une copie du
+client fictif, modèle simulé scripté, `--maintenant 2026-10-10T21:40`, code
+de `3e59428` ; captures `1-…` à `9-…png` dans `captures-porte/` du
+scratchpad de la session, relues) : connexion du patron (cinq onglets,
+« Je suis » = le patron et les 13 agents, accueil et quatre suggestions) ;
+« Aïcha ne vient pas demain » → D-V-17 « proposée », Julien Lefèvre
+proposé ; « Je valide la proposition pour D-V-17 » → « À confirmer » →
+Oui → « demandée à l'agent », message à Julien ; passage à A-2 (« Vous
+parlez maintenant en tant que Julien Lefèvre (A-2) », « Bonjour Julien… »,
+ses trois suggestions, « Accès refusé : réservé au patron » dans les
+onglets) ; « OUI pour D-V-17 » → « Tu confirmes … » → Oui → « C'est
+confirmé » ; retour au patron : plus de demande en cours, l'onglet
+« Délégations » montre D-V-17 proposée avec « Conditions : le remplaçant
+connaît déjà le site ; l'absence est signalée au moins 10 h avant. »
+
+**Relecture indépendante** (sous-agent, lecture seule, sur `3e59428`) :
+aucun contrôle de la sécurité relâché par une porte, un rôle, une capacité,
+la garde ou la CSRF ; 11 points. Corrigés (`58b1557`, un test rouge sans
+chaque correctif) : le n° 2 (« le 5/3 » passait par ses nombres), le n° 6
+(« 50 » trouvé dans « 0.50 ») et le n° 8 (le métier de la mission non
+recoupé avec celui du client). Le n° 1 (mesure et HANDOFF absents) était
+la suite de la session. Le n° 5 (README) est fait. Laissés, notés en
+risques : les n° 3, 4, 10 (le `Tableau` fixe : visibilité du patron), 7
+(déjà noté par S1), 9 (la sorte `'reaffectation'` d'une confirmation en
+attente reste dans le moteur et l'interface : c'est une forme persistée),
+11 (pour le lot 2).
+
+**Mesures** (GLM-5.3 via GMI, `exemples/client-fictif`, chaque passe depuis
+un arbre de travail à part ; référence : `reference-securite-2026-10-12-*`,
+traces `2026-10-12-1132-*`, `-1136-*`, `-1133-gestes` ; méthode de S1 :
+un écart = un cas stable dans la référence qui prend le verdict contraire ;
+comparaison en code des entrées du premier appel) :
+
+| Étape (commit) | traduire | échappée | gestes | fuite |
+|---|---|---|---|---|
+| référence (`main`, 1132 et 1136) | 58, 58 | 17, 17 | 6, 6 | traduction R-2 ; échappée 0 |
+| après 6.4 (`b975e35`, 1330, 1335, 1339, 1345-6) | 58, 60 | 18, 18 | 6, 6 | idem |
+| après 1c (`3e59428`, 1345 à 1406, `-securite-privee-`) | 57, 59 | 17, 17 | 6, 6 | idem |
+| **final** (`58b1557`, 1358 à 1433, `-securite-privee-`) | **58, 59, 56** | **18, 17, 17** | **6** | idem |
+
+- Après 6.4 et après 1c : **aucun cas stable de la référence ne prend le
+  verdict contraire sur les deux passes**, sauf E-08 (rouge → vert), comme
+  après 1a et 1b en S1 : dans la référence, ses deux échecs sont des
+  troncatures au plafond de 12 000 tokens de sortie. Les cas qui bougent
+  une fois : N-1 (intention nommée `moins_d_heures`, connue depuis la passe
+  13), E-07 (tronqué au plafond), E-11 (« 0 heure » écrit pour une somme
+  `null`, retiré à raison, connu depuis la phase B). Troncatures des trois
+  « Libère le … » (E-07, E-08, E-13), par étape : référence 2 sur 6, après
+  1a 0/6, après 1b 2/6, après 6.4 0/6, après 1c 1/6, final 1/9 : pas de
+  hausse.
+- Ce que le modèle reçoit, comparé en code au premier appel : traduction,
+  la seule phrase de 1a (« Tu parles avec l'agent ») sur les cas de rôle
+  agent, rien d'autre ; échappée, les phrases et descriptions de 1b
+  (« ligne par ligne », « modifications ») ; gestes, identique octet pour
+  octet. M11 ne change aucune entrée de premier appel ; aucun cas de la
+  sécurité n'a de nombre décimal dans ses résultats SQL.
+- **Mesure finale, les règles de la consigne** : (a) aucun cas stable de la
+  référence rouge sur au moins deux des trois passes : **tenue** ; (b)
+  chaque compte au moins au plus bas de la référence (traduire ≥ 58,
+  échappée ≥ 17, gestes = 6) : **non tenue**, la troisième passe de
+  traduction compte 56 ; (c) la fuite n'augmente pas : **tenue**. **Le lot
+  1 n'est donc pas fusionné, ni poussé.** Les quatre rouges de cette passe
+  : AP-4 (« repondre_sollicitation » au lieu d'inconnue), P-PLA-2
+  (intention `qui_travaille`), R-2 (« précision » sur A-11), R-9 (intention
+  `planning_par_site`) ; P-PLA-2, R-2, R-9 ont reçu des entrées identiques
+  octet pour octet à la référence ; AP-4, P-PLA-2 et R-2 basculent déjà
+  entre les deux passes de référence. La session n'a pas relancé de passe
+  pour obtenir un meilleur compte. Résultats commis dans `evals/resultats/`
+  (`2026-10-12-13*`, `-14*`) ; traces dans `evals/traces/` du clone
+  principal (non versionnées).
+
+**Avant S3** : la décision de Lionel sur la fusion du lot 1 (« Où on en
+est »), puis la fusion et le push. **Ce qui reste pour S3** (lots 2a et 2b,
+`PLAN-METIER-2.md` § 7) : sur `metier-2/lot-2a` puis `2b`, partis de
+`main` une fois le lot 1 fusionné : la fiche, `regles.yaml`, les
+scénarios ; `modele.ts`, le connecteur CSV, le générateur, le client fictif
+(`exemples/agence-web-fictive/`, `personnes.yaml` au lot 2b) ; puis les
+contrôles, les échéances, la veille, la copie par capacité, les huit gestes,
+`conversation.ts` (avec `tableau` et `registre`) ; la porte 3 (`jira|notion|
+confluence|github` absent de `moteur/src`) ; relecture, fusion, push. Points
+que S2 laisse au lot 2 : `pnpm evals promotion` joue le valideur sans
+personne (un rôle identifié serait refusé à la porte) ; `fabriquer.ts`
+décrit les tables sans `decimales` (la fabrication d'un geste de l'agence
+web ne verra pas « en euros ») ; un geste appris rend `7.5` dans une ligne
+(`String`) et `7.50` dans un tableau ; la désignation par sorte (risque S1) ;
+le sélecteur de l'interface suppose au moins un rôle non identifié (sinon
+la page s'arrête en le disant) ; les suggestions d'un rôle de l'agence web
+viendront de son `tableau`.
+
 ## Commandes
 
 ```sh
@@ -2464,17 +2826,17 @@ pnpm check                 # lint, types, tests, cohérence du registre
 pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm registre:verifier     # couverture, codes cités, veille des textes en retard
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
-pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README
+pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README ; un script du métier (pnpm --filter @harnais/securite-privee), chemins relatifs à la racine
 pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]   # --agent, l'ancienne graphie, est encore lu
 pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]   # avec modèle : fabrique, vérifie, mesure la traduction (≈ 0,15 $ par intention)
-pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
-pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle
+pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé ; cas lus dans metiers/<métier du --client>/evals/ ; résultats evals/resultats/<horodatage>-<métier>-<quoi>.md, traces evals/traces/<horodatage>-<métier>-<quoi>/
+pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle ; cas de metiers/<métier>/evals/gestes.yaml
 pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]   # l'atelier ; --avec-modele coûte ≈ 0,15 $
-pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]   # onglet « Appris » : le patron active ou retire
+pnpm interface --client <copie> [--maintenant 2026-10-10T21:40] [--modele simule --script <réponses.json>]   # le métier vient de config.yaml ; onglet « Appris » : la capacité administre active ou retire
 pnpm ronde --client <copie> --date AAAA-MM-JJ [--depuis …] [--refaire] [--sans-modele]   # la ronde de nuit (agence.yaml ; sous acces: claude, ANTHROPIC_API_KEY absente, coût estimé par le binaire)
 pnpm ronde --verifier-modeles   # un appel minuscule à chaque modèle de l'agence
-pnpm evals ronde --client exemples/client-fictif [--seulement R-2] [--modele simule]   # journaux fixés, étiquettes en brouillon : « brouillon, pas une mesure »
-pnpm chantier --mission <copie>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire]   # le chantier, dans le clone de la nuit (agence.yaml: depot_nuit) ; fusion si les huit conditions de G1 sont vertes ; ≈ 6 à 9 $ estimés par le binaire
+pnpm evals ronde --client exemples/client-fictif [--seulement R-2] [--modele simule]   # metiers/<métier>/evals/rondes.yaml, journaux fixés dans evals/rondes/, étiquettes en brouillon : « brouillon, pas une mesure »
+pnpm chantier --mission <copie>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire]   # le chantier, dans le clone de la nuit (agence.yaml: depot_nuit) ; fusion si les huit conditions de G1 sont vertes ; garde et condition 4 au métier de la mission (agence.yaml : chemins en ${metier}, evals_clients), qui doit être celui du client ; ≈ 6 à 9 $ estimés par le binaire
 pnpm chantier retirer <id> --motif "<texte>" --client <copie>   # G2 : git revert -m 1 de la fusion, push, mémoire, journal
 pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # clone remis à origin/main, promotions → ronde → au plus une mission ; idempotente ; jamais lancer avec `pnpm -s`
 # Un client sans personnes.yaml (registre d'accès) ne démarre ni parler ni l'interface.

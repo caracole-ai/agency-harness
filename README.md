@@ -103,13 +103,21 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `anthropic` : la clé d'API, avant la finalisation), les prix relus dans la
   doc d'Anthropic, les bornes de la ronde et du chantier, le clone de la nuit
   (`depot_nuit`, `PLAN-GENERAL.md` G3), les règles d'outils (bornées à
-  l'arbre de travail : `Write(./**)`) et les chemins autorisés au chantier.
+  l'arbre de travail : `Write(./**)`) et les chemins autorisés au chantier,
+  écrits avec `${metier}` et résolus avec le métier de la mission ;
+  `evals_clients` donne, par métier, le client fictif de la condition 4
+  (`PLAN-METIER-2.md` M9).
 - `memoire/` — la mémoire de la nuit (`PLAN-RONDE.md` R10), écrite par le
   code : `INDEX.md` (une ligne par événement), `rondes/`, `chantiers/`,
   `CONVENTIONS.md` (on y ajoute, on n'en retire jamais), `MESURES.md`. Aucun
   nom ni identifiant de personne, de conversation ou d'échappée : un test de
   `pnpm check` relit tout le dossier.
-- `evals/rondes.yaml` et `evals/rondes/` — les cas de `pnpm evals ronde` :
+- `metiers/<métier>/evals/` — les cas d'évals du métier (`consignes`,
+  `echappees`, `gestes`, `promotions`, `rondes`, en YAML ;
+  `PLAN-METIER-2.md` M8) ; `evals/` garde `resultats/`, `traces/`, `rondes/`
+  et les analyses `erreurs-*.md`, et les fichiers écrits depuis le
+  2026-10-12 portent le métier dans leur nom.
+- `metiers/<métier>/evals/rondes.yaml` et `evals/rondes/` — les cas de `pnpm evals ronde` :
   des journaux fixés (copies du journal de deux copies du client fictif
   remplies par de vraies consignes, sans les résultats de requête) et les
   missions attendues, en **brouillon** de la session D1 (`etiquettes:
@@ -152,11 +160,16 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   déclarés par le métier, `RoleDeclare` et ses capacités `voit_tout`,
   `designe_autrui`, `propose`, `ecrit`, `valide`, `administre` ; le moteur
   demande une capacité, jamais un rôle par son nom ; `Identite { role,
-  personne }`, l'ancienne graphie `agent` se lit encore partout),
+  personne }` ; l'ancienne graphie `agent` se lit encore, par les aides de
+  ce fichier seulement, plus `TestAppris` et `pnpm parler --agent`),
   `src/conversation/noms.ts` (`Designable`, avec sa `sorte` : personne ou
   organisation ; `m.noms(s)` rend tout nom qui ne part jamais au modèle),
   `src/conversation/domaine.ts` (`PLAN-METIER-2.md` M7 : le domaine que disent
-  les prompts du moteur, déclaré par le métier), `src/conversation/traduire.ts` (une consigne → une action,
+  les prompts du moteur, déclaré par le métier),
+  `src/conversation/tableau.ts` (M10 : `Tableau`, ce que l'interface montre
+  d'un métier), `src/cli/metier.ts` (M10 : `metierDe`, `moduleDe` : le
+  métier d'un dossier client, chargé depuis `config.yaml: metier` par
+  toutes les CLI et l'interface), `src/conversation/traduire.ts` (une consigne → une action,
   une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
   modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
   niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
@@ -185,7 +198,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   d'un geste appris, `:agent`, jamais collés dans le SQL ; `pseudonymes.ts`,
   `PLAN-PSEUDONYMES.md`, masque les noms en identifiants dans ce qui part au
   modèle, les restitue dans ce qui est montré et mesure une fuite, au mot
-  près). `src/archetypes/candidats.ts` expose
+  près ; l'argent, `PLAN-METIER-2.md` M11 : une colonne `decimales: 2` se
+  décrit « en euros, deux décimales », tout nombre non entier d'un résultat
+  SQL se rend avec deux décimales, les nombres se comparent sous une forme
+  canonique (séparateurs de milliers, virgule), les mots SQL refusés se
+  cherchent hors des chaînes). `src/archetypes/candidats.ts` expose
   aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
@@ -275,16 +292,24 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   (le clone remis à `origin/main`, promotions → ronde → chantier, la ligne de
   la nuit ; idempotente).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
-  par `pnpm evals` sur les cas écrits à la main dans `evals/` (racine du
-  dépôt) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
+  par `pnpm evals` sur les cas écrits à la main dans `metiers/<métier>/evals/`
+  (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
   passe de traduction qui décide « activable » (`passeTraduction`), partagée
   entre `pnpm evals`, `pnpm promotions` et `pnpm gestes verifier`.
 - `interface/` — l'interface du patron, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
   chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
   (`pnpm interface`, sur 127.0.0.1 seulement), `public/` (HTML, CSS et
-  JavaScript sans framework, la charte de `presentation/`). Cinq onglets
-  (à valider, règles, délégations, appris, journal), réservés au patron, et
+  JavaScript sans framework, la charte de `presentation/`). Elle ne dépend
+  d'aucun métier : le métier se charge depuis `config.yaml: metier`
+  (`moteur/src/cli/metier.ts`, comme toutes les CLI), et ce qu'elle montre
+  du métier (demandes en cours, lignes en attente, nom de qui parle,
+  suggestions et phrases) vient de `MetierConversation.tableau`, les règles
+  de `registre` (`PLAN-METIER-2.md` M10) ; `/api/roles` (les rôles déclarés,
+  pour le sélecteur « Je suis ») et `/api/tableau` (le nom et les textes de
+  qui parle, ouverts à tout rôle passé par la porte). Cinq onglets
+  (à valider, règles, délégations proposées, appris, journal), réservés à la
+  capacité `administre` (le patron, pour la sécurité), et
   la conversation toujours visible ; l'identité est choisie dans le registre
   d'accès, pas authentifiée, et la page le dit. « Appris » (« Ce que l'outil
   a appris », `PLAN-PROMOTION.md` § 7.2) montre les gestes appris proposés
@@ -368,7 +393,9 @@ pnpm remplacer valider --client <copie> --demande D-V-17 [--agent A-1]
 pnpm remplacer reponse --client <copie> --demande D-V-17 --oui | --non
 pnpm remplacer suivre  --client <copie> --demande D-V-17
                          # un remplacement : proposition, validation du patron, accord de
-                         # l'agent, écriture du planning ; sur une COPIE du client fictif
+                         # l'agent, écriture du planning ; sur une COPIE du client fictif ; un
+                         # script du métier (pnpm --filter @harnais/securite-privee remplacer),
+                         # lancé depuis la racine : les chemins relatifs restent ceux de la racine
 pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maintenant 2026-10-10T21:40] [--modele simule]
             --consigne "Aïcha ne vient pas demain" [--conversation <C-…>]
             | --confirmer <empreinte> --conversation <C-…> --oui|--non
@@ -404,20 +431,22 @@ pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <i
                          # plusieurs le portent. Le patron fait la même chose dans l'interface.
                          # Sur une COPIE du client fictif
 pnpm evals traduire|echappee|gestes|promotion --client exemples/client-fictif [--seulement id,id] [--modele simule]
-                         # les évals de la conversation et de la promotion (cas dans evals/,
+                         # les évals de la conversation et de la promotion (cas dans
+                         # metiers/<métier du --client>/evals/,
                          # copie fraîche par cas) : traduire, echappee et promotion appellent le
                          # vrai modèle (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la
                          # fabrication, avec GLM-5.3 ; une proposition rejouée est validée par le
                          # lanceur, comme le patron) ; gestes rejoue les gestes appris sur leurs
                          # instantanés sans modèle (0 $, seuil 100 % ; textes ou réaffectations
                          # attendus) ; chaque cas avec modèle a
-                         # sa colonne « fuite » : les noms du fichier des agents partis au modèle,
+                         # sa colonne « fuite » : les noms du client (m.noms) partis au modèle,
                          # comptés en code (la consigne telle qu'écrite permise à la traduction),
                          # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
-                         # traces dans evals/traces/ (non versionné), tableau dans evals/resultats/
+                         # traces dans evals/traces/<horodatage>-<métier>-<quoi>/ (non versionné),
+                         # tableau dans evals/resultats/<horodatage>-<métier>-<quoi>.md
 pnpm evals ronde --client exemples/client-fictif [--seulement R-1] [--modele simule]
                          # la ronde contre des journaux fixés (evals/rondes/*.json) et les missions
-                         # attendues d'evals/rondes.yaml : précision, rappel, fuite ; le modèle
+                         # attendues du rondes.yaml du métier : précision, rappel, fuite ; le modèle
                          # d'agence.yaml, memoire/ ni lue ni écrite. Étiquettes en brouillon
                          # (session D1) : « brouillon, pas une mesure », jusqu'à celles de Lionel
 pnpm ronde --client <copie> --date 2026-10-10 [--depuis 2026-10-01] [--refaire] [--sans-modele]
