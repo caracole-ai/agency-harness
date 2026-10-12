@@ -1,0 +1,247 @@
+# Rubriques 1 (interdits) et 4 (escalades) de la fiche : cette source fait foi.
+# Les tables de fiche.md en sont générées (pnpm registre:generer).
+# Tiré de entretien-simule-2026-10-12.md (§ 1 et § 4), PLAN-METIER-2.md § 7.1 et M15 :
+# tout en `déclaré`, les cinq interdits adossés à un texte en `texte` sans `relu`.
+
+interdits:
+  - id: I-01
+    nom: PV avant facture
+    interdit: "Aucune facture de solde ou de lot n'est émise sans **PV de recette signé** (forfait) ou sans **relevé de temps validé par le client** (régie) ; une réserve bloquante empêche la facture, une réserve mineure non"
+    etapes:
+      - "8"
+      - "10"
+    consequence: contestation, impayé
+    verifiable_par: code (PV présent et daté avant la facture)
+    statut: déclaré
+    suite: "; incident `hypothèse` *(inventé)* : une facture contestée six mois, payée à 60 %"
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-02
+    nom: travail hors devis
+    interdit: "Aucun travail hors du **périmètre du devis** sans **avenant signé** ou **accord écrit** du client (un mail suffit) ; « petit » (moins d'une demi-journée) se fait, se note, et se facture au lot suivant ou s'offre explicitement"
+    etapes:
+      - "5"
+      - "7"
+      - "12"
+    consequence: marge perdue, litige
+    verifiable_par: code (ticket rattaché à un lot vendu ou à un avenant)
+    statut: déclaré
+    suite: "; incident `hypothèse` *(inventé)* : un forfait vendu 18 jours, 27 passés en « petites retouches » sans avenant"
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-03
+    nom: mise en production
+    interdit: "Aucune **mise en production** sans **accord écrit** du client et sans **sauvegarde datée de moins de 24 h**"
+    etapes:
+      - "9"
+    consequence: perte de données, perte du client
+    verifiable_par: code (ligne d'accord et ligne de sauvegarde avant la ligne de mise en prod)
+    statut: déclaré
+    suite: "; incident `hypothèse` *(inventé)* : une base écrasée un vendredi soir, restaurée le lundi, une journée de commandes perdue"
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-04
+    nom: registre des accès
+    interdit: "Aucun accès (hébergeur, registrar, admin du site, dépôt) **hors du registre des accès** ; un accès est **révoqué** au départ d'une personne ou à la fin du projet"
+    etapes:
+      - "7"
+      - "9"
+      - "12"
+    consequence: sécurité, RGPD
+    verifiable_par: code (registre des accès et collaborateurs des dépôts)
+    statut: déclaré
+    suite: "; incident `hypothèse` *(inventé)* : un ancien freelance encore admin d'un site deux ans après"
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-05
+    nom: bug ou évolution
+    interdit: "Un ticket n'est traité en **« bug »** (gratuit sous garantie ou dans les heures du contrat) que s'il porte sur une **fonction recettée** ; sinon il est une **« évolution »** et attend un devis ou un décompte"
+    etapes:
+      - "12"
+    consequence: marge perdue
+    verifiable_par: humain (la qualification) ; le code dit si le périmètre recetté existe
+    statut: déclaré
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-06
+    nom: cloisonnement des clients
+    interdit: "Aucune donnée, maquette, code ou accès d'un client ne passe à un autre client"
+    etapes:
+      - "6"
+      - "7"
+      - "9"
+    consequence: perte du client, NDA
+    verifiable_par: humain (ce qui appartient à un client) ; le code cloisonne par projet
+    statut: déclaré
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-07
+    nom: délai de paiement et pénalités
+    interdit: "Aucune facture avec un **délai de paiement supérieur à 60 jours** (ou 45 jours fin de mois) ; chaque facture porte les **pénalités de retard** et l'**indemnité forfaitaire de 40 €**"
+    etapes:
+      - "4"
+      - "10"
+      - "11"
+    consequence: amende
+    verifiable_par: code
+    statut: texte
+    suite: "(non relu : à faire relire par un juriste)"
+    source: L441-10 et L441-9 du code de commerce
+    parametres:
+      delai_paiement_max_jours: 60
+      delai_paiement_fin_de_mois_max_jours: 45
+  - id: I-08
+    nom: mentions obligatoires de la facture
+    interdit: "Aucune facture sans ses **mentions obligatoires** (numéro continu, dates, TVA, SIREN, adresse, désignation)"
+    etapes:
+      - "4"
+      - "10"
+    consequence: amende, rejet
+    verifiable_par: code (sur la facture émise ; les exports de la v1 ne portent pas ces mentions, non codé)
+    statut: texte
+    suite: "(non relu ; l'entretien ne cite aucun article : à identifier par un juriste)"
+    source: texte à identifier (l'entretien dit « texte, à relire » sans le citer)
+  - id: I-09
+    nom: attestation de vigilance
+    interdit: "Aucun **sous-traitant** payé plus de **5 000 € HT par an** sans **attestation de vigilance URSSAF** de moins de six mois"
+    etapes:
+      - "5"
+      - ↻
+    consequence: solidarité financière
+    verifiable_par: code (date de l'attestation)
+    statut: texte
+    suite: "(non relu : à faire relire par un juriste)"
+    source: L8222-1 du code du travail
+    parametres:
+      seuil_annuel_eur_ht: 5000
+      validite_attestation_mois: 6
+  - id: I-10
+    nom: cession des droits d'auteur
+    interdit: "Aucune livraison sans **clause écrite de cession des droits d'auteur** (étendue, durée, territoire) pour les créations livrées"
+    etapes:
+      - "4"
+      - "9"
+    consequence: contestation de propriété
+    verifiable_par: code (clause présente au devis ou au contrat)
+    statut: texte
+    suite: "(non relu : à faire relire par un juriste)"
+    source: L131-3 du code de la propriété intellectuelle
+  - id: I-11
+    nom: qui engage l'agence
+    interdit: "Un **devis**, un **avenant** ou une **remise de plus de 10 %** n'est engagé que par le **dirigeant** ; en son absence, par la cheffe de projet jusqu'à **5 000 € HT**"
+    etapes:
+      - "3"
+      - "4"
+    consequence: engagement non voulu
+    verifiable_par: code (signataire et plafond)
+    statut: déclaré
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-12
+    nom: dépassement du forfait
+    interdit: "Un projet au **forfait** ne dépasse pas **110 % des jours vendus** sans que le dirigeant ait été prévenu avant"
+    etapes:
+      - "7"
+      - "8"
+    consequence: marge
+    verifiable_par: code (temps saisi rapporté aux jours vendus, à la maille du projet)
+    statut: déclaré
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-13
+    nom: domaines et certificats
+    interdit: "Aucun **domaine** ni **certificat** géré par l'agence n'expire sans **alerte 30 jours avant** ; une date d'expiration inconnue est une alerte"
+    etapes:
+      - ↻
+      - "12"
+    consequence: site hors ligne
+    verifiable_par: code
+    statut: déclaré
+    suite: "; incident `hypothèse` *(inventé)* : un domaine expiré un samedi, site et mails coupés trois jours, le client parti six mois plus tard"
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+  - id: I-14
+    nom: contrat de sous-traitance RGPD
+    interdit: "Aucune **donnée personnelle hébergée** pour un client sans **contrat de sous-traitance** au sens de l'article 28 du RGPD"
+    etapes:
+      - "4"
+      - "12"
+    consequence: sanction
+    verifiable_par: code (document présent)
+    statut: texte
+    suite: "(non relu : à faire relire par un juriste)"
+    source: article 28 du RGPD
+  - id: I-15
+    nom: relance validée
+    interdit: "Aucune **relance d'impayé** n'est envoyée au client sans que le **dirigeant** l'ait validée ; le brouillon est préparé, jamais envoyé seul"
+    etapes:
+      - "11"
+    consequence: relation client
+    verifiable_par: humain
+    statut: déclaré
+    source: agence fictive, entretien simulé du 2026-10-12, dirigeant
+
+escalades:
+  - id: E-01
+    declencheur: "un devis ou un avenant à signer, une remise de plus de 10 %"
+    etapes:
+      - "3"
+      - "4"
+    qui: dirigeant
+    delai: avant l'envoi
+    presentation: "le devis ou l'avenant, ses lots, son montant HT, la remise, le signataire prévu (I-11)"
+    statut: déclaré
+  - id: E-02
+    declencheur: "une demande hors devis de plus d'une demi-journée"
+    etapes:
+      - "5"
+      - "7"
+      - "12"
+    qui: dirigeant (cheffe de projet en son absence, sous 5 000 € HT)
+    delai: avant de commencer
+    presentation: "la demande, son estimation, le lot ou le contrat TMA le plus proche, les jours vendus qui restent (I-02)"
+    statut: déclaré
+  - id: E-03
+    declencheur: "un client conteste une facture ou menace de partir"
+    etapes:
+      - "11"
+      - "12"
+    qui: dirigeant
+    delai: le jour même
+    presentation: "la facture, le PV ou le relevé de temps sur lequel elle repose, les relances déjà faites, le contrat"
+    statut: déclaré
+  - id: E-04
+    declencheur: "un incident de production : site hors ligne, données perdues ou exposées"
+    etapes:
+      - "9"
+      - "12"
+    qui: développeur d'astreinte, puis dirigeant au-delà de 2 h
+    delai: immédiat ; le week-end, on remet en ligne sans rien déployer de neuf
+    presentation: "le site, l'heure de la coupure, la dernière mise en production et la dernière sauvegarde (I-03)"
+    statut: déclaré
+  - id: E-05
+    declencheur: "une demande d'accès à la production"
+    etapes:
+      - "7"
+      - "9"
+    qui: dirigeant
+    delai: avant de donner l'accès
+    presentation: "la ressource, la personne, le projet, la durée demandée, les accès qu'elle a déjà (I-04)"
+    statut: déclaré
+  - id: E-06
+    declencheur: "une demande qui ne correspond à aucun lot, aucun contrat, aucun client connu"
+    etapes:
+      - "1"
+      - "12"
+    qui: cheffe de projet
+    delai: sous 24 h
+    presentation: "la demande telle qu'elle est arrivée, et les clients, projets et contrats les plus proches"
+    statut: déclaré
+  - id: E-07
+    declencheur: "un forfait atteint 100 % des jours vendus"
+    etapes:
+      - "7"
+      - "8"
+    qui: dirigeant
+    delai: dans la semaine
+    presentation: "les jours vendus et consommés, le reste à faire estimé, les tickets rattachés à aucun lot (I-12)"
+    statut: déclaré
+  - id: E-08
+    declencheur: "une relance d'impayé au troisième niveau (J+60)"
+    etapes:
+      - "11"
+    qui: dirigeant
+    delai: avant l'envoi
+    presentation: "la facture, son échéance, les relances déjà faites, le brouillon de mise en demeure (I-15)"
+    statut: déclaré

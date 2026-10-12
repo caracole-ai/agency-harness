@@ -1,0 +1,46 @@
+id;projet;nom;jours_vendus;montant_ht_eur;recette_le;pv_signe_le
+LOT-001;PRJ-01;Maquettes;8;4800.00;2025-03-28;2025-04-02
+LOT-002;PRJ-01;Intégration;10;6000.00;2025-05-09;2025-05-14
+LOT-003;PRJ-01;Contenus et mise en ligne;6;3600.00;2025-05-21;2025-05-23
+LOT-004;PRJ-02;Maquettes;10;6175.00;2025-04-11;2025-04-16
+LOT-005;PRJ-02;Intégration et espace documentaire;12;7410.00;2025-06-06;2025-06-11
+LOT-006;PRJ-02;Mise en ligne;8;4940.00;2025-06-20;2025-06-23
+LOT-007;PRJ-03;Maquettes;15;9300.00;2025-02-14;2025-02-19
+LOT-008;PRJ-03;Catalogue et panier;20;12400.00;2025-04-11;2025-04-16
+LOT-009;PRJ-03;Paiement et livraison;12;7440.00;2025-05-16;2025-05-21
+LOT-010;PRJ-03;Reprise des données;8;4960.00;2025-05-28;2025-05-30
+LOT-011;PRJ-04;Régie 2026;100;60000.00;;
+LOT-012;PRJ-05;Maquettes;12;7440.00;2026-01-14;2026-01-16
+LOT-013;PRJ-05;Agenda et rendez-vous;15;9300.00;2026-02-18;2026-02-20
+LOT-014;PRJ-05;Rappels et mise en ligne;10;6200.00;2026-03-11;2026-03-13
+LOT-015;PRJ-06;Maquettes;10;5400.00;2026-05-20;2026-05-22
+LOT-016;PRJ-06;Intégration;14;7560.00;2026-07-01;2026-07-03
+LOT-017;PRJ-06;Formulaires et mise en ligne;8;4320.00;2026-08-12;2026-08-14
+LOT-018;PRJ-07;Maquettes;9;4743.00;2026-06-24;2026-06-26
+LOT-019;PRJ-07;Catalogue;12;6324.00;2026-08-26;2026-08-28
+LOT-020;PRJ-07;Mise en ligne;7;3689.00;2026-09-23;2026-09-25
+LOT-021;PRJ-08;Maquettes;12;7200.00;2026-05-27;2026-05-29
+LOT-022;PRJ-08;Démarches en ligne;14;8400.00;2026-08-05;2026-08-07
+LOT-023;PRJ-08;Espace agents;10;6000.00;2026-10-05;
+LOT-024;PRJ-09;Maquettes;6;3420.00;;
+LOT-025;PRJ-09;Intégration;14;7980.00;;
+LOT-026;PRJ-09;Réservation en ligne;8;4560.00;;
+LOT-027;PRJ-10;Maquettes et intégration;14;8680.00;;
+LOT-028;PRJ-10;Annonces et recherche;10;6200.00;;
+LOT-029;PRJ-11;Cadrage et maquettes;4;2400.00;;
+LOT-030;PRJ-11;Site et carte;18;10800.00;;
+LOT-031;PRJ-12;Maquettes et vitrine;8;4800.00;2026-07-20;2026-07-24
+LOT-032;PRJ-12;Commande en ligne;12;7200.00;;
+LOT-033;PRJ-12;Paiement et retrait en boutique;6;3600.00;;
+LOT-034;PRJ-13;Régie 2025-2026;200;130000.00;;
+LOT-035;PRJ-14;Maquettes;8;4800.00;;
+LOT-036;PRJ-14;Intégration;12;7200.00;;
+LOT-037;PRJ-14;Inscriptions en ligne;10;6000.00;;
+LOT-038;PRJ-15;Pages vitrines;8;4800.00;2025-10-13;2025-10-14
+LOT-039;PRJ-15;Intégration;12;7200.00;2025-10-22;2025-10-24
+LOT-040;PRJ-15;Devis en ligne;6;3600.00;2025-10-29;2025-10-31
+LOT-041;PRJ-16;Tableau de bord des expéditions;12;7410.00;2026-04-13;2026-04-17
+LOT-042;PRJ-16;Notifications clients;15;9262.50;2026-08-24;
+LOT-043;PRJ-16;Application des chauffeurs;18;11115.00;;
+LOT-044;PRJ-18;Calendrier et inscriptions;10;6000.00;2025-11-12;2025-11-14
+LOT-045;PRJ-18;Espace adhérents et mise en ligne;8;4800.00;2025-12-03;2025-12-05

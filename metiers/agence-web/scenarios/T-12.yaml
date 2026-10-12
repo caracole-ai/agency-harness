@@ -1,0 +1,47 @@
+id: T-12
+etant_donne: "un forfait vendu 18 jours, dont les temps saisis sur le projet atteignent 27 jours"
+quand: "le contrôle rapproche les temps du projet et les jours vendus"
+alors: "le projet est signalé « à vérifier » : 150 % des jours vendus, au-delà de 110 % ; l'alerte était due dès 90 %, l'escalade à 100 % (E-07)"
+interdits:
+  - I-12
+statut: hypothèse
+source: conçu depuis l'interdit
+cas:
+  # 27 jours de 7 h saisis (seuils.heures_par_jour) pour 18 jours vendus
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Site vitrine, type: forfait, etat: recette }
+  lots:
+    - { id: LOT-001, projet: PRJ-01, nom: Site, jours_vendus: 18 }
+  temps:
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-01", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-02", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-03", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-06", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-07", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-08", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-09", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-10", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-13", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-14", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-15", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-16", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-17", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-20", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-21", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-22", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-23", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-24", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-27", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-28", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-29", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-30", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-07-31", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-08-03", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-08-04", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-08-05", heures: 7 }
+    - { personne: M-01, projet: PRJ-01, date: "2026-08-06", heures: 7 }
+  attendu:
+    - { regle: I-12, objet: PRJ-01, verdict: à vérifier }

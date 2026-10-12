@@ -1,0 +1,18 @@
+id: T-10
+etant_donne: "un devis signé pour un site avec logo et maquettes, sans clause de cession des droits d'auteur"
+quand: "un lot de ce devis est mis en production"
+alors: "la livraison est signalée « à vérifier » : clause de cession absente ; une clause présente mais sans étendue, durée ou territoire se relit à la main"
+interdits:
+  - I-10
+statut: hypothèse
+source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Site avec logo et maquettes, type: forfait, etat: livre, mise_en_prod_le: "2026-10-01" }
+  devis:
+    - { id: DEV-2026-001, client: CLI-01, projet: PRJ-01, date: "2026-05-04", montant_ht_eur: 9000, etat: signe, signataire: M-01, clause_cession: non }
+  attendu:
+    - { regle: I-10, objet: PRJ-01, verdict: à vérifier }

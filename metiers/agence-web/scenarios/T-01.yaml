@@ -1,0 +1,20 @@
+id: T-01
+etant_donne: "un lot au forfait (LOT-nnn) recetté, dont le PV n'est pas signé"
+quand: "une facture de solde (FAC-AAAA-nnn) est émise sur ce lot"
+alors: "la facture est signalée « à vérifier » : PV de recette absent ; une facture de régie se lit de même contre le relevé de temps validé du mois"
+interdits:
+  - I-01
+statut: hypothèse
+source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Site, type: forfait, etat: recette }
+  lots:
+    - { id: LOT-001, projet: PRJ-01, nom: Lot 1, jours_vendus: 10, recette_le: "2026-10-05" }
+  factures:
+    - { id: FAC-2026-001, client: CLI-01, projet: PRJ-01, lot: LOT-001, date: "2026-10-08", montant_ht_eur: 6000, tva: 0.2, montant_ttc_eur: 7200, etat: emise }
+  attendu:
+    - { regle: I-01, objet: FAC-2026-001, verdict: à vérifier }

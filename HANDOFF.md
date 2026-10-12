@@ -7,6 +7,23 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-12 (nuit) : phase M, session S3 faite (lots 2a et 2b de
+  `PLAN-METIER-2.md` : l'agence web et son client fictif) ; fusionnée dans
+  `main` et poussée.** `metier-2/lot-2b` (qui contient `lot-2a`) : le paquet
+  `@harnais/agence-web`, la fiche et le registre (15 interdits, 17 tests, 8
+  escalades), `exemples/agence-web-fictive/` (20 CSV d'un générateur
+  déterministe, dix erreurs posées). `pnpm check` vert : 600 tests moteur, 213
+  agence web, 24 interface, 135 sécurité. Détail, choix, portes, relecture :
+  « Phase M, session S3 » sous « Choix faits faute de consigne ».
+  - `pnpm veiller` au 2026-10-12 : 9 des 10 erreurs posées au rapport (la
+    6, I-05, est humaine) ; 25 constats « à décider », 5 échéances ; quatre
+    échéances calculées n'y entrent qu'au lot 3.
+  - **Porte de sécurité vide** (ni moteur, ni interface, ni sécurité ne
+    changent) : pas de mesure appariée. Portes 2 et 3 vides.
+  - Essai GLM réel (pas une mesure), 13 consignes, 0,094 $ : les huit gestes
+    répondent ; fuite zéro.
+  - **Suivante : S4** (lot 3), qui touche le moteur : mesure appariée de la
+    sécurité avant sa fusion.
 - **2026-10-12 (soir) : mesure appariée du lot 1 faite, les cinq conditions
   de la règle vraies ; LE LOT 1 EST FUSIONNÉ DANS `main` ET POUSSÉ**
   (`git merge --no-ff metier-2/lot-1c`). La règle de Lionel (cinq tours de
@@ -2997,6 +3014,160 @@ vérifié le crédit (200). Aucune exception dans les quatre passes ; 0,55 $
 `main` dans une autre session ; ce que S2 laisse au lot 2 est listé à la fin
 de « Phase M, session S2 ».
 
+### Phase M, session S3 (`PLAN-METIER-2.md` lots 2a et 2b, l'agence web et son client fictif, 2026-10-12)
+
+**Branches et commits** : `metier-2/lot-2a` (de `main`, `2b0212c`) puis
+`metier-2/lot-2b` (de `lot-2a`). Quatre sous-agents (§ 11), chacun dans un
+arbre du scratchpad, leurs commits repris par `cherry-pick` ; aucun fichier
+touché par deux d'entre eux. H (`eacc8e4` : fiche, `regles.yaml`, scénarios)
+et I (`f2e641b` : paquet, `config.ts`, `modele.ts`, connecteur, `semantique.ts`,
+générateur, les 20 CSV) en parallèle ; puis J (`d56bef8` : contrôles,
+échéances, veille, `cas` des scénarios) et K (`3ab328a` : rôles, domaine,
+types, copie, huit gestes, conversation, `config.yaml` et `personnes.yaml` du
+client fictif) en parallèle ; l'assemblage (`0a75dde`) ; les corrections de
+la relecture (`15d729f`).
+
+**Choix faits faute de consigne :**
+- **`config.ts` au lot 2a**, et non dans `veille.ts` (§ 2) : la veille (J) et
+  la conversation (K) la lisent en parallèle. Elle porte `seuils.heures_par_jour`
+  (le temps se saisit en heures, les devis en jours : une valeur du client ;
+  7 chez le client fictif) et `veiller.delais` (les délais de la maison, J+1,
+  J+15, J+10, entretien § 8 et § 39).
+- **`config.yaml` et `personnes.yaml` au lot 2b**, pas au 2a : dès qu'un
+  `config.yaml` existe dans `exemples/`, `CLIENTS_FICTIFS`
+  (`moteur/src/agence/fictif.ts`) charge le métier et exige `CONVERSATION`.
+  Depuis le lot 2b, les tests de fuite du moteur (carte, ronde, chantier,
+  mémoire) tournent aussi sur l'agence web. Au lot 2a, `index.ts` exportait
+  `CONTROLES = []` : `registre:verifier` importe `CONTROLES` dès que le fichier
+  existe.
+- **Identifiants** : `M-01` à `M-06` (M17 dit `M-nn` ; le critère du plan
+  écrit `M-3`, `M-5`) ; `M-01` dirigeant, `M-02` commercial, `M-03` po, `M-04`
+  graphiste, `M-05` et `M-06` developpeur. Tous les rôles sont identifiés.
+- **Rôles** (`ROLES_DECLARES`, `modele.ts` exporte déjà `ROLES`) : aucun
+  tutoiement ; « le dirigeant », « la PO », « la commerciale »…
+- **I-09 et I-13 sont des veilles** (échéances), pas des contrôles : un
+  `Controle` ne reçoit pas la date du jour (comme I-17 de la sécurité). Neuf
+  contrôles, deux veilles.
+- **Les valeurs des textes au registre** : I-07 (`delai_paiement_max_jours`
+  60, `…_fin_de_mois_…` 45) et I-09 (`seuil_annuel_eur_ht` 5 000,
+  `validite_attestation_mois` 6) dans `regles.yaml: parametres`, lus par
+  `parametresDe` comme la sécurité.
+- **I-04** : tout accès lié à un projet clos et non révoqué est un constat,
+  sauf celui d'une personne de l'agence qu'un contrat TMA maintient ; la fin
+  du contrat (échéance `fin_tma`) est portée par I-04 et arrive au rapport
+  (« révoquer les accès de l'agence qu'il justifiait »). Un sous-traitant perd
+  l'accès à la fin du projet. Lecture à confirmer : « Questions ouvertes » de
+  la fiche.
+- **I-02** : une évolution rattachée à un contrat TMA (le piège « c'est dans
+  la maintenance », entretien § 5, § 22) ou au lot d'un autre projet est à
+  vérifier : 17 tickets du client fictif.
+- **Les relances** (facture, PV, devis) : `preparation: { jours: 0 }` (dix
+  minutes, entretien § 8) ; l'alerte existe le jour de la limite, l'escalade
+  le lendemain.
+- **Masque des noms** (`noms(s)`, 124 entrées) : les personnes, sous-traitants
+  et contacts (sorte `personne`) ; chaque client par son nom entier d'un seul
+  tenant et par ses « mots propres » (majuscule hors du premier mot, quatre
+  lettres au moins, coupés aux espaces, apostrophes et tirets) ; les trente
+  noms de domaine (`ceramiques-orsini.example` contient un nom de client). Le
+  vocabulaire de désignation ne contient que les `M-`.
+- **Intentions** (K) : `marge_projet`, `forfaits_depasses`, `heures_tma`,
+  `devis_sans_reponse`, `pv_non_signes`, `acces_ressource`. Le lot 4 s'y aligne.
+- **Résolution d'une entité** : l'identifiant, sinon le nom exact, sinon les
+  candidats qui partagent le plus de mots ; un projet se désigne aussi par le
+  nom ou le secteur de son client (« la boulangerie » → PRJ-12).
+- **Générateur** : `DATE_REFERENCE = 2026-10-12`, douze mois avant ; la TMA
+  facturée à l'année (pour tenir les 60 factures) ; domaines en `.example` ;
+  les ancres de l'entretien § 12 posées (PRJ-12 boulangerie, CLI-05 cabinet
+  d'avocats, CLI-11 e-commerce, CLI-07, FAC-2026-031, TK-1042 à Julie Okafor
+  `M-06`, TK-1050, PRJ-09, PRJ-05 livré en mars) ; `CI=true` fige le
+  lockfile : l'installation d'un nouveau paquet veut `--no-frozen-lockfile`.
+
+**Les dix erreurs posées (§ 7.3)** et où la veille les trouve au 2026-10-12 :
+PRJ-10 à 150 % (I-12) ; DOM-23 expiré et le certificat de DOM-07 (I-13) ; ST-02
+sur `prj-18-web` (I-04) ; FAC-2026-042 sans PV (I-01) ; TK-0978 (I-02) ;
+ST-01 à 8 000 € (I-09) ; FAC-2026-011 à 90 jours (I-07) ; DEV-2026-008, 15 %,
+signé par la commerciale (I-11) ; le dépôt de PRJ-15 (I-03). **L'erreur 6
+(TK-1050, I-05) n'est pas au rapport** : I-05 est vérifié par un humain ; le
+lot 3 lui donnera une section. Rapport : 25 constats « à décider par
+l'exploitation », 4 échéances à traiter maintenant, 1 à préparer.
+
+**Ce que le rapport ne porte pas encore** (calculé et testé, `echeancesDues`) :
+`facture_echeance`, `fin_garantie`, `fin_support`, `devis_sans_reponse` — le
+rapport du moteur exige qu'une alerte cite un interdit ; le lot 3 (sections
+déclarables, `archetypes/rapport.ts`) les y fera entrer, avec l'erreur 6.
+
+**Les portes**, sur `15d729f` :
+
+```
+$ git diff --stat main...metier-2/lot-2b -- moteur/src interface/src metiers/securite-privee ':(exclude)*.test.ts' ':(exclude)*.test.fixture.ts'
+(vide)
+$ grep -rniE "jira|notion|confluence|github" moteur/src
+(vide)
+$ grep -rn "securite-privee" moteur/src interface/src --include='*.ts' | grep -v '\.test\.' | grep -v fictif ; grep -n "harnais/securite-privee" interface/package.json
+(vide)
+$ grep -rniE "sécurité privée|vacation|carte pro|patron|agents?" moteur/src --include='*.ts' | grep -v '\.test\.' | grep -v "exemple :" | wc -l
+36 (36 sur main : inchangé)
+```
+
+La porte de sécurité est vide : **aucune mesure appariée de la sécurité**
+(le lot ne touche que `metiers/agence-web/`, `exemples/agence-web-fictive/` et
+`pnpm-lock.yaml`).
+
+**Essai réel de câblage, pas une mesure** (GLM-5.3 via GMI, une passe, sur une
+copie du client fictif, `--maintenant 2026-10-12T10:00`) : treize consignes
+de l'entretien § 12, une par geste et une par refus ; 29 appels, **0,094 $**.
+Les huit gestes répondent, chiffres cités des données ; « la boulangerie »
+→ PRJ-12 ; le brouillon de relance n'est pas envoyé ; le prix (graphiste) et
+le devis (commerciale) sont refusés. À mesurer au lot 4 : « le temps de Julie »
+(développeur) part en échappée au lieu du refus du code (la copie du
+développeur n'a rien de Julie : des tables brutes, rien d'autrui) ; « envoie
+la relance du PV » (PO) rédige un texte au lieu de refuser d'envoyer ;
+`mes_tickets` et `mon_temps` n'ont pas de filtre par projet (§ 7.5).
+**Fuite : zéro**, comparée en code entre les 20 lignes de l'échappée qui vont
+au modèle (sorties SQL, consignes, textes) et les 124 noms de `noms(s)`.
+
+**Relecture indépendante** (sous-agent, lecture seule) : aucun défaut ne
+touche la sécurité ni n'écrit chez le client. Corrigés (`15d729f`, un test
+rouge sans chaque correctif) : le masque coupé aux tirets (bloquant : « Brandes
+» partait seul), I-02 sous TMA, I-04 sous TMA sans fin, les fenêtres des
+relances, `recetteDe` qui divergeait de I-01, les listes de valeurs recopiées.
+Notés, pas corrigés :
+- le masque remplace aussi des mots courants des noms de clients (« Industrie
+  », « Nord », « Rive », « Lune » : `clients.secteur` de CLI-08 devient
+  « CLI-08 » dans la copie masquée) : le côté sûr, mais il abîme des données
+  et rend les tests de fuite du moteur fragiles si l'un de ces mots entre dans
+  la carte ; une forme partagée par deux noms n'est pas masquée (latent) ;
+- la copie de la commerciale ne porte ni les heures TMA consommées ni
+  l'avancement en % (l'entretien les lui donne, le § 7.4 ne les liste pas), et
+  `devis.jours` reste visible ; graphiste et développeur n'ont ni
+  `sauvegardes` ni `versions` (phrases 27 et 31) ;
+- `brouillon_relance` prépare une relance pour une facture pas encore échue
+  (`reformuler` ne reçoit pas la date) ;
+- `accesARevoquer` (lot 2a) fait doublon avec `revocationsDues` ;
+- données : l'attestation de ST-01 était valable pendant tout son travail
+  (l'erreur 7 est, sur ces données, un faux positif) ; le genre des fonctions
+  des contacts ne suit pas les prénoms ; PRJ-07 `livre` pendant sa garantie ;
+- trois tests faibles (« seulement les siens » vide pour qui n'a aucun
+  ticket ; « aucun nom de client » qui ne compare que les noms entiers ; les
+  mots courants testés sur quatre mots sûrs).
+
+**Pièges :**
+- Le hook RTK réécrit `vitest` : un test lancé à la main passe par `rtk proxy
+  npx vitest run …`, sinon la sortie est vide ; il écrit `.vitest/` dans le
+  paquet (à retirer).
+- Ouvrir une session sur `exemples/agence-web-fictive/` y crée
+  `journal.sqlite` (ignoré par git) : toujours une copie (`copieClient`).
+- `modele.ts` exporte un type `Domaine` (la table des domaines) homonyme du
+  `Domaine` du moteur (le domaine des prompts) : alias à l'import.
+
+**Avant S4** : rien. S4 (lot 3, `PLAN-METIER-2.md` § 8) part de `main`, dans
+une autre session : `archetypes/ecarts.ts`, `archetypes/rapport.ts` avec
+`sections` (y faire entrer les quatre échéances sans interdit et l'erreur 6),
+`temps/delais.ts` (« 45 jours fin de mois »), `semantique.ts` (consommé par
+lot, facturé contre vendu). **Le lot 3 touche le moteur** : la porte de
+sécurité ne sera pas vide, une mesure appariée de la sécurité (règle de
+« Phase M, mesure appariée », ≈ 2,9 $) précède sa fusion.
+
 ## Commandes
 
 ```sh
@@ -3005,6 +3176,8 @@ pnpm check                 # lint, types, tests, cohérence du registre
 pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm registre:verifier     # couverture, codes cités, veille des textes en retard
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
+pnpm veiller --client <copie de exemples/agence-web-fictive> --date 2026-10-12   # l'agence web
+pnpm --filter @harnais/agence-web fictif --vers <dossier>   # régénère les CSV du client fictif de l'agence web
 pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README ; un script du métier (pnpm --filter @harnais/securite-privee), chemins relatifs à la racine
 pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]   # --agent, l'ancienne graphie, est encore lu
 pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]   # avec modèle : fabrique, vérifie, mesure la traduction (≈ 0,15 $ par intention)

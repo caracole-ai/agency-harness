@@ -1,0 +1,22 @@
+id: T-03
+etant_donne: "un site e-commerce dont la dernière sauvegarde date de 30 h"
+quand: "une mise en production a lieu un vendredi à 19 h"
+alors: "la mise en production est signalée « à vérifier » : aucune sauvegarde de moins de 24 h avant elle ; l'accord écrit du client, qui vit dans la messagerie, se confirme à la main"
+interdits:
+  - I-03
+statut: hypothèse
+source: conçu depuis l'interdit
+cas:
+  # le vendredi 09/10/2026 à 19 h ; la sauvegarde date du jeudi : les exports
+  # sont datés au jour, la veille ne garantit pas moins de 24 h
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A, secteur: e-commerce }
+  projets:
+    - { id: PRJ-01, client: CLI-01, nom: Boutique, type: forfait, etat: en_cours }
+  depots:
+    - { nom: prj-01-web, projet: PRJ-01, derniere_mise_en_prod_le: "2026-10-09", par: M-01 }
+  sauvegardes:
+    - { projet: PRJ-01, date: "2026-10-08", par: M-01 }
+  attendu:
+    - { regle: I-03, objet: PRJ-01/mise-en-prod/2026-10-09, verdict: à vérifier }

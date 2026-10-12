@@ -1,0 +1,19 @@
+projet;composant;version;fin_de_support_le
+PRJ-01;cms;6.5;2027-09-30
+PRJ-02;cms;6.5;2027-09-30
+PRJ-03;cms e-commerce;9.1;2027-08-31
+PRJ-03;langage serveur;8.1;2026-12-31
+PRJ-04;framework;7.1;2028-01-31
+PRJ-05;framework;6.4;2027-11-30
+PRJ-06;cms;6.6;2028-03-31
+PRJ-07;cms;6.6;2028-03-31
+PRJ-08;framework;7.1;2028-01-31
+PRJ-09;cms;6.6;2028-03-31
+PRJ-10;framework;7.2;2028-07-31
+PRJ-12;framework;4.2;2027-11-30
+PRJ-12;langage serveur;8.3;2027-12-31
+PRJ-13;framework;6.4;2027-11-30
+PRJ-14;cms;6.6;2028-03-31
+PRJ-15;cms;6.4;2027-02-28
+PRJ-16;framework;7.1;2028-01-31
+PRJ-18;cms;6.5;2027-09-30

@@ -1,0 +1,27 @@
+id: T-11
+etant_donne: "un devis à 15 % de remise, signé par la commerciale"
+quand: "le contrôle lit les devis"
+alors: "le devis est signalé « à vérifier » : remise de plus de 10 % engagée par une autre personne que le dirigeant ; de même pour un devis de plus de 5 000 € HT signé par la cheffe de projet"
+interdits:
+  - I-11
+statut: hypothèse
+source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  personnes:
+    - { id: M-01, nom: Personne A, role: dirigeant }
+    - { id: M-02, nom: Personne B, role: commercial }
+    - { id: M-03, nom: Personne C, role: po }
+  clients:
+    - { id: CLI-01, nom: Client A }
+  devis:
+    - { id: DEV-2026-001, client: CLI-01, date: "2026-09-01", montant_ht_eur: 4000, etat: signe, signataire: M-02, remise: 0.15 }
+    # au-delà de la délégation de la cheffe de projet
+    - { id: DEV-2026-002, client: CLI-01, date: "2026-09-01", montant_ht_eur: 6000, etat: signe, signataire: M-03, remise: 0 }
+    - { id: DEV-2026-003, client: CLI-01, date: "2026-09-01", montant_ht_eur: 4000, etat: signe, signataire: M-03, remise: 0 }
+    - { id: DEV-2026-004, client: CLI-01, date: "2026-09-01", montant_ht_eur: 9000, etat: signe, signataire: M-01, remise: 0.15 }
+  attendu:
+    - { regle: I-11, objet: DEV-2026-001, verdict: à vérifier }
+    - { regle: I-11, objet: DEV-2026-002, verdict: à vérifier }
+    - { regle: I-11, objet: DEV-2026-003, verdict: ok }
+    - { regle: I-11, objet: DEV-2026-004, verdict: ok }

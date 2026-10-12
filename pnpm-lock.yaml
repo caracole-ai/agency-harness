@@ -36,6 +36,21 @@ importers:
         specifier: 4.13.13
         version: 4.13.13
 
+  metiers/agence-web/code:
+    dependencies:
+      '@harnais/moteur':
+        specifier: workspace:*
+        version: link:../../../moteur
+      csv-parse:
+        specifier: 7.0.3
+        version: 7.0.3
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+      zod:
+        specifier: 4.6.3
+        version: 4.6.3
+
   metiers/securite-privee/code:
     dependencies:
       '@harnais/moteur':

@@ -1,0 +1,12 @@
+# Le registre d'accès du client fictif de l'agence web : qui peut parler à
+# l'outil, et avec quel rôle (PLAN-METIER-2.md M3, M18). Il appartient au
+# harnais, pas aux données du client : il est lu avant que le dossier soit
+# ouvert. Chaque personne doit exister dans personnes.csv. Ni client final,
+# ni sous-traitant en v1.
+personnes:
+  - { role: dirigeant, personne: M-01 }
+  - { role: commercial, personne: M-02 }
+  - { role: po, personne: M-03 }
+  - { role: graphiste, personne: M-04 }
+  - { role: developpeur, personne: M-05 }
+  - { role: developpeur, personne: M-06 }

@@ -1,0 +1,19 @@
+id: T-13
+etant_donne: "un domaine géré par l'agence qui expire dans 25 jours, sans renouvellement"
+quand: "le contrôle quotidien des échéances"
+alors: "alerte : expiration dans moins de 30 jours, avec la date, le client et le registrar ; nouvelle alerte à 7 jours"
+interdits:
+  - I-13
+statut: hypothèse
+source: conçu depuis l'interdit
+cas:
+  aujourdhui: "2026-10-12"
+  clients:
+    - { id: CLI-01, nom: Client A }
+  domaines:
+    # dans 25 jours, puis dans 5 jours
+    - { id: DOM-01, nom: site-a.example, client: CLI-01, registrar: registrar-a, expire_le: "2026-11-06", certificat_expire_le: "2027-06-30" }
+    - { id: DOM-02, nom: site-b.example, client: CLI-01, registrar: registrar-a, expire_le: "2026-10-17", certificat_expire_le: "2027-06-30" }
+  alertes:
+    - { regle: I-13, objet: DOM-01/domaine, niveau: alerte }
+    - { regle: I-13, objet: DOM-02/domaine, niveau: escalade }
