@@ -13,11 +13,9 @@
 // copie du client fictif, jamais sur `exemples/`.
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse } from 'yaml'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { MetierConversation } from '../conversation/conversation'
 import { FichierTraduire } from '../evals/evals'
 import { type BilanTraduction, passeTraduction } from '../evals/traduction'
 import { modeleDepuisConfig } from '../modele/anthropic'
@@ -34,6 +32,7 @@ import {
 } from '../promotion/promotion'
 import { compterFabrications, promouvoir } from '../promotion/promouvoir'
 import { FUSEAU, Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const EVALS = join(RACINE, 'evals')
@@ -51,12 +50,7 @@ if (!values.client) {
 }
 
 const dossier = resolve(values.client)
-const { metier } = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
-const m = module.CONVERSATION
+const m = await metierDe(dossier)
 
 /** `--date` à 23:59 heure de Paris, sinon l'heure réelle. */
 const maintenant = values.date

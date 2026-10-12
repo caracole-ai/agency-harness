@@ -26,7 +26,7 @@ import {
 import { typeDe } from '../gestes/types-parametre'
 import { cout, type Modele } from '../modele/modele'
 import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
-import { FUSEAU, Temporal } from '../temps/temporal'
+import { aParis, FUSEAU, Temporal } from '../temps/temporal'
 import {
   type AppelTrace,
   bilan,
@@ -102,8 +102,6 @@ export function configDuDossier<S>(m: MetierConversation<S>, dossier: string): C
   journal.fermer()
   return config
 }
-
-export const aParis = (s: string) => Temporal.PlainDateTime.from(s).toZonedDateTime(FUSEAU)
 
 /**
  * Lance un cas sur sa copie (l'identité du cas passe d'abord la porte ; le

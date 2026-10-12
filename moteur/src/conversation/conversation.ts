@@ -11,6 +11,7 @@ import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
 import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
+import type { Registre } from '../regles/schema'
 import type { Temporal } from '../temps/temporal'
 import {
   type Action,
@@ -30,6 +31,7 @@ import {
 } from './designation'
 import type { Domaine } from './domaine'
 import { aCapacite, IdentiteSchema, type RoleDeclare, roleDe } from './roles'
+import type { Tableau } from './tableau'
 import {
   type Demande,
   designer,
@@ -112,6 +114,10 @@ export interface MetierConversation<Session> {
    * appris n'est chargé.
    */
   copie?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => TableCopie[]
+  /** Ce que l'interface montre, rendu par le métier (PLAN-METIER-2.md § 3.6, M10). Absent, l'interface n'a ni demandes ni textes du métier. */
+  tableau?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => Tableau
+  /** Les règles du métier, pour l'onglet Règles de l'interface (PLAN-METIER-2.md § 3.6, M10). Absent, l'onglet est vide. */
+  registre?: (s: Session) => Registre
 }
 
 /** Comment le métier écrit une proposition de l'échappée : validée par le demandeur, puis les accords que le métier exige (PLAN-ESPACES.md § 7.2). */

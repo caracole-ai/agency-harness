@@ -17,7 +17,7 @@
 // appelle le modèle du quotidien (la clé que nomme la config du client).
 import { existsSync, readdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { chargerAgence, cheminDepotNuit } from '../agence/config'
 import { commandeSync } from '../chantier/arbre'
@@ -25,11 +25,10 @@ import { faireChantier, TYPE_CHANTIER } from '../chantier/chantier'
 import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionsRetirees } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { MetierConversation } from '../conversation/conversation'
 import { dollars } from '../promotion/promotion'
 import { DOSSIER_RONDES } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 
@@ -45,16 +44,6 @@ const { values, positionals } = parseArgs({
 })
 const USAGE =
   'usage : pnpm chantier --mission <client>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire] | pnpm chantier retirer <id> --motif "<texte>" --client <dossier>'
-
-/** Le métier d'un dossier client, importé depuis `metiers/<métier>`. */
-async function metierDe(dossier: string): Promise<MetierConversation<unknown>> {
-  const { metier } = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase)
-  const module = (await import(
-    pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-  )) as { CONVERSATION?: MetierConversation<unknown> }
-  if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
-  return module.CONVERSATION
-}
 
 const agence = chargerAgence(RACINE)
 

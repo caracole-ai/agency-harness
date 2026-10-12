@@ -17,13 +17,13 @@
 // les étiquettes sont un brouillon, le résultat aussi.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
 import { chargerAgence } from '../agence/config'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import { avecSession, type MetierConversation } from '../conversation/conversation'
+import { avecSession } from '../conversation/conversation'
 import { aCapacite } from '../conversation/roles'
 import { ecrireInstantane } from '../echappee/echappee'
 import {
@@ -44,7 +44,6 @@ import {
   SEUILS,
 } from '../evals/evals'
 import {
-  aParis,
   apprisDuDossier,
   casDuFichier,
   configDuDossier,
@@ -64,7 +63,8 @@ import { aProposer, debutFenetre, type Fabrication, intentions } from '../promot
 import { compterFabrications, promouvoir } from '../promotion/promouvoir'
 import { STATUTS_MISSION } from '../ronde/rapport'
 import { type AppelRonde, faireRonde, ISSUES_RONDE } from '../ronde/ronde'
-import { FUSEAU, Temporal } from '../temps/temporal'
+import { aParis, FUSEAU, Temporal } from '../temps/temporal'
+import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const EVALS = join(RACINE, 'evals')
@@ -93,11 +93,7 @@ if (values.modele !== undefined && values.modele !== 'simule') {
 
 const source = resolve(values.client)
 const { metier } = chargerConfig(join(source, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
-const m = module.CONVERSATION
+const m = await metierDe(source)
 const avecModele = quoi !== 'gestes'
 // La ronde n'appelle pas le modèle du client : celui de l'agence, préflight au moment de l'appel.
 const avecModeleClient = avecModele && quoi !== 'ronde'

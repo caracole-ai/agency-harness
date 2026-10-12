@@ -6,16 +6,13 @@
 // porte (le registre d'accès, REFLEXIONS.md (2026-10-08)), puis la consigne est traduite
 // en un geste, ou finit en « je ne sais pas ». Ce qui écrit attend un « oui ».
 // Travailler sur une copie du client fictif, jamais sur `exemples/`.
-import { join, resolve } from 'node:path'
+import { resolve } from 'node:path'
 import { createInterface } from 'node:readline/promises'
-import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import {
   accueillir,
   avecSession,
   confirmer,
-  type MetierConversation,
   type Reponse,
   traiterConsigne,
   verifierRegistre,
@@ -26,8 +23,7 @@ import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import { chargerPersonnes, type IdentiteVerifiee } from '../personnes/personnes'
 import { FUSEAU, Temporal } from '../temps/temporal'
-
-const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
+import { metierDe } from './metier'
 
 const { values } = parseArgs({
   options: {
@@ -56,12 +52,7 @@ const modes = [values.consigne !== undefined, values.confirmer !== undefined, va
 if (modes.filter(Boolean).length !== 1) usage()
 
 const dossier = resolve(values.client as string)
-const { metier } = chargerConfig(join(dossier, FICHIER_CONFIG), ConfigBase)
-const module = (await import(
-  pathToFileURL(join(RACINE, 'metiers', metier, 'code', 'src', 'index.ts')).href
-)) as { CONVERSATION?: MetierConversation<unknown> }
-if (!module.CONVERSATION) throw new Error(`le métier ${metier} ne sait pas encore converser`)
-const m = module.CONVERSATION
+const m = await metierDe(dossier)
 if (!m.roles.some((r) => r.id === values.role)) usage()
 // `--agent` : l'ancienne graphie de `--personne`, encore lue (PLAN-METIER-2.md, M2).
 if (values.personne && values.agent && values.personne !== values.agent) usage()
