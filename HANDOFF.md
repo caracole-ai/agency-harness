@@ -7,6 +7,24 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-12 (soir) : mesure appariée du lot 1, INCOMPLÈTE, rien fusionné
+  ni poussé.** La règle de Lionel (cinq tours de quatre passes, conditions
+  (a) à (e)) est commise avant la mesure (`4e87438`, « Phase M, mesure
+  appariée » sous « Choix faits faute de consigne »). Quatre tours valides ;
+  **au tour 5, GMI répond `402 Insufficient balance`** à chaque appel :
+  le tour ne compte pas, la règle exige cinq passes, elle ne décide pas.
+  - Information seulement, sur quatre tours (GLM-5.3 via GMI) : traduction
+    `main` 58, 60, 59, 59 / lot 58, 59, 59, 60 ; échappée `main` 18, 18,
+    15, 17 / lot 15, 17, 18, 17 ; gestes 6/6 des deux côtés. (a) à (e) y
+    seraient toutes vraies ; les entrées du premier appel ne diffèrent que
+    par les phrases de 1a et 1b ; les cinq « résumé retiré » sont refusés à
+    l'identique par le contrôle de `main` et celui du lot (le modèle).
+  - **À Lionel** : recharger le crédit GMI. Puis une session refait le tour
+    5 entier une fois (≈ 0,6 $, 12 min) et applique la règle telle quelle
+    (marche à suivre : « Avant S3 » dans la section). S3 attend la fusion.
+  - ≈ 2,33 $ de GLM ; résultats `evals/resultats/apparie-2026-10-12-*` ;
+    traces, scripts et manifeste dans `evals/traces/apparie-2026-10-12/`
+    (non versionné).
 - **2026-10-12 : phase M, session S2 faite (lot 1c de `PLAN-METIER-2.md`,
   relecture du lot 1 entier, corrections, mesure finale), branche
   `metier-2/lot-1c` partie de `metier-2/lot-1b` ; LE LOT 1 N'EST PAS
@@ -52,12 +70,8 @@ fichiers qu'il cite, si.
     bruit de GLM, la référence de deux passes ne mesure pas sa variance ;
     mais la porte dit 58 et la session ne relance pas une passe pour
     obtenir un meilleur chiffre. ≈ 2,5 $ de GLM dans la session.
-  - **À Lionel** : (1) fusionner quand même (`git merge --no-ff
-    metier-2/lot-1c` dans `main`, `pnpm check`, push), en jugeant le 56 du
-    bruit ; ou (2) recommandé : une référence plus longue (cinq passes de
-    `pnpm evals traduire` sur `main` et cinq sur `metier-2/lot-1c`, chacune
-    depuis un arbre à part, ≈ 1,5 $), puis la règle (b) relue sur cette
-    référence. S3 (lots 2a, 2b) attend cette fusion.
+  - Tranché par Lionel le même jour : une mesure appariée, cinq passes de
+    chaque côté, sous une règle nouvelle (entrée du dessus).
 - **2026-10-12 : phase M, session S1 faite (lots 1a et 1b de
   `PLAN-METIER-2.md` : le moteur rendu agnostique au métier), branches
   `metier-2/lot-1a` puis `metier-2/lot-1b`, trois commits (« Métier 2, lot
@@ -2866,6 +2880,98 @@ qui a écrit ses résultats compte telle quelle. Si une condition est fausse,
 on ne fusionne pas et on ne corrige rien dans la session : un écart réel
 veut dire que le lot a tort, la session suivante corrige le lot, jamais
 l'étiquette.
+
+**Ce qui s'est passé : quatre tours valides sur cinq, le tour 5 coupé par
+le solde de GMI, rien fusionné ni poussé.** Règle commise avant la première
+passe (`4e87438`). Arbres détachés dans le scratchpad sur `12241a8` et
+`4e87438`, installés par `CI=true pnpm install --offline --frozen-lockfile
+--store-dir ~/Library/pnpm/store/v10`. Tours lancés par un script (16:05 →
+16:58, ≈ 12 min par tour, pas 9) : t0 traduction du premier côté, t+1 min
+traduction de l'autre, t+2 et t+3 les échappées, dans le même ordre ; les
+deux évals d'un même arbre tournent donc en même temps (sorties de noms
+différents, arbres restés propres). En-tête « Modèle : zai-org/GLM-5.3 »
+sur les seize passes valides. **Au tour 5, GMI a répondu `402
+{"error":"Insufficient balance"}` à chaque appel** des deux traductions
+(`main` 16:57, lot 16:58 : 2/60 chacune, en 32 s) ; le script a été arrêté
+avant le départ des échappées (elles auraient pris la même erreur) ; un
+appel minuscule à `/v1/messages` répond encore 402. ≈ 2,33 $ dépensés.
+
+**Choix faits faute de consigne :**
+- **Le tour 5 ne compte pas.** Ses deux traductions ont écrit un fichier,
+  mais chaque cas y est une exception 402, aucun verdict du modèle ; ses deux
+  échappées n'ont rien écrit (processus arrêté). C'est le cas que l'exception
+  de la règle prévoit (« erreur réseau, processus tué ») : relancer une fois
+  le tour entier, des deux côtés. Impossible sans crédit. Les compter à la
+  lettre aurait mesuré le solde, pas le lot, et fait échouer (c) sur un
+  artefact (point suivant).
+- **Sans le tour 5, la règle n'a que quatre passes de chaque côté : elle ne
+  décide pas, on ne fusionne pas** (comme sans clé). Le bilan des quatre
+  tours ci-dessous est une information, pas une mesure au sens de la règle ;
+  il ne se lit pas comme « la règle passe ».
+- Résultats copiés sous les noms de la consigne
+  (`evals/resultats/apparie-2026-10-12-<côté>-<quoi>-<tour>.md`, gestes
+  `-gestes-1.md`) ; les deux passes à 402 sous
+  `…-traduire-5-solde-epuise.md`, gardées pour trace ; le bilan sous
+  `apparie-2026-10-12-comparaison-4-tours.md`. Traces, script des tours
+  (`tours.sh`), script de comparaison (`comparer.py`) et manifeste dans
+  `evals/traces/apparie-2026-10-12/` du clone principal (non versionné).
+- `comparer.py` lisait mal deux choses à son premier passage, corrigées
+  avant toute lecture des chiffres : l'en-tête du modèle coupé à « GLM-5 » ;
+  la colonne « Fuite » porte les noms qui ont fui, pas un nombre (la ligne
+  de R-2 sautait : 59 cas, aucune fuite). Il vérifie maintenant 60 et 18 cas
+  par passe.
+
+**Bilan des quatre tours (information ; GLM-5.3 via GMI,
+`exemples/client-fictif`)** :
+
+| | traduction | échappée | gestes |
+|---|---|---|---|
+| `main` (`12241a8`) | 58, 60, 59, 59 (moy. 59,00) | 18, 18, 15, 17 (moy. 17,00) | 6/6 |
+| lot (`4e87438`) | 58, 59, 59, 60 (moy. 59,00) | 15, 17, 18, 17 (moy. 16,75) | 6/6 |
+
+- (a) aucun cas à 4 rouges de plus sur le lot (le plus haut : +1, AP-2,
+  E-04, E-13, E-16) ; (b) traduction 59,00 ≥ 57,50, échappée 16,75 ≥
+  16,00 ; (c) traduction R-2 seule à chaque passe des deux côtés, échappée
+  aucune ; (d) traduction : 41 cas identiques octet pour octet, 19 qui ne
+  diffèrent que par « Tu parles avec un agent » → « Tu parles avec
+  l'agent » ; échappée : les 18 ne diffèrent que par les phrases de 1b
+  (« par vacation » → « ligne par ligne », « Les préférences du patron » →
+  « … de l’entreprise », « réaffectations » → « modifications », « que le
+  patron validera » → « que le demandeur validera »), relues à l'œil ; les
+  entrées sont identiques d'une passe à l'autre d'un même côté ; (e)
+  gestes 6/6 des deux côtés, `pnpm check` vert sur le lot (`4e87438`).
+- Rouges, par cas (sur quatre, `main` / lot) : traduction AP-2 0/1, AP-4
+  1/0, P-PLA-2 2/2, R-2 1/1 ; échappée E-04 0/1, E-07 1/1, E-08 1/0,
+  E-10 2/1, E-13 0/1, E-16 0/1. Troncatures (« réponse tronquée ») :
+  échappée E-07 1/1, E-08 1/0, E-13 0/1 ; traduction P-PLA-2 0/1.
+- **Les cinq « résumé du modèle retiré »** (E-10 trois fois, E-04, E-16) :
+  le texte du modèle rejoué hors des arbres dans `verifierReponse` de
+  `12241a8` **et** de `4e87438` rend le même refus. E-10 écrit « du 7 au 8
+  octobre » (intrus 7 et 8), E-04 et E-16 « sur 19 au total », calculé de
+  tête. C'est le modèle, pas le lot (M11 ne change pas ces verdicts).
+- **Une bizarrerie, cause non vérifiée** : les passes à 402 signalent des
+  fuites (15 cas côté lot, dont « karim » sur P-ABS-3) alors que le modèle
+  n'a rien rendu ; le message envoyé est le même que dans une passe normale,
+  où la fuite est vide. Il semble que la fuite d'un cas en exception soit
+  calculée sans ce qui la permet d'ordinaire (`fuiteDe`, argument `permis`).
+  À lire avant de se fier à une colonne « Fuite » d'une passe en erreur ;
+  sans effet sur les seize passes valides.
+
+**Avant S3** : (1) Lionel recharge le crédit GMI ; (2) une session refait
+**le tour 5 entier, une seule fois**, sur les mêmes commits (`main` d'abord,
+tour impair) : `git worktree add --detach <scratchpad>/wt-main 12241a8` et
+`wt-lot` sur la tête de `metier-2/lot-1c` (code identique à `4e87438`),
+l'installation ci-dessus, puis `tours.sh 5 5` (sa variable `S` à
+remplacer par le scratchpad de la session, la clé en `$S/gmi.key`) ; (3)
+copier les quatre fichiers de résultats et les quatre dossiers de traces du
+tour 5 dans `evals/traces/apparie-2026-10-12/resultats-<côté>/` et
+`traces-<côté>/`, ajouter leurs quatre lignes à `manifeste.tsv` (format
+du script : tour, côté, quoi, début, fin, code, fichier), puis `python3
+comparer.py evals/traces/apparie-2026-10-12` (relancé tel quel sur les
+quatre tours, il rend le bilan commis à l'identique) ; les conditions
+lues telles quelles, sans rien ajuster ; (4) fusion et push si les cinq sont
+vraies, sinon on ne fusionne pas et la session suivante corrige le lot.
+S3 (lots 2a, 2b) part de `main` après cette fusion, dans une autre session.
 
 ## Commandes
 
