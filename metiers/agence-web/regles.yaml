@@ -81,6 +81,9 @@ interdits:
     statut: texte
     suite: "(non relu : à faire relire par un juriste)"
     source: L441-10 et L441-9 du code de commerce
+    parametres:
+      delai_paiement_max_jours: 60
+      delai_paiement_fin_de_mois_max_jours: 45
   - id: I-08
     nom: mentions obligatoires de la facture
     interdit: "Aucune facture sans ses **mentions obligatoires** (numéro continu, dates, TVA, SIREN, adresse, désignation)"
@@ -103,6 +106,9 @@ interdits:
     statut: texte
     suite: "(non relu : à faire relire par un juriste)"
     source: L8222-1 du code du travail
+    parametres:
+      seuil_annuel_eur_ht: 5000
+      validite_attestation_mois: 6
   - id: I-10
     nom: cession des droits d'auteur
     interdit: "Aucune livraison sans **clause écrite de cession des droits d'auteur** (étendue, durée, territoire) pour les créations livrées"

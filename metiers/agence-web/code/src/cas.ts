@@ -101,7 +101,7 @@ export function rejouer(
   const ctx: ContexteVeille = { ...contexte(cas.tables), seuils: config.seuils }
   const enJeu = (regle: string) => scenario.interdits.includes(regle)
   const constats = executer(CONTROLES, ctx, registre).filter((c) => enJeu(c.regle))
-  const alertes = veiller(echeancesAgenceWeb(ctx, config.veiller.echeances), cas.aujourdhui).filter(
+  const alertes = veiller(echeancesAgenceWeb(ctx, config.veiller, registre), cas.aujourdhui).filter(
     (a) => enJeu(a.regle),
   )
   const ecarts: string[] = []

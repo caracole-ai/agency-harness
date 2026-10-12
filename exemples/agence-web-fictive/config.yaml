@@ -53,6 +53,12 @@ veiller:
     attestation_urssaf: { alerter: { mois: 1 }, preparation: { jours: 7 } }
     pv_non_signe: { alerter: { jours: 0 }, preparation: { jours: 1 } }
     devis_sans_reponse: { alerter: { jours: 0 }, preparation: { jours: 1 } }
+  # Les délais de la maison qui font la limite d'une échéance (entretien § 8,
+  # § 39) : premier rappel d'une facture, relance d'un PV, d'un devis.
+  delais:
+    relance_facture: { jours: 1 }
+    pv_non_signe: { jours: 15 }
+    devis_sans_reponse: { jours: 10 }
 conversation:
   modele:
     fournisseur: anthropic

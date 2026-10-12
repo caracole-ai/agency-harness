@@ -3,9 +3,11 @@ import {
   type Duree,
   dateFr,
   type Echeance,
-  type Fenetre,
+  type Registre,
   Temporal,
 } from '@harnais/moteur'
+import type { ConfigAgenceWeb } from './config'
+import { parametre } from './controles'
 import type { Contexte } from './modele'
 import { recetteDuLot } from './semantique'
 
@@ -28,7 +30,6 @@ export const ECHEANCES = [
   'devis_sans_reponse',
 ] as const
 export type CleEcheance = (typeof ECHEANCES)[number]
-export type Fenetres = Record<CleEcheance, Fenetre>
 
 /**
  * L'interdit du registre que tient chaque échéance. Le rapport du moteur
@@ -48,25 +49,8 @@ export const INTERDIT_DE_L_ECHEANCE: Record<CleEcheance, string | null> = {
   devis_sans_reponse: null,
 }
 
-/**
- * Les délais qui font la limite d'une échéance. Ceux de l'entretien § 8 et
- * § 39 sont ceux de la maison ; ceux d'I-09 sont ceux du texte (L8222-1 et
- * D8222-5 du code du travail, non relus), dont la place est
- * `regles.yaml: I-09.parametres`, que le registre ne porte pas encore.
- */
-export const DELAIS = {
-  /** Le premier rappel d'une facture impayée, le lendemain de l'échéance (J+1). */
-  relance_facture: { jours: 1 },
-  /** La relance d'un PV non signé, quinze jours après la recette (J+15). */
-  pv_non_signe: { jours: 15 },
-  /** La première relance d'un devis sans réponse, dix jours après l'envoi (J+10). */
-  devis_sans_reponse: { jours: 10 },
-  /** L'attestation de vigilance a moins de six mois. */
-  attestation_urssaf: { mois: 6 },
-} as const satisfies Record<string, Duree>
-
-/** I-09 : le montant annuel HT au-delà duquel l'attestation de vigilance est due. */
-export const VIGILANCE_SEUIL_EUR_HT = 5000
+/** Ce que la veille du client règle : quand prévenir, et ses délais de la maison (`config.yaml: veiller`). */
+export type Veille = ConfigAgenceWeb['veiller']
 
 /** Une échéance de l'agence, avant qu'un interdit ne la porte. */
 export interface EcheanceDue extends Omit<Echeance, 'regle'> {
@@ -86,7 +70,14 @@ const plus = (iso: string, d: Duree) =>
  * suivantes d'une facture (J+15, J+30), un avenant envoyé (l'export n'a pas
  * sa date d'envoi), le forfait à 90 % puis 100 % (les écarts du lot 3).
  */
-export function echeancesDues(ctx: Contexte, fenetres: Fenetres): EcheanceDue[] {
+export function echeancesDues(ctx: Contexte, veille: Veille, registre: Registre): EcheanceDue[] {
+  const fenetres = veille.echeances
+  const delais = veille.delais
+  // I-09 : le seuil et la durée de validité que fixe le texte (`regles.yaml: parametres`)
+  const vigilance = registre.interdits.find((i) => i.id === 'I-09')
+  if (!vigilance) throw new Error('I-09 absent du registre')
+  const seuilVigilance = parametre(vigilance, 'seuil_annuel_eur_ht')
+  const validiteAttestation = { mois: parametre(vigilance, 'validite_attestation_mois') }
   const e: EcheanceDue[] = []
   const de = (
     cle: CleEcheance,
@@ -127,7 +118,7 @@ export function echeancesDues(ctx: Contexte, fenetres: Fenetres): EcheanceDue[] 
         'facture_echeance',
         `${f.id}/echeance`,
         `préparer la relance de la facture ${f.id}, échue le ${fr(f.echeance)}, à faire valider par le dirigeant`,
-        plus(f.echeance, DELAIS.relance_facture),
+        plus(f.echeance, delais.relance_facture),
         precision,
       )
     }
@@ -196,20 +187,18 @@ export function echeancesDues(ctx: Contexte, fenetres: Fenetres): EcheanceDue[] 
 
   for (const s of ctx.sous_traitants.values()) {
     const montant = s.montant_annuel_ht_eur
-    if (montant !== undefined && montant <= VIGILANCE_SEUIL_EUR_HT) continue
+    if (montant !== undefined && montant <= seuilVigilance) continue
     const precision =
       montant === undefined
         ? 'montant annuel inconnu : tenu pour au-delà du seuil'
-        : `payé ${montant.toFixed(2).replace('.', ',')} € HT par an, au-delà de ${VIGILANCE_SEUIL_EUR_HT} €`
+        : `payé ${montant.toFixed(2).replace('.', ',')} € HT par an, au-delà de ${seuilVigilance} €`
     de(
       'attestation_urssaf',
       `${s.id}/attestation`,
       s.attestation_urssaf_le
         ? `obtenir une attestation de vigilance URSSAF à jour (la dernière date du ${fr(s.attestation_urssaf_le)})`
         : 'obtenir une attestation de vigilance URSSAF (aucune au dossier)',
-      s.attestation_urssaf_le
-        ? plus(s.attestation_urssaf_le, DELAIS.attestation_urssaf)
-        : undefined,
+      s.attestation_urssaf_le ? plus(s.attestation_urssaf_le, validiteAttestation) : undefined,
       precision,
     )
   }
@@ -221,7 +210,7 @@ export function echeancesDues(ctx: Contexte, fenetres: Fenetres): EcheanceDue[] 
       'pv_non_signe',
       `${l.id}/pv`,
       `relancer la signature du PV du lot ${l.id}, recetté le ${fr(r.recette_le)}`,
-      plus(r.recette_le, DELAIS.pv_non_signe),
+      plus(r.recette_le, delais.pv_non_signe),
       'sans PV signé, le lot ne se facture pas',
     )
   }
@@ -234,15 +223,15 @@ export function echeancesDues(ctx: Contexte, fenetres: Fenetres): EcheanceDue[] 
       d.envoye_le
         ? `relancer le devis ${d.id}, envoyé le ${fr(d.envoye_le)}`
         : `renseigner la date d'envoi du devis ${d.id}`,
-      d.envoye_le ? plus(d.envoye_le, DELAIS.devis_sans_reponse) : undefined,
+      d.envoye_le ? plus(d.envoye_le, delais.devis_sans_reponse) : undefined,
     )
   }
   return e
 }
 
 /** Les échéances remises à la veille : celles qu'un interdit du registre porte. */
-export function echeancesAgenceWeb(ctx: Contexte, fenetres: Fenetres): Echeance[] {
-  return echeancesDues(ctx, fenetres).flatMap(({ cle, ...e }) => {
+export function echeancesAgenceWeb(ctx: Contexte, veille: Veille, registre: Registre): Echeance[] {
+  return echeancesDues(ctx, veille, registre).flatMap(({ cle, ...e }) => {
     const regle = INTERDIT_DE_L_ECHEANCE[cle]
     return regle ? [{ regle, ...e }] : []
   })

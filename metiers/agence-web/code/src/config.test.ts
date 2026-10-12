@@ -33,6 +33,10 @@ veiller:
     attestation_urssaf: { alerter: { mois: 1 }, preparation: { jours: 7 } }
     pv_non_signe: { alerter: { jours: 15 }, preparation: { jours: 1 } }
     devis_sans_reponse: { alerter: { jours: 10 }, preparation: { jours: 1 } }
+  delais:
+    relance_facture: { jours: 1 }
+    pv_non_signe: { jours: 15 }
+    devis_sans_reponse: { jours: 10 }
 `
 
 const exemple = () => parse(EXEMPLE) as Record<string, Record<string, unknown>>

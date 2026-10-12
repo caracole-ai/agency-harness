@@ -91,33 +91,24 @@ describe('client fictif : la liste complète des constats', () => {
         'I-01 FAC-2026-042 à vérifier',
         'I-02 TK-0978 à vérifier',
         'I-03 PRJ-15/mise-en-prod/2026-09-24 à vérifier',
-        // I-04 à la lettre : tout accès non révoqué à une ressource dont les projets sont clos
-        'I-04 M-05/depot/prj-03-web à vérifier',
+        // I-04 : un accès non révoqué à une ressource dont les projets sont clos ;
+        // pas celui d'une personne de l'agence qu'un contrat TMA justifie
+        // (M-05 et M-06 sur PRJ-01, 02, 03, 15, 18 ; DOM-11 et DOM-06)
         'I-04 M-05/depot/prj-05-web à vérifier',
-        'I-04 M-05/depot/prj-15-web à vérifier',
-        'I-04 M-06/depot/prj-01-web à vérifier',
-        'I-04 M-06/depot/prj-02-web à vérifier',
-        'I-04 M-06/depot/prj-03-web à vérifier',
-        'I-04 M-06/depot/prj-18-web à vérifier',
         'I-04 ST-02/depot/prj-18-web à vérifier',
-        // ceramiques-orsini.example (CLI-11, PRJ-03 clos), cabinet-dalbret.example (CLI-05, PRJ-02 clos)
-        'I-04 M-01/hebergeur/DOM-11 à vérifier',
-        'I-04 M-05/admin_site/DOM-11 à vérifier',
-        'I-04 M-05/hebergeur/DOM-11 à vérifier',
-        'I-04 M-06/admin_site/DOM-11 à vérifier',
-        'I-04 M-06/admin_site/DOM-06 à vérifier',
         'I-07 FAC-2026-011 à vérifier',
         'I-11 DEV-2026-008 à vérifier',
         'I-12 PRJ-10 à vérifier',
       ].sort(),
     )
   })
-  it('un accès lié à un contrat TMA le dit, pour que l’humain tranche', () => {
+  it('un contrat TMA garde l’accès de l’agence, jamais celui d’un sous-traitant', () => {
     const ctx = lire()
     expect(constat(ctx, 'I-04', 'M-05/depot/prj-05-web')?.motif).toBe(
       'projet PRJ-05 clos, accès non révoqué : à révoquer à la fin du projet',
     )
-    expect(constat(ctx, 'I-04', 'M-06/depot/prj-02-web')?.motif).toMatch(/TMA-02/)
+    expect(constat(ctx, 'I-04', 'M-06/depot/prj-02-web')).toBeUndefined()
+    expect(constat(ctx, 'I-04', 'ST-02/depot/prj-18-web')?.motif).toMatch(/TMA-04/)
   })
 })
 
@@ -201,5 +192,23 @@ describe('les seuils viennent de la config', () => {
   it('des jours de 6 h : l’évolution de 3 h fait une demi-journée', () => {
     const ctx: ContexteVeille = { ...lire(), seuils: { ...config.seuils, heures_par_jour: 6 } }
     expect(constat(ctx, 'I-02', 'TK-0978')?.motif).toMatch(/une demi-journée ou plus/)
+  })
+})
+
+describe('les valeurs des textes viennent du registre', () => {
+  it('I-07 lit son délai au plus dans regles.yaml : à 95 jours, la facture de 90 jours passe', () => {
+    const avec95 = {
+      ...registre,
+      interdits: registre.interdits.map((i) =>
+        i.id === 'I-07'
+          ? { ...i, parametres: { ...i.parametres, delai_paiement_max_jours: 95 } }
+          : i,
+      ),
+    }
+    const c = executer(CONTROLES, lire(), avec95).find(
+      (x) => x.regle === 'I-07' && x.objet === 'FAC-2026-011',
+    )
+    expect(c?.motif).not.toMatch(/délai de paiement/)
+    expect(c?.motif).toMatch(/pénalités de retard non mentionnées/)
   })
 })

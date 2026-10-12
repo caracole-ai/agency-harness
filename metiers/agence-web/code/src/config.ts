@@ -1,4 +1,4 @@
-import { ConversationSchema, FenetreSchema, PolitiqueSchema } from '@harnais/moteur'
+import { ConversationSchema, DureeSchema, FenetreSchema, PolitiqueSchema } from '@harnais/moteur'
 import { z } from 'zod'
 
 // La config d'un client de l'agence web (PLAN-METIER-2.md § 7.1, M12, M13) :
@@ -70,6 +70,15 @@ export const ConfigAgenceWeb = z.strictObject({
       attestation_urssaf: FenetreSchema,
       pv_non_signe: FenetreSchema,
       devis_sans_reponse: FenetreSchema,
+    }),
+    /** Les délais de la maison qui font la limite d'une échéance (entretien § 8, § 39). */
+    delais: z.strictObject({
+      /** Le premier rappel d'une facture impayée, après son échéance (J+1). */
+      relance_facture: DureeSchema,
+      /** La relance d'un PV non signé, après la recette (J+15). */
+      pv_non_signe: DureeSchema,
+      /** La première relance d'un devis sans réponse, après l'envoi (J+10). */
+      devis_sans_reponse: DureeSchema,
     }),
   }),
 })

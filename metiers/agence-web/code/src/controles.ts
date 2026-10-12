@@ -2,6 +2,8 @@ import {
   type Constat,
   type Controle,
   dateFr,
+  type Interdit,
+  parametresDe,
   plusGrave,
   Temporal,
   type Verdict,
@@ -35,17 +37,12 @@ export type Seuils = ConfigAgenceWeb['seuils']
  */
 export type ContexteVeille = Contexte & { seuils: Seuils }
 
-/**
- * Les valeurs que fixent les textes cités au registre, pas le client. Leur
- * place est `regles.yaml: parametres` (ce que la sécurité fait pour I-17) ;
- * le registre de l'agence n'en porte pas encore.
- */
-export const VALEURS_DES_TEXTES = {
-  /** I-07, L441-10 du code de commerce : le délai de paiement au plus. */
-  delai_paiement_max_jours: 60,
-  /** I-07, L441-10 : le délai au plus, compté « fin de mois ». */
-  delai_paiement_fin_de_mois_max_jours: 45,
-} as const
+/** Un paramètre numérique du registre (`regles.yaml: parametres`) ; absent ou mal typé, le contrôle lève, et le moteur refuse. */
+export function parametre(interdit: Interdit, cle: string): number {
+  const v = parametresDe(interdit)[cle]
+  if (typeof v !== 'number') throw new Error(`${interdit.id} : paramètre ${cle} absent du registre`)
+  return v
+}
 
 interface Resultat {
   verdict: Verdict
@@ -187,7 +184,8 @@ export const objetAcces = (
 export const I04: Controle<ContexteVeille> = {
   regle: 'I-04',
   nonCouvert: [
-    'les accès aux hébergeurs, registrars et sites hors du registre (seuls les collaborateurs des dépôts sont lus) ; un accès qui sert encore un contrat TMA se tranche à la main',
+    'les accès aux hébergeurs, registrars et sites hors du registre (seuls les collaborateurs des dépôts sont lus)',
+    "la fin d'un contrat TMA : l'accès d'une personne de l'agence qu'il justifiait n'est plus signalé, l'échéance fin_tma prévient de cette fin",
   ],
   verifier: (ctx) => {
     const constats: Constat[] = []
@@ -195,6 +193,10 @@ export const I04: Controle<ContexteVeille> = {
       const tma = [...ctx.contrats_tma.values()]
         .filter((c) => c.projet !== undefined && r.projets.includes(c.projet))
         .map((c) => c.id)
+      // un projet clos qu'un contrat TMA maintient continue pour l'agence : ses
+      // personnes en gardent l'accès ; un sous-traitant, jamais (entretien § 42)
+      if (r.motif === 'projet_clos' && tma.length > 0 && ctx.personnes.has(r.acces.personne))
+        continue
       constats.push(
         constat('I-04', objetAcces(ctx, r.acces), [
           aVerifier(
@@ -237,9 +239,9 @@ export const I04: Controle<ContexteVeille> = {
 export const I07: Controle<ContexteVeille> = {
   regle: 'I-07',
   nonCouvert: ["le montant de l'indemnité inscrit sur la facture (seule sa mention est lue)"],
-  verifier: (ctx) => {
-    const max = VALEURS_DES_TEXTES.delai_paiement_max_jours
-    const maxFdm = VALEURS_DES_TEXTES.delai_paiement_fin_de_mois_max_jours
+  verifier: (ctx, interdit) => {
+    const max = parametre(interdit, 'delai_paiement_max_jours')
+    const maxFdm = parametre(interdit, 'delai_paiement_fin_de_mois_max_jours')
     return [...ctx.factures.values()].map((f) => {
       const r: Resultat[] = []
       const d = f.delai_jours

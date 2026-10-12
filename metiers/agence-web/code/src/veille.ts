@@ -81,6 +81,6 @@ export const VEILLER: MetierVeiller<ContexteVeille, ConfigAgenceWeb> = {
     `${ctx.projets.size} projets, ${ctx.lots.size} lots, ${ctx.tickets.size} tickets, ${ctx.temps.length} lignes de temps, ${ctx.factures.size} factures, ${ctx.acces.length} accès, ${ctx.domaines.size} domaines`,
   controles: CONTROLES,
   veilles: VEILLES,
-  echeances: (ctx, config) => echeancesAgenceWeb(ctx, config.veiller.echeances),
+  echeances: (ctx, config, registre) => echeancesAgenceWeb(ctx, config.veiller, registre),
   decrire,
 }

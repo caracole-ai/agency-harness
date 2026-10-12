@@ -99,7 +99,7 @@ describe('pnpm veiller chez le client fictif, au 2026-10-12', () => {
 
   it('les comptes des parties', () => {
     expect(rapport).toContain(`## À décider par l'exploitation (${passe.constats.length})`)
-    expect(passe.constats).toHaveLength(19)
+    expect(passe.constats).toHaveLength(8)
     expect(rapport).toContain('## Échéances à traiter maintenant (3)')
     expect(rapport).toContain('## Échéances à préparer (1)')
   })
@@ -109,7 +109,7 @@ describe('pnpm veiller chez le client fictif, au 2026-10-12', () => {
     try {
       const types = j.lire().map((l) => l.type)
       expect(types.filter((t) => t === 'veille')).toHaveLength(1)
-      expect(types.filter((t) => t === 'constat')).toHaveLength(19)
+      expect(types.filter((t) => t === 'constat')).toHaveLength(8)
       expect(types.filter((t) => t === 'alerte')).toHaveLength(4)
       // ni personne ni client par son nom dans ce qui est journalisé
       const ctx = passe.ctx

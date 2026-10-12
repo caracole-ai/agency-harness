@@ -14,14 +14,15 @@ import { configFictive } from './veille.test.fixture'
 
 const EXEMPLE = fileURLToPath(new URL('../../../../exemples/agence-web-fictive', import.meta.url))
 const FICHIERS = Object.fromEntries(NOMS_TABLES.map((t) => [t, `${t}.csv`])) as FichiersAgenceWeb
-const fenetres = configFictive().veiller.echeances
+const veille = configFictive().veiller
+const registre = chargerRegistre(fileURLToPath(new URL('../..', import.meta.url)))
 const REF = Temporal.PlainDate.from(DATE_REFERENCE)
 const lire = () => lireAgenceWeb(EXEMPLE, FICHIERS)
 
 /** Toutes les échéances du § 8, portées ou non par un interdit, sous le nom de leur clé. */
 const toutes = (jour: Temporal.PlainDate, ctx = lire()) =>
   veiller(
-    echeancesDues(ctx, fenetres).map(({ cle, ...e }) => ({ regle: cle, ...e })),
+    echeancesDues(ctx, veille, registre).map(({ cle, ...e }) => ({ regle: cle, ...e })),
     jour,
   ).map((a) => `${a.regle} ${a.objet} ${a.niveau}`)
 
@@ -32,7 +33,6 @@ describe('les neuf échéances de la config', () => {
     expect([...ECHEANCES]).toEqual(Object.keys(ConfigAgenceWeb.shape.veiller.shape.echeances.shape))
   })
   it('celles qu’un interdit porte sont remises à la veille, chacune à un interdit du registre', () => {
-    const registre = chargerRegistre(fileURLToPath(new URL('../..', import.meta.url)))
     const portees = Object.entries(INTERDIT_DE_L_ECHEANCE).filter(([, r]) => r !== null)
     expect(Object.fromEntries(portees)).toEqual({
       domaine: 'I-13',
@@ -46,7 +46,7 @@ describe('les neuf échéances de la config', () => {
 
 describe('la limite de chaque échéance', () => {
   const limite = (objet: string) =>
-    echeancesDues(lire(), fenetres)
+    echeancesDues(lire(), veille, registre)
       .find((e) => e.objet === objet)
       ?.limite?.toString()
   it('facture : le lendemain de l’échéance (J+1, premier rappel)', () => {
@@ -72,7 +72,7 @@ describe('la limite de chaque échéance', () => {
     expect(limite('PRJ-15/support/cms')).toBe('2027-02-28')
   })
   it('rien pour une facture payée, un devis signé, un sous-traitant sous le seuil, un projet sous TMA', () => {
-    const objets = echeancesDues(lire(), fenetres).map((e) => e.objet)
+    const objets = echeancesDues(lire(), veille, registre).map((e) => e.objet)
     expect(objets).not.toContain('FAC-2026-001/echeance')
     expect(objets).not.toContain('DEV-2026-010/relance')
     expect(objets).not.toContain('ST-03/attestation')
@@ -97,7 +97,7 @@ describe('une date inconnue est une alerte, jamais un silence', () => {
         certificat_expire_le: undefined,
       },
     ]
-    const alertes = veiller(echeancesAgenceWeb(contexte(t), fenetres), REF)
+    const alertes = veiller(echeancesAgenceWeb(contexte(t), veille, registre), REF)
     expect(alertes.map((a) => `${a.regle} ${a.objet} ${a.niveau}`)).toEqual([
       'I-13 DOM-01/domaine alerte',
       'I-13 DOM-01/certificat alerte',
@@ -113,7 +113,9 @@ describe('une date inconnue est une alerte, jamais un silence', () => {
       { id: 'ST-02', nom: 'B', montant_annuel_ht_eur: undefined, attestation_urssaf_le: undefined },
     ]
     expect(
-      veiller(echeancesAgenceWeb(contexte(t), fenetres), REF).map((a) => `${a.objet} ${a.niveau}`),
+      veiller(echeancesAgenceWeb(contexte(t), veille, registre), REF).map(
+        (a) => `${a.objet} ${a.niveau}`,
+      ),
     ).toEqual(['ST-01/attestation alerte', 'ST-02/attestation alerte'])
   })
 })
@@ -139,7 +141,7 @@ describe('client fictif : la liste complète au 2026-10-12', () => {
   })
   it('celles que la veille remet au rapport', () => {
     expect(
-      veiller(echeancesAgenceWeb(lire(), fenetres), REF)
+      veiller(echeancesAgenceWeb(lire(), veille, registre), REF)
         .map((a) => `${a.regle} ${a.objet} ${a.niveau}`)
         .sort(),
     ).toEqual(
@@ -155,5 +157,19 @@ describe('client fictif : la liste complète au 2026-10-12', () => {
     const plusTard = toutes(REF.add({ months: 1 }))
     expect(plusTard).toContain('fin_tma TMA-02/fin escalade')
     expect(plusTard).toContain('fin_garantie PRJ-06/garantie escalade')
+  })
+})
+
+describe('les valeurs des textes viennent du registre', () => {
+  it('I-09 lit son seuil dans regles.yaml : à 9 000 €, ST-01 (8 000 €) ne doit plus d’attestation', () => {
+    const avec9000 = {
+      ...registre,
+      interdits: registre.interdits.map((i) =>
+        i.id === 'I-09' ? { ...i, parametres: { ...i.parametres, seuil_annuel_eur_ht: 9000 } } : i,
+      ),
+    }
+    const objets = (r: typeof registre) => echeancesDues(lire(), veille, r).map((e) => e.objet)
+    expect(objets(registre)).toContain('ST-01/attestation')
+    expect(objets(avec9000)).not.toContain('ST-01/attestation')
   })
 })
