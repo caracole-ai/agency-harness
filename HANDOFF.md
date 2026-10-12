@@ -7,24 +7,26 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
-- **2026-10-12 (soir) : mesure appariée du lot 1, INCOMPLÈTE, rien fusionné
-  ni poussé.** La règle de Lionel (cinq tours de quatre passes, conditions
-  (a) à (e)) est commise avant la mesure (`4e87438`, « Phase M, mesure
-  appariée » sous « Choix faits faute de consigne »). Quatre tours valides ;
-  **au tour 5, GMI répond `402 Insufficient balance`** à chaque appel :
-  le tour ne compte pas, la règle exige cinq passes, elle ne décide pas.
-  - Information seulement, sur quatre tours (GLM-5.3 via GMI) : traduction
-    `main` 58, 60, 59, 59 / lot 58, 59, 59, 60 ; échappée `main` 18, 18,
-    15, 17 / lot 15, 17, 18, 17 ; gestes 6/6 des deux côtés. (a) à (e) y
-    seraient toutes vraies ; les entrées du premier appel ne diffèrent que
-    par les phrases de 1a et 1b ; les cinq « résumé retiré » sont refusés à
-    l'identique par le contrôle de `main` et celui du lot (le modèle).
-  - **À Lionel** : recharger le crédit GMI. Puis une session refait le tour
-    5 entier une fois (≈ 0,6 $, 12 min) et applique la règle telle quelle
-    (marche à suivre : « Avant S3 » dans la section). S3 attend la fusion.
-  - ≈ 2,33 $ de GLM ; résultats `evals/resultats/apparie-2026-10-12-*` ;
-    traces, scripts et manifeste dans `evals/traces/apparie-2026-10-12/`
-    (non versionné).
+- **2026-10-12 (soir) : mesure appariée du lot 1 faite, les cinq conditions
+  de la règle vraies ; LE LOT 1 EST FUSIONNÉ DANS `main` ET POUSSÉ**
+  (`git merge --no-ff metier-2/lot-1c`). La règle de Lionel (cinq tours de
+  quatre passes appariées, (a) à (e)) est commise avant la mesure
+  (`4e87438`) ; détail sous « Phase M, mesure appariée ». Le tour 5,
+  coupé une première fois par le solde de GMI (402), a été refait entier une
+  fois après la recharge.
+  - GLM-5.3 via GMI, `exemples/client-fictif` : traduction `main` 58, 60,
+    59, 59, 59 (moy. 59,00) / lot 58, 59, 59, 60, 58 (58,80) ; échappée
+    `main` 18, 18, 15, 17, 18 (17,20) / lot 15, 17, 18, 17, 17 (16,80) ;
+    gestes 6/6 des deux côtés. (a) le plus haut écart : +2 (E-13, deux
+    troncatures) ; (b) 58,80 ≥ 57,50 et 16,80 ≥ 16,20 ; (c) R-2 seule en
+    traduction, rien en échappée ; (d) les entrées du premier appel ne
+    diffèrent que par les phrases de 1a et 1b ; (e) gestes 6/6, `pnpm check`
+    vert sur le lot et sur `main` après la fusion.
+  - ≈ 2,88 $ de GLM (2,33 $ pour les tours 1 à 4, 0,55 $ pour le tour 5) ;
+    résultats `evals/resultats/apparie-2026-10-12-*` ; traces, scripts et
+    manifeste dans `evals/traces/apparie-2026-10-12/` (non versionné).
+  - **Suivante : S3** (lots 2a et 2b, `PLAN-METIER-2.md` § 7), partie de
+    `main`, dans une autre session.
 - **2026-10-12 : phase M, session S2 faite (lot 1c de `PLAN-METIER-2.md`,
   relecture du lot 1 entier, corrections, mesure finale), branche
   `metier-2/lot-1c` partie de `metier-2/lot-1b` ; LE LOT 1 N'EST PAS
@@ -2814,8 +2816,8 @@ comparaison en code des entrées du premier appel) :
   (`2026-10-12-13*`, `-14*`) ; traces dans `evals/traces/` du clone
   principal (non versionnées).
 
-**Avant S3** : la décision de Lionel sur la fusion du lot 1 (« Où on en
-est »), puis la fusion et le push. **Ce qui reste pour S3** (lots 2a et 2b,
+**Avant S3** : fait (mesure appariée, fusion et push : « Phase M, mesure
+appariée »). **Ce qui reste pour S3** (lots 2a et 2b,
 `PLAN-METIER-2.md` § 7) : sur `metier-2/lot-2a` puis `2b`, partis de
 `main` une fois le lot 1 fusionné : la fiche, `regles.yaml`, les
 scénarios ; `modele.ts`, le connecteur CSV, le générateur, le client fictif
@@ -2881,8 +2883,8 @@ on ne fusionne pas et on ne corrige rien dans la session : un écart réel
 veut dire que le lot a tort, la session suivante corrige le lot, jamais
 l'étiquette.
 
-**Ce qui s'est passé : quatre tours valides sur cinq, le tour 5 coupé par
-le solde de GMI, rien fusionné ni poussé.** Règle commise avant la première
+**Premier essai : quatre tours valides sur cinq, le tour 5 coupé par le
+solde de GMI.** Règle commise avant la première
 passe (`4e87438`). Arbres détachés dans le scratchpad sur `12241a8` et
 `4e87438`, installés par `CI=true pnpm install --offline --frozen-lockfile
 --store-dir ~/Library/pnpm/store/v10`. Tours lancés par un script (16:05 →
@@ -2957,21 +2959,43 @@ appel minuscule à `/v1/messages` répond encore 402. ≈ 2,33 $ dépensés.
   À lire avant de se fier à une colonne « Fuite » d'une passe en erreur ;
   sans effet sur les seize passes valides.
 
-**Avant S3** : (1) Lionel recharge le crédit GMI ; (2) une session refait
-**le tour 5 entier, une seule fois**, sur les mêmes commits (`main` d'abord,
-tour impair) : `git worktree add --detach <scratchpad>/wt-main 12241a8` et
-`wt-lot` sur la tête de `metier-2/lot-1c` (code identique à `4e87438`),
-l'installation ci-dessus, puis `tours.sh 5 5` (sa variable `S` à
-remplacer par le scratchpad de la session, la clé en `$S/gmi.key`) ; (3)
-copier les quatre fichiers de résultats et les quatre dossiers de traces du
-tour 5 dans `evals/traces/apparie-2026-10-12/resultats-<côté>/` et
-`traces-<côté>/`, ajouter leurs quatre lignes à `manifeste.tsv` (format
-du script : tour, côté, quoi, début, fin, code, fichier), puis `python3
-comparer.py evals/traces/apparie-2026-10-12` (relancé tel quel sur les
-quatre tours, il rend le bilan commis à l'identique) ; les conditions
-lues telles quelles, sans rien ajuster ; (4) fusion et push si les cinq sont
-vraies, sinon on ne fusionne pas et la session suivante corrige le lot.
-S3 (lots 2a, 2b) part de `main` après cette fusion, dans une autre session.
+**Le tour 5 refait (19:27 → 19:39), après la recharge de Lionel.** Le
+tour entier, une fois, `main` d'abord, sur les mêmes commits (`12241a8`,
+`4e87438` ; `4e87438` choisi plutôt que la tête de la branche, qui n'en
+diffère que par `HANDOFF.md` et `evals/resultats/`, pour que les cinq tours
+mesurent le même arbre). Un appel minuscule à `/v1/messages` a d'abord
+vérifié le crédit (200). Aucune exception dans les quatre passes ; 0,55 $
+(prévu : 0,57 en moyenne, 0,72 au plus).
+
+**La règle sur les cinq tours** (`apparie-2026-10-12-comparaison.md`) :
+
+| | traduction | échappée | gestes |
+|---|---|---|---|
+| `main` (`12241a8`) | 58, 60, 59, 59, 59 (moy. 59,00) | 18, 18, 15, 17, 18 (moy. 17,20) | 6/6 |
+| lot (`4e87438`) | 58, 59, 59, 60, 58 (moy. 58,80) | 15, 17, 18, 17, 17 (moy. 16,80) | 6/6 |
+
+- **(a) vraie** : rouges sur cinq, `main` / lot : traduction AP-2 0/1,
+  AP-4 2/1, P-PLA-2 2/3, R-2 1/1 ; échappée E-04 0/1, E-07 1/1, E-08 1/0,
+  E-10 2/1, E-13 0/2, E-16 0/1. Le plus haut : +2 (E-13, deux fois
+  « réponse tronquée », le plafond connu de 12 000 tokens). Troncatures :
+  échappée E-07 1/1, E-08 1/0, E-13 0/2 ; traduction P-PLA-2 0/1.
+- **(b) vraie** : traduction 58,80 ≥ 59,00 − 1,5 ; échappée 16,80 ≥
+  17,20 − 1.
+- **(c) vraie** : traduction R-2 seule à chaque passe des deux côtés ;
+  échappée, aucune fuite.
+- **(d) vraie** : traduction 41 cas identiques octet pour octet, 19 qui ne
+  diffèrent que par la phrase de 1a ; échappée, les 18 ne diffèrent que par
+  les phrases de 1b (liste plus haut) ; entrées identiques d'une passe à
+  l'autre d'un même côté.
+- **(e) vraie** : gestes 6/6 (et 6/6 sur `main`) ; `pnpm check` vert sur
+  `metier-2/lot-1c` avant chaque commit et sur `main` après la fusion.
+- Le bilan des quatre premiers tours
+  (`apparie-2026-10-12-comparaison-4-tours.md`) reste commis pour trace ; il
+  ne décidait rien.
+
+**Avant S3** : rien. S3 (lots 2a et 2b, `PLAN-METIER-2.md` § 7) part de
+`main` dans une autre session ; ce que S2 laisse au lot 2 est listé à la fin
+de « Phase M, session S2 ».
 
 ## Commandes
 
