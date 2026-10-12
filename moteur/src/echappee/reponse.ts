@@ -6,11 +6,26 @@
 // et par leur année, jamais comme nombres : « 10 » ne devient pas citable
 // parce qu'on est en octobre (evals/erreurs-2026-10-08.md, passes 5 et 6).
 
-/** `JJ/MM` ou `JJ/MM/AAAA`, isolée des autres chiffres et barres obliques. */
-const DATE = /(?<![\d/])(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?(?![\d/])/g
+/** `JJ/MM` ou `JJ/MM/AAAA`, le mois sur deux chiffres (« 8/10 » est une date, « 3/4 » non), isolée des autres chiffres et barres obliques. */
+const DATE = /(?<![\d/])(\d{1,2})\/(\d{2})(?:\/(\d{4}))?(?![\d/])/g
 /** `AAAA-MM-JJ`, isolée des autres chiffres et tirets (une heure peut suivre : `2026-10-11T08:00`). */
 const DATE_ISO = /(?<![\d-])\d{4}-\d{2}-\d{2}(?![\d-])/g
-const NOMBRE = /\d+(?:[.,]\d+)?/g
+/** Un séparateur de milliers : espace, espace insécable, espaces fines, point (PLAN-METIER-2.md § 1, M11). */
+const SEPARATEUR = String.raw`[ \u00A0\u2009\u202F.]`
+const SEPARATEURS = new RegExp(SEPARATEUR, 'g')
+/** Un nombre groupé par milliers : un même séparateur entre groupes de trois chiffres, virgule décimale (`12 500,00`, `1.500`). */
+const GROUPE = String.raw`\d{1,3}(${SEPARATEUR})\d{3}(?:\1\d{3})*(?!\d)(?:,\d+)?`
+const GROUPE_SEUL = new RegExp(`^${GROUPE}$`)
+/** Un nombre : groupé par milliers, sinon `16`, `16,5`, `16.5`. */
+const NOMBRE = new RegExp(String.raw`${GROUPE}|\d+(?:[.,]\d+)?`, 'g')
+const NOMBRE_SEUL = new RegExp(`^(?:${NOMBRE.source})$`)
+/** Ce qui suit un chiffre et un séparateur (de milliers ou décimal) n'est ni une année ni un jour isolés. */
+const APRES_CHIFFRE = String.raw`(?<!\d(?:${SEPARATEUR}|,))`
+/** Une année (`2026`) : ni décimale, ni groupée par milliers, ni suivie de `€` ou `euros` (« 2 026,00 € », « 2026 € » sont des montants). */
+const ANNEE = new RegExp(
+  String.raw`${APRES_CHIFFRE}\b(?:19|20)\d{2}\b(?![.,]\d)(?!\s*(?:€|[Ee]uros?\b))`,
+  'g',
+)
 const MOT = /[\p{L}\p{M}\p{N}]+/gu
 const MOT_DE_NOM = /^\p{L}{3,}$/u
 
@@ -26,6 +41,12 @@ function normaliser(s: string): string {
 
 function echapper(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** La forme canonique d'un nombre écrit : séparateurs de milliers retirés, virgule → point, zéros de fin des décimales retirés (`12 500,00` ≡ `12500` ≡ `12500.0`). */
+function canonique(ecrit: string): string {
+  const point = (GROUPE_SEUL.test(ecrit) ? ecrit.replace(SEPARATEURS, '') : ecrit).replace(',', '.')
+  return point.includes('.') ? point.replace(/0+$/, '').replace(/\.$/, '') : point
 }
 
 /** Le nombre apparaît dans les sources comme nombre entier, pas comme fragment d'un autre. */
@@ -66,11 +87,13 @@ function datesDe(texte: string): DateEcrite[] {
   return dates
 }
 
-/** Les nombres d'un texte qui ne font pas partie d'une date, tels qu'écrits. */
+/** Les nombres d'un texte qui ne font pas partie d'une date, tels qu'écrits. Les dates sont masquées avant la lecture : un nombre groupé par milliers ne commence pas dans une date (« le 13/10 500 € » cite 500). */
 function nombresHorsDates(texte: string, dates: DateEcrite[]): RegExpExecArray[] {
-  return [...texte.matchAll(NOMBRE)].filter(
-    (m) => !dates.some((d) => m.index >= d.position && m.index < d.fin),
-  )
+  let masque = texte
+  for (const d of dates) {
+    masque = masque.slice(0, d.position) + ' '.repeat(d.fin - d.position) + masque.slice(d.fin)
+  }
+  return [...masque.matchAll(NOMBRE)]
 }
 
 function datesEtNombres(
@@ -83,13 +106,17 @@ function datesEtNombres(
   const dateTrouvee = (iso: string) => sources.includes(iso) || connues.includes(iso)
   /** L'année d'une date connue n'est pas une quantité : elle se cite. */
   const annees = datesConnues.map((d) => d.slice(0, 4))
+  const ecritesEnAnnee = new Set([...texte.matchAll(ANNEE)].map((a) => a.index))
+  /** Chaque nombre des sources, sous sa forme canonique. */
+  const canoniques = new Set([...sources.matchAll(NOMBRE)].map((n) => canonique(n[0])))
   const dates = datesDe(texte)
   for (const d of dates) {
     if (!dateTrouvee(d.iso)) intrus.push({ position: d.position, texte: d.ecrite })
   }
   for (const m of nombresHorsDates(texte, dates)) {
     const point = m[0].replace(',', '.')
-    if (annees.includes(point)) continue
+    if (annees.includes(point) && ecritesEnAnnee.has(m.index)) continue
+    if (canoniques.has(canonique(m[0]))) continue
     if (!nombreTrouve(sources, [point, point.replace('.', ',')])) {
       intrus.push({ position: m.index, texte: m[0] })
     }
@@ -150,9 +177,11 @@ export function verifierReponse(
   return { ok: false, intrus: [...new Set(ordonnes)] }
 }
 
-/** Ce qui n'est pas une quantité : un identifiant (`V-04`, `A-11`, `D-V-17`), une date avec son heure, une heure (`20:00`, `8h30`), une année (`2026`), un jour écrit avec son zéro (`le 07`). */
-const NON_QUANTITES =
-  /\b[A-Z]+(?:-[A-Z]+)*-\d+\b|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}|\b\d{1,2}:\d{2}\b|\b\d{1,2}h(?:\d{2})?\b|\b(?:19|20)\d{2}\b|\b0\d+\b/g
+/** Ce qui n'est pas une quantité : un identifiant (`V-04`, `A-11`, `D-V-17`), une date avec son heure, une heure (`20:00`, `8h30`), une année (`2026`, pas « 2026 € »), un jour écrit avec son zéro (`le 07`, pas le groupe de « 12 050 »). */
+const NON_QUANTITES = new RegExp(
+  String.raw`\b[A-Z]+(?:-[A-Z]+)*-\d+\b|\d{4}-\d{2}-\d{2}T\d{2}:\d{2}|\b\d{1,2}:\d{2}\b|\b\d{1,2}h(?:\d{2})?\b|${ANNEE.source}|${APRES_CHIFFRE}\b0\d+\b`,
+  'g',
+)
 
 /** Les plages d'un texte qui ne sont pas des quantités : dates, heures, identifiants, années. */
 function nonQuantites(texte: string): DateEcrite[] {
@@ -190,15 +219,12 @@ export function citations(texte: string, nomsConnus: string[]): string[] {
  * Un mot attendu se cherche tel quel, sans accents ni casse ; un nombre se
  * cherche entier (« 4 » n'est pas dans « V-14 », « 16 » pas dans « 16,5 »),
  * hors des plages qui ne sont pas des quantités, comme `citations` (« 11 »
- * n'est pas dans « 2026-10-11 »).
+ * n'est pas dans « 2026-10-11 »), sous sa forme canonique (« 12 500,00 »
+ * est dans « 12500 »).
  */
 export function contient(texte: string, mot: string): boolean {
   const m = normaliser(mot)
-  if (!/^\d+(?:[.,]\d+)?$/.test(m)) return normaliser(texte).includes(m)
-  let masque = texte
-  for (const p of nonQuantites(texte)) {
-    masque = masque.slice(0, p.position) + ' '.repeat(p.fin - p.position) + masque.slice(p.fin)
-  }
-  const t = normaliser(masque)
-  return new RegExp(`(?<![\\d.,])${m.replace(/[.,]/, '[.,]')}(?![\\d]|[.,]\\d)`).test(t)
+  if (!NOMBRE_SEUL.test(m)) return normaliser(texte).includes(m)
+  const cherche = canonique(m)
+  return nombresHorsDates(texte, nonQuantites(texte)).some((n) => canonique(n[0]) === cherche)
 }
