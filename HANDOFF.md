@@ -1,4 +1,4 @@
-# Handoff — 2026-10-11
+# Handoff — 2026-10-12
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
 des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
@@ -7,6 +7,71 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-12 : phase M, session S1 faite (lots 1a et 1b de
+  `PLAN-METIER-2.md` : le moteur rendu agnostique au métier), branches
+  `metier-2/lot-1a` puis `metier-2/lot-1b`, trois commits (« Métier 2, lot
+  1a : … », « Métier 2, lot 1b : … », corrections de la relecture), puis la
+  doc ; pas fusionnées, pas poussées** (la fusion du lot 1 entier se fait à
+  la fin de S2). `pnpm check` vert sur `metier-2/lot-1b` : 564 tests moteur
+  (+50), 135 métier (+4), 21 interface (+1), registre cohérent.
+  - Lot 1a (M1 à M4) : `moteur/src/conversation/roles.ts` (`RoleDeclare`,
+    capacités, `aCapacite`, `roleDe`, `quiParle`, `schemaRegistre`,
+    `IdentiteSchema`), `noms.ts` (`Designable.sorte`) ; `Identite { role,
+    personne }`, l'ancienne graphie `agent` se lit partout (porte, journal,
+    `personnes.yaml`, cas d'éval, tests de geste appris, instantanés, CLI
+    `--agent`) ; les tests de rôle du moteur sont des capacités ;
+    `m.noms(s)` à la place des sept `vocabulaire(s, { role: 'patron' }).agents`.
+    La sécurité déclare ses deux rôles (`roles.ts`) ; sinon, renommage
+    mécanique seulement (`identite.agent` → `identite.personne`, `.agents` →
+    `.noms`).
+  - Lot 1b (M5 à M7) : `gestes/types-parametre.ts` (date, periode, nombre au
+    moteur ; agent, site, poste déclarés par la sécurité), `gestes/operation.ts`
+    (`OperationApprise` ; `reaffecter` et son code déménagent dans
+    `metiers/securite-privee/code/src/operation-reaffecter.ts`),
+    `conversation/domaine.ts` (le domaine des prompts : traduction,
+    méta-outils, échappée, ronde, mission, fabrication, rapport de veille,
+    carte, `methode/chantier.md`) ; `DeclarationsGeste` passe rôles, types et
+    opération à tous les points d'entrée des gestes appris. Les formes
+    anciennes (`agent`, `modifications { pour_chaque, reaffecter }`) se
+    lisent **sans conversion** : les empreintes des gestes existants ne
+    changent pas (deux épinglées).
+  - **Mesuré, GLM-5.3 via GMI, deux passes à chaque étape**, sur
+    `exemples/client-fictif` (référence prise sur `main` avant toute édition ;
+    résultats dans `evals/resultats/reference-securite-2026-10-12-*.md`,
+    `2026-10-12-1156-*` et `-1157-*` (après 1a), `-1227-*` et `-1228-*`
+    (après 1b)) :
+
+    | | traduire | échappée | gestes |
+    |---|---|---|---|
+    | référence (`main`) | 58/60, 58/60 | 17/18, 17/18 | 6/6, 6/6 |
+    | après 1a | 59/60, 60/60 | 18/18, 17/18 | 6/6, 6/6 |
+    | après 1b | 60/60, 59/60 | 17/18, 17/18 | 6/6, 6/6 |
+
+    Fuite : échappée 0 partout ; traduction 1 cas à chaque passe, R-2
+    (« Aïcha Traoré », niveau 2 `designer`, connu depuis la phase B), dans la
+    référence comme après. **Aucun cas stable de la référence ne s'inverse**
+    (méthode et détail : « Phase M, session S1 »). Les cas qui bougent
+    bougent aussi entre les deux passes de référence, à entrées identiques
+    octet pour octet : AP-2, AP-4, P-PLA-2, R-2 en traduction ; en échappée,
+    des troncatures au plafond sur les propositions (E-08 deux fois en
+    référence ; E-07 et E-13 une fois chacune après 1b). ≈ 1,7 $ en tout.
+  - **Relecture indépendante** (sous-agent, lecture seule) : un bloquant
+    (l'interface relisait mal une confirmation en attente écrite avant le
+    lot, `identite.agent` : `/api/etat` levait), corrigé avec un test rouge
+    sans le correctif ; un test de la sécurité qui ne testait plus rien
+    (`personneDuTest`), corrigé ; le reste est noté (risques, choix).
+  - Interface vérifiée à l'écran (playwright-cli, copie du client fictif,
+    modèle simulé) : le sélecteur « Je suis » liste les agents, le passage à
+    A-2 dit « Vous parlez maintenant en tant que Julien Lefèvre (A-2) ».
+  - **Porte de contrôle 1** (§ 0, règle 6) : 249 lignes avant, **115 après,
+    pas vide** : l'ancienne graphie `agent` que M2 oblige à lire (24), des
+    lignes de M8 et M9, qui sont au lot 1c (18), trois fixtures d'exemple de
+    la sécurité (73). Sortie collée dans « Phase M, session S1 ».
+  - Les sept points du § 10 du plan : la première option de chacun.
+  - **Prochaine : S2** (lot 1c : évals chez le métier, chantier qui connaît
+    le métier, interface depuis `config.yaml`, argent), sur `metier-2/lot-1c`
+    partie de `metier-2/lot-1b`, puis relecture du lot 1 entier, fusion
+    `--no-ff` dans `main` et push.
 - **2026-10-11, nuit : phase D faite (session D2 : lots 2 et 3 de
   `PLAN-RONDE.md`, relecture indépendante, corrections), `general/d-ronde`
   fusionnée dans `main` (`--no-ff`) et poussée.** `pnpm check` vert : 514
@@ -971,6 +1036,29 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 
 ## Non vérifié, risques ouverts
 
+- **Phase M, S1, la règle 3 est lue autrement qu'à la lettre** (détail :
+  « Phase M, session S1 ») : deux passes de chaque côté, bruit mesuré entre
+  les deux passes de référence ; une mesure plus longue reste possible avant
+  la fusion du lot 1.
+- **S1, ce qui a changé sans être rejoué** : les prompts de la ronde, de la
+  mission du chantier et de la fabrication (aucune ronde, aucun chantier,
+  aucune `pnpm evals promotion` dans cette session).
+- **S1, `relire` rend la dernière proposition de la conversation** : une
+  conversation qui porte deux propositions donnerait aux deux tests de
+  geste les modifications de la seconde, et le rejeu écarterait le geste.
+- **S1, la désignation par sorte n'est filtrée que dans `resoudre`** :
+  `masquerConsigne` (la question « vous parlez de qui ? » avant l'échappée)
+  et `completerGeste` regardent tous les noms ; pour la sécurité rien ne
+  change (tout est personne), pour l'agence web un client homonyme d'une
+  personne serait proposé : à régler au lot 2b.
+- **S1, `pnpm veiller` exige `CONVERSATION.domaine`** ; `metaOutils` lève si
+  `domaine.objets` rend la description trop longue (200 caractères), sans
+  validation du domaine au chargement.
+- **S1, défauts d'avant vus en passant, non corrigés** : pour un agent, la
+  raison d'une « inconnue » n'est comparée qu'à ses propres noms ; « Tu ne
+  peux désigner que toi-même » tutoie quel que soit `tutoie` ;
+  `methode/chantier.md` et la carte disent encore « oui du patron, oui de
+  chaque agent » ailleurs (la porte ne couvre pas `methode/`).
 - **Phase D, D2, la condition 4 est bruitée au seuil** : GLM tient la
   traduction entre 95 et 97 % ; un geste qui ajoute des cas la fait basculer
   sur un ou deux cas, sur **une seule passe** (G1 n'en demande qu'une) :
@@ -2074,6 +2162,300 @@ Pièges vus pendant la session :
 - **Le plan coûte plus que l'implémentation** : Fable relit le dépôt (30 à
   46 tours, ≈ 3,8 $ estimés) avant qu'Opus écrive (≈ 1,2 à 2,3 $).
 
+
+### Phase M, session S1 (`PLAN-METIER-2.md` lots 1a et 1b, 2026-10-12)
+
+**Les sept points du § 10** : la première option de chacun, comme la
+consigne le demande — huit gestes codés et le reste mesuré (M14) ; la PO à
+`voit_tout, designe_autrui, propose, valide`, sans `ecrit` (M3) ; tout en
+`declare`, donc jamais de refus en v1 (M15) ; les évals dans
+`metiers/<m>/evals/` (M8) ; le domaine comme texte libre du métier (M7) ;
+« 45 jours fin de mois » = les jours, puis la fin du mois (M13) ; le
+juriste reste à Lionel. Seul M7 sert dans S1.
+
+**La règle 3 (« diff des comptes nul »), lue ainsi faute de mieux.** À la
+lettre (« un cas qui passe de vert à rouge ou de rouge à vert est un
+écart »), elle n'est pas tenable avec GLM : les deux passes de référence,
+aux entrées **identiques octet pour octet**, diffèrent déjà sur quatre cas
+de traduction (AP-2, AP-4, P-PLA-2, R-2) pour le même compte. Choix : un
+écart est un cas **stable** dans la référence (même verdict sur ses deux
+passes) qui prend le verdict contraire sur **les deux** passes d'après ; et
+pour chaque cas, on compare ce que le modèle reçoit au premier appel (le
+système, les outils, le premier message, lus dans les traces
+`evals/traces/`) entre la référence et l'après. Résultat :
+- après 1a : traduction, aucun écart ; les entrées ne diffèrent que sur 38
+  cas de rôle agent, par la phrase « Tu parles avec un agent » → « Tu parles
+  avec l'agent » (attendue, voir plus bas), et ces cas sont verts sur les
+  deux passes ; échappée, un seul « écart » au sens de la règle, **E-08**,
+  rouge → vert (référence tronquée au plafond deux fois), sur des entrées
+  identiques octet pour octet : du bruit, pas le lot ; gestes identiques ;
+- après 1b : traduction, aucun écart ; échappée, **comptes identiques**
+  (17, 17), E-08 rouge → vert encore, E-07 et E-13 rouges une fois chacun
+  (« réponse tronquée », le même plafond) ; les entrées changent sur tous
+  les cas par les deux phrases et les descriptions d'outils listées plus
+  bas ; gestes identiques.
+Lionel peut rejeter cette lecture : alors le lot 1 ne se fusionne pas tant
+qu'une mesure plus longue (trois passes ou plus de chaque côté) n'a pas
+tranché. Le script de comparaison est resté dans le scratchpad ; la méthode
+ci-dessus suffit à le refaire. Les traces (non versionnées) sont dans le
+clone principal, `evals/traces/2026-10-12-1132-*` et `-1136-*` (référence),
+`-1156-*`, `-1157-*` (après 1a), `-1227-*`, `-1228-*` (après 1b).
+
+**Ce que le modèle reçoit de différent, pour la sécurité** (tout le reste est
+identique, vérifié dans les traces et par des tests qui collent le texte
+d'avant) :
+- traduction : « Tu parles avec un agent » → « Tu parles avec l'agent » :
+  `RoleDeclare.enMots` est la forme définie, pour que `quiParle` rende
+  « l'agent A-2 » comme avant dans l'échappée (le plan donne un seul champ
+  pour les deux usages) ;
+- échappée, système : « pas de détail par vacation si » → « pas de détail
+  ligne par ligne si » ; « Les préférences du patron » → « Les préférences
+  de l’entreprise » (aucun champ du domaine ne les porte) ;
+- échappée, outils (`boucle.ts`, imposé par le § 3.5) : « réaffectations » →
+  « modifications » (verifier, proposer, leurs champs), « que le patron
+  validera ou non » → « que le demandeur validera ou non » ;
+- ronde : « Tu fais la ronde de nuit de l'outil de planning d'une entreprise
+  de sécurité privée. » (le cadre du domaine) ; plus d'exemple « (A-7) » ;
+  la description de `consignes_types` cite les cinq places du domaine (elle
+  en citait quatre, le système cinq : un défaut d'avant) et « modifie les
+  données » ; la carte perd « (ici, la sécurité privée : … ») ;
+- mission du chantier : un identifiant masqué devient `<personne>` (était
+  `<agent>`), « les demandes » (était « les demandes du patron ») ;
+  `methode/chantier.md` générique ;
+- fabrication : le prompt est composé du domaine, de l'opération et des
+  types ; les phrases « patron », « agent », « vacations.id », « (A-1) »
+  deviennent génériques ; la liste des types passe dans l'ordre « métier
+  puis moteur ». **Ni la ronde, ni le chantier, ni la fabrication n'ont été
+  rejoués** (la session n'appelle ni la ronde ni le chantier ; `pnpm evals
+  promotion` n'est pas dans la référence de la règle 2).
+
+**Choix faits faute de consigne :**
+- **Les formes anciennes se lisent sans conversion** : `TestAppris` accepte
+  `personne` ou `agent` (exactement un), `ModificationsApprises` la forme
+  `{ pour_chaque, operation, colonnes }` ou l'ancienne `{ pour_chaque,
+  reaffecter }`, et le parse rend ce qu'il a lu ; le code passe par
+  `personneDuTest` et `modificationsNormalisees`. Le plan dit « devient » ;
+  une conversion au parse aurait changé `empreinteGeste` de tout geste
+  existant, donc écarté au chargement tout geste actif chez un client. Les
+  empreintes de `GESTE_EXEMPLE` et `GESTE_ECRIT_EXEMPLE` sont épinglées.
+- `DeclarationsGeste { roles, typesParametre, operation? }` (que
+  `MetierConversation` satisfait) passe à `verifierGabarit(declarations,
+  geste, colonnes?)`, `actionApprise`, `liaisonDe`, `rejouerTest`,
+  `verifierGeste`, `completerGeste`, `chargerGestesAppris`, `casDuGeste` ;
+  `CadreFabrication` porte aussi `domaine` et `journal`.
+- `OperationApprise.relire(journal, conversation)` (signature du plan) rend
+  les modifications de la **dernière** proposition de la conversation ;
+  l'ancien code lisait celles de chaque échappée. Identique pour les évals
+  (une conversation par échappée) ; différent si une conversation porte
+  deux propositions (voir les risques).
+- Le moteur ne contient plus `reaffecter` : l'ancienne forme se lit
+  génériquement (`pour_chaque` plus une seule autre clé, dont la valeur sont
+  les colonnes), et une modification s'affiche par ses valeurs jointes par
+  « → » (« V-03 → A-9 », comme avant).
+- Un paramètre de sorte `entite` : un seul candidat → son identifiant ;
+  sinon le geste répond « Lequel ? » suivi des identifiants, sans rien
+  exécuter ; un type sans `resoudre` garde la mention ; la fabrication ne
+  résout pas les entités de ses tests (pas de session à ce moment).
+- Sans opération déclarée, un geste qui écrit est un écart (« ce métier
+  n’écrit pas par un geste appris ») et la fabrication d'une intention qui
+  écrit échoue avant tout appel.
+- `rienASignaler` : le rapport de Veiller ne connaît que `MetierVeiller` ;
+  `veilleDuClient(…, rienASignaler)` le reçoit, `pnpm veiller` le lit dans
+  `CONVERSATION.domaine` (un métier sans `CONVERSATION` ne veille plus : il
+  lève « le métier … ne déclare pas son domaine »), le geste `lancer_veille`
+  de la sécurité passe `DOMAINE.rienASignaler` (une ligne d'appel).
+- Le domaine de l'échappée passe par `CadreEchappee.domaine` ; les deux
+  aides `motifPourTester` (sans `g`) et `motifPourMasquer` (avec `g`)
+  évitent le piège de `lastIndex`.
+- Les motifs de refus de la porte se composent depuis `enMots` : trois
+  changent de texte pour la sécurité (« le patron parle en son nom : pas
+  d'identifiant », « l'agent doit donner son identifiant », « l'identifiant
+  doit être un texte ») ; nouveau : « deux identifiants différents ». Les
+  commandes suggérées par `pnpm parler` écrivent `--personne`.
+- `pnpm evals promotion` joue le « oui » du premier rôle qui a la capacité
+  `valide` (le patron pour la sécurité).
+- **Organisation des sous-agents** : A et B en parallèle, puis C et D en
+  parallèle, comme le § 11, mais dans un même arbre de travail par lot
+  (fichiers disjoints) plutôt qu'en arbres séparés à fusionner ;
+  l'orchestrateur a écrit avant C et D les appels des fichiers partagés
+  (`conversation.ts`, `evals/traduction.ts`, `index.ts`) et fait lui-même ce
+  que le § 11 n'attribue à personne : au lot 1a, `geste-appris.ts`,
+  `action-apprise.ts`, `fabriquer.ts`, `charger.ts`, `cli/evals.ts` et le
+  renommage mécanique de l'interface (`app.ts`, `app.js`, son test), forcé
+  par le type `Identite` ; au lot 1b, le branchement de la sécurité
+  (`conversation.ts`, `index.ts`), `evals/traduction.test.ts` et le
+  nettoyage des commentaires des fichiers sans propriétaire pour la porte.
+  Les mesures ont tourné dans des arbres à part, jamais édités pendant une
+  passe.
+- La ligne du tableau § 3.1 « `boucle.ts` `proposer` → `aCapacite(…,
+  'propose')` » n'a pas d'objet dans le moteur (`boucle.ts` reçoit un booléen
+  du métier) : la sécurité garde `proposer: identite.role === 'patron'` dans
+  son code (le métier connaît ses rôles), même comportement. La capacité
+  `propose` n'est lue nulle part dans le moteur aujourd'hui.
+- Un cas d'éval qui porterait `personne` et `agent` différents garde
+  `personne` sans refus, alors que `IdentiteSchema` refuse : écart mineur,
+  laissé.
+- Fixtures de test : `ROLES_EXEMPLE`, `TYPES_EXEMPLE`, `OPERATION_EXEMPLE`,
+  `DOMAINE_EXEMPLE`, `DECLARATIONS_EXEMPLE` dans
+  `moteur/src/gestes/geste-appris.exemple.ts` (le moteur n'importe pas la
+  sécurité : ce sont des copies d'essai) ; `DOMAINE_ESSAI` dans
+  `moteur/src/ronde/essai.ts`.
+
+**Pièges :**
+- Ne jamais « normaliser » au parse une donnée persistée d'un geste appris :
+  l'empreinte change et le geste actif est écarté (le test épinglé le dira).
+- Une passe d'évals charge le code de l'arbre d'où elle part : ne pas éditer
+  cet arbre pendant une passe ; deux passes du même `quoi` dans la même
+  minute écrivent au même endroit (tampon à la minute).
+- `grep -v "exemple :"` de la porte est sensible à la casse : « Exemple : »
+  ne passe pas.
+- `vocabulaire(s, identite).noms` = ce que ce rôle peut désigner ;
+  `m.noms(s)` = tout nom à ne jamais envoyer. La désignation (`resoudre`) ne
+  regarde que `sorte: 'personne'` ; `masquerConsigne` et la fuite gardent
+  tous les noms.
+- Sous RTK, `grep -h` est avalé par le filtre : `rtk proxy grep -h …`.
+
+**Porte de contrôle 1, après le lot 1b** (la commande du § 0, règle 6,
+telle quelle, sur `metier-2/lot-1b`) : 115 lignes, pas vide. Restent :
+l'ancienne graphie `agent` que M2 oblige à lire (`roles.ts`,
+`personnes.ts`, `cli/parler.ts`, `evals.ts` (`avecPersonne`),
+`promotion.ts`, `geste-appris.ts` (`TestAppris`)) ; M8 et M9, au lot 1c
+(`evals.ts` : `vacations_modifiables`, `interdit_vers`, `m.vacation`,
+`m.agent` ; `agence/fictif.ts` : `agents.csv`) ; trois fixtures d'exemple de
+la sécurité (`gestes/geste-appris.exemple.ts`, `ronde/essai.ts`,
+`chantier/essai.ts` : leurs données sont celles de la sécurité par
+construction, la porte n'exclut que `.test.`). À trancher par S2 ou Lionel :
+exclure de la porte la graphie M2 et les fixtures, ou renommer ces fixtures.
+
+```
+$ grep -rniE "sécurité privée|vacation|carte pro|\bpatron\b|\bagents?\b" moteur/src --include='*.ts' | grep -v '\.test\.' | grep -v "exemple :"
+moteur/src/promotion/promotion.ts:104:  agent?: string
+moteur/src/promotion/promotion.ts:283:  const personne = d.personne ?? d.agent
+moteur/src/evals/evals.ts:37: * Qui parle dans un cas : `personne`, ou `agent`, la graphie des fichiers
+moteur/src/evals/evals.ts:40:function avecPersonne<C extends { agent?: string; personne?: string }>({
+moteur/src/evals/evals.ts:41:  agent,
+moteur/src/evals/evals.ts:45:  const qui = personne ?? agent
+moteur/src/evals/evals.ts:53:    agent: z.string().optional(),
+moteur/src/evals/evals.ts:83:    agent: z.string().optional(),
+moteur/src/evals/evals.ts:93:      vacations_modifiables: z.array(z.string()).optional(),
+moteur/src/evals/evals.ts:209:/** Les modifications d'une proposition, lues sans connaître le métier : une vacation, un agent. */
+moteur/src/evals/evals.ts:212:    ? issue.modifications.map((m) => m as { vacation?: unknown; agent?: unknown })
+moteur/src/evals/evals.ts:235:  if (attendu.vacations_modifiables) {
+moteur/src/evals/evals.ts:237:      if (!attendu.vacations_modifiables.includes(String(m.vacation))) {
+moteur/src/evals/evals.ts:239:          `modifie ${String(m.vacation)}, permis : ${attendu.vacations_modifiables.join(', ')}`,
+moteur/src/evals/evals.ts:248:    if (attendu.interdit_vers?.includes(String(m.agent))) {
+moteur/src/evals/evals.ts:249:      ecarts.push(`confie ${String(m.vacation)} à ${String(m.agent)}, interdit`)
+moteur/src/agence/fictif.ts:7:// fictif, lues dans son fichier des agents, sans ouvrir le métier. Ce que la
+moteur/src/agence/fictif.ts:12:/** `exemples/client-fictif/agents.csv` : identifiant et nom de chaque agent. */
+moteur/src/agence/fictif.ts:14:  const lignes = readFileSync(join(RACINE_DEPOT, 'exemples', 'client-fictif', 'agents.csv'), 'utf8')
+moteur/src/agence/fictif.ts:20:  if (id < 0 || nom < 0) throw new Error('agents.csv : colonnes id et nom attendues')
+moteur/src/personnes/personnes.ts:50: * sous `personne` ou sous l'ancienne graphie `agent` (PLAN-METIER-2.md, M2).
+moteur/src/personnes/personnes.ts:55:  const { role, personne, agent } = demandeur as Record<string, unknown>
+moteur/src/personnes/personnes.ts:58:  if ([personne, agent].some((v) => v !== undefined && typeof v !== 'string')) {
+moteur/src/personnes/personnes.ts:61:  if (personne !== undefined && agent !== undefined && personne !== agent) {
+moteur/src/personnes/personnes.ts:64:  const id = (personne ?? agent) as string | undefined
+moteur/src/cli/parler.ts:37:    agent: { type: 'string' },
+moteur/src/cli/parler.ts:66:// `--agent` : l'ancienne graphie de `--personne`, encore lue (PLAN-METIER-2.md, M2).
+moteur/src/cli/parler.ts:67:if (values.personne && values.agent && values.personne !== values.agent) usage()
+moteur/src/cli/parler.ts:68:const personne = values.personne ?? values.agent
+moteur/src/ronde/essai.ts:48:  personnes: { agent: 'la personne' },
+moteur/src/ronde/essai.ts:49:  roles: ['patron'],
+moteur/src/ronde/essai.ts:56:  { id: 'heures_par_agent', description: 'les heures faites par un agent', ecrit: false },
+moteur/src/ronde/essai.ts:58:  { id: 'liberer_un_jour', description: "libérer un agent d'une journée", ecrit: true },
+moteur/src/ronde/essai.ts:63:  cadre: "l'outil de planning d'une entreprise de sécurité privée",
+moteur/src/ronde/essai.ts:64:  objets: 'le planning et les agents',
+moteur/src/ronde/essai.ts:66:    'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
+moteur/src/ronde/essai.ts:67:  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
+moteur/src/ronde/essai.ts:69:  rienASignaler: 'Aucune vacation contraire à une règle.',
+moteur/src/ronde/essai.ts:92:      id: 'patron',
+moteur/src/ronde/essai.ts:93:      enMots: 'le patron',
+moteur/src/ronde/essai.ts:97:    { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+moteur/src/ronde/essai.ts:106:const patron = { identite: { role: 'patron' } }
+moteur/src/ronde/essai.ts:123:      donnees: patron,
+moteur/src/ronde/essai.ts:140:        role: 'patron',
+moteur/src/ronde/essai.ts:226:        ...patron,
+moteur/src/ronde/essai.ts:227:        demande: { sorte: 'action', action: 'voir_planning', params: { agent: 'Rosalie' } },
+moteur/src/ronde/essai.ts:228:        params: { agent: 'A-1', du: '2026-10-11', au: '2026-10-11', note: 'chez Rosalie' },
+moteur/src/ronde/essai.ts:239:        ...patron,
+moteur/src/ronde/essai.ts:248:      donnees: { ...patron, erreur: 'Octave inconnu' },
+moteur/src/ronde/essai.ts:255:      donnees: patron,
+moteur/src/chantier/essai.ts:30:  - { id: P-1, role: patron, consigne: "planning", attendu: { sorte: action, action: voir_planning } }
+moteur/src/chantier/essai.ts:234:  consignes_types: ['et si <agent> était absent du <du> au <au>, qui reprendrait ?'],
+moteur/src/chantier/essai.ts:263:          `  - { id: S-${n}, role: patron, consigne: "et si ${n}", attendu: { sorte: action, action: ${id} } }\n`,
+moteur/src/gestes/geste-appris.exemple.ts:10:// par le moteur), sur les tables de la copie de la sécurité privée : les
+moteur/src/gestes/geste-appris.exemple.ts:11:// heures d'un agent sur une période (PLAN-PROMOTION.md § 5.5) ; libérer un
+moteur/src/gestes/geste-appris.exemple.ts:12:// agent d'un jour, un geste qui écrit (§ 10). Le moteur n'importe pas la
+moteur/src/gestes/geste-appris.exemple.ts:16:/** Les rôles de ces gestes, déclarés comme la sécurité privée les déclare (PLAN-METIER-2.md M1, M3). */
+moteur/src/gestes/geste-appris.exemple.ts:19:    id: 'patron',
+moteur/src/gestes/geste-appris.exemple.ts:20:    enMots: 'le patron',
+moteur/src/gestes/geste-appris.exemple.ts:24:  { id: 'agent', enMots: "l'agent", identifie: true, tutoie: true, capacites: [] },
+moteur/src/gestes/geste-appris.exemple.ts:27:/** Les types de paramètre de ces gestes, déclarés comme la sécurité privée les déclare (PLAN-METIER-2.md M5). */
+moteur/src/gestes/geste-appris.exemple.ts:30:    nom: 'agent',
+moteur/src/gestes/geste-appris.exemple.ts:32:      'une personne nommée dans la demande, ou null pour celui qui parle ; liée par son identifiant (agents.id)',
+moteur/src/gestes/geste-appris.exemple.ts:39:const Reaffectation = z.strictObject({ vacation: z.string().min(1), agent: z.string().min(1) })
+moteur/src/gestes/geste-appris.exemple.ts:42:/** L'opération d'écriture de ces gestes, une copie d'essai de celle de la sécurité privée (PLAN-METIER-2.md M6). */
+moteur/src/gestes/geste-appris.exemple.ts:45:  enMots: 'réaffecter une vacation à un autre agent',
+moteur/src/gestes/geste-appris.exemple.ts:47:    vacation: z.string().describe('vacations.id'),
+moteur/src/gestes/geste-appris.exemple.ts:48:    agent: z.string().describe('agents.id de celui qui la prend'),
+moteur/src/gestes/geste-appris.exemple.ts:52:    const vacation = ligne[colonnes.vacation ?? '']
+moteur/src/gestes/geste-appris.exemple.ts:53:    const agent = ligne[colonnes.agent ?? '']
+moteur/src/gestes/geste-appris.exemple.ts:54:    if (typeof vacation !== 'string' || vacation === '') throw new Error('n’a pas de vacation')
+moteur/src/gestes/geste-appris.exemple.ts:55:    if (typeof agent !== 'string' || agent === '') {
+moteur/src/gestes/geste-appris.exemple.ts:56:      throw new SansCandidat(`aucun agent trouvé pour ${vacation}`)
+moteur/src/gestes/geste-appris.exemple.ts:58:    return { vacation, agent }
+moteur/src/gestes/geste-appris.exemple.ts:66:      .array(z.looseObject({ vacation: z.string().min(1), agent: z.string().min(1) }))
+moteur/src/gestes/geste-appris.exemple.ts:73:    return lu.success ? lu.data.map(({ vacation, agent }) => ({ vacation, agent })) : []
+moteur/src/gestes/geste-appris.exemple.ts:75:  egal: (a, b) => a.vacation === b.vacation && a.agent === b.agent,
+moteur/src/gestes/geste-appris.exemple.ts:76:  objet: (m) => m.vacation,
+moteur/src/gestes/geste-appris.exemple.ts:79:/** Le domaine de la sécurité privée, tel qu'elle le déclare, pour les métiers simulés des tests (PLAN-METIER-2.md § 3.5). */
+moteur/src/gestes/geste-appris.exemple.ts:81:  cadre: "l'outil de planning d'une entreprise de sécurité privée",
+moteur/src/gestes/geste-appris.exemple.ts:82:  objets: 'le planning et les agents',
+moteur/src/gestes/geste-appris.exemple.ts:84:    'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
+moteur/src/gestes/geste-appris.exemple.ts:85:  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
+moteur/src/gestes/geste-appris.exemple.ts:87:  rienASignaler: 'Aucune vacation contraire à une règle.',
+moteur/src/gestes/geste-appris.exemple.ts:100:  role: 'patron' as const,
+moteur/src/gestes/geste-appris.exemple.ts:101:  agent: null,
+moteur/src/gestes/geste-appris.exemple.ts:102:  params: { agent: 'A-2', du: '2026-10-05', au: '2026-10-11' },
+moteur/src/gestes/geste-appris.exemple.ts:109:  description: 'les heures faites par un agent sur une période',
+moteur/src/gestes/geste-appris.exemple.ts:110:  roles: ['patron', 'agent'],
+moteur/src/gestes/geste-appris.exemple.ts:112:    agent: { type: 'agent', description: "l'agent nommé dans la consigne" },
+moteur/src/gestes/geste-appris.exemple.ts:118:      sql: 'SELECT a.nom AS nom, SUM(v.heures) AS heures FROM agents a JOIN vacations v ON v.agent = a.id AND v.jour BETWEEN :du AND :au WHERE a.id = :agent GROUP BY a.id',
+moteur/src/gestes/geste-appris.exemple.ts:124:    vide: 'Aucune vacation sur cette période.',
+moteur/src/gestes/geste-appris.exemple.ts:133:  role: 'patron' as const,
+moteur/src/gestes/geste-appris.exemple.ts:134:  agent: null,
+moteur/src/gestes/geste-appris.exemple.ts:135:  params: { agent: 'A-1', date: '2026-10-13' },
+moteur/src/gestes/geste-appris.exemple.ts:138:  modifications: [{ vacation: 'V-03', agent: 'A-9' }],
+moteur/src/gestes/geste-appris.exemple.ts:143:  description: 'libérer un agent de ses vacations d’un jour, chacune donnée à un autre agent',
+moteur/src/gestes/geste-appris.exemple.ts:144:  roles: ['patron'],
+moteur/src/gestes/geste-appris.exemple.ts:146:    agent: { type: 'agent', description: "l'agent à libérer" },
+moteur/src/gestes/geste-appris.exemple.ts:152:      sql: "SELECT v.id AS vacation, 'A-9' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date",
+moteur/src/gestes/geste-appris.exemple.ts:155:  modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'vacation', agent: 'agent' } },
+moteur/src/gestes/geste-appris.exemple.ts:156:  reponse: { ligne: null, tableau: 'liberer', vide: 'Aucune vacation ce jour-là.' },
+moteur/src/gestes/geste-appris.ts:93:    /** Qui a fait la demande d'origine (null : un rôle non identifié). Les tests d'avant l'écrivent `agent` (PLAN-METIER-2.md M2) : la graphie lue n'est jamais réécrite, l'empreinte d'un geste ne change pas. */
+moteur/src/gestes/geste-appris.ts:95:    agent: z.string().nullable().optional(),
+moteur/src/gestes/geste-appris.ts:109:  .refine((t) => (t.personne === undefined) !== (t.agent === undefined), {
+moteur/src/gestes/geste-appris.ts:111:      'un test dit qui a fait la demande : personne (ou agent, la graphie d’avant), pas les deux',
+moteur/src/gestes/geste-appris.ts:116:export const personneDuTest = (t: Pick<TestAppris, 'personne' | 'agent'>): string | null =>
+moteur/src/gestes/geste-appris.ts:117:  t.personne !== undefined ? t.personne : (t.agent ?? null)
+moteur/src/conversation/roles.ts:7:// s'écrit `personne` ; l'ancienne graphie `agent` se lit encore (M2).
+moteur/src/conversation/roles.ts:55:/** Lit `{ role, personne?, agent? }` et rend `{ role, personne? }` : la lecture des deux graphies, partout. */
+moteur/src/conversation/roles.ts:60:    agent: z.string().min(1).optional(),
+moteur/src/conversation/roles.ts:62:  .refine((i) => i.personne === undefined || i.agent === undefined || i.personne === i.agent, {
+moteur/src/conversation/roles.ts:65:  .transform(({ role, personne, agent }): Identite => {
+moteur/src/conversation/roles.ts:66:    const id = personne ?? agent
+moteur/src/conversation/roles.ts:72:/** Le schéma zod de `personnes.yaml` pour ces rôles : un rôle non identifié est unique ; un rôle identifié exige `personne` (ancienne graphie `agent` acceptée et renommée). */
+```
+
+**Ce qui reste pour S2** (lot 1c, `PLAN-METIER-2.md` § 6) : partir de
+`metier-2/lot-1b` (`metier-2/lot-1c`) ; M8 (les évals chez le métier, les
+critères d'échappée génériques : ce qui videra `evals.ts` de la porte), M9
+(le chantier qui connaît le métier, `personnesFictives(dossierClient)` :
+`agence/fictif.ts`), M10 (l'interface depuis `config.yaml`, `exigerPatron`
+→ `exigerCapacite('administre')`, `tableau`), M11 (l'argent) ; la même
+mesure de la règle 3 (référence : les fichiers `reference-securite-*`) ; les
+portes 1 et 2 ; les captures de l'interface ; la relecture du lot 1 entier ;
+puis la fusion `--no-ff` de `metier-2/lot-1c` dans `main` et le push.
+
 ## Commandes
 
 ```sh
@@ -2083,7 +2465,7 @@ pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm registre:verifier     # couverture, codes cités, veille des textes en retard
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
 pnpm remplacer absence|valider|reponse|suivre --client <copie> …   # voir README
-pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]
+pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]   # --agent, l'ancienne graphie, est encore lu
 pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]   # avec modèle : fabrique, vérifie, mesure la traduction (≈ 0,15 $ par intention)
 pnpm evals traduire|echappee|promotion --client exemples/client-fictif [--seulement id,id]   # coûte, exige la clé
 pnpm evals gestes --client <dossier>   # rejeu des gestes appris sur leurs instantanés, sans modèle

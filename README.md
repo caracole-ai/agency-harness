@@ -146,9 +146,17 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   dans le journal) et
   `src/conversation/config.ts` (la section `conversation` de la config
   client : modèle, prix, effort, plafonds, seuil de promotion),
-  `src/conversation/actions.ts` (la forme d'un geste du quotidien, les rôles
-  `patron` et `agent`, les outils stricts envoyés au modèle et les deux
-  méta-outils), `src/conversation/traduire.ts` (une consigne → une action,
+  `src/conversation/actions.ts` (la forme d'un geste du quotidien, les outils
+  stricts envoyés au modèle et les deux méta-outils),
+  `src/conversation/roles.ts` (`PLAN-METIER-2.md` M1 à M3 : les rôles sont
+  déclarés par le métier, `RoleDeclare` et ses capacités `voit_tout`,
+  `designe_autrui`, `propose`, `ecrit`, `valide`, `administre` ; le moteur
+  demande une capacité, jamais un rôle par son nom ; `Identite { role,
+  personne }`, l'ancienne graphie `agent` se lit encore partout),
+  `src/conversation/noms.ts` (`Designable`, avec sa `sorte` : personne ou
+  organisation ; `m.noms(s)` rend tout nom qui ne part jamais au modèle),
+  `src/conversation/domaine.ts` (`PLAN-METIER-2.md` M7 : le domaine que disent
+  les prompts du moteur, déclaré par le métier), `src/conversation/traduire.ts` (une consigne → une action,
   une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
   modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
   niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
@@ -184,16 +192,21 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
   coup sous la clé d'accord. `src/gestes/` (la promotion, `PLAN-PROMOTION.md`
   lot 1) : un **geste appris** est une donnée, `gestes/<intention>.yaml` chez
-  le client (`geste-appris.ts` : schéma fermé, six types de paramètres, SQL
-  paramétré, gabarit rendu par le code, empreinte) ; il ne se charge que si
+  le client (`geste-appris.ts` : schéma fermé, SQL paramétré, gabarit rendu
+  par le code, empreinte ; les types de paramètre sont ceux du moteur, `date`,
+  `periode`, `nombre`, plus ceux que le métier déclare, `types-parametre.ts`,
+  `PLAN-METIER-2.md` M5) ; il ne se charge que si
   son empreinte est celle de la dernière ligne `geste appris` / `activé` du
   journal, sinon écarté, `refusé` et alerte G-01 (`charger.ts`, relu à chaque
   consigne) ; chargé, il devient une action comme les autres, exécutée sans
   modèle sur la copie du rôle (`action-apprise.ts`), et son intention sort
   de la liste des demandes nouvelles. Un geste appris qui **écrit**
-  (`PLAN-PROMOTION.md` § 10) porte `modifications { pour_chaque, reaffecter }`
-  (une réaffectation par ligne d'une de ses requêtes) et n'est ouvert qu'au
-  patron : exécuté sans modèle, il ne fait que calculer ses réaffectations,
+  (`PLAN-PROMOTION.md` § 10) porte `modifications { pour_chaque, operation,
+  colonnes }` (une modification par ligne d'une de ses requêtes, selon
+  l'opération que le métier déclare, `operation.ts`, `PLAN-METIER-2.md` M6 ;
+  la sécurité déclare `reaffecter`, l'ancienne forme `reaffecter { vacation,
+  agent }` se lit encore) et n'est ouvert qu'aux rôles qui ont la capacité
+  `ecrit` (le patron, pour la sécurité) : exécuté sans modèle, il ne fait que calculer ses réaffectations,
   que la conversation traite exactement comme une proposition d'échappée
   (contrôles du métier, « oui » du patron, « oui » de chaque agent, clé sur
   la liste exacte). `src/promotion/` (espace 3) compte les
@@ -356,7 +369,7 @@ pnpm remplacer reponse --client <copie> --demande D-V-17 --oui | --non
 pnpm remplacer suivre  --client <copie> --demande D-V-17
                          # un remplacement : proposition, validation du patron, accord de
                          # l'agent, écriture du planning ; sur une COPIE du client fictif
-pnpm parler --client <copie> --role patron|agent [--agent A-2] [--maintenant 2026-10-10T21:40] [--modele simule]
+pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maintenant 2026-10-10T21:40] [--modele simule]
             --consigne "Aïcha ne vient pas demain" [--conversation <C-…>]
             | --confirmer <empreinte> --conversation <C-…> --oui|--non
             | --interactif
