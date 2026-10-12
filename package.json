@@ -15,7 +15,7 @@
     "registre:verifier": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/registre.ts verifier",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm registre:verifier",
     "veiller": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/veiller.ts",
-    "remplacer": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx metiers/securite-privee/code/src/cli/remplacer.ts",
+    "remplacer": "pnpm --filter @harnais/securite-privee remplacer",
     "parler": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/parler.ts",
     "promotions": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/promotions.ts",
     "gestes": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/gestes.ts",

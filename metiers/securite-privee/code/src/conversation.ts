@@ -2,11 +2,13 @@ import { join } from 'node:path'
 import {
   type ConfigConversation,
   chargerConfig,
+  type DemandeTableau,
   echappee,
   FICHIER_CONFIG,
   type Identite,
   type Intention,
   Journal,
+  type Ligne,
   type MetierConversation,
   quiParle,
 } from '@harnais/moteur'
@@ -17,11 +19,25 @@ import { tablesPour } from './copie'
 import { DOMAINE } from './domaine'
 import { constatsNouveaux, decrireModifications, Modification } from './modifications'
 import { OPERATION_REAFFECTER } from './operation-reaffecter'
-import { ouvrirReaffectation, validerReaffectation } from './reaffectation'
-import { evaluer, ouvrir, type Session } from './remplacement'
+import {
+  ouvrirReaffectation,
+  reaffectation,
+  reaffectationFinie,
+  statutReaffectation,
+  validerReaffectation,
+} from './reaffectation'
+import {
+  evaluer,
+  ouvrir,
+  remplacementFini,
+  type Session,
+  statut,
+  TYPE_DELEGATION_PROPOSEE,
+  vacationDe,
+} from './remplacement'
 import { ROLES } from './roles'
 import { TYPES_PARAMETRE } from './types-parametre'
-import { ConfigSecurite, type PREFERENCES } from './veille'
+import { ConfigSecurite, decrire, type PREFERENCES } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
 // son journal seul), ses gestes, les personnes que chaque rôle peut désigner
@@ -114,6 +130,73 @@ function decrireProposition(s: Session, id: string, modifications: Modification[
         ]
       : []),
   ].join('\n')
+}
+
+// Ce que l'interface montre de la sécurité privée (PLAN-METIER-2.md § 3.6,
+// M10) : déplacé de `interface/src/app.ts` et `interface/public`.
+
+/** Des exemples de consignes, à cliquer : pour une démo, ils montrent ce que l'outil comprend. */
+const SUGGESTIONS: Record<string, string[]> = {
+  patron: [
+    'Aïcha ne vient pas demain',
+    'Montre-moi le planning de Karim cette semaine',
+    'Quelles échéances arrivent ?',
+    'Lance la veille',
+  ],
+  agent: ['Mon planning de la semaine', 'Mes titres', 'Je ne pourrai pas venir demain'],
+}
+
+/** Les conditions d'une délégation de remplacement, dites en mots (catalogue du métier, veille.ts) ; `{v}` est la valeur. */
+const CONDITIONS: Record<string, string> = {
+  connait_site: 'le remplaçant connaît déjà le site',
+  prevenu_avant_heures: "l'absence est signalée au moins {v} h avant",
+}
+
+const conditions = (c: Record<string, boolean | number> | undefined) =>
+  Object.entries(c ?? {}).map(([k, v]) => CONDITIONS[k]?.replace('{v}', String(v)) ?? `${k} : ${v}`)
+
+const nomDe = (s: Session, identite: Identite) =>
+  identite.role === 'patron' ? 'le patron' : s.ctx.agent(identite.personne ?? '').nom
+
+/** Les demandes de remplacement (D-) et de réaffectation (R-) qui ne sont pas finies, les plus récentes d'abord. */
+function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
+  const ids = [
+    ...new Set(
+      lignes
+        .map((l) => l.objet)
+        .filter((o): o is string => o !== null && (o.startsWith('D-') || o.startsWith('R-'))),
+    ),
+  ].reverse()
+  const derniere = (id: string) => s.journal.historique(id).at(-1)
+  /** La description, puis le motif de la dernière étape : la proposition, le message envoyé… */
+  const texte = (description: string, id: string) =>
+    [description, derniere(id)?.motif ?? ''].filter((t) => t !== '').join('\n')
+  return ids.flatMap((id): DemandeTableau[] => {
+    if (id.startsWith('D-')) {
+      const st = statut(s, id)
+      if (st === undefined || remplacementFini(s, id)) return []
+      return [
+        {
+          id,
+          sorte: 'remplacement',
+          statut: st,
+          texte: texte(decrire(s.ctx, vacationDe(s, id).id), id),
+          depuis: derniere(id)?.horodatage ?? '',
+        },
+      ]
+    }
+    const st = statutReaffectation(s, id)
+    if (st === undefined || reaffectationFinie(s, id)) return []
+    return [
+      {
+        id,
+        sorte: 'réaffectation',
+        statut: st,
+        texte: texte(decrireModifications(s, reaffectation(s, id).modifications), id),
+        depuis: derniere(id)?.horodatage ?? '',
+      },
+    ]
+  })
 }
 
 const configDe = (s: Pick<Session, 'dossier' | 'config'>): ConfigConversation => {
@@ -224,4 +307,35 @@ export const CONVERSATION: MetierConversation<Session> = {
       precisions,
     )
   },
+  tableau: (s, identite) => {
+    const lignes = s.journal.lire()
+    const nom = nomDe(s, identite)
+    return {
+      demandes: demandesEnCours(s, lignes),
+      // Les délégations proposées au patron, après un remplacement réussi.
+      enAttente: lignes
+        .filter((l) => l.type === TYPE_DELEGATION_PROPOSEE)
+        .reverse()
+        .map((l) => {
+          const d = l.donnees
+            ? (JSON.parse(l.donnees) as { conditions: Record<string, boolean | number> })
+            : undefined
+          return {
+            id: l.objet ?? '',
+            texte: `${l.motif ?? ''}\nConditions : ${conditions(d?.conditions).join(' ; ')}.`,
+          }
+        }),
+      nom,
+      textes: {
+        suggestions: SUGGESTIONS[identite.role] ?? [],
+        accueil:
+          identite.role === 'patron'
+            ? 'Bonjour. Dites-moi ce qui se passe, avec vos mots : une absence, un planning à voir, une échéance.\nCe qui touche au planning attend toujours votre oui.'
+            : `Bonjour ${nom.split(' ')[0]}. Vous pouvez voir votre planning, vos titres, déclarer une absence ou répondre à une demande.`,
+        vide: 'Une absence déclarée ouvre une demande de remplacement, suivie ici jusqu’au planning mis à jour.',
+        conditions: CONDITIONS,
+      },
+    }
+  },
+  registre: (s) => s.registre,
 }

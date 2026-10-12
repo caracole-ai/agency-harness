@@ -16,14 +16,15 @@ import {
   Journal,
   type Ligne,
   lireFichiersGestes,
+  metierDe,
   modeleSimule,
   type Reponse,
   type Scripte,
+  type Tableau,
   TYPE_ACCES_REFUSE,
   TYPE_CONFIRMATION_ATTENDUE,
   TYPE_GESTE_APPRIS,
 } from '@harnais/moteur'
-import { CONVERSATION } from '@harnais/securite-privee'
 import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
 
@@ -38,8 +39,11 @@ function copie(): string {
   return dossier
 }
 
+/** Le métier du client fictif, chargé depuis son `config.yaml` comme le fait le serveur (PLAN-METIER-2.md M10). */
+const METIER = await metierDe(copie())
+
 const app = (script: Scripte[] = [], dossier = copie()) =>
-  creerApp({ dossier, maintenant: MAINTENANT, modele: modeleSimule(script) })
+  creerApp({ dossier, maintenant: MAINTENANT, modele: modeleSimule(script), metier: METIER })
 
 const poster = (a: ReturnType<typeof app>, route: string, corps: unknown) =>
   a.request(route, {
@@ -118,6 +122,59 @@ describe('POST /api/etat', async () => {
   })
 })
 
+describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () => {
+  it('/api/roles : les rôles déclarés, avant toute porte', async () => {
+    const r = await poster(app(), '/api/roles', {})
+    expect(r.status).toBe(200)
+    expect(await r.json()).toMatchObject([
+      { id: 'patron', enMots: 'le patron', identifie: false },
+      { id: 'agent', enMots: "l'agent", identifie: true },
+    ])
+  })
+  it('/api/tableau : son nom, son accueil et ses suggestions à chacun ; une identité inconnue reçoit 403', async () => {
+    const a = app()
+    const patron = (await (await lire(a, '/api/tableau')).json()) as Pick<Tableau, 'nom' | 'textes'>
+    expect(patron.nom).toBe('le patron')
+    expect(patron.textes.suggestions).toContain('Lance la veille')
+    expect(patron.textes.accueil).toMatch(/^Bonjour\. Dites-moi ce qui se passe/)
+    const r = await lire(a, '/api/tableau', { role: 'agent', agent: 'A-2' })
+    expect(r.status).toBe(200)
+    const julien = (await r.json()) as Pick<Tableau, 'nom' | 'textes'>
+    expect(julien.nom).toBe('Julien Lefèvre')
+    expect(julien.textes.accueil).toMatch(/^Bonjour Julien\. /)
+    expect(julien.textes.suggestions).toContain('Mes titres')
+    expect((await lire(a, '/api/tableau', { role: 'agent', agent: 'A-99' })).status).toBe(403)
+  })
+  it('/api/etat : une délégation proposée est en attente, avec ses conditions en mots', async () => {
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire([
+      {
+        type: 'délégation proposée',
+        client: 'client fictif (sécurité privée)',
+        objet: 'D-V-17',
+        motif: 'remplacement réussi : le rendre automatique dans ces conditions ?',
+        donnees: {
+          action: 'remplacement',
+          conditions: { connait_site: true, prevenu_avant_heures: 10 },
+        },
+      },
+    ])
+    j.fermer()
+    const lu = (await (await lire(app([], dossier), '/api/etat')).json()) as Pick<
+      Tableau,
+      'enAttente'
+    >
+    expect(lu.enAttente).toEqual([
+      {
+        id: 'D-V-17',
+        texte:
+          "remplacement réussi : le rendre automatique dans ces conditions ?\nConditions : le remplaçant connaît déjà le site ; l'absence est signalée au moins 10 h avant.",
+      },
+    ])
+  })
+})
+
 describe('les pages', () => {
   it('sert la page et ses fichiers statiques', async () => {
     const a = app()
@@ -133,7 +190,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
   it('une identité absente du registre : 403, le dossier jamais ouvert, le refus au journal', async () => {
     const dossier = copie()
     const a = app([], dossier)
-    const ouvrir = vi.spyOn(CONVERSATION, 'ouvrir')
+    const ouvrir = vi.spyOn(METIER, 'ouvrir')
     try {
       const r = await poster(a, '/api/consigne', {
         identite: { role: 'agent', agent: 'A-99' },
@@ -458,7 +515,7 @@ describe('un parcours simulé : absence, validation, oui', async () => {
       {
         id: 'D-V-17',
         statut: "demandée à l'agent",
-        attendAgents: [{ agent: 'A-2', nom: 'Julien Lefèvre' }],
+        texte: expect.stringContaining('Julien, peux-tu remplacer'),
       },
     ])
   })
