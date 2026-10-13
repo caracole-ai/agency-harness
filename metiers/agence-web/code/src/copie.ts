@@ -416,7 +416,24 @@ export function projetsDe(s: Session, personne: string): Set<string> {
   return projets
 }
 
+/**
+ * Le temps se saisit en heures, les jours se vendent en jours : la valeur
+ * d'une journée est celle du client (`seuils.heures_par_jour`), dite au
+ * modèle avec la table du temps, sinon il devrait la deviner.
+ */
+const avecHeuresParJour = (s: Session, t: TableCopie): TableCopie =>
+  t.nom === 'temps'
+    ? {
+        ...t,
+        description: `${t.description} ; une journée vendue vaut ${s.config.seuils.heures_par_jour} heures saisies`,
+      }
+    : t
+
 export function tablesPour(s: Session, identite: Identite): TableCopie[] {
+  return tablesDuRole(s, identite).map((t) => avecHeuresParJour(s, t))
+}
+
+function tablesDuRole(s: Session, identite: Identite): TableCopie[] {
   const vue = vueDe(identite)
   if (vue === 'tout') return NOMS_TABLES.map((t) => table(t, lignesDe(s, t)))
   if (vue === 'commerce') {

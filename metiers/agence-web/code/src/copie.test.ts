@@ -45,6 +45,15 @@ describe('tout : le dirigeant et la PO', () => {
       expect(table(tables, 'personnes').lignes).toHaveLength(6)
     },
   )
+  it.each([DIRIGEANT, PO, DEVELOPPEUR])(
+    '$role : le temps dit combien d’heures vaut une journée vendue (la valeur du client)',
+    (identite) => {
+      // exemples/agence-web-fictive/config.yaml : seuils.heures_par_jour = 7
+      expect(table(tablesPour(s, identite), 'temps').description).toContain(
+        'une journée vendue vaut 7 heures saisies',
+      )
+    },
+  )
   it('chaque montant est en euros à deux décimales', () => {
     const tables = tablesPour(s, DIRIGEANT)
     const eur = tables.flatMap((t) => t.colonnes).filter((c) => c.nom.endsWith('_eur'))
