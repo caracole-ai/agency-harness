@@ -63,7 +63,7 @@ chantier:
   outils_lecture: ["Read(./**)", "Glob(./**)", "Grep(./**)", "Bash(git diff main...HEAD)", "Bash(git log --oneline main..HEAD)", "Bash(git status)"]
   # Le client des évals de traduction que le code rejoue dans l'arbre (G1, condition 4), par métier,
   # relatif à l'arbre ; un métier absent : la condition 4 refuse (PLAN-METIER-2.md M9).
-  evals_clients: { securite-privee: exemples/client-fictif }
+  evals_clients: { securite-privee: exemples/client-fictif, agence-web: exemples/agence-web-fictive }
   # `${metier}` : le métier de la mission, résolu avant la garde ; un chantier ne touche que son métier.
   chemins_autorises: ["metiers/${metier}/code/src/**", "metiers/${metier}/evals/consignes.yaml", "metiers/${metier}/evals/gestes.yaml", "metiers/${metier}/fiche.md", "memoire/**"]
   # Jamais, même dans la bande : les contrôles des règles (`controles.ts`, les échéances), et l'accès
