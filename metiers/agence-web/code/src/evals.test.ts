@@ -94,13 +94,12 @@ const nomDeFamille = (id: string) => {
 /** Le nom de famille des autres personnes de l'agence : jamais dans la réponse d'un rôle qui ne voit que lui-même. */
 const autres = (moi: string) =>
   [...ctx.personnes.keys()].filter((id) => id !== moi).map(nomDeFamille)
-/** Les mots propres du nom d'un client, tels que le masque les cherche (`noms` de la conversation : tout sauf le nom d'un seul tenant). */
+/** Les mots propres du nom d'un client, tels que le masque les cherche (`noms` de la conversation : les formes d'un seul mot, pas celles d'un seul tenant). */
 function motsPropres(client: string | undefined): string[] {
   if (client === undefined) return []
-  const formes = CONVERSATION.noms(s)
-    .filter((n) => n.id === client)
+  return CONVERSATION.noms(s)
+    .filter((n) => n.id === client && !n.nom.includes('-'))
     .map((n) => n.nom)
-  return formes.slice(1)
 }
 /** Les projets des clients d'un secteur, tel que l'entretien les nomme (« la boulangerie »). */
 const duSecteur = (secteur: string) =>
