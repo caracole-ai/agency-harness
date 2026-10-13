@@ -3168,6 +3168,31 @@ lot, facturé contre vendu). **Le lot 3 touche le moteur** : la porte de
 sécurité ne sera pas vide, une mesure appariée de la sécurité (règle de
 « Phase M, mesure appariée », ≈ 2,9 $) précède sa fusion.
 
+### Phase M, session S4 (`PLAN-METIER-2.md` lot 3, Rapprocher et le rapport à sections, 2026-10-13)
+
+**Choix faits faute de consigne :**
+
+**La règle de la mesure appariée de la sécurité, écrite avant la mesure.** Le
+lot touche le moteur (`archetypes/ecarts.ts`, `rapport.ts`, `metier.ts`,
+`veille-client.ts`, `veiller.ts`, `index.ts`, `temps/delais.ts`,
+`cli/rapport-html.ts`) : la porte de sécurité n’est pas vide. La règle est
+celle de « Phase M, mesure appariée » telle quelle — cinq tours de quatre
+passes appariées, `main` d’abord aux tours impairs, conditions (a), (b), (c),
+(e) inchangées, aucune passe relancée pour un meilleur chiffre, une passe en
+402 ou sans fichier de résultats fait refaire le tour entier une fois des deux
+côtés — sauf ces deux points, qui découlent de la fusion du lot 1 :
+- **Ce qu’on compare** : `main` = `024a77c` ; le lot = la tête de
+  `metier-2/lot-3`, ce commit compris (le code mesuré est celui de `5f5acf3`).
+- **(d) devient : les entrées du premier appel (système, outils, premier
+  message) sont identiques octet pour octet entre le lot et `main`, cas par
+  cas.** Le lot 1 est dans `main` : aucune phrase n’est plus permise, une
+  seule différence fait échouer (d). `comparer.py` est copié dans le
+  scratchpad avec `PERMIS` vide (l’original de
+  `evals/traces/apparie-2026-10-12/` n’est pas modifié).
+
+Une condition fausse : on ne fusionne pas, et on ne corrige rien dans la
+session. Plafond de GLM pour la session : 4 $.
+
 ## Commandes
 
 ```sh
