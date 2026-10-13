@@ -7,6 +7,24 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-13 (nuit) : session S6 faite (les trois défauts de « Avant S6 »,
+  avant la phase E) ; mesure appariée de la sécurité, les cinq conditions
+  vraies ; fusionnée dans `main` et poussée.** `general/avant-e` : l'entrée
+  de l'interface (`/api/entree` : l'agence web s'ouvre sous M-01), le
+  contrôle des chiffres (pourcentage d'un ratio, `11 670.75`, la description
+  de la copie comme source), le test R10 (un mot seul en minuscules n'est pas
+  un nom ; le diagnostic de S5 était faux). `pnpm check` vert : moteur 630,
+  interface 25, sécurité 135, agence web 263. Détail : « Avant la phase E,
+  session S6 ».
+  - Mesure appariée (GLM-5.3, cinq tours) : traduction `main` 58,40 / lot
+    58,80 ; échappée 17,40 / 17,00 ; gestes 6/6 ; entrées du premier appel
+    identiques octet pour octet (78/78). 2,78 $.
+  - Une passe d'échappée de l'agence sur le lot (une passe, pas une
+    mesure) : 17/24 (13 et 13 en S5) ; le contrôle retire 1 résumé (4 et 4
+    en S5) ; E-20 vert, E-04 et E-12 rouges par du contenu manquant (E1).
+    0,34 $. GLM de la session : ≈ 3,13 $ avec les sondes.
+  - **Suivante : la phase E** (`PLAN-GENERAL.md` § 3), sur l'abonnement.
+
 - **2026-10-13 (soir) : phase M, session S5 faite (lot 4 de `PLAN-METIER-2.md` :
   la mesure de l'agence web) ; fusionnée dans `main` et poussée.** Le
   critère 2 est compté (tableau sous « Phase M, session S5 » et dans
@@ -3571,16 +3589,14 @@ présente aussi comme « Interface du patron » (`interface/src/serveur.ts:75`).
 - Deux évals lancées en même temps sur la même copie source : sans effet
   (chacune copie le client).
 
-**Avant S6** : rien d'obligatoire avant d'autres phases ; à corriger dans une
-session qui touche le moteur ou l'interface (mesure appariée de la sécurité) :
-- **L'interface sur un métier sans rôle anonyme** : une entrée par une personne
-  de `personnes.yaml` (ou le rôle `administre` s'il est unique), et le nom du
-  serveur sans « patron ».
-- **Le contrôle des chiffres de l'échappée** rejette des réponses justes : un
-  ratio écrit en pourcentage (1,50 → 150 %), `11 670.75`, et les « 7 heures »
-  de la description d'une table (pas comptées comme une source).
-- **Le test R10 de la mémoire** prend un mot courant (« petite ») pour un nom de
-  personne : toute nuit casse après une mission estimée « petite ».
+**Avant S6** (les trois premiers points faits en S6, « Avant la phase E,
+session S6 ») ; le reste, à corriger dans une session qui touche le moteur ou
+l'interface (mesure appariée de la sécurité) :
+- ~~L'interface sur un métier sans rôle anonyme~~ : `/api/entree` (S6).
+- ~~Le contrôle des chiffres de l'échappée~~ : pourcentage, `11 670.75`, la
+  description de la copie (S6).
+- ~~Le test R10 de la mémoire~~ : le mot fautif était « un petit assistant »,
+  pas « petite » (S6).
 - `MAX_TOKENS_TRADUIRE = 4096` en dur (`moteur/src/conversation/traduire.ts:55`) :
   une troncature (P16-1), deux frôlées ; contraire à la règle « aucun plafond par
   appel ».
@@ -3642,6 +3658,33 @@ compare** : `main` = `6777455` ; le lot = la tête de `general/avant-e`, ce
 commit compris (le code mesuré est celui de `d392f6d`). Une condition
 fausse : on ne fusionne pas, et on ne corrige rien dans la session. Plafond
 de GLM pour la session : 3,5 $.
+
+**La mesure** (`main` = `6777455`, lot = `c01040e`, 13/10 19:18 → 20:21,
+crédit sondé avant, 200 ; arbres détachés dans le scratchpad, installés hors
+ligne ; `evals/traces/apparie-2026-10-13-s6/` : script, manifeste,
+`comparer.py`, traces) :
+
+| | `main` | lot |
+|---|---|---|
+| traduction (60), par tour | 57, 59, 60, 59, 57 (58,40) | 59, 60, 59, 57, 59 (58,80) |
+| échappée (18), par tour | 17, 16, 18, 18, 18 (17,40) | 18, 18, 17, 16, 16 (17,00) |
+| gestes | 6/6 | 6/6 |
+| coût | 1,32 $ | 1,46 $ |
+
+(a) vraie : le plus haut écart est +2 (E-07, deux troncatures du modèle) ;
+(b) 58,80 ≥ 56,90 et 17,00 ≥ 16,40 ; (c) R-2 seule en traduction, aucune
+fuite en échappée, des deux côtés ; (d) 60/60 et 18/18 entrées identiques
+octet pour octet ; (e) gestes 6/6, `pnpm check` vert sur le lot. E-14 est
+retiré par le contrôle 2 fois sur le lot, 1 sur `main` : le lot n'accepte que
+plus de nombres qu'avant, jamais moins, l'écart est le tirage du modèle.
+Résultats : `evals/resultats/apparie-2026-10-13-s6-*`.
+
+**L'agence, une passe sur le lot** (`2026-10-13-2023-agence-web-echappee.md`) :
+17/24 ; un seul résumé retiré (E-18, chiffre calculé de tête, E3) contre 4 à
+chaque passe de S5 ; E-20 vert ; E-04 (« 12 ») et E-12 (les factures) rouges
+par du contenu manquant. Les traces GLM de S5 n'existent plus (perdues avec
+l'arbre `lot-4` du scratchpad) : les trois réponses retirées à tort sont
+reprises mot pour mot dans `reponse.test.ts` et `echappee.test.ts`.
 
 ## Commandes
 
