@@ -343,7 +343,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     (consommé / vendu par forfait et par lot, heures TMA du mois, facturé
     contre vendu : `semantique.ts`) et deux sections du rapport (« Écarts »,
     « À suivre, hors des règles vérifiées »), la copie par capacité et ses
-    huit gestes (`actions.ts`) ; rien ne s'écrit chez le client ;
+    huit gestes (`actions.ts`), ses évals (`metiers/agence-web/evals/`, 96
+    consignes, 24 échappées, 3 gestes appris) ; rien ne s'écrit chez le
+    client ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
   - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel

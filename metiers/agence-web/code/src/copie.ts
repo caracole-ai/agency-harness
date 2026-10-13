@@ -1,4 +1,4 @@
-import type { ColonneCopie, Identite, TableCopie } from '@harnais/moteur'
+import { type ColonneCopie, type Identite, type TableCopie, Temporal } from '@harnais/moteur'
 import type { Session } from './conversation'
 import {
   colonnes,
@@ -15,14 +15,17 @@ import {
   TYPES_TICKET,
 } from './modele'
 import { vueDe } from './roles'
+import { consommeVendu, heuresTma } from './semantique'
 
 // Les tables de la copie de l'échappée, à l'échelle du rôle (PLAN-METIER-2.md
 // § 7.4 ; entretien § 10) : trois niveaux de vue. Tout (`voit_tout`) : les
-// vingt tables. Le commerce : clients, contacts, projets sans la PO, lots sans
-// les jours, devis, avenants, factures, paiements, relances, contrats TMA,
-// domaines ; jamais le temps, jamais une personne de l'agence (ni son coût,
+// vingt tables. Le commerce : clients, contacts, projets sans la PO et avec
+// leur avancement, lots sans les jours, devis, avenants, factures, paiements,
+// relances, contrats TMA, domaines, et les heures TMA consommées par mois ;
+// jamais le temps par personne, jamais une personne de l'agence (ni son coût,
 // ni son TJM). Soi : ses tickets, son temps, les projets de ses tickets, ses
-// accès, les dépôts de ces projets ; jamais un montant. C'est la copie qui ne
+// accès, les dépôts, les sauvegardes et les versions de ces projets (entretien
+// § 12, phrases 27 et 31) ; jamais un montant. C'est la copie qui ne
 // contient que ses données, pas un filtre sur la requête (PLAN-ESPACES.md
 // § 6.2, D4). Les colonnes qui portent un nom sont masquées par le moteur :
 // l'identifiant tient lieu de nom (PLAN-PSEUDONYMES.md S2).
@@ -328,11 +331,80 @@ function table<T extends Table>(t: T, lignes: Tables[T], sans: string[] = []): T
   }
 }
 
-/** Les tables du commerce, et les colonnes qu'il ne voit pas (§ 7.4). */
-const COMMERCE: { table: Table; sans?: string[] }[] = [
+/** Une colonne que les données n'ont pas : le code la calcule pour chaque ligne, depuis une notion de `semantique.ts`. */
+interface Calculee {
+  colonne: ColonneCopie
+  valeur: (s: Session, ligne: Record<string, Cellule>) => Cellule
+}
+
+/**
+ * L'avancement d'un projet, que l'entretien § 10 donne à la commerciale (« en
+ * % ») sans le temps par personne : le consommé sur le vendu du projet.
+ */
+const AVANCEMENT: Calculee = {
+  colonne: {
+    nom: 'avancement',
+    ...reel(
+      'l’avancement : les jours consommés sur les jours vendus du projet, en fraction (0.5 pour 50 %) ; null sans jours vendus, ou quand le projet commence avant le premier temps saisi de l’export',
+    ),
+  },
+  valeur: (s, p) => {
+    // un projet commencé avant le premier temps de l'export (ou sans début connu) a des heures qui manquent
+    const debut = s.ctx.projets.get(String(p.id))?.debut
+    const premierTemps = s.ctx.temps.reduce<string | undefined>(
+      (min, t) => (min === undefined || t.date < min ? t.date : min),
+      undefined,
+    )
+    if (debut === undefined || premierTemps === undefined || debut < premierTemps) return null
+    return consommeVendu(s.ctx, String(p.id), s.config.seuils.heures_par_jour).part ?? null
+  },
+}
+
+/** Une table de la copie, et sa colonne calculée s'il y en a une. */
+function avec(s: Session, t: TableCopie, plus: Calculee | undefined): TableCopie {
+  if (plus === undefined) return t
+  return {
+    ...t,
+    colonnes: [...t.colonnes, plus.colonne],
+    lignes: t.lignes.map((l) => ({ ...l, [plus.colonne.nom]: plus.valeur(s, l) })),
+  }
+}
+
+/**
+ * Les heures consommées de chaque contrat TMA, mois par mois (entretien § 10 :
+ * la commerciale les voit, pas le temps par personne) : `heuresTma` sur chaque
+ * mois où du temps est saisi sur le contrat.
+ */
+function heuresTmaParMois(s: Session): TableCopie {
+  const lignes = [...s.ctx.contrats_tma.keys()].flatMap((contrat) => {
+    const mois = new Set(
+      s.ctx.temps
+        .filter((t) => t.projet === contrat)
+        .map((t) => Temporal.PlainDate.from(t.date).toPlainYearMonth().toString()),
+    )
+    return [...mois].sort().map((m) => ({
+      contrat,
+      mois: m,
+      heures: heuresTma(s.ctx, contrat, Temporal.PlainYearMonth.from(m)),
+    }))
+  })
+  return {
+    nom: 'heures_tma_par_mois',
+    description: `les heures consommées de chaque contrat de maintenance, par mois, sans le détail par personne ; un mois absent : aucune heure saisie. ${INCONNU}`,
+    colonnes: [
+      { nom: 'contrat', ...texte('le contrat de maintenance (contrats_tma.id)') },
+      { nom: 'mois', ...texte('le mois, AAAA-MM') },
+      { nom: 'heures', ...reel('les heures saisies sur le contrat ce mois') },
+    ],
+    lignes,
+  }
+}
+
+/** Les tables du commerce, les colonnes qu'il ne voit pas (§ 7.4), et celles que le code calcule pour lui (entretien § 10). */
+const COMMERCE: { table: Table; sans?: string[]; plus?: Calculee }[] = [
   { table: 'clients' },
   { table: 'contacts' },
-  { table: 'projets', sans: ['po'] },
+  { table: 'projets', sans: ['po'], plus: AVANCEMENT },
   { table: 'lots', sans: ['jours_vendus'] },
   { table: 'devis' },
   { table: 'avenants' },
@@ -352,10 +424,32 @@ export function projetsDe(s: Session, personne: string): Set<string> {
   return projets
 }
 
+/**
+ * Le temps se saisit en heures, les jours se vendent en jours : la valeur
+ * d'une journée est celle du client (`seuils.heures_par_jour`), dite au
+ * modèle avec la table du temps, sinon il devrait la deviner.
+ */
+const avecHeuresParJour = (s: Session, t: TableCopie): TableCopie =>
+  t.nom === 'temps'
+    ? {
+        ...t,
+        description: `${t.description} ; une journée vendue vaut ${s.config.seuils.heures_par_jour} heures saisies`,
+      }
+    : t
+
 export function tablesPour(s: Session, identite: Identite): TableCopie[] {
+  return tablesDuRole(s, identite).map((t) => avecHeuresParJour(s, t))
+}
+
+function tablesDuRole(s: Session, identite: Identite): TableCopie[] {
   const vue = vueDe(identite)
   if (vue === 'tout') return NOMS_TABLES.map((t) => table(t, lignesDe(s, t)))
-  if (vue === 'commerce') return COMMERCE.map((c) => table(c.table, lignesDe(s, c.table), c.sans))
+  if (vue === 'commerce') {
+    return [
+      ...COMMERCE.map((c) => avec(s, table(c.table, lignesDe(s, c.table), c.sans), c.plus)),
+      heuresTmaParMois(s),
+    ]
+  }
   // Soi-même : sans identifiant, rien (échec fermé).
   const moi = identite.personne
   const siens = moi === undefined ? new Set<string>() : projetsDe(s, moi)
@@ -379,6 +473,14 @@ export function tablesPour(s: Session, identite: Identite): TableCopie[] {
     table(
       'depots',
       lignesDe(s, 'depots').filter((d) => siens.has(d.projet)),
+    ),
+    table(
+      'sauvegardes',
+      lignesDe(s, 'sauvegardes').filter((x) => siens.has(x.projet)),
+    ),
+    table(
+      'versions',
+      lignesDe(s, 'versions').filter((v) => siens.has(v.projet)),
     ),
   ]
 }

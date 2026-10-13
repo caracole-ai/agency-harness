@@ -7,6 +7,25 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-13 (soir) : phase M, session S5 faite (lot 4 de `PLAN-METIER-2.md` :
+  la mesure de l'agence web) ; fusionnée dans `main` et poussée.** Le
+  critère 2 est compté (tableau sous « Phase M, session S5 » et dans
+  `memoire/MESURES.md`) : sur **17** demandes hors catalogue (pas 23), 5
+  répondues juste par l'échappée aux deux passes (dont 2 cas qui ne peuvent
+  presque pas échouer), 9 portées par une promotion proposée (fabrication
+  **non lancée** : budget GLM), 3 désignées par la ronde, **0 codée** (un
+  chantier tenté trois fois, refusé). `pnpm check` vert : moteur 626, agence
+  web 263, sécurité 135, interface 24.
+  - Évals GLM de l'agence (deux passes, fuite 0) : traduction 88 et 92/96,
+    échappée 13 et 13/24, gestes 9/9. Première analyse d'erreurs :
+    `evals/erreurs-2026-10-13.md` (8 modes, non relue par un humain).
+  - **L'interface ne s'ouvre pas sur l'agence web** (aucun rôle sans
+    identifiant) ; **le contrôle des chiffres rejette des réponses justes** ;
+    **le test R10 de la mémoire prend « petite » pour un nom** : trois défauts
+    du moteur ou de l'interface, à corriger dans une session qui touche le
+    moteur (mesure appariée). Détail : « Avant S6 ».
+  - Porte de sécurité vide (ni moteur, ni interface, ni sécurité) : pas de
+    mesure appariée. GLM : 1,94 $. Abonnement : ≈ 10,5 $ estimés par le binaire.
 - **2026-10-13 : phase M, session S4 faite (lot 3 de `PLAN-METIER-2.md` :
   Rapprocher et le rapport à sections) ; mesure appariée de la sécurité, les
   cinq conditions vraies ; fusionnée dans `main` et poussée.**
@@ -3362,6 +3381,226 @@ ceux de S3 (le masque des mots courants, la copie de la commerciale,
 - `DureeSchema` accepte la fin de mois partout où il est lu : une config de la
   sécurité qui en écrirait une dans une durée passée à `echeance` ou
   `auPlusTardAvant` lèverait en pleine veille (aucune ne le fait).
+
+### Phase M, session S5 (`PLAN-METIER-2.md` lot 4, la mesure de l'agence web, 2026-10-13)
+
+**Branches et commits** : `metier-2/lot-4` de `main` (`4d914a1`). Sous-agent
+du lot 4a (`6555c7b`) et sous-agent N (les évals, sur `metier-2/lot-4-n`,
+repris par `cherry-pick` : `7cfcdf2`) en parallèle ; le raccord des deux
+(`3bfd273`) ; les corrections de la relecture des évals, **avant toute
+passe** (`5dc3b48`, la tête mesurée) ; `agence.yaml` (`31f61a6`) ; les
+corrections de la relecture indépendante (`326f9d4`) ; résultats et analyse
+d'erreurs (`54ba366`) ; cette doc ; fusion `--no-ff`.
+
+**Choix faits faute de consigne :**
+- **Le lot 4a avant la mesure** (consigne de S5) : trois points de la relecture
+  de S3 qui faussaient la mesure, hors de la liste du § 9 (règle 5 : ils
+  tracent à M4 et au § 7.4, pas à M18). Le masque : un mot propre d'un nom de
+  client ne se masque pas seul s'il est, **en entier** et normalisé, la valeur
+  d'un secteur, d'une fonction ou d'un composant (« Industrie », secteur de
+  CLI-08, est le seul mot ainsi démasqué sur le client fictif) ; le nom tel
+  qu'on le dit (« Fournil des Saules ») se masque d'un seul tenant. Nord,
+  Rive, Lune restent masqués seuls (rien dans les données ne les dit courants ;
+  les démasquer demanderait un dictionnaire). La copie de la commerciale gagne
+  `projets.avancement` (null sans vendu, ou quand le projet commence avant le
+  premier temps de l'export) et `heures_tma_par_mois` ; graphiste et
+  développeur gagnent `sauvegardes` et `versions` de leurs projets (phrases 27
+  et 31 ; § 10 les regroupe en « soi » : une lecture). `brouillon_relance`
+  refuse jusqu'au jour de l'échéance inclus (l'exécution a la date, la
+  reformulation non : elle dit « à partir du … ») ; échéance inconnue : refus
+  dès la reformulation.
+- **Une relecture des évals avant la première passe**, en plus de celle de la
+  fin : une étiquette corrigée après la mesure serait soupçonnée d'avoir été
+  ajustée à la sortie du modèle. Corrigé avant toute passe : la table du temps
+  dit au modèle combien d'heures vaut une journée vendue
+  (`seuils.heures_par_jour`, `copie.ts`) ; E-27 n'exige plus le nom de celui
+  qui demande ; EP-16 et EP-18 ne portent que le lot piégé et le jeton.
+- **17 demandes hors catalogue, pas 23** : sur les 32 phrases (31 et la 20 bis),
+  10 relèvent des huit gestes et 5 sont des refus. Le « 23 » de M14 était 31 −
+  8. Le critère 2 se compte sur 17.
+- **`gestes.yaml` porte trois gestes appris, pas « les huit »** : le lanceur ne
+  rejoue que des gestes appris, et un geste appris ne peut pas porter
+  l'identifiant d'un geste codé. **`rondes.yaml` n'existe pas** : un fichier
+  vide casse `moteur/src/evals/evals.test.ts:524` (trois cas exigés).
+- **Le journal du critère 2** : les évals jouent chaque cas dans une copie
+  jetable, il ne reste aucun journal. Les 51 consignes « nouvelle » de
+  `consignes.yaml` (17 phrases × 3 formes) sont jouées par `pnpm parler
+  --consigne` sur une seule copie, `--maintenant 2026-10-12T10:00`.
+- **`pnpm promotions` sans modèle seulement** : sept intentions atteignent le
+  seuil (3 en 30 jours) ; pour l'agence, une fabrication coûte ≈ 0,45 $ (une
+  passe de traduction de 96 cas y entre, ≈ 0,30 $) : ≈ 3,2 $ de plus, au-delà
+  du plafond de 3 $. La commande ne se borne pas à une intention. Les dossiers
+  sont écrits (`--sans-modele`), aucun geste n'est fabriqué : la colonne
+  « promues » du critère 2 n'est pas mesurée.
+- **`agence.yaml` déclare `evals_clients.agence-web`** (`31f61a6`, commis) :
+  sans lui, la condition 4 du chantier refuse tout chantier de l'agence. Le
+  `depot_nuit` du critère a pointé un clone du scratchpad (origin nu local),
+  puis a été restauré : `agence.yaml` ne diffère de `main` que par cette ligne.
+- **Le clone de la nuit avancé à la main pour la troisième tentative** : `main`
+  du clone reçoit `31f61a6` (ce qu'aurait une vraie nuit après la fusion), et
+  `main` est fusionné dans la branche du chantier. Le code du modèle n'est pas
+  touché. Après trois tentatives, on s'arrête : le refus est l'issue.
+- **L'interface n'est pas corrigée** : la corriger touche `interface/src`, donc
+  une mesure appariée hors budget.
+- **`error-discovery`** : phase 1 et codage ouvert seulement, par un
+  sous-agent ; sa revue humaine n'a pas eu lieu.
+
+**Relecture des évals avant la mesure** (sous-agent, lecture seule) : valeurs
+recalculées depuis les CSV par un script à elle, toutes justes ; quatre points
+corrigés (plus haut) ; notés : P29 et P11 comptés comme refus du modèle quand
+c'est le code qui refuse ; 7 cas sur 24 ne peuvent presque pas échouer (ER-13,
+ER-20B, ER-11, ER-24, ER-29, E-22, E-30) ; E-05 exige le nom du dirigeant qui
+demande ; « le site e-commerce » = CLI-11, une lecture.
+
+**Relecture indépendante du lot** (sous-agent, lecture seule) : **un
+bloquant**, corrigé dans `326f9d4` avec son test rouge : le masque du lot 4a
+démasquait un mot propre dès qu'il apparaissait *quelque part* dans une
+fonction, un secteur ou un composant, qui sont du texte libre ; « président,
+ancien de Hexalis » laissait partir « Hexalis », et `fuites` (même liste) ne
+le voyait pas. Corrigé aussi : l'avancement faux des projets plus anciens que
+l'export ; le commentaire d'E-27 (étiquette inchangée). Vérifié sans défaut :
+le diff ne touche que `metiers/agence-web/` et `agence.yaml` ; le dernier
+commit des évals (`5dc3b48`) précède la première passe (15:39). Notés : voir
+« Avant S6 ».
+
+**Les portes**, sur `326f9d4` :
+
+```
+$ git diff --stat main...metier-2/lot-4 -- moteur/src interface/src metiers/securite-privee ':(exclude)*.test.ts' ':(exclude)*.test.fixture.ts'
+(vide)
+$ grep -rniE "jira|notion|confluence|github" moteur/src
+(vide)
+$ grep -rn "securite-privee" moteur/src interface/src --include='*.ts' | grep -v '\.test\.' | grep -v fictif ; grep -n "harnais/securite-privee" interface/package.json
+(vide)
+$ grep -rniE "sécurité privée|vacation|carte pro|patron|agents?" moteur/src --include='*.ts' | grep -v '\.test\.' | grep -v "exemple :" | wc -l
+36 (36 sur main : inchangé)
+```
+
+Porte de sécurité vide : **pas de mesure appariée**.
+
+**Les passes GLM** (GLM-5.3 via GMI, copie d'`exemples/agence-web-fictive`
+prise dans l'arbre du lot, `5dc3b48`, 13/10 15:39 → 16:10 ; crédit sondé avant
+par un `/v1/messages` minuscule, 200) :
+
+| | passe 1539 | passe 1556 |
+|---|---|---|
+| traduction (96) | 88 (0,3202 $) | 92 (0,2755 $) |
+| échappée (24) | 13 (0,2888 $) | 13 (0,3077 $) |
+| gestes (9, sans modèle) | 9 | — |
+
+Fuite 0 sur chaque passe. Rouges stables en traduction : P14 (« les jours
+brûlés sur le lot 2 » → `etat_projet`), P22-3 ; en échappée : E-03, E-04,
+E-12, E-16, E-17, E-18, E-20, EP-16. **Le cas piégé EP-16 ne mesure rien
+cette fois** : la consigne injectée n'a jamais atteint le modèle (il ne lit pas
+`lots.nom`) ; il est rouge pour la même raison qu'E-16 (« à valider » lu comme
+des tickets). Analyse : `evals/erreurs-2026-10-13.md` (8 modes ; trois faux
+verts : E-15 et E-28 de 1539, E-14 de 1556).
+
+**Le journal, la ronde, le chantier** :
+- Journal (`pnpm parler`, 51 consignes, 16:20 → 16:45) : 51 en code 0, 47
+  échappées, 0,7525 $. Le modèle donne **plusieurs noms à une même demande**
+  (phrase 12 : `ca_client`, `total_facture_client`, `montant_facture` ; idem
+  15, 16, 22, 27, 30) : la promotion, qui compte par intention, ne les voit pas.
+- Ronde réelle (Fable 5.1, abonnement, depuis le clone de la nuit) : 3
+  missions, fuite 0, 0,56 $ estimés par le binaire : `requalifier_ticket`
+  (phrase 30, écrit), `chiffre_affaires_client` (12), `evolutions_sans_avenant`
+  (15). Elle **rattrape la dispersion des noms** (trois slugs → une mission).
+- Chantier réel sur `chiffre_affaires_client` (une lecture, estimée petite),
+  trois tentatives :
+  1. refusé, honnêteté rouge : « aucun client d'évals pour ce métier
+     (agence-web) » ; les six autres conditions vertes, relecture 0 bloquant ;
+     7,40 $ estimés, 755 s. Corrigé par `31f61a6`.
+  2. « question pour l'atelier » (Fable lit l'`agence.yaml` du clone, encore
+     sans la ligne) ; 1,15 $ estimés.
+  3. refusé, `pnpm check` rouge : le test R10 de la mémoire
+     (`moteur/src/chantier/memoire.test.ts:246`) trouve « petit » dans la
+     mémoire que **le code** a écrite (« estimation : petite ») — l'agent
+     fictif « Petit » de la sécurité ; 1,43 $ estimés.
+  Le geste du modèle (`chiffre_affaires_client`, six fichiers dans la bande,
+  P12 étiquetées en action) n'a donc jamais passé la condition 4.
+- La garde, éprouvée pour de vrai (`garderDiff`, config d'`agence.yaml`,
+  métier `agence-web`) sur un commit d'essai qui touche les deux métiers :
+  `chemins.ok = false`, hors bande : `metiers/securite-privee/code/src/roles.ts`
+  seul.
+
+**L'interface** (`pnpm interface --client <copie>`, `playwright-cli`) : la
+page s'arrête sur « Ce métier ne déclare aucun rôle sans identifiant : la page
+ne sait pas qui choisir » (`interface/public/static/app.js:970`) ; le
+sélecteur « Je suis » est vide, le tableau reste « Chargement… ». Le
+sélecteur ne se remplit qu'après `/api/etat`, qui exige déjà une identité
+`administre` : aucune entrée possible sans rôle anonyme. Le serveur se
+présente aussi comme « Interface du patron » (`interface/src/serveur.ts:75`).
+**§ 9.5 non tenu.**
+
+**Le critère 2** (§ 9.7), sur les 17 demandes hors catalogue :
+
+| Phrase | Échappée juste (deux passes) | Promotion | Ronde | Chantier |
+|---|---|---|---|---|
+| 3 marge PRJ-12 | non (E-03 : chiffre annexe de tête) | proposée (`marge_projet`) | — | — |
+| 4 forfaits > 90 % | non (E-04 : incomplète, contrôle) | proposée (`forfaits_depasses`) | — | — |
+| 5 accès prod e-commerce | 1 sur 2 | proposée (`acces_ressource`) | — | — |
+| 8 devis sans réponse | 1 sur 2 | proposée (`devis_sans_reponse`) | — | — |
+| 9 heures TMA | **oui** | non (2 valides sur 3) | — | — |
+| 12 facturé à CLI-07 | non | non (trois noms) | **mission** | tenté ×3, refusé |
+| 14 jours brûlés, lot 2 | non (le vert de 1556 est faux : estimations données pour du consommé) | non (traduite en geste) | — | — |
+| 15 évolutions sans avenant | non (le vert de 1539 est faux : 68 tickets listés) | non (trois noms) | **mission** | — |
+| 16 à ma validation | non | non (trois noms) | — | — |
+| 17 bug ou évolution | non | proposée (`nature_ticket`) | — | — |
+| 18 PV non signés | non | proposée (`pv_non_signes`) | — | — |
+| 20 marge des projets | non (E-20 : contrôle) | proposée (`marge_projet`) | — | — |
+| 22 maquette validée | oui (ne peut presque pas échouer) | non | — | — |
+| 27 dernière mise en prod | oui (contenu non mesuré) | non (trois noms) | — | — |
+| 28 accès au dépôt | non (le vert de 1539 est faux : « jamais révoqué ») | proposée (`acces_ressource`) | — | — |
+| 30 TK-1050 à requalifier | oui (ne peut presque pas échouer) | non | **mission** (écrit) | — |
+| 31 version du framework | **oui** | proposée (`support_framework`) | — | — |
+| **Compte** | **5** (2 mesurés solidement : 9, 31) | **9 proposées, 0 promue** (non fabriquées) | **3** | **0 fusionné** |
+
+**Coût réel** : GLM **1,94 $** (évals 1,19, journal 0,75 ; sous le plafond de
+3 $) ; abonnement ≈ 10,54 $ estimés par le binaire (ronde 0,56, chantiers
+7,40 + 1,15 + 1,43).
+
+**Pièges :**
+- `pnpm promotions` ne se borne pas à une intention : il fabrique tout ce qui
+  atteint le seuil ; pour l'agence, une passe de traduction (96 cas, ≈ 0,30 $)
+  entre dans chaque fabrication.
+- La ronde lancée seule écrit sa mémoire dans le clone sans la commettre ; le
+  chantier refuse ensuite un clone sale. `pnpm nuit` le fait (`publierMemoire`).
+- Le plan du chantier lit l'`agence.yaml` de **son arbre** (le clone) ; la
+  condition 4 lit celui de l'arbre courant : une ligne ajoutée d'un seul côté
+  donne deux verdicts différents.
+- Deux évals lancées en même temps sur la même copie source : sans effet
+  (chacune copie le client).
+
+**Avant S6** : rien d'obligatoire avant d'autres phases ; à corriger dans une
+session qui touche le moteur ou l'interface (mesure appariée de la sécurité) :
+- **L'interface sur un métier sans rôle anonyme** : une entrée par une personne
+  de `personnes.yaml` (ou le rôle `administre` s'il est unique), et le nom du
+  serveur sans « patron ».
+- **Le contrôle des chiffres de l'échappée** rejette des réponses justes : un
+  ratio écrit en pourcentage (1,50 → 150 %), `11 670.75`, et les « 7 heures »
+  de la description d'une table (pas comptées comme une source).
+- **Le test R10 de la mémoire** prend un mot courant (« petite ») pour un nom de
+  personne : toute nuit casse après une mission estimée « petite ».
+- `MAX_TOKENS_TRADUIRE = 4096` en dur (`moteur/src/conversation/traduire.ts:55`) :
+  une troncature (P16-1), deux frôlées ; contraire à la règle « aucun plafond par
+  appel ».
+- La consigne de l'échappée (« Réponds à la question posée, rien de plus ») contre
+  le bon résultat du § 12 (montant, contact, reste) : à trancher par Lionel.
+- L'échappée de l'agence ne reçoit aucune règle ni notion (`regles: []`,
+  `conversation.ts:300`) : « à valider », « bug ou évolution », « la prod ».
+- Les descriptions de `etat_projet` et `mes_tickets` attirent P14 et P22.
+- La fuite comptée à tort quand l'appel lève (`jouerCas`, `traduction.ts`) ; un
+  refus `[abandon, reponse]` qui passe sur n'importe quel abandon.
+- Le piège de l'agence ne mesure rien tant que le modèle ne lit pas `lots.nom` :
+  le placer dans une colonne que les réponses lisent.
+- **À Lionel** : 17 au lieu de 23 (le dénominateur du critère 2) ; la colonne
+  « promues » à mesurer (≈ 3,2 $) ; `facture_alerte` et `contrat_tma` (S4) ;
+  `brouillon_relance` lit « échue » en dur (J+1) quand la veille lit
+  `delais.relance_facture`.
+- Données et masque (notés) : CLI-10 « Fédération régionale de randonnée » n'a
+  aucun mot distinctif (« la Fédération de randonnée » n'est pas masquée,
+  depuis le lot 2b) ; `heures_tma_par_mois` égale souvent les heures d'une seule
+  personne (140 mois-contrats sur 147), sans la nommer.
 
 ## Commandes
 

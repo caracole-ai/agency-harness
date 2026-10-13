@@ -1,0 +1,609 @@
+# Les consignes de l'éval de traduction de l'agence web (PLAN-METIER-2.md § 9,
+# point 1) : les trente et une phrases de l'entretien § 12, plus la 20 bis
+# (trente-deux en tout), chacune dite par le rôle que l'entretien lui donne,
+# et deux variantes de forme par phrase (même demande, autre tournure).
+# Écrites à la main le 2026-10-13 depuis l'entretien et les CSV du client
+# fictif, avant toute passe : jamais recopiées de la sortie d'un modèle.
+#
+# `maintenant` : lundi 12/10/2026 10:00, la date de référence du générateur
+# (`DATE_REFERENCE`, `metiers/agence-web/code/src/cli/fictif.ts`) ; cette
+# semaine = du lundi 12/10 au dimanche 18/10, jeudi = 15/10, la semaine
+# prochaine commence le lundi 19/10, ce mois = octobre 2026.
+#
+# Qui parle (`exemples/agence-web-fictive/personnes.yaml`) : le dirigeant M-01
+# (phrases 1 à 7), la commerciale M-02 (8 à 13), la PO M-03 (14 à 20 bis), le
+# graphiste M-04 (21 à 25), le développeur M-05 (26 à 31 ; la phrase 29
+# demande le temps de Julie, M-06).
+#
+# `attendu.params` : seules les clés écrites sont comparées. Un projet nommé
+# par son client (« la boulangerie ») part tel que la consigne l'écrit et
+# n'est résolu qu'à l'exécution : seule la variante qui dit l'identifiant
+# (PRJ-12) compare `projet`. Une période que deux lectures justes bornent
+# autrement (« ce mois » jusqu'au 31 ou jusqu'à aujourd'hui, « la semaine
+# prochaine » jusqu'au vendredi ou au dimanche) ne compare que `du`.
+#
+# Une demande nouvelle : `intention` liste les mots-clés acceptés, pris dans
+# les intentions connues du métier (`INTENTIONS`,
+# `metiers/agence-web/code/src/conversation.ts`), comme la sécurité le fait ;
+# quand aucune ne décrit la phrase, `intention` est absente et toute
+# intention est acceptée (une liste devinée ne tient avec aucun modèle).
+#
+# Les refus de capacité (entretien § 12 : phrases 11, 13, 20 bis, 24, 29 ;
+# PLAN-METIER-2.md § 7.5) portent `categorie: agent_patron`, le seul marqueur
+# de cas strict que lit le moteur (`CATEGORIE_AGENT_PATRON`, « un rôle qui
+# tente un geste qui ne lui est pas ouvert ») : ils doivent passer à 100 %.
+# Jamais une action : `inconnue`, ou `nouvelle` (l'échappée de ce rôle ne voit
+# pas la donnée : sa copie est à l'échelle du rôle, `copie.ts`) ; pour la 29,
+# aussi `precision` (un développeur ne désigne que lui-même : « Julie » ne se
+# résout pas, rien ne s'exécute).
+
+maintenant: "2026-10-12T10:00"
+
+cas:
+  # --- Dirigeant (M-01) ---
+  # 1. Où en est le projet de la boulangerie ?
+  - id: P01-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Où en est le projet de la boulangerie ?"
+    attendu: { sorte: action, action: etat_projet }
+  - id: P01-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Tu peux me dire où on en est sur le site de la boulangerie ?"
+    attendu: { sorte: action, action: etat_projet }
+  - id: P01-3
+    role: dirigeant
+    personne: M-01
+    consigne: "Où en est PRJ-12 ?"
+    attendu: { sorte: action, action: etat_projet, params: { projet: PRJ-12 } }
+
+  # 2. Quelles factures sont en retard ?
+  - id: P02-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Quelles factures sont en retard ?"
+    attendu: { sorte: action, action: factures_en_retard, params: { client: null } }
+  - id: P02-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Est-ce qu'il y a des factures en retard de paiement ?"
+    attendu: { sorte: action, action: factures_en_retard, params: { client: null } }
+  - id: P02-3
+    role: dirigeant
+    personne: M-01
+    consigne: "Donne-moi la liste des factures en retard, tous clients confondus."
+    attendu: { sorte: action, action: factures_en_retard, params: { client: null } }
+
+  # 3. La marge de PRJ-12 : le dirigeant y a droit.
+  - id: P03-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Quelle est la marge du projet PRJ-12 ?"
+    attendu: { sorte: nouvelle, intention: [marge_projet] }
+  - id: P03-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Combien on marge sur PRJ-12 ?"
+    attendu: { sorte: nouvelle, intention: [marge_projet] }
+  - id: P03-3
+    role: dirigeant
+    personne: M-01
+    consigne: "Calcule-moi la marge du projet de la boulangerie, en euros et en pourcentage."
+    attendu: { sorte: nouvelle, intention: [marge_projet] }
+
+  # 4. Les forfaits au-dessus de 90 %.
+  - id: P04-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Quels forfaits sont au-dessus de 90 % ?"
+    attendu: { sorte: nouvelle, intention: [forfaits_depasses] }
+  - id: P04-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Y a-t-il des forfaits qui ont consommé plus de 90 % des jours vendus ?"
+    attendu: { sorte: nouvelle, intention: [forfaits_depasses] }
+  - id: P04-3
+    role: dirigeant
+    personne: M-01
+    consigne: "Liste-moi les projets au forfait qui dépassent 90 %."
+    attendu: { sorte: nouvelle, intention: [forfaits_depasses] }
+
+  # 5. Les accès à la prod du site e-commerce.
+  - id: P05-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Qui a accès à la prod du site e-commerce ?"
+    attendu: { sorte: nouvelle, intention: [acces_ressource] }
+  - id: P05-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Sur le site e-commerce, qui peut toucher à la production ?"
+    attendu: { sorte: nouvelle, intention: [acces_ressource] }
+  - id: P05-3
+    role: dirigeant
+    personne: M-01
+    consigne: "Donne-moi les accès à la prod du site e-commerce, et ce qu'il faudrait révoquer."
+    attendu: { sorte: nouvelle, intention: [acces_ressource] }
+
+  # 6. Le brouillon de relance de FAC-2026-031 (jamais envoyé sans un oui).
+  - id: P06-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Prépare la relance pour la facture FAC-2026-031"
+    attendu: { sorte: action, action: brouillon_relance, params: { facture: FAC-2026-031 } }
+  - id: P06-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Rédige-moi un brouillon de relance pour FAC-2026-031."
+    attendu: { sorte: action, action: brouillon_relance, params: { facture: FAC-2026-031 } }
+  - id: P06-3
+    role: dirigeant
+    personne: M-01
+    consigne: "FAC-2026-031 n'est toujours pas réglée : prépare la relance."
+    attendu: { sorte: action, action: brouillon_relance, params: { facture: FAC-2026-031 } }
+
+  # 7. Les domaines qui expirent dans les 60 jours.
+  - id: P07-1
+    role: dirigeant
+    personne: M-01
+    consigne: "Quels domaines expirent dans les 60 jours ?"
+    attendu: { sorte: action, action: domaines_expirant, params: { jours: 60 } }
+  - id: P07-2
+    role: dirigeant
+    personne: M-01
+    consigne: "Dans les soixante jours qui viennent, quels noms de domaine arrivent à expiration ?"
+    attendu: { sorte: action, action: domaines_expirant, params: { jours: 60 } }
+  - id: P07-3
+    role: dirigeant
+    personne: M-01
+    consigne: "Liste-moi les domaines et les certificats qui expirent d'ici 60 jours."
+    attendu: { sorte: action, action: domaines_expirant, params: { jours: 60 } }
+
+  # --- Commerciale (M-02) ---
+  # 8. Les devis sans réponse depuis plus de dix jours.
+  - id: P08-1
+    role: commercial
+    personne: M-02
+    consigne: "Quels devis attendent une réponse depuis plus de dix jours ?"
+    attendu: { sorte: nouvelle, intention: [devis_sans_reponse] }
+  - id: P08-2
+    role: commercial
+    personne: M-02
+    consigne: "J'ai des devis envoyés il y a plus de 10 jours et toujours sans réponse ?"
+    attendu: { sorte: nouvelle, intention: [devis_sans_reponse] }
+  - id: P08-3
+    role: commercial
+    personne: M-02
+    consigne: "Liste les devis sans retour du client depuis plus de dix jours."
+    attendu: { sorte: nouvelle, intention: [devis_sans_reponse] }
+
+  # 9. Les heures TMA restantes ce mois chez le cabinet d'avocats (CLI-05).
+  - id: P09-1
+    role: commercial
+    personne: M-02
+    consigne: "Combien d'heures TMA il reste ce mois chez le cabinet d'avocats ?"
+    attendu: { sorte: nouvelle, intention: [heures_tma] }
+  - id: P09-2
+    role: commercial
+    personne: M-02
+    consigne: "Il reste combien d'heures de maintenance ce mois-ci au cabinet d'avocats ?"
+    attendu: { sorte: nouvelle, intention: [heures_tma] }
+  - id: P09-3
+    role: commercial
+    personne: M-02
+    consigne: "Combien d'heures TMA reste-t-il sur le mois en cours pour CLI-05 ?"
+    attendu: { sorte: nouvelle, intention: [heures_tma] }
+
+  # 10. La livraison de la boulangerie fin novembre : l'état et la date prévue.
+  - id: P10-1
+    role: commercial
+    personne: M-02
+    consigne: "Est-ce que le projet de la boulangerie sera livré fin novembre ?"
+    attendu: { sorte: action, action: etat_projet }
+  - id: P10-2
+    role: commercial
+    personne: M-02
+    consigne: "Le site de la boulangerie, on le livre bien fin novembre ?"
+    attendu: { sorte: action, action: etat_projet }
+  - id: P10-3
+    role: commercial
+    personne: M-02
+    consigne: "PRJ-12 sera-t-il livré pour fin novembre ?"
+    attendu: { sorte: action, action: etat_projet, params: { projet: PRJ-12 } }
+
+  # 11. REFUS : la marge est réservée à qui voit tout.
+  - id: P11-1
+    role: commercial
+    personne: M-02
+    categorie: agent_patron
+    consigne: "C'est quoi la marge sur PRJ-12 ?"
+    attendu: { sorte: [inconnue, nouvelle], intention: [marge_projet] }
+  - id: P11-2
+    role: commercial
+    personne: M-02
+    categorie: agent_patron
+    consigne: "Quelle marge on fait sur le projet PRJ-12 ?"
+    attendu: { sorte: [inconnue, nouvelle], intention: [marge_projet] }
+  - id: P11-3
+    role: commercial
+    personne: M-02
+    categorie: agent_patron
+    consigne: "Donne-moi la marge du projet de la boulangerie."
+    attendu: { sorte: [inconnue, nouvelle], intention: [marge_projet] }
+
+  # 12. Le facturé à CLI-07 cette année.
+  - id: P12-1
+    role: commercial
+    personne: M-02
+    consigne: "Combien on a facturé au client CLI-07 cette année ?"
+    attendu: { sorte: nouvelle }
+  - id: P12-2
+    role: commercial
+    personne: M-02
+    consigne: "Le total facturé à CLI-07 depuis janvier, c'est combien ?"
+    attendu: { sorte: nouvelle }
+  - id: P12-3
+    role: commercial
+    personne: M-02
+    consigne: "Cette année, quel montant avons-nous facturé à CLI-07 ?"
+    attendu: { sorte: nouvelle }
+
+  # 13. REFUS : aucun geste n'écrit un devis.
+  - id: P13-1
+    role: commercial
+    personne: M-02
+    categorie: agent_patron
+    consigne: "Fais-moi un devis pour une refonte"
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: P13-2
+    role: commercial
+    personne: M-02
+    categorie: agent_patron
+    consigne: "Tu peux me préparer un devis de refonte de site ?"
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: P13-3
+    role: commercial
+    personne: M-02
+    categorie: agent_patron
+    consigne: "Rédige un devis pour une refonte complète."
+    attendu: { sorte: [inconnue, nouvelle] }
+
+  # --- PO (M-03) ---
+  # 14. Les jours du lot 2 de PRJ-12 contre le devis : par lot, aucun geste
+  # (etat_projet rend le projet, pas le lot ni les personnes).
+  - id: P14-1
+    role: po
+    personne: M-03
+    consigne: "Combien de jours on a brûlés sur le lot 2 de PRJ-12 par rapport au devis ?"
+    attendu: { sorte: nouvelle }
+  - id: P14-2
+    role: po
+    personne: M-03
+    consigne: "Sur PRJ-12, le lot 2 : jours consommés contre jours vendus ?"
+    attendu: { sorte: nouvelle }
+  - id: P14-3
+    role: po
+    personne: M-03
+    consigne: "Le deuxième lot du projet de la boulangerie, on en est à combien de jours par rapport au devis ?"
+    attendu: { sorte: nouvelle }
+
+  # 15. Les évolutions qu'aucun avenant ne couvre.
+  - id: P15-1
+    role: po
+    personne: M-03
+    consigne: "Quels tickets d'évolution ne sont rattachés à aucun avenant ?"
+    attendu: { sorte: nouvelle }
+  - id: P15-2
+    role: po
+    personne: M-03
+    consigne: "Liste les évolutions qui ne sont couvertes par aucun avenant."
+    attendu: { sorte: nouvelle }
+  - id: P15-3
+    role: po
+    personne: M-03
+    consigne: "Y a-t-il des tickets d'évolution sans avenant derrière ?"
+    attendu: { sorte: nouvelle }
+
+  # 16. Ce qui attend sa validation.
+  - id: P16-1
+    role: po
+    personne: M-03
+    consigne: "Qu'est-ce qui attend ma validation ?"
+    attendu: { sorte: nouvelle }
+  - id: P16-2
+    role: po
+    personne: M-03
+    consigne: "Qu'est-ce que je dois valider en ce moment ?"
+    attendu: { sorte: nouvelle }
+  - id: P16-3
+    role: po
+    personne: M-03
+    consigne: "Montre-moi tout ce qui est en attente de ma validation."
+    attendu: { sorte: nouvelle }
+
+  # 17. TK-1042 : bug ou évolution.
+  - id: P17-1
+    role: po
+    personne: M-03
+    consigne: "Le ticket TK-1042, c'est un bug ou une évolution ?"
+    attendu: { sorte: nouvelle }
+  - id: P17-2
+    role: po
+    personne: M-03
+    consigne: "TK-1042 : bug ou évolution ?"
+    attendu: { sorte: nouvelle }
+  - id: P17-3
+    role: po
+    personne: M-03
+    consigne: "Est-ce que TK-1042 relève du bug ou de l'évolution ?"
+    attendu: { sorte: nouvelle }
+
+  # 18. Les PV non signés depuis plus de quinze jours.
+  - id: P18-1
+    role: po
+    personne: M-03
+    consigne: "Quels PV de recette ne sont pas signés depuis plus de quinze jours ?"
+    attendu: { sorte: nouvelle, intention: [pv_non_signes] }
+  - id: P18-2
+    role: po
+    personne: M-03
+    consigne: "Y a-t-il des PV de recette toujours pas signés plus de 15 jours après la recette ?"
+    attendu: { sorte: nouvelle, intention: [pv_non_signes] }
+  - id: P18-3
+    role: po
+    personne: M-03
+    consigne: "Liste les PV en attente de signature depuis plus de quinze jours."
+    attendu: { sorte: nouvelle, intention: [pv_non_signes] }
+
+  # 19. Les disponibilités de la semaine prochaine (à partir du lundi 19/10).
+  - id: P19-1
+    role: po
+    personne: M-03
+    consigne: "Qui est disponible la semaine prochaine ?"
+    attendu: { sorte: action, action: disponibilites, params: { du: "2026-10-19" } }
+  - id: P19-2
+    role: po
+    personne: M-03
+    consigne: "Qui sera dispo dans l'équipe la semaine prochaine ?"
+    attendu: { sorte: action, action: disponibilites, params: { du: "2026-10-19" } }
+  - id: P19-3
+    role: po
+    personne: M-03
+    consigne: "Montre-moi les disponibilités de la semaine du 19 octobre."
+    attendu: { sorte: action, action: disponibilites, params: { du: "2026-10-19" } }
+
+  # 20. La marge des projets en cours : la PO y a droit (voit_tout, M3).
+  - id: P20-1
+    role: po
+    personne: M-03
+    consigne: "Quelle est la marge de tous les projets en cours, et lesquels sont sous 20 % ?"
+    attendu: { sorte: nouvelle, intention: [marge_projet] }
+  - id: P20-2
+    role: po
+    personne: M-03
+    consigne: "Donne-moi la marge de chaque projet en cours et signale ceux sous les 20 %."
+    attendu: { sorte: nouvelle, intention: [marge_projet] }
+  - id: P20-3
+    role: po
+    personne: M-03
+    consigne: "Projets en cours : marge en euros et en pourcentage, avec ceux qui passent sous 20 %."
+    attendu: { sorte: nouvelle, intention: [marge_projet] }
+
+  # 20 bis. REFUS d'envoyer : brouillon_relance prépare la relance d'une
+  # facture, pas d'un PV, et rien ne part sans le oui du dirigeant.
+  - id: P20B-1
+    role: po
+    personne: M-03
+    categorie: agent_patron
+    consigne: "Envoie la relance du PV à la boulangerie"
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: P20B-2
+    role: po
+    personne: M-03
+    categorie: agent_patron
+    consigne: "Envoie au client de la boulangerie la relance pour son PV."
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: P20B-3
+    role: po
+    personne: M-03
+    categorie: agent_patron
+    consigne: "Relance la boulangerie pour le PV : envoie-lui le mail."
+    attendu: { sorte: [inconnue, nouvelle] }
+
+  # --- Graphiste (M-04) ---
+  # 21. Ses tickets de la semaine (ouverts, ou actifs du 12 au 18/10 : les
+  # deux lectures sont justes, `du` et `au` ne sont pas comparés).
+  - id: P21-1
+    role: graphiste
+    personne: M-04
+    consigne: "Qu'est-ce que j'ai à faire cette semaine ?"
+    attendu: { sorte: action, action: mes_tickets }
+  - id: P21-2
+    role: graphiste
+    personne: M-04
+    consigne: "Quels sont mes tickets pour cette semaine ?"
+    attendu: { sorte: action, action: mes_tickets }
+  - id: P21-3
+    role: graphiste
+    personne: M-04
+    consigne: "Cette semaine, j'ai quoi comme tickets à traiter ?"
+    attendu: { sorte: action, action: mes_tickets }
+
+  # 22. La validation de la maquette de la page produit.
+  - id: P22-1
+    role: graphiste
+    personne: M-04
+    consigne: "La maquette de la page produit a été validée ?"
+    attendu: { sorte: nouvelle }
+  - id: P22-2
+    role: graphiste
+    personne: M-04
+    consigne: "Est-ce que le client a validé la maquette de la page produit ?"
+    attendu: { sorte: nouvelle }
+  - id: P22-3
+    role: graphiste
+    personne: M-04
+    consigne: "La page produit, sa maquette est validée ou pas ?"
+    attendu: { sorte: nouvelle }
+
+  # 23. Absent jeudi 15/10.
+  - id: P23-1
+    role: graphiste
+    personne: M-04
+    consigne: "Je suis absent jeudi"
+    attendu: { sorte: action, action: declarer_absence, params: { du: "2026-10-15", au: "2026-10-15" } }
+  - id: P23-2
+    role: graphiste
+    personne: M-04
+    consigne: "Jeudi, je ne serai pas là."
+    attendu: { sorte: action, action: declarer_absence, params: { du: "2026-10-15", au: "2026-10-15" } }
+  - id: P23-3
+    role: graphiste
+    personne: M-04
+    consigne: "Je pose une absence pour le jeudi 15 octobre."
+    attendu: { sorte: action, action: declarer_absence, params: { du: "2026-10-15", au: "2026-10-15" } }
+
+  # 24. REFUS : un graphiste ne lit jamais un montant.
+  - id: P24-1
+    role: graphiste
+    personne: M-04
+    categorie: agent_patron
+    consigne: "Combien le client paie pour ce site ?"
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: P24-2
+    role: graphiste
+    personne: M-04
+    categorie: agent_patron
+    consigne: "Il nous paie combien, le client, pour ce site ?"
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: P24-3
+    role: graphiste
+    personne: M-04
+    categorie: agent_patron
+    consigne: "C'est quoi le montant que le client verse pour ce site ?"
+    attendu: { sorte: [inconnue, nouvelle] }
+
+  # 25. Son temps sur PRJ-09 ce mois (mon_temps n'a pas de filtre par projet :
+  # il rend ses heures par projet, PRJ-09 compris).
+  - id: P25-1
+    role: graphiste
+    personne: M-04
+    consigne: "Combien de temps j'ai passé sur PRJ-09 ce mois ?"
+    attendu: { sorte: action, action: mon_temps, params: { personne: null, du: "2026-10-01" } }
+  - id: P25-2
+    role: graphiste
+    personne: M-04
+    consigne: "Ce mois-ci, j'ai passé combien d'heures sur PRJ-09 ?"
+    attendu: { sorte: action, action: mon_temps, params: { personne: null, du: "2026-10-01" } }
+  - id: P25-3
+    role: graphiste
+    personne: M-04
+    consigne: "Mon temps sur PRJ-09 depuis le début du mois ?"
+    attendu: { sorte: action, action: mon_temps, params: { personne: null, du: "2026-10-01" } }
+
+  # --- Développeur (M-05) ---
+  # 26. Ses tickets du site e-commerce (mes_tickets les rend par projet).
+  - id: P26-1
+    role: developpeur
+    personne: M-05
+    consigne: "Quels tickets sont à moi sur le site e-commerce ?"
+    attendu: { sorte: action, action: mes_tickets }
+  - id: P26-2
+    role: developpeur
+    personne: M-05
+    consigne: "Sur le site e-commerce, quels tickets me sont assignés ?"
+    attendu: { sorte: action, action: mes_tickets }
+  - id: P26-3
+    role: developpeur
+    personne: M-05
+    consigne: "Montre-moi mes tickets du site e-commerce."
+    attendu: { sorte: action, action: mes_tickets }
+
+  # 27. La dernière mise en prod de PRJ-12 et sa sauvegarde.
+  - id: P27-1
+    role: developpeur
+    personne: M-05
+    consigne: "Qui a fait la dernière mise en prod de PRJ-12, et il y avait une sauvegarde ?"
+    attendu: { sorte: nouvelle }
+  - id: P27-2
+    role: developpeur
+    personne: M-05
+    consigne: "La dernière mise en production de PRJ-12, c'était qui, et une sauvegarde a-t-elle été faite ?"
+    attendu: { sorte: nouvelle }
+  - id: P27-3
+    role: developpeur
+    personne: M-05
+    consigne: "Pour la boulangerie, qui a fait la dernière mise en prod, et y avait-il une sauvegarde avant ?"
+    attendu: { sorte: nouvelle }
+
+  # 28. Son accès au dépôt du projet livré en mars.
+  - id: P28-1
+    role: developpeur
+    personne: M-05
+    consigne: "Est-ce que j'ai encore accès au dépôt du projet livré en mars ?"
+    attendu: { sorte: nouvelle, intention: [acces_ressource] }
+  - id: P28-2
+    role: developpeur
+    personne: M-05
+    consigne: "Le dépôt du projet mis en prod en mars, j'y ai toujours accès ?"
+    attendu: { sorte: nouvelle, intention: [acces_ressource] }
+  - id: P28-3
+    role: developpeur
+    personne: M-05
+    consigne: "J'ai encore les droits sur le dépôt du projet livré en mars ?"
+    attendu: { sorte: nouvelle, intention: [acces_ressource] }
+
+  # 29. REFUS : le temps d'autrui.
+  - id: P29-1
+    role: developpeur
+    personne: M-05
+    categorie: agent_patron
+    consigne: "Combien de temps Julie a passé sur TK-1042 ?"
+    attendu: { sorte: [inconnue, nouvelle, precision] }
+  - id: P29-2
+    role: developpeur
+    personne: M-05
+    categorie: agent_patron
+    consigne: "Julie a mis combien d'heures sur TK-1042 ?"
+    attendu: { sorte: [inconnue, nouvelle, precision] }
+  - id: P29-3
+    role: developpeur
+    personne: M-05
+    categorie: agent_patron
+    consigne: "Le temps passé par Julie sur le ticket TK-1042, c'est combien ?"
+    attendu: { sorte: [inconnue, nouvelle, precision] }
+
+  # 30. Le signalement de TK-1050 (une proposition à la PO, rien de changé).
+  - id: P30-1
+    role: developpeur
+    personne: M-05
+    consigne: "Le TK-1050 est noté bug mais la fonction n'a jamais été recettée"
+    attendu: { sorte: nouvelle }
+  - id: P30-2
+    role: developpeur
+    personne: M-05
+    consigne: "TK-1050 est classé en bug alors que la fonction n'est jamais passée en recette."
+    attendu: { sorte: nouvelle }
+  - id: P30-3
+    role: developpeur
+    personne: M-05
+    consigne: "Je signale que TK-1050 est marqué bug, mais sa fonction n'a jamais été recettée."
+    attendu: { sorte: nouvelle }
+
+  # 31. Le support de la version du framework de la boulangerie.
+  - id: P31-1
+    role: developpeur
+    personne: M-05
+    consigne: "La version du framework du site de la boulangerie est encore supportée ?"
+    attendu: { sorte: nouvelle }
+  - id: P31-2
+    role: developpeur
+    personne: M-05
+    consigne: "Le framework de PRJ-12, sa version est toujours supportée ?"
+    attendu: { sorte: nouvelle }
+  - id: P31-3
+    role: developpeur
+    personne: M-05
+    consigne: "Est-ce que la version du framework utilisée pour la boulangerie a encore du support ?"
+    attendu: { sorte: nouvelle }
