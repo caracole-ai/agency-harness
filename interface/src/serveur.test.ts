@@ -29,6 +29,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
 
 const exemple = fileURLToPath(new URL('../../exemples/client-fictif', import.meta.url))
+const agence = fileURLToPath(new URL('../../exemples/agence-web-fictive', import.meta.url))
 const MAINTENANT = '2026-10-10T21:40'
 const PATRON: Identite = { role: 'patron' }
 
@@ -130,6 +131,28 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
       { id: 'patron', enMots: 'le patron', identifie: false },
       { id: 'agent', enMots: "l'agent", identifie: true },
     ])
+  })
+  it('/api/entree : le rôle sans identifiant ; sinon une personne du registre qui administre, qui lit l’état', async () => {
+    expect(await (await poster(app(), '/api/entree', {})).json()).toEqual(PATRON)
+    // L'agence web ne déclare que des rôles identifiés (PLAN-METIER-2.md M3) : la page entrait sous personne.
+    const dossier = mkdtempSync(join(tmpdir(), 'interface-agence-'))
+    cpSync(agence, dossier, { recursive: true, filter: (f) => !/\.sqlite$/.test(f) })
+    const web = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: await metierDe(dossier),
+    })
+    const identite = (await (await poster(web, '/api/entree', {})).json()) as Identite
+    expect(identite).toEqual({ role: 'dirigeant', personne: 'M-01' })
+    const r = await lire(web, '/api/etat', identite)
+    expect(r.status).toBe(200)
+    expect(((await r.json()) as Etat).identites).toContainEqual({
+      role: 'po',
+      personne: 'M-03',
+      nom: expect.any(String),
+    })
+    rmSync(dossier, { recursive: true, force: true })
   })
   it('/api/tableau : son nom, son accueil et ses suggestions à chacun ; une identité inconnue reçoit 403', async () => {
     const a = app()

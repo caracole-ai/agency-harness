@@ -298,7 +298,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
   passe de traduction qui décide « activable » (`passeTraduction`), partagée
   entre `pnpm evals`, `pnpm promotions` et `pnpm gestes verifier`.
-- `interface/` — l'interface du patron, pour la démo (`@harnais/interface`,
+- `interface/` — l'interface, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
   chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
   (`pnpm interface`, sur 127.0.0.1 seulement), `public/` (HTML, CSS et
@@ -308,8 +308,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   du métier (demandes en cours, lignes en attente, nom de qui parle,
   suggestions et phrases) vient de `MetierConversation.tableau`, les règles
   de `registre` (`PLAN-METIER-2.md` M10) ; `/api/roles` (les rôles déclarés,
-  pour le sélecteur « Je suis ») et `/api/tableau` (le nom et les textes de
-  qui parle, ouverts à tout rôle passé par la porte). Cinq onglets
+  pour le sélecteur « Je suis »), `/api/entree` (sous qui la page s'ouvre :
+  le rôle sans identifiant, sinon la première personne du registre dont le
+  rôle administre ; l'agence web s'ouvre sous M-01) et `/api/tableau` (le nom
+  et les textes de qui parle, ouverts à tout rôle passé par la porte). Cinq onglets
   (à valider, règles, délégations proposées, appris, journal), réservés à la
   capacité `administre` (le patron, pour la sécurité), et
   la conversation toujours visible ; l'identité est choisie dans le registre
@@ -520,7 +522,7 @@ pnpm nuit --client <copie> [--date 2026-10-10]
                          # 0 3 * * * cd <clone d'un humain> && pnpm nuit --client <dossier du client>
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
-                         # l'interface du patron (démo) sur http://127.0.0.1:3777 : à valider, règles,
+                         # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,
                          # délégations, appris (activer ou retirer un geste appris), journal, et la
                          # conversation. Exige la clé de la config, sauf
                          # --modele simule (rejoue --script, un tableau de réponses). Sur une COPIE

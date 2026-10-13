@@ -215,3 +215,33 @@ describe('l’argent (PLAN-METIER-2.md § 6.4, M11)', () => {
     expect(verifierReponse('16 h', ['heures | 16'], [])).toEqual({ ok: true })
   })
 })
+
+describe('les réponses justes que le contrôle retirait (evals/erreurs-2026-10-13.md, E4)', () => {
+  it('un ratio des sources se cite en pourcentage : « 150 % » pour 1.50, jamais sans le signe', () => {
+    const RATIOS = ['projet | ratio\nPRJ-10 | 1.50\nPRJ-05 | 0.94\nPRJ-07 | 0.05']
+    expect(verifierReponse('PRJ-10 à 150 %, PRJ-05 à 94%, PRJ-07 à 5 %', RATIOS, [])).toEqual({
+      ok: true,
+    })
+    expect(verifierReponse('PRJ-10 : 150 heures', RATIOS, [])).toEqual({
+      ok: false,
+      intrus: ['150'],
+    })
+    expect(verifierReponse('PRJ-10 à 151 %', RATIOS, [])).toEqual({ ok: false, intrus: ['151'] })
+    expect(verifierReponse('Taux : 50 %', ['x\n0.50'], [])).toEqual({ ok: true })
+  })
+  it('« 11 670.75 » : milliers à l’espace, décimale au point, cité pour 11670.75', () => {
+    const TOTAL = ['client | total\nCLI-03 | 11670.75']
+    expect(verifierReponse('Facturé : 11 670.75 €', TOTAL, [])).toEqual({ ok: true })
+    expect(verifierReponse('Facturé : 11 670.75 €', TOTAL, [])).toEqual({ ok: true })
+    expect(verifierReponse('Facturé : 11 670.76 €', TOTAL, [])).toEqual({
+      ok: false,
+      intrus: ['11 670.76'],
+    })
+    expect(contient('Facturé : 11 670.75 €', '11670.75')).toBe(true)
+    // Le point reste un séparateur de milliers quand il groupe : « 1.500.25 » n'est pas 1500.25.
+    expect(verifierReponse('1.500.25', ['x\n1500.25'], [])).toEqual({
+      ok: false,
+      intrus: ['1.500', '25'],
+    })
+  })
+})
