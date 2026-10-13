@@ -3602,6 +3602,47 @@ session qui touche le moteur ou l'interface (mesure appariée de la sécurité) 
   depuis le lot 2b) ; `heures_tma_par_mois` égale souvent les heures d'une seule
   personne (140 mois-contrats sur 147), sans la nommer.
 
+### Avant la phase E, session S6 (les trois défauts de « Avant S6 », 2026-10-13)
+
+**Choix faits faute de consigne :**
+
+- **Le périmètre** : les trois défauts en gras de « Avant S6 », rien d'autre.
+  `MAX_TOKENS_TRADUIRE`, les règles de l'échappée de l'agence, les
+  descriptions de `etat_projet` et `mes_tickets`, la fuite sur exception, le
+  piège `lots.nom` et tout ce qui est « À Lionel » restent ouverts.
+- **R10 : le diagnostic de S5 était faux.** « estimation : petite » ne
+  déclenche rien (les formes se cherchent au mot près). Le mot fautif était
+  « un petit assistant », écrit par le modèle du plan dans la mémoire d'un
+  chantier de l'agence web : nettoyée avec les noms de l'agence, elle est
+  relue par R10 avec ceux de **tous** les clients fictifs, dont « Laura
+  Petit » (A-13) de la sécurité. Correction dans le test seulement : un mot
+  seul tout en minuscules n'est pas un nom ; un nom en majuscule, un nom
+  complet même en minuscules, un identifiant le restent. `interdits` et
+  l'écriture de la mémoire ne changent pas.
+- **Le contrôle des chiffres** : un nombre suivi de `%` est cité si son
+  centième est dans les sources ; un groupement par espaces admet un point
+  décimal (`11 670.75`), un groupement par points non (`1.500.25` reste
+  refusé) ; la description de la copie (celle que reçoit le modèle) entre
+  dans les sources, comme la consigne et les dates du harnais. Ce que reçoit
+  le modèle ne change pas.
+- **L'interface** : `/api/entree`, lue avant toute porte comme `/api/roles`,
+  rend le premier rôle sans identifiant, sinon la première personne du
+  registre dont le rôle administre (seul un tel rôle lit `/api/etat`, qui
+  remplit « Je suis »). Le serveur s'annonce « Interface ».
+
+**La règle de la mesure appariée, écrite avant la mesure.** Le lot touche
+`moteur/src/echappee/reponse.ts`, `echappee.ts` et `interface/src` : la porte
+de sécurité n'est pas vide. La règle est celle de S4 telle quelle (cinq tours
+de quatre passes appariées, `main` d'abord aux tours impairs, conditions
+(a), (b), (c), (e) inchangées, aucune passe relancée pour un meilleur
+chiffre, une passe en 402 ou sans fichier de résultats fait refaire le tour
+entier une fois des deux côtés ; (d) : les entrées du premier appel
+identiques octet pour octet, cas par cas, `PERMIS` vide). **Ce qu'on
+compare** : `main` = `6777455` ; le lot = la tête de `general/avant-e`, ce
+commit compris (le code mesuré est celui de `d392f6d`). Une condition
+fausse : on ne fusionne pas, et on ne corrige rien dans la session. Plafond
+de GLM pour la session : 3,5 $.
+
 ## Commandes
 
 ```sh
