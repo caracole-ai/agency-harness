@@ -392,6 +392,84 @@ describe('brouillon_relance : un brouillon rendu par le code, gardé sur un oui,
     expect(lequel.r.sorte).toBe('refus')
     expect(lequel.r.texte).toMatch(/^Lequel \? FAC-2026-031, FAC-2026-041/)
   })
+  it('une facture pas encore échue : la reformulation dit l’échéance, le « oui » ne garde rien avant elle', async () => {
+    // FAC-2026-045 : échéance le 15/10/2026, émise et impayée ; on est le 12/10/2026
+    const s = session()
+    const { r, conversation } = await tour(s, COMMERCIALE, 'brouillon_relance', {
+      facture: 'FAC-2026-045',
+    })
+    if (r.sorte !== 'confirmation') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
+    expect(r.texte).toContain('à échéance du 15/10/2026')
+    expect(r.texte).toContain(
+      "Une relance ne se garde qu'une fois la facture échue, à partir du 16/10/2026.\nGarder ce brouillon au journal ? (oui / non)",
+    )
+    const oui = await confirmer(
+      CONVERSATION,
+      s,
+      verifiee(s, COMMERCIALE),
+      conversation,
+      r.empreinte,
+      true,
+      maintenant,
+    )
+    expect(oui).toEqual({
+      sorte: 'refus',
+      texte:
+        "FAC-2026-045 n'est pas échue : son échéance est le 15/10/2026. Rien n'est gardé ; une relance se garde à partir du 16/10/2026.",
+    })
+    expect(s.journal.lire().filter((l) => l.type === TYPE_BROUILLON)).toEqual([])
+  })
+  it('le jour de l’échéance, rien n’est gardé ; le lendemain, le brouillon l’est', async () => {
+    const s = session()
+    const garder = async (le: string) => {
+      const { r, conversation } = await tour(s, DIRIGEANT, 'brouillon_relance', {
+        facture: 'FAC-2026-045',
+      })
+      if (r.sorte !== 'confirmation') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
+      return confirmer(
+        CONVERSATION,
+        s,
+        verifiee(s, DIRIGEANT),
+        conversation,
+        r.empreinte,
+        true,
+        aParis(le),
+      )
+    }
+    expect((await garder('2026-10-15T18:00')).sorte).toBe('refus')
+    expect(s.journal.lire().filter((l) => l.type === TYPE_BROUILLON)).toEqual([])
+    expect(await garder('2026-10-16T09:00')).toEqual({
+      sorte: 'resultat',
+      texte:
+        "Brouillon gardé au journal pour FAC-2026-045 (niveau 1). Il n'est pas envoyé : l'envoi au client attend le oui du dirigeant.",
+    })
+    expect(
+      s.journal
+        .lire()
+        .filter((l) => l.type === TYPE_BROUILLON)
+        .map((l) => l.objet),
+    ).toEqual(['FAC-2026-045'])
+  })
+  it('une facture sans échéance connue : refus dès la reformulation, rien n’attend un « oui »', async () => {
+    const s = session((dossier) => {
+      const f = join(dossier, 'factures.csv')
+      writeFileSync(
+        f,
+        readFileSync(f, 'utf8').replace(';2026-10-01;30;non;emise;', ';;30;non;emise;'),
+      )
+    })
+    expect(s.ctx.factures.get('FAC-2026-042')?.echeance).toBeUndefined()
+    const { r, conversation } = await tour(s, DIRIGEANT, 'brouillon_relance', {
+      facture: 'FAC-2026-042',
+    })
+    expect(r).toEqual({
+      sorte: 'refus',
+      texte: 'FAC-2026-042 : son échéance est inconnue ; elle se renseigne avant toute relance.',
+    })
+    expect(s.journal.historique(conversation).map((l) => l.type)).not.toContain(
+      TYPE_CONFIRMATION_ATTENDUE,
+    )
+  })
 })
 
 describe('les refus par absence du geste dans la liste du rôle', () => {

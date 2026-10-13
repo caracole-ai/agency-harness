@@ -9,6 +9,7 @@ import {
   type Designable,
   echappee,
   FICHIER_CONFIG,
+  fuites,
   type Identite,
   type Intention,
   Journal,
@@ -81,36 +82,68 @@ const organisation = (id: string, nom: string): Designable => ({ id, nom, sorte:
 /** Au moins autant de lettres qu'un mot propre qu'on masque seul (« Lumen », pas « Les »). */
 const LETTRES_MOT_PROPRE = 4
 
+/** Un texte écrit d'un seul tenant : le masque n'en cherche que la forme entière (les tirets y valent des espaces). */
+const dUnTenant = (texte: string) => texte.trim().split(/\s+/).join('-')
+
+/**
+ * Les mots du métier lus dans les données : les valeurs des colonnes qui ne
+ * portent jamais un nom ni un texte libre (le secteur d'un client, la fonction
+ * d'un contact, le composant d'une version). Un résumé, un commentaire, le
+ * libellé d'un projet ou d'un lot n'en sont pas : ils peuvent citer un client
+ * par son nom, et ce nom y deviendrait un mot courant.
+ */
+function vocabulaire(ctx: Contexte): string {
+  return [
+    ...[...ctx.clients.values()].map((c) => c.secteur),
+    ...[...ctx.contacts.values()].map((c) => c.fonction),
+    ...ctx.versions.map((v) => v.composant),
+  ]
+    .filter((v) => v !== undefined)
+    .join('\n')
+}
+
 /**
  * Les noms d'un client tels que le masque les cherche. Le moteur cherche un
  * nom par ses formes de personne (prénom seul, nom seul : `formes`), coupées
  * aux espaces ; pour une organisation, ses mots courants (« Agence »,
  * « Atelier », « Groupe ») n'en sont pas des formes sûres : ils masqueraient
  * le mot partout, et rendraient « agence » une fuite. Le nom entier s'écrit
- * donc d'un seul tenant (les tirets valent des espaces pour le masque), et
- * chacun de ses mots propres, coupés aux espaces, apostrophes et tirets (une majuscule ailleurs
- * qu'en tête, quatre lettres au moins : « Orsini », « Castelvert ») se masque
- * seul.
+ * donc d'un seul tenant, comme le nom tel qu'on le dit, de son premier mot
+ * propre à la fin (« Fournil des Saules », « Hexalis Industrie »). Un mot
+ * propre (coupé aux espaces, apostrophes et tirets ; une majuscule ailleurs
+ * qu'en tête, quatre lettres au moins) se masque seul s'il est distinctif :
+ * « Orsini », « Castelvert », mais pas « Industrie », que les données
+ * emploient comme un mot du métier (le secteur de ce client) : il n'identifie
+ * personne, et le masquer abîmerait la copie. `courant` le dit, avec le
+ * même mot à mot que le masque.
  */
-function nomsDuClient(id: string, nom: string): Designable[] {
-  const propres = nom
-    .split(/[\s'’-]+/)
+function nomsDuClient(id: string, nom: string, courant: (mot: string) => boolean): Designable[] {
+  const propres = [...nom.matchAll(/[^\s'’-]+/g)]
     .slice(1)
-    .filter((m) => /^\p{Lu}/u.test(m) && (m.match(/\p{L}/gu) ?? []).length >= LETTRES_MOT_PROPRE)
+    .filter(
+      (m) => /^\p{Lu}/u.test(m[0]) && (m[0].match(/\p{L}/gu) ?? []).length >= LETTRES_MOT_PROPRE,
+    )
+  const premier = propres[0]
+  const ditAinsi = premier === undefined ? undefined : nom.slice(premier.index).trim()
   return [
-    organisation(id, nom.trim().split(/\s+/).join('-')),
-    ...propres.map((m) => organisation(id, m)),
+    organisation(id, dUnTenant(nom)),
+    ...(ditAinsi !== undefined && /[\s'’-]/.test(ditAinsi)
+      ? [organisation(id, dUnTenant(ditAinsi))]
+      : []),
+    ...propres.filter((m) => !courant(m[0])).map((m) => organisation(id, m[0])),
   ]
 }
 
 /** Tout nom qui ne part jamais au modèle (M4), tel que le masque et `fuites` le cherchent. */
 function noms(s: Session): Designable[] {
   const { ctx } = s
+  const mots = vocabulaire(ctx)
+  const courant = (mot: string) => fuites(mots, [organisation(mot, mot)]).length > 0
   return [
     ...[...ctx.personnes.values()].map((p) => personne(p.id, p.nom)),
     ...[...ctx.sous_traitants.values()].map((p) => personne(p.id, p.nom)),
     ...[...ctx.contacts.values()].map((c) => personne(c.id, c.nom)),
-    ...[...ctx.clients.values()].flatMap((c) => nomsDuClient(c.id, c.nom)),
+    ...[...ctx.clients.values()].flatMap((c) => nomsDuClient(c.id, c.nom, courant)),
     // Un nom de domaine, et toute ressource du registre des accès qui le porte, se masque par lui.
     ...[...ctx.domaines.values()].map((d) => organisation(d.id, d.nom)),
   ]

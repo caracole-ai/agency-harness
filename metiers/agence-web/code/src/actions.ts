@@ -583,11 +583,16 @@ const aRelancer = (s: Session) => (id: string) => {
   return f !== undefined && f.etat === 'emise' && resteDu(s, f) > 0
 }
 
-/** Le brouillon d'une relance, rendu par le code : son niveau suit `relances.csv` ; il n'est jamais envoyé. */
+/**
+ * Le brouillon d'une relance, rendu par le code : son niveau suit
+ * `relances.csv` ; il n'est jamais envoyé. Une facture sans échéance connue
+ * n'en a pas : rien ne dit qu'elle est échue (la veille demande de la
+ * renseigner), rien n'est supposé.
+ */
 function brouillon(
   s: Session,
   mention: string,
-): { facture: Facture; niveau: number; texte: string } {
+): { facture: Facture; echeance: string; niveau: number; texte: string } {
   const e = une(
     s,
     'facture',
@@ -598,14 +603,16 @@ function brouillon(
   if ('lequel' in e) throw new Error(e.lequel)
   const f = s.ctx.factures.get(e.id)
   if (!f) throw new Error(`facture ${e.id} inconnue`)
+  const echeance = f.echeance
+  if (echeance === undefined) {
+    throw new Error(`${f.id} : son échéance est inconnue ; elle se renseigne avant toute relance.`)
+  }
   const relances = relancesDe(s, f.id)
   const niveau = Math.min(NIVEAUX_RELANCE.length, (relances.at(-1)?.niveau ?? 0) + 1)
   const client = s.ctx.clients.get(f.client)
   const contact = [...s.ctx.contacts.values()].find((c) => c.client === f.client)
   const reste = resteDu(s, f)
-  const facture = `la facture ${f.id} du ${date(f.date)}, d'un montant de ${enEuros(f.montant_ttc_eur)} TTC${
-    f.echeance ? `, à échéance du ${date(f.echeance)}` : ''
-  }`
+  const facture = `la facture ${f.id} du ${date(f.date)}, d'un montant de ${enEuros(f.montant_ttc_eur)} TTC, à échéance du ${date(echeance)}`
   const du = reste !== f.montant_ttc_eur ? ` (reste dû : ${enEuros(reste)})` : ''
   const deja = relances.map((r) => date(r.date)).join(', ')
   const corps =
@@ -632,8 +639,11 @@ function brouillon(
     'Cordialement.',
     '---',
   ].join('\n')
-  return { facture: f, niveau, texte }
+  return { facture: f, echeance, niveau, texte }
 }
+
+/** Le premier jour où une facture est échue, et où sa relance peut se garder : le lendemain de son échéance (le retard de `factures_en_retard`). */
+const echueLe = (echeance: string) => jour(echeance).add({ days: 1 })
 
 const brouillonRelance: Action<Session, z.infer<typeof BrouillonRelance>> = {
   id: 'brouillon_relance',
@@ -642,11 +652,21 @@ const brouillonRelance: Action<Session, z.infer<typeof BrouillonRelance>> = {
   parametres: BrouillonRelance,
   roles: [...rolesQui('voit_tout'), 'commercial'],
   ecrit: true,
-  // La reformulation montre le brouillon : le « oui » le garde au journal, rien ne part.
-  reformuler: (s, _identite, p) =>
-    `${brouillon(s, p.facture).texte}\nGarder ce brouillon au journal ?`,
+  // La reformulation montre le brouillon : le « oui » le garde au journal, rien ne part. Elle ne
+  // connaît pas la date du jour (contrat du moteur) : elle dit l'échéance, et l'exécution, qui la
+  // connaît, refuse avant elle.
+  reformuler: (s, _identite, p) => {
+    const b = brouillon(s, p.facture)
+    return `${b.texte}\nUne relance ne se garde qu'une fois la facture échue, à partir du ${dateFr(echueLe(b.echeance))}.\nGarder ce brouillon au journal ?`
+  },
   executer: (s, identite, p, maintenant) => {
     const b = brouillon(s, p.facture)
+    const echue = echueLe(b.echeance)
+    if (Temporal.PlainDate.compare(maintenant.toPlainDate(), echue) < 0) {
+      throw new Error(
+        `${b.facture.id} n'est pas échue : son échéance est le ${date(b.echeance)}. Rien n'est gardé ; une relance se garde à partir du ${dateFr(echue)}.`,
+      )
+    }
     s.journal.ecrire(
       [
         {

@@ -4,9 +4,12 @@ import {
   aParis,
   chargerPersonnes,
   copieClient,
+  type Designable,
   fuites,
   type Identite,
   type IdentiteVerifiee,
+  masquerTables,
+  masquerTexte,
   modeleSimule,
   motifPourTester,
   quiParle,
@@ -24,6 +27,7 @@ import {
 import { describe, expect, it } from 'vitest'
 import { TYPE_BROUILLON } from './actions'
 import { CONVERSATION, INTENTIONS, type Session } from './conversation'
+import { tablesPour } from './copie'
 import { DOMAINE } from './domaine'
 import { ROLES_DECLARES } from './roles'
 
@@ -70,6 +74,53 @@ async function tour(s: Session, identite: Identite, pas: Scripte[], consigne: st
 const outil = (nom: string, entree: unknown): Scripte => ({ outil: nom, entree })
 const nouvelle = (intention: string): Scripte =>
   outil('demande_nouvelle', { intention, resume: 'une demande' })
+
+/**
+ * Les mots qui identifient seuls un client du client fictif, écrits à la main
+ * depuis `clients.csv` : ses mots propres (une majuscule hors du premier mot,
+ * quatre lettres au moins), sauf « Industrie », le secteur de CLI-08.
+ */
+const MOTS_DISTINCTIFS = [
+  'Valcourt',
+  'Coteaux',
+  'Fournil',
+  'Saules',
+  'Escabeau',
+  'Dalbret',
+  'Genêts',
+  'Mérindol',
+  'Hexalis',
+  'Aulnes',
+  'Orsini',
+  'Lumen',
+  'Kerdual',
+  'Hautes',
+  'Brandes',
+  'Prana',
+  'Rive',
+  'Castelvert',
+  'Mousse',
+  'Biocéane',
+  'Arpège',
+  'Nord',
+  'Lacombe',
+  'Saveurs',
+  'Trait',
+  'Jardins',
+  'Lune',
+  'Dumontel',
+  'Esque',
+]
+
+/** Ce qu'aucun texte parti au modèle ne doit porter : chaque client par son nom entier, et chaque mot distinctif. */
+const clientsCherches = (s: Session): Designable[] => [
+  ...[...s.ctx.clients.values()].map((c) => ({
+    id: c.id,
+    nom: c.nom.split(' ').join('-'),
+    sorte: 'organisation' as const,
+  })),
+  ...MOTS_DISTINCTIFS.map((m) => ({ id: m, nom: m, sorte: 'organisation' as const })),
+]
 
 /** Tout ce qui est parti au modèle : systèmes, messages et outils de chaque appel. */
 const envoye = (modele: ReturnType<typeof modeleSimule>) => JSON.stringify(modele.appels)
@@ -127,8 +178,10 @@ describe('les noms qui ne partent jamais au modèle', () => {
       new Set(noms.filter((x) => x.id.startsWith(prefixe)).map((x) => x.sorte))
     for (const p of ['M-', 'ST-', 'CT-']) expect(sorte(p)).toEqual(new Set(['personne']))
     for (const p of ['CLI-', 'DOM-']) expect(sorte(p)).toEqual(new Set(['organisation']))
-    // 39 personnes ; 25 clients entiers, 30 mots propres (« Hautes-Brandes » en donne deux), 30 domaines
-    expect(noms).toHaveLength(124)
+    // 39 personnes ; 25 clients entiers ; 12 noms tels qu'on les dit, du premier mot propre à la fin
+    // (« Fournil des Saules ») ; 29 mots propres distinctifs (« Hautes-Brandes » en donne deux,
+    // « Industrie » n'en est pas) ; 30 domaines
+    expect(noms).toHaveLength(135)
   })
   it('un client se masque entier, et par ses mots propres ; pas par ses mots courants', () => {
     expect(fuites('Céramiques Orsini', noms)).toEqual(['Céramiques Orsini'])
@@ -139,6 +192,31 @@ describe('les noms qui ne partent jamais au modèle', () => {
     // un mot propre pris dans un nom composé (« Hautes-Brandes ») se masque seul aussi
     expect(fuites('la communauté des Brandes', noms)).toEqual(['Brandes'])
   })
+  it('un mot propre que les données emploient comme mot du métier ne se masque pas seul ; le nom tel qu’on le dit, si', () => {
+    // « industrie » est le secteur de CLI-08 (clients.csv) : un mot courant, qui n'identifie personne
+    expect(fuites('le secteur industrie, les clients de l’Industrie', noms)).toEqual([])
+    expect(fuites('chez Hexalis', noms)).toEqual(['Hexalis'])
+    expect(fuites('chez Hexalis Industrie', noms)).toEqual(['Hexalis Industrie'])
+    expect(fuites('Groupe Hexalis Industrie', noms)).toEqual(['Groupe Hexalis Industrie'])
+    expect(fuites('les Jardins de Lune', noms)).toEqual(['Jardins de Lune'])
+    expect(fuites('le Fournil des Saules', noms)).toEqual(['Fournil des Saules'])
+    // rien dans les données ne dit que « Nord », « Rive » ou « Lune » soient des mots du métier : masqués seuls
+    expect(fuites('au nord, sur la rive, la lune', noms)).toEqual(['nord', 'rive', 'lune'])
+    const designe = (texte: string) => masquerTexte(texte, noms)
+    expect(designe('le secteur industrie')).toBe('le secteur industrie')
+    expect(designe('chez Hexalis Industrie')).toBe('chez CLI-08')
+    expect(designe('le Fournil des Saules')).toBe('le CLI-03')
+  })
+  it.each(TOUS)(
+    '$role : la copie masquée ne porte ni le nom entier d’un client, ni un mot qui l’identifie seul ; le secteur « industrie » reste',
+    (identite) => {
+      const masquees = masquerTables(tablesPour(s, identite), noms)
+      expect(fuites(JSON.stringify(masquees), clientsCherches(s))).toEqual([])
+      const cli08 = masquees.find((t) => t.nom === 'clients')?.lignes.find((c) => c.id === 'CLI-08')
+      if (identite === GRAPHISTE || identite === BILAL) expect(cli08).toBeUndefined()
+      else expect(cli08).toMatchObject({ nom: 'CLI-08', secteur: 'industrie' })
+    },
+  )
   it('ce qu’un rôle désigne : toute l’agence s’il désigne autrui, sinon lui-même', () => {
     const designe = (identite: Identite) =>
       CONVERSATION.vocabulaire(s, identite).noms.map((x) => x.id)
@@ -352,6 +430,21 @@ describe('l’échappée : elle répond, ne propose jamais, et ne voit aucun nom
     expect(modele.appels[1]?.systeme).toContain('Tu travailles pour le dirigeant M-01 ')
     expect(lignes.find((l) => l.type === TYPE_ECHAPPEE)?.issue).toBe('reponse')
   })
+  // Le développeur, qui ne désigne pas autrui : la consigne va droit à l'échappée, sans « de qui parlez-vous ? ».
+  it('le développeur cite chaque client par un mot qui l’identifie seul : aucun n’arrive à l’échappée, le secteur si', async () => {
+    const s = session()
+    const consigne = `Quels clients parmi ${MOTS_DISTINCTIFS.join(', ')} et le Groupe Hexalis Industrie sont dans le secteur industrie ?`
+    const { modele } = await tour(
+      s,
+      BILAL,
+      [nouvelle('clients_secteur'), outil('abandonner', { motif: 'x' })],
+      consigne,
+    )
+    expect(modele.appels).toHaveLength(2)
+    const echappee = JSON.stringify(modele.appels[1])
+    expect(fuites(echappee, clientsCherches(s))).toEqual([])
+    expect(echappee).toContain('et le CLI-08 sont dans le secteur industrie ?')
+  })
   it('le développeur : sa copie seule ; ni les montants, ni les autres', async () => {
     const s = session()
     const { modele } = await tour(
@@ -368,6 +461,8 @@ describe('l’échappée : elle répond, ne propose jamais, et ne voit aucun nom
       'Table projets',
       'Table acces',
       'Table depots',
+      'Table sauvegardes',
+      'Table versions',
     ])
     expect(systeme).not.toContain('_eur')
     expect(fuites(envoye(modele), CONVERSATION.noms(s))).toEqual([])

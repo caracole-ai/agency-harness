@@ -55,7 +55,7 @@ describe('tout : le dirigeant et la PO', () => {
 
 describe('le commerce : la commerciale', () => {
   const tables = tablesPour(s, COMMERCIALE)
-  it('onze tables, ni le temps ni les personnes de l’agence', () => {
+  it('onze tables et les heures TMA par mois, ni le temps ni les personnes de l’agence', () => {
     expect(noms(tables)).toEqual([
       'clients',
       'contacts',
@@ -68,6 +68,7 @@ describe('le commerce : la commerciale', () => {
       'relances',
       'contrats_tma',
       'domaines',
+      'heures_tma_par_mois',
     ])
     expect(noms(tables)).not.toContain('temps')
     expect(noms(tables)).not.toContain('personnes')
@@ -79,6 +80,22 @@ describe('le commerce : la commerciale', () => {
     expect(table(tables, 'lots').colonnes.map((c) => c.nom)).not.toContain('jours_vendus')
     for (const l of table(tables, 'projets').lignes) expect(Object.keys(l)).not.toContain('po')
   })
+  it('l’avancement des projets et les heures TMA consommées (entretien § 10), sans personne', () => {
+    const projets = table(tables, 'projets')
+    expect(projets.colonnes.at(-1)).toMatchObject({ nom: 'avancement', type: 'REAL' })
+    const avancement = (id: string) => projets.lignes.find((p) => p.id === id)?.avancement
+    // PRJ-12 : 18 jours consommés sur 29 vendus (le geste etat_projet de la PO le dit aussi)
+    expect(avancement('PRJ-12')).toBeCloseTo(18 / 29, 9)
+    const heures = table(tables, 'heures_tma_par_mois')
+    expect(heures.colonnes.map((c) => c.nom)).toEqual(['contrat', 'mois', 'heures'])
+    const de = (contrat: string, mois: string) =>
+      heures.lignes.find((l) => l.contrat === contrat && l.mois === mois)?.heures
+    // TMA-02, le cabinet d'avocats : 3,5 h le 08/09/2026, 1,5 h le 06/10/2026 (temps.csv)
+    expect(de('TMA-02', '2026-09')).toBe(3.5)
+    expect(de('TMA-02', '2026-10')).toBe(1.5)
+    expect(de('TMA-01', '2026-10')).toBe(1.5)
+    expect(colonnes(tables)).not.toContain('personne')
+  })
 })
 
 describe('soi-même : le graphiste et le développeur', () => {
@@ -86,7 +103,15 @@ describe('soi-même : le graphiste et le développeur', () => {
     '$role $personne : aucune colonne en euros, ni le temps, ni les tickets, ni les accès d’autrui',
     (identite) => {
       const tables = tablesPour(s, identite)
-      expect(noms(tables)).toEqual(['tickets', 'temps', 'projets', 'acces', 'depots'])
+      expect(noms(tables)).toEqual([
+        'tickets',
+        'temps',
+        'projets',
+        'acces',
+        'depots',
+        'sauvegardes',
+        'versions',
+      ])
       expect(colonnes(tables).filter((c) => c.endsWith('_eur'))).toEqual([])
       const temps = table(tables, 'temps').lignes
       expect(temps.length).toBeGreaterThan(0)
@@ -102,8 +127,20 @@ describe('soi-même : le graphiste et le développeur', () => {
         [...s.ctx.projets.keys()].filter((id) => siens.has(id)),
       )
       expect(table(tables, 'depots').lignes.every((d) => siens.has(String(d.projet)))).toBe(true)
+      for (const t of ['sauvegardes', 'versions']) {
+        expect(table(tables, t).lignes.every((x) => siens.has(String(x.projet)))).toBe(true)
+      }
     },
   )
+  it('le développeur M-05 : les sauvegardes et les versions de PRJ-12 (entretien § 12, phrases 27 et 31)', () => {
+    const tables = tablesPour(s, DEVELOPPEUR)
+    const dePrj12 = (t: string) => table(tables, t).lignes.filter((x) => x.projet === 'PRJ-12')
+    expect(dePrj12('sauvegardes').map((x) => x.date)).toEqual(['2026-07-28', '2026-09-14'])
+    expect(dePrj12('versions').map((x) => [x.composant, x.version, x.fin_de_support_le])).toEqual([
+      ['framework', '4.2', '2027-11-30'],
+      ['langage serveur', '8.3', '2027-12-31'],
+    ])
+  })
   it('le temps de Julie (M-06) n’est pas dans la copie de M-05', () => {
     const temps = table(tablesPour(s, DEVELOPPEUR), 'temps').lignes
     expect(temps.some((t) => t.personne === 'M-06')).toBe(false)
