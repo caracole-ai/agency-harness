@@ -136,12 +136,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
   statut de la règle, lecture de référence et notes), `src/controles/`
   (exécution des contrôles, fermée en cas d'erreur), `src/cli/registre.ts`,
-  `src/temps/` (jours fériés, décompte et report des délais, obligations
-  périodiques, intervalles en heures réelles, validité d'un titre à une
+  `src/temps/` (jours fériés, décompte et report des délais, « 45 jours fin
+  de mois » (`ajouter`), obligations périodiques, intervalles en heures réelles, validité d'un titre à une
   date ; testé avec la sécurité, le transport et les avocats),
   `src/archetypes/` (Veiller : échéances, fenêtres d'alerte et de
-  préparation, niveaux ; le déroulé d'une veille, `passe.ts` ; le rapport ;
-  ce qu'un métier fournit, `metier.ts`), `src/config.ts` (config client
+  préparation, niveaux ; le déroulé d'une veille, `passe.ts` ; le rapport,
+  et les sections qu'un métier y ajoute après « Sources » ; Rapprocher en
+  v1 minimale, les écarts consommé / vendu, `ecarts.ts` ; ce qu'un métier
+  fournit, `metier.ts`), `src/config.ts` (config client
   validée au démarrage, politique du client), `src/journal/` (SQLite en
   ajout seul, tenu par la base), `src/archetypes/candidats.ts` (évaluer des
   candidats par les contrôles, les classer), `src/approbation/jeton.ts` (la
@@ -337,9 +339,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     l'agence web a le sien (`@harnais/agence-web`, `PLAN-METIER-2.md` § 7) :
     modèle des vingt exports, connecteur CSV en lecture seule, générateur
     déterministe du client fictif (`cli/fictif.ts`), neuf contrôles et deux
-    veilles (I-01 à I-04, I-07, I-09 à I-14), ses échéances, la copie par
-    capacité et ses huit gestes (`actions.ts`) ; rien ne s'écrit chez le
-    client ;
+    veilles (I-01 à I-04, I-07, I-09 à I-14), ses échéances, ses écarts
+    (consommé / vendu par forfait et par lot, heures TMA du mois, facturé
+    contre vendu : `semantique.ts`) et deux sections du rapport (« Écarts »,
+    « À suivre, hors des règles vérifiées »), la copie par capacité et ses
+    huit gestes (`actions.ts`) ; rien ne s'écrit chez le client ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
   - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel
@@ -401,7 +405,8 @@ pnpm registre:verifier   # identifiants, couverture interdit ↔ test, codes cit
 pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
                          # la veille d'un client : planning contrôlé, échéances, rapport ; écrit dans son journal
 pnpm veiller --client <copie de exemples/agence-web-fictive> --date 2026-10-12
-                         # la même veille chez l'agence web (constats « à décider », échéances)
+                         # la même veille chez l'agence web (constats « à décider », échéances,
+                         # puis les sections « Écarts » et « À suivre, hors des règles vérifiées »)
 pnpm --filter @harnais/agence-web fictif --vers <dossier>
                          # régénère les CSV du client fictif de l'agence web (refuse exemples/client-fictif)
 pnpm rapport:html rapport.md rapport.html [--bandeau "texte"]
