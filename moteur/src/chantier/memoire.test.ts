@@ -227,6 +227,14 @@ describe('écrire et relire la mémoire', () => {
   })
 })
 
+/**
+ * Un mot seul tout en minuscules n'est pas un nom : « un petit assistant » ne cite pas
+ * « Laura Petit » d'un autre client fictif (la mémoire d'un chantier de l'agence web,
+ * nuit du 2026-10-13). L'écriture, elle, retire ces mots pour son propre client.
+ */
+const nomsCites = (texte: string, fictives: Parameters<typeof interdits>[1]) =>
+  interdits(texte, fictives).filter((t) => !/^[\p{Ll}\p{M}]+$/u.test(t))
+
 describe('memoire/ du dépôt', () => {
   /** Tous les fichiers sous `memoire/`. */
   function fichiers(d: string): string[] {
@@ -243,11 +251,19 @@ describe('memoire/ du dépôt', () => {
       const tous = fichiers(join(RACINE_DEPOT, DOSSIER_MEMOIRE))
       expect(tous.length).toBeGreaterThan(0)
       for (const f of tous) {
-        expect({ fichier: f, interdits: interdits(readFileSync(f, 'utf8'), fictives) }).toEqual({
+        expect({ fichier: f, interdits: nomsCites(readFileSync(f, 'utf8'), fictives) }).toEqual({
           fichier: f,
           interdits: [],
         })
       }
     },
   )
+
+  it('un mot courant en minuscules n’est pas un nom ; le nom, en majuscule ou entier, l’est', () => {
+    const laura = [{ id: 'A-13', nom: 'Laura Petit', sorte: 'personne' as const }]
+    expect(nomsCites('estimation : petite ; un petit assistant', laura)).toEqual([])
+    expect(nomsCites('vu par Petit', laura)).toEqual(['Petit'])
+    expect(nomsCites('vu par laura petit', laura)).toEqual(['laura petit'])
+    expect(nomsCites('vu par A-13', laura)).toEqual(['A-13'])
+  })
 })

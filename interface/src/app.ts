@@ -1,4 +1,4 @@
-// L'interface du patron (démo) : la page et ses routes JSON, sur le dossier
+// L'interface (démo) : la page et ses routes JSON, sur le dossier
 // d'un client. Chaque route passe d'abord la porte (le registre d'accès,
 // REFLEXIONS.md (2026-10-08)) ; ensuite seulement, une session est ouverte et fermée
 // dans un `finally` : rouvrir est la façon simple de relire le planning après
@@ -188,6 +188,24 @@ function etat(
   }
 }
 
+/**
+ * Sous qui la page s'ouvre : le premier rôle sans identifiant que le métier
+ * déclare (la sécurité : le patron) ; sinon la première personne du registre
+ * dont le rôle administre (l'agence web : la direction), seule à lire l'état.
+ * L'identité est déclarée, pas authentifiée (D12) : « Je suis » en change.
+ */
+function entree(m: Metier, personnes: Personne[]): Identite {
+  const anonyme = m.roles.find((r) => !r.identifie)
+  if (anonyme) return { role: anonyme.id }
+  const administre = personnes.find((p) => aCapacite(m.roles, p, 'administre'))
+  if (!administre) {
+    throw new Error(
+      "ce métier ne déclare aucun rôle sans identifiant et personne au registre d'accès n'administre : la page ne sait pas sous qui s'ouvrir",
+    )
+  }
+  return administre
+}
+
 export function creerApp(options: {
   dossier: string
   maintenant?: string
@@ -263,6 +281,10 @@ export function creerApp(options: {
   // Les rôles que le métier déclare, pour le sélecteur « Je suis » : une
   // déclaration du code, lue avant toute porte ; le dossier n'est pas ouvert.
   app.post('/api/roles', (c) => c.json(m.roles))
+
+  // Sous qui la page s'ouvre, avant toute porte comme les rôles : la porte
+  // vient ensuite, à la première lecture, au nom de cette identité.
+  app.post('/api/entree', (c) => c.json(entree(m, chargerPersonnes(dossier, m.roles))))
 
   // Ce que le métier dit à celui qui parle : son nom, son accueil, ses
   // suggestions (`Tableau.textes`). Tout rôle qui passe la porte le reçoit ;

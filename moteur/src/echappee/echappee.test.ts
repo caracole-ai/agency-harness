@@ -203,6 +203,14 @@ describe('le journal se souvient de l’échappée', () => {
     expect(e.texte).toMatch(/^nom \| heures\nJulien Lefèvre \| 16/)
   })
 
+  it('un nombre que la description de la copie a dit au modèle se cite (evals/erreurs-2026-10-13.md, E4)', async () => {
+    // « Table vacations : les vacations (3 lignes) » : le 3 vient du harnais, pas du modèle.
+    const dit = await echapper(PATRON, [REQUETE, repondre('3 vacations ; A-2 : 16 heures.')])
+    expect(dit.issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_OK })
+    const invente = await echapper(PATRON, [REQUETE, repondre('4 vacations ; A-2 : 16 heures.')])
+    expect(invente.issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
+  })
+
   it('un agent : l’instantané ne contient que sa ligne, la ligne echappee porte son identifiant', async () => {
     const { dossier, donnees } = await echapper(JULIEN, [REQUETE, repondre('16 heures.')])
     const [e] = donnees(TYPE_ECHAPPEE)

@@ -263,7 +263,9 @@ export async function echappee<Modif>(
         secondes: plafonds.par_demande.secondes,
       },
       journaliser,
-      [],
+      // La description de la copie est dite au modèle par le harnais : ses nombres se citent
+      // (« une journée vendue vaut 7 heures saisies », evals/erreurs-2026-10-13.md, E4).
+      [ouverte.description],
       metier.personnes.map((p) => p.id),
     )
     const montree = montrer(issue, metier.personnes)

@@ -1,9 +1,10 @@
-// L'interface du patron (démo), côté navigateur : appelle les routes JSON du
+// L'interface (démo), côté navigateur : appelle les routes JSON du
 // serveur et rend leurs textes tels quels, par `textContent` (jamais
 // `innerHTML` avec des données). PLAN-ESPACES.md § 10.2.
 
 const API = {
   roles: '/api/roles',
+  entree: '/api/entree',
   tableau: '/api/tableau',
   etat: '/api/etat',
   journal: '/api/journal?limite=200',
@@ -963,19 +964,12 @@ async function demarrer() {
   $('consigne').addEventListener('input', ajuster)
   try {
     ici.roles = await appeler(API.roles, {})
+    // Le serveur dit sous qui entrer : le rôle sans identifiant (la sécurité : le patron), sinon une personne qui administre.
+    ici.identite = await appeler(API.entree, {})
   } catch (erreur) {
     bulleErreur(erreur.message)
     return
   }
-  // On entre sous le premier rôle sans identifiant que le métier déclare (la sécurité : le patron).
-  const premier = ici.roles.find((r) => !r.identifie)
-  if (!premier) {
-    bulleErreur(
-      'Ce métier ne déclare aucun rôle sans identifiant : la page ne sait pas qui choisir.',
-    )
-    return
-  }
-  ici.identite = { role: premier.id }
   await chargerTableau()
   rendreSuggestions()
   chargerEtat().then(() => {

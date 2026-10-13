@@ -15,9 +15,8 @@ const DATE_MOIS_COURT =
 const DATE_ISO = /(?<![\d-])\d{4}-\d{2}-\d{2}(?![\d-])/g
 /** Un séparateur de milliers : espace, espace insécable, espaces fines, point (PLAN-METIER-2.md § 1, M11). */
 const SEPARATEUR = String.raw`[ \u00A0\u2009\u202F.]`
-const SEPARATEURS = new RegExp(SEPARATEUR, 'g')
-/** Un nombre groupé par milliers : un même séparateur entre groupes de trois chiffres, virgule décimale (`12 500,00`, `1.500`). */
-const GROUPE = String.raw`\d{1,3}(${SEPARATEUR})\d{3}(?:\1\d{3})*(?!\d)(?:,\d+)?`
+/** Un nombre groupé par milliers : un même séparateur entre groupes de trois chiffres, virgule décimale (`12 500,00`, `1.500`), ou point décimal après un groupement par espaces (`11 670.75`). */
+const GROUPE = String.raw`\d{1,3}(${SEPARATEUR})\d{3}(?:\1\d{3})*(?!\d)(?:,\d+|(?<=[ \u00A0\u2009\u202F]\d{3})\.\d+)?`
 const GROUPE_SEUL = new RegExp(`^${GROUPE}$`)
 /** Un nombre : groupé par milliers, sinon `16`, `16,5`, `16.5`. */
 const NOMBRE = new RegExp(String.raw`${GROUPE}|\d+(?:[.,]\d+)?`, 'g')
@@ -29,6 +28,8 @@ const ANNEE = new RegExp(
   String.raw`${APRES_CHIFFRE}\b(?:19|20)\d{2}\b(?![.,]\d)(?!\s*(?:€|[Ee]uros?\b))`,
   'g',
 )
+/** Ce qui suit un nombre écrit en pourcentage. */
+const POURCENT = /^\s*%/
 const MOT = /[\p{L}\p{M}\p{N}]+/gu
 const MOT_DE_NOM = /^\p{L}{3,}$/u
 
@@ -46,10 +47,18 @@ function echapper(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-/** La forme canonique d'un nombre écrit : séparateurs de milliers retirés, virgule → point, zéros de fin des décimales retirés (`12 500,00` ≡ `12500` ≡ `12500.0`). */
+/** La forme canonique d'un nombre écrit : séparateur de milliers retiré, virgule → point, zéros de fin des décimales retirés (`12 500,00` ≡ `12500` ≡ `12500.0`, `11 670.75` ≡ `11670.75`). */
 function canonique(ecrit: string): string {
-  const point = (GROUPE_SEUL.test(ecrit) ? ecrit.replace(SEPARATEURS, '') : ecrit).replace(',', '.')
+  const separateur = GROUPE_SEUL.exec(ecrit)?.[1]
+  const point = (separateur ? ecrit.replaceAll(separateur, '') : ecrit).replace(',', '.')
   return point.includes('.') ? point.replace(/0+$/, '').replace(/\.$/, '') : point
+}
+
+/** Le centième d'une forme canonique, canonique aussi (`150` → `1.5`, `94` → `0.94`) : un pourcentage écrit pour un ratio des sources. */
+function centieme(c: string): string {
+  const [entiere = '', decimales = ''] = c.split('.')
+  const e = entiere.padStart(3, '0')
+  return canonique(`${e.slice(0, -2).replace(/^0+(?=\d)/, '')}.${e.slice(-2)}${decimales}`)
 }
 
 /** Le nombre apparaît dans les sources comme nombre entier, pas comme fragment d'un autre, ni comme décimales d'un autre (« 50 » n'est pas dans « 0.50 »). */
@@ -120,6 +129,12 @@ function datesEtNombres(
     const point = m[0].replace(',', '.')
     if (annees.includes(point) && ecritesEnAnnee.has(m.index)) continue
     if (canoniques.has(canonique(m[0]))) continue
+    // « à 150 % » pour le ratio `1.50` d'une requête : le code a fait la division, le modèle l'écrit en pourcentage.
+    if (
+      POURCENT.test(texte.slice(m.index + m[0].length)) &&
+      canoniques.has(centieme(canonique(m[0])))
+    )
+      continue
     if (!nombreTrouve(sources, [point, point.replace('.', ',')])) {
       intrus.push({ position: m.index, texte: m[0] })
     }

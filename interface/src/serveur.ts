@@ -1,5 +1,5 @@
 // pnpm interface --client <dossier> [--port 3777] [--maintenant AAAA-MM-JJTHH:MM] [--modele simule] [--script <fichier.json>]
-// L'interface du patron (démo), servie sur 127.0.0.1 seulement
+// L'interface (démo), servie sur 127.0.0.1 seulement
 // (PLAN-ESPACES.md § 10). `--modele simule` rejoue les réponses de
 // `--script` (un tableau de `Scripte`), sans clé ni réseau : c'est ce qui
 // permet une démo et des captures. Travailler sur une copie du client
@@ -72,7 +72,7 @@ try {
     ...(values.maintenant ? { maintenant: values.maintenant } : {}),
   })
   serve({ fetch: app.fetch, hostname: HOTE, port }, (info) => {
-    console.log(`Interface du patron : http://${HOTE}:${info.port} (client ${dossier})`)
+    console.log(`Interface : http://${HOTE}:${info.port} (client ${dossier})`)
   })
 } catch (erreur) {
   console.error((erreur as Error).message)
