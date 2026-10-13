@@ -331,8 +331,8 @@ describe('le facturé contre le vendu, en euros HT', () => {
   t.factures = [
     facture('FAC-2026-001', 'PRJ-01', undefined, '2026-02-01', 3000),
     facture('FAC-2026-002', 'PRJ-01', 'LOT-001', '2026-06-01', 6000),
-    // sans lot, après le début du contrat TMA du projet : la TMA, pas le projet
-    facture('FAC-2026-003', 'PRJ-01', undefined, '2026-09-01', 1200),
+    // sans lot, pendant le contrat TMA du projet, trois mensualités de 500 : la TMA, pas le projet
+    facture('FAC-2026-003', 'PRJ-01', undefined, '2026-09-01', 1500),
   ]
 
   it('vendu : devis et avenants signés ; facturé : acompte et lot, pas la TMA', () => {
@@ -345,7 +345,25 @@ describe('le facturé contre le vendu, en euros HT', () => {
     expect(e).toMatchObject({ unite: 'euros', seuil: seuils.facture_alerte })
     expect(depasse(e)).toBe(false)
   })
-  it('tout le vendu facturé : l’écart est dû', () => {
+  it('une facture sans lot qui n’est pas des mensualités, ou après la fin du contrat : au projet', () => {
+    const u = {
+      ...t,
+      contrats_tma: [{ ...tma('TMA-01', 'PRJ-01', 4, '2026-09-01'), fin: '2026-12-31' }],
+      factures: [
+        ...t.factures,
+        // une part de l'avenant AVE-2026-001, sans lot (un avenant porte un projet, jamais un lot)
+        facture('FAC-2026-004', 'PRJ-01', undefined, '2026-10-01', 1750),
+        // quatre mensualités, mais après la fin du contrat
+        facture('FAC-2027-001', 'PRJ-01', undefined, '2027-01-15', 2000),
+      ],
+    }
+    expect(factureVendu(contexte(u), 'PRJ-01')).toEqual({
+      projet: 'PRJ-01',
+      vendus: 12000,
+      factures: 3000 + 6000 + 1750 + 2000,
+    })
+  })
+  it('tout le vendu facturé : le seuil est atteint (la section ne montre que l’au-delà)', () => {
     const u = {
       ...t,
       factures: [...t.factures, facture('FAC-2026-004', 'PRJ-01', 'LOT-001', '2026-10-01', 3000)],

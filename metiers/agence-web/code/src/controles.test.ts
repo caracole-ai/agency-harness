@@ -185,6 +185,16 @@ describe('données absentes : à vérifier, jamais ok', () => {
     for (const a of ctx.avenants.values()) if (a.projet === 'PRJ-12') a.jours = undefined
     expect(constat(ctx, 'I-12', 'PRJ-12')?.motif).toMatch(/^donnée absente : jours vendus/)
   })
+  it('un forfait dont un avenant retire plus de jours qu’il n’en reste de vendus', () => {
+    const ctx = lire()
+    for (const l of ctx.lots.values()) if (l.projet === 'PRJ-12') l.jours_vendus = undefined
+    const a = [...ctx.avenants.values()].find((x) => x.projet === 'PRJ-12')
+    if (!a) throw new Error('avenant de PRJ-12')
+    // AVE-2026-004, le seul avenant de PRJ-12
+    ctx.avenants.set(a.id, { ...a, etat: 'signe', jours: -2 })
+    expect(constat(ctx, 'I-12', 'PRJ-12')).toMatchObject({ verdict: 'à vérifier' })
+    expect(constat(ctx, 'I-12', 'PRJ-12')?.motif).toMatch(/^donnée absente : jours vendus/)
+  })
   it('un PV signé après la facture', () => {
     const ctx = lire()
     const lot = ctx.lots.get('LOT-020')

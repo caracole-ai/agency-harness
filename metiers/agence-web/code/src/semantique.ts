@@ -264,18 +264,27 @@ export interface FactureVendu {
  * facture annulée (`ETATS_FACTURE`), un avoir s'y écrirait en montant négatif
  * et se retrancherait. La TMA n'est pas du vendu du projet : le modèle ne
  * relie pas une facture à un contrat, et une facture sans lot d'un projet
- * sous contrat TMA, datée du début du contrat ou après, est tenue pour celle
- * de la TMA (un acompte précède le contrat, un lot porte son lot).
+ * sous contrat TMA, datée pendant le contrat et d'un nombre entier de
+ * mensualités, est tenue pour celle de la TMA (un acompte précède le contrat,
+ * un lot porte son lot ; un avenant ou un solde sans lot reste au projet).
  */
 export function factureVendu(ctx: Contexte, projet: string): FactureVendu {
   const signes = [...ctx.devis.values(), ...ctx.avenants.values()].filter(
     (d) => d.projet === projet && d.etat === 'signe',
   )
   const tma = [...ctx.contrats_tma.values()].filter((c) => c.projet === projet)
-  const deLaTma = (date: string, lot: string | undefined) =>
-    lot === undefined && tma.some((c) => c.debut <= date)
+  const centimes = (euros: number) => Math.round(euros * 100)
+  const deLaTma = (date: string, lot: string | undefined, montant: number) =>
+    lot === undefined &&
+    tma.some(
+      (c) =>
+        c.debut <= date &&
+        (c.fin === undefined || date <= c.fin) &&
+        centimes(montant) > 0 &&
+        centimes(montant) % centimes(c.montant_ht_mois_eur) === 0,
+    )
   const factures = [...ctx.factures.values()].filter(
-    (f) => f.projet === projet && !deLaTma(f.date, f.lot),
+    (f) => f.projet === projet && !deLaTma(f.date, f.lot, f.montant_ht_eur),
   )
   return {
     projet,

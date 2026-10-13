@@ -49,7 +49,7 @@ export const ConfigAgenceWeb = z.strictObject({
     tma_alerte: Fraction,
     /**
      * La part du vendu d'un projet (devis et avenants signés, en euros HT)
-     * facturée à partir de laquelle on prévient (`semantique.ts`, `ecarts`).
+     * au-delà de laquelle le facturé est un écart (`veille.ts`, `sectionEcarts`).
      */
     facture_alerte: Fraction,
     /** Le plafond d'engagement de la PO en l'absence du dirigeant, en euros HT (I-11). */

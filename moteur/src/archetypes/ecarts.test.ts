@@ -26,6 +26,10 @@ describe('taux', () => {
     expect(taux(jours(3, 0))).toBeNull()
     expect(taux(jours(0, 0))).toBeNull()
   })
+  it('un vendu négatif (un avenant qui retire des jours) : null, jamais un taux négatif', () => {
+    expect(taux(jours(18, -2))).toBeNull()
+    expect(depasse(jours(18, -2))).toBe(false)
+  })
   it('le consommé sur le vendu', () => {
     expect(taux(jours(27, 18))).toBe(1.5)
   })

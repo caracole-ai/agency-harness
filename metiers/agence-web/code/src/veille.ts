@@ -18,7 +18,7 @@ import { lireAgenceWeb } from './connecteurs/csv-exports'
 import { CONTROLES, type ContexteVeille } from './controles'
 import { echeancesAgenceWeb, echeancesDues, INTERDIT_DE_L_ECHEANCE, VEILLES } from './echeances'
 import type { Contexte, SORTES_ACCES } from './modele'
-import { ecarts, perimetreRecette } from './semantique'
+import { ecarts, MESURES, perimetreRecette } from './semantique'
 
 // Veiller chez un client de l'agence web (PLAN-METIER-2.md M13, § 7.4) : sa
 // config, la lecture de ses exports, les contrôles, les échéances, et la
@@ -108,10 +108,14 @@ const parObjet = <T extends { objet: string }>(a: T, b: T) =>
 const groupe = (intitule: string, lignes: string[]) =>
   lignes.length > 0 ? [`- **${intitule}** (${lignes.length})`, ...lignes] : []
 
+// tout le vendu facturé est l'état normal d'un projet fini : le facturé ne se montre qu'au-delà du seuil
+const auDela = (mesure: string) => mesure === MESURES.facture
+
 /**
- * Les écarts (entretien § 36) : ceux qui atteignent leur seuil, et ceux dont
- * le taux est inconnu alors que quelque chose est consommé (rien de vendu :
- * le moteur ne le dit pas, la section le montre). Groupés par ce qu'ils
+ * Les écarts (entretien § 36) : ceux qui atteignent leur seuil (le facturé,
+ * ceux qui le passent), et ceux dont le taux est inconnu alors que quelque
+ * chose est consommé (rien de vendu dans les données : le moteur ne le dit
+ * pas, la section le montre sans rien supposer). Groupés par ce qu'ils
  * rapprochent, avec le seuil du client.
  */
 export function sectionEcarts(
@@ -119,20 +123,26 @@ export function sectionEcarts(
   config: ConfigAgenceWeb,
   aujourdhui: Temporal.PlainDate,
 ): SectionRapport {
-  const montres = ecarts(ctx, config.seuils, aujourdhui).filter(
-    (e) => depasse(e) || (taux(e) === null && e.consomme > 0),
-  )
+  const montres = ecarts(ctx, config.seuils, aujourdhui).filter((e) => {
+    const t = taux(e)
+    if (t === null) return e.consomme > 0
+    return auDela(e.mesure) ? t > e.seuil : depasse(e)
+  })
   const groupes = new Map<string, { seuil: number; lignes: string[] }>()
   for (const e of montres) {
     const g = groupes.get(e.mesure) ?? { seuil: e.seuil, lignes: [] }
-    g.lignes.push(`  - ${decrireEcart(e)}`)
+    g.lignes.push(
+      taux(e) === null
+        ? `  - ${e.objet} : aucun vendu dans les données, rien n'est supposé`
+        : `  - ${decrireEcart(e)}`,
+    )
     groupes.set(e.mesure, g)
   }
   return {
     titre: SECTIONS.ecarts,
     lignes: [...groupes].flatMap(([mesure, g]) =>
       groupe(
-        `${mesure.charAt(0).toUpperCase()}${mesure.slice(1)}, dès ${pourcent(g.seuil)}`,
+        `${mesure.charAt(0).toUpperCase()}${mesure.slice(1)}, ${auDela(mesure) ? 'au-delà de' : 'dès'} ${pourcent(g.seuil)}`,
         g.lignes,
       ),
     ),

@@ -6,7 +6,7 @@ import { FICHIER_CONFIG, Journal, Temporal, veilleDuClient } from '@harnais/mote
 import { afterAll, describe, expect, it } from 'vitest'
 import { DATE_REFERENCE } from './cli/fictif'
 import { NOMS_TABLES } from './modele'
-import { decrire, SECTIONS, sectionEcarts, VEILLER } from './veille'
+import { decrire, SECTIONS, sectionEcarts, sectionHorsRegles, VEILLER } from './veille'
 import { CONFIG_FICTIVE, configFictive } from './veille.test.fixture'
 
 // La veille de l'agence web de bout en bout (PLAN-METIER-2.md § 7.4) : les CSV
@@ -132,20 +132,37 @@ describe('pnpm veiller chez le client fictif, au 2026-10-12', () => {
 })
 
 describe('les sections du métier, après « Sources » (PLAN-METIER-2.md M12, § 8)', () => {
-  it('« Écarts » : PRJ-10 à 150 %, et les projets dont tout le vendu est facturé', () => {
+  it('« Écarts » : PRJ-10 à 150 % ; PRJ-06 et PRJ-07, facturés à 100 % pile, n’y sont pas', () => {
     expect(rapport.indexOf(`## ${SECTIONS.ecarts}`)).toBeGreaterThan(rapport.indexOf('## Sources'))
     expect(partie(SECTIONS.ecarts)).toBe(
       [
         '',
         '- **Jours consommés / vendus, par forfait, dès 90 %** (1)',
         '  - PRJ-10 : 36 j consommés sur 24 vendus (150 %)',
-        // PRJ-06 : 5 184 + 3 780 + 5 292 + 3 024 ; PRJ-07 : 4 426,80 + 3 320,10 + 4 426,80 + 2 582,30
-        '- **Euros HT facturés / vendus, par projet (le consommé est le facturé), dès 100 %** (2)',
-        '  - PRJ-06 : 17 280 € consommés sur 17 280 vendus (100 %)',
-        '  - PRJ-07 : 14 756 € consommés sur 14 756 vendus (100 %)',
         '',
       ].join('\n'),
     )
+  })
+
+  it('le facturé au-delà du vendu y arrive, même sans lot, sous un contrat TMA', () => {
+    const ctx = structuredClone(passe.ctx)
+    // 9 000 € sans lot pendant TMA-05 : pas un nombre entier de mensualités, donc au projet
+    const tma = ctx.factures.get('FAC-2026-008')
+    if (!tma) throw new Error('FAC-2026-008')
+    ctx.factures.set('FAC-2026-099', {
+      ...tma,
+      id: 'FAC-2026-099',
+      date: '2026-07-01',
+      montant_ht_eur: 9000,
+      montant_ttc_eur: 10800,
+    })
+    // PRJ-15 : 3 360 + 5 040 + 2 520 + 9 000 = 19 920 € facturés sur 15 600 vendus
+    expect(sectionEcarts(ctx, configFictive(), REF).lignes).toEqual([
+      '- **Jours consommés / vendus, par forfait, dès 90 %** (1)',
+      '  - PRJ-10 : 36 j consommés sur 24 vendus (150 %)',
+      '- **Euros HT facturés / vendus, par projet (le consommé est le facturé), au-delà de 100 %** (1)',
+      '  - PRJ-15 : 19 920 € consommés sur 15 600 vendus (128 %)',
+    ])
   })
 
   it('« À suivre » : les quatre échéances sans interdit, à leur niveau, puis le bug à qualifier', () => {
@@ -173,6 +190,17 @@ describe('les sections du métier, après « Sources » (PLAN-METIER-2.md M12, �
     expect(suivre).not.toContain('DOM-23')
   })
 
+  it('la fin de garantie de PRJ-06 (18/11/2026) y arrive un mois avant', () => {
+    const lignes = sectionHorsRegles(
+      passe.ctx,
+      configFictive(),
+      Temporal.PlainDate.from('2026-10-20'),
+    ).lignes
+    expect(lignes).toContain(
+      '  - **PRJ-06 · Site et prise de contact (CLI-09) — fin de garantie** — proposer un contrat TMA avant la fin de la garantie au plus tard le 18/11/2026 ; après elle, les bugs ne sont plus gratuits.',
+    )
+  })
+
   it('aucun nom de client ni de personne dans les sections', () => {
     const ctx = passe.ctx
     const sections = rapport.slice(rapport.indexOf(`## ${SECTIONS.ecarts}`))
@@ -198,8 +226,8 @@ describe('les sections du métier, après « Sources » (PLAN-METIER-2.md M12, �
     for (const a of ctx.avenants.values()) if (a.projet === 'PRJ-12') a.jours = undefined
     const lignes = sectionEcarts(ctx, configFictive(), REF).lignes
     expect(lignes).toContain('  - TMA-01/2026-10 : 4,8 h consommées sur 6 vendues (80 %)')
-    // 126 h saisies sur PRJ-12, en jours de 7 h ; rien de vendu : pas de taux
-    expect(lignes).toContain('  - PRJ-12 : 18 j consommés sur 0 vendu')
+    // 126 h saisies sur PRJ-12 ; rien de vendu dans les données : pas de taux, rien de supposé
+    expect(lignes).toContain("  - PRJ-12 : aucun vendu dans les données, rien n'est supposé")
   })
 })
 

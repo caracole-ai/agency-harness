@@ -25,8 +25,11 @@ const UNITES: Record<Ecart['unite'], { abreviation: string; feminin: boolean }> 
 // un taux calculé en flottant (2,4 / 3 = 0,7999…) ne doit pas manquer un seuil atteint pile
 const TOLERANCE = 1e-9
 
-/** Le consommé sur le vendu ; `null` quand rien n'a été vendu, sans jamais diviser par zéro. */
-export const taux = (e: Ecart): number | null => (e.vendu === 0 ? null : e.consomme / e.vendu)
+/**
+ * Le consommé sur le vendu ; `null` quand rien n'a été vendu, sans jamais
+ * diviser par zéro, ni rendre un taux négatif pour un vendu négatif.
+ */
+export const taux = (e: Ecart): number | null => (e.vendu <= 0 ? null : e.consomme / e.vendu)
 
 export const depasse = (e: Ecart): boolean => {
   const t = taux(e)
