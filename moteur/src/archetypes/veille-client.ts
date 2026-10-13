@@ -60,6 +60,8 @@ export function veilleDuClient<Contexte, Config extends ConfigClient>(
     })),
     decrire: (objet) => m.decrire(ctx, objet),
     rienASignaler,
+    // au rapport seulement, pas au journal (PLAN-METIER-2.md M12)
+    ...(m.sections ? { sections: m.sections(ctx, config, aujourdhui) } : {}),
   })
   return { passe, rapport }
 }

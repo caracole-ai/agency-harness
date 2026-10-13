@@ -1,4 +1,5 @@
 import {
+  ajouter,
   auPlusTardAvant,
   type Duree,
   dateFr,
@@ -16,7 +17,7 @@ import { recetteDuLot } from './semantique'
 // de `config.yaml: veiller.echeances`. Ce fichier dit quelle date est la
 // limite et ce qu'il faut faire ; la config dit quand prévenir. Une date
 // inconnue est une échéance sans limite : `veiller` en fait une alerte.
-// « 45 jours fin de mois » est pour le lot 3 (PLAN-METIER-2.md § 8).
+// « 45 jours fin de mois » se lit par `ajouter` du moteur (PLAN-METIER-2.md § 8).
 
 export const ECHEANCES = [
   'facture_echeance',
@@ -34,8 +35,9 @@ export type CleEcheance = (typeof ECHEANCES)[number]
 /**
  * L'interdit du registre que tient chaque échéance. Le rapport du moteur
  * (`archetypes/rapport.ts`) exige que toute alerte cite un interdit du
- * registre : une échéance du § 8 qu'aucun interdit ne porte (`null`) est
- * calculée (`echeancesDues`) mais pas encore remise à la veille.
+ * registre : une échéance du § 8 qu'aucun interdit ne porte (`null`) n'est
+ * pas remise à la veille ; elle arrive au rapport par une section du métier
+ * (`veille.ts`, PLAN-METIER-2.md § 8).
  */
 export const INTERDIT_DE_L_ECHEANCE: Record<CleEcheance, string | null> = {
   facture_echeance: null,
@@ -60,16 +62,15 @@ export interface EcheanceDue extends Omit<Echeance, 'regle'> {
 
 const fr = (iso: string) => dateFr(Temporal.PlainDate.from(iso))
 const jour = (iso: string) => Temporal.PlainDate.from(iso)
-const plus = (iso: string, d: Duree) =>
-  jour(iso).add(
-    'jours' in d ? { days: d.jours } : 'mois' in d ? { months: d.mois } : { years: d.ans },
-  )
+// une fin de mois (« 45 jours fin de mois ») compte : `ajouter` la lit, `'jours' in d` ne la verrait pas
+const plus = (iso: string, d: Duree) => ajouter(jour(iso), d)
 
 /**
  * Toutes les échéances du § 8 sur les données du client, dans l'ordre des
  * clés. Non couvert : la seconde relance d'un devis (J+30), les relances
  * suivantes d'une facture (J+15, J+30), un avenant envoyé (l'export n'a pas
- * sa date d'envoi), le forfait à 90 % puis 100 % (les écarts du lot 3).
+ * sa date d'envoi), le forfait à 90 % puis 100 % (pas une date : la section
+ * « Écarts » de `veille.ts`).
  */
 export function echeancesDues(ctx: Contexte, veille: Veille, registre: Registre): EcheanceDue[] {
   const fenetres = veille.echeances

@@ -6,14 +6,14 @@ import { FICHIER_CONFIG, Journal, Temporal, veilleDuClient } from '@harnais/mote
 import { afterAll, describe, expect, it } from 'vitest'
 import { DATE_REFERENCE } from './cli/fictif'
 import { NOMS_TABLES } from './modele'
-import { decrire, VEILLER } from './veille'
-import { CONFIG_FICTIVE } from './veille.test.fixture'
+import { decrire, SECTIONS, sectionEcarts, sectionHorsRegles, VEILLER } from './veille'
+import { CONFIG_FICTIVE, configFictive } from './veille.test.fixture'
 
 // La veille de l'agence web de bout en bout (PLAN-METIER-2.md § 7.4) : les CSV
 // du client fictif copiés avec sa config dans un dossier temporaire, puis ce
 // que `pnpm veiller` appelle, au 2026-10-12. Le rapport porte les erreurs
-// posées du § 7.3 au bon verdict ; le ticket de I-05 (TK-1050) n'y est pas,
-// I-05 est à l'humain.
+// posées du § 7.3 au bon verdict ; le ticket de I-05 (TK-1050) n'arrive qu'à
+// la section du métier, à qualifier par un humain (PLAN-METIER-2.md § 8).
 
 const METIER = fileURLToPath(new URL('../..', import.meta.url))
 const EXEMPLE = fileURLToPath(new URL('../../../../exemples/agence-web-fictive', import.meta.url))
@@ -93,8 +93,11 @@ describe('pnpm veiller chez le client fictif, au 2026-10-12', () => {
     )
   })
 
-  it('le ticket de I-05 n’est pas au rapport : la qualification est humaine', () => {
-    expect(rapport).not.toContain('TK-1050')
+  it('le ticket de I-05 n’est que dans la section du métier : la qualification est humaine', () => {
+    expect(rapport.slice(0, rapport.indexOf(`## ${SECTIONS.horsRegles}`))).not.toContain('TK-1050')
+    expect(partie(SECTIONS.horsRegles)).toContain(
+      "- **Bugs hors du périmètre recetté, à qualifier par un humain (bug ou évolution)** (1)\n  - **TK-1050 · Le formulaire d'inscription ne s'envoie pas (PRJ-14)** — le lot LOT-036 n'a pas de PV de recette signé. *I-05*",
+    )
   })
 
   it('les comptes des parties', () => {
@@ -125,6 +128,106 @@ describe('pnpm veiller chez le client fictif, au 2026-10-12', () => {
     } finally {
       j.fermer()
     }
+  })
+})
+
+describe('les sections du métier, après « Sources » (PLAN-METIER-2.md M12, § 8)', () => {
+  it('« Écarts » : PRJ-10 à 150 % ; PRJ-06 et PRJ-07, facturés à 100 % pile, n’y sont pas', () => {
+    expect(rapport.indexOf(`## ${SECTIONS.ecarts}`)).toBeGreaterThan(rapport.indexOf('## Sources'))
+    expect(partie(SECTIONS.ecarts)).toBe(
+      [
+        '',
+        '- **Jours consommés / vendus, par forfait, dès 90 %** (1)',
+        '  - PRJ-10 : 36 j consommés sur 24 vendus (150 %)',
+        '',
+      ].join('\n'),
+    )
+  })
+
+  it('le facturé au-delà du vendu y arrive, même sans lot, sous un contrat TMA', () => {
+    const ctx = structuredClone(passe.ctx)
+    // 9 000 € sans lot pendant TMA-05 : pas un nombre entier de mensualités, donc au projet
+    const tma = ctx.factures.get('FAC-2026-008')
+    if (!tma) throw new Error('FAC-2026-008')
+    ctx.factures.set('FAC-2026-099', {
+      ...tma,
+      id: 'FAC-2026-099',
+      date: '2026-07-01',
+      montant_ht_eur: 9000,
+      montant_ttc_eur: 10800,
+    })
+    // PRJ-15 : 3 360 + 5 040 + 2 520 + 9 000 = 19 920 € facturés sur 15 600 vendus
+    expect(sectionEcarts(ctx, configFictive(), REF).lignes).toEqual([
+      '- **Jours consommés / vendus, par forfait, dès 90 %** (1)',
+      '  - PRJ-10 : 36 j consommés sur 24 vendus (150 %)',
+      '- **Euros HT facturés / vendus, par projet (le consommé est le facturé), au-delà de 100 %** (1)',
+      '  - PRJ-15 : 19 920 € consommés sur 15 600 vendus (128 %)',
+    ])
+  })
+
+  it('« À suivre » : les quatre échéances sans interdit, à leur niveau, puis le bug à qualifier', () => {
+    const suivre = partie(SECTIONS.horsRegles)
+    expect(rapport.indexOf(`## ${SECTIONS.horsRegles}`)).toBeGreaterThan(
+      rapport.indexOf(`## ${SECTIONS.ecarts}`),
+    )
+    expect(suivre).toContain('- **Échéances à traiter maintenant** (4)')
+    expect(suivre).toContain(
+      '  - **FAC-2026-031 (CLI-18, PRJ-13) — échéance de paiement** — préparer la relance de la facture FAC-2026-031, échue le 30/08/2026, à faire valider par le dirigeant : la limite du 31/08/2026 est dépassée ; dernière relance : niveau 2, le 29/09/2026.',
+    )
+    expect(suivre).toContain('  - **FAC-2026-042 (CLI-07, PRJ-16) — échéance de paiement** — ')
+    expect(suivre).toContain(
+      '  - **DEV-2026-022 (CLI-07) — relance du devis** — relancer le devis DEV-2026-022, envoyé le 14/09/2026 : la limite du 24/09/2026 est dépassée.',
+    )
+    expect(suivre).toContain('  - **DEV-2026-023 (CLI-25) — relance du devis** — ')
+    expect(suivre).toContain('- **Échéances à préparer** (2)')
+    expect(suivre).toContain(
+      '  - **PRJ-03 · Boutique en ligne (CLI-11) — fin de support : langage serveur** — ',
+    )
+    expect(suivre).toContain(
+      '  - **PRJ-15 · Site vitrine et devis en ligne (CLI-20) — fin de support : cms** — ',
+    )
+    // une échéance qu'un interdit porte reste dans les parties du moteur, pas ici
+    expect(suivre).not.toContain('DOM-23')
+  })
+
+  it('la fin de garantie de PRJ-06 (18/11/2026) y arrive un mois avant', () => {
+    const lignes = sectionHorsRegles(
+      passe.ctx,
+      configFictive(),
+      Temporal.PlainDate.from('2026-10-20'),
+    ).lignes
+    expect(lignes).toContain(
+      '  - **PRJ-06 · Site et prise de contact (CLI-09) — fin de garantie** — proposer un contrat TMA avant la fin de la garantie au plus tard le 18/11/2026 ; après elle, les bugs ne sont plus gratuits.',
+    )
+  })
+
+  it('aucun nom de client ni de personne dans les sections', () => {
+    const ctx = passe.ctx
+    const sections = rapport.slice(rapport.indexOf(`## ${SECTIONS.ecarts}`))
+    for (const n of [
+      ...[...ctx.clients.values()].map((c) => c.nom),
+      ...[...ctx.personnes.values()].map((p) => p.nom),
+      ...[...ctx.contacts.values()].map((c) => c.nom),
+    ])
+      expect(sections).not.toContain(n)
+  })
+
+  it('un TMA à 80 % du mois et un forfait sans jours vendus y arrivent', () => {
+    const ctx = structuredClone(passe.ctx)
+    // TMA-01 : 1,5 h saisies en octobre sur 6 incluses ; 3,3 h de plus font 4,8 h, 80 % pile
+    ctx.temps.push({
+      personne: 'M-05',
+      projet: 'TMA-01',
+      date: '2026-10-09',
+      heures: 3.3,
+      commentaire: undefined,
+    })
+    for (const l of ctx.lots.values()) if (l.projet === 'PRJ-12') l.jours_vendus = undefined
+    for (const a of ctx.avenants.values()) if (a.projet === 'PRJ-12') a.jours = undefined
+    const lignes = sectionEcarts(ctx, configFictive(), REF).lignes
+    expect(lignes).toContain('  - TMA-01/2026-10 : 4,8 h consommées sur 6 vendues (80 %)')
+    // 126 h saisies sur PRJ-12 ; rien de vendu dans les données : pas de taux, rien de supposé
+    expect(lignes).toContain("  - PRJ-12 : aucun vendu dans les données, rien n'est supposé")
   })
 })
 

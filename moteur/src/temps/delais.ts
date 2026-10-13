@@ -17,15 +17,41 @@ export interface RegleDeDecompte {
   feries?: OptionsFeries
 }
 
-export type Duree = { jours: number } | { mois: number } | { ans: number }
+/** Une durée sans fin de mois : ce qu'on sait aussi retrancher d'une date. */
+export type DureeSimple = { jours: number } | { mois: number } | { ans: number }
+/** Les jours, puis la fin du mois atteint (PLAN-METIER-2.md M13), exemple : « 45 jours fin de mois ». */
+export type DureeFinDeMois = { jours: number; fin_de_mois: true }
+export type Duree = DureeSimple | DureeFinDeMois
 
 const entier = z.number().int().nonnegative()
-/** Une durée telle qu'une config ou un registre l'écrit : `{ mois: 2 }`. */
-export const DureeSchema: z.ZodType<Duree> = z.union([
+/** Une durée sans fin de mois, la seule qu'une fenêtre de veille accepte : `{ mois: 2 }`. */
+export const DureeSimpleSchema: z.ZodType<DureeSimple> = z.union([
   z.strictObject({ jours: entier }),
   z.strictObject({ mois: entier }),
   z.strictObject({ ans: entier }),
 ])
+/** Une durée telle qu'une config ou un registre l'écrit : `{ mois: 2 }`, `{ jours: 45, fin_de_mois: true }`. */
+export const DureeSchema: z.ZodType<Duree> = z.union([
+  DureeSimpleSchema,
+  z.strictObject({ jours: entier, fin_de_mois: z.literal(true) }),
+])
+
+// `'jours' in duree` attrape aussi la fin de mois : chaque fonction la traite avant.
+const estFinDeMois = (duree: Duree): duree is DureeFinDeMois => 'fin_de_mois' in duree
+
+/**
+ * Une date plus une durée, au calendrier, sans règle de décompte : le même
+ * quantième en mois ou en années, ou le dernier jour du mois à défaut ; une
+ * fin de mois ajoute les jours, puis va au dernier jour du mois atteint.
+ */
+export function ajouter(date: Temporal.PlainDate, duree: Duree): Temporal.PlainDate {
+  if (estFinDeMois(duree)) {
+    const atteint = date.add({ days: duree.jours })
+    return atteint.with({ day: atteint.daysInMonth })
+  }
+  if ('jours' in duree) return date.add({ days: duree.jours })
+  return date.add('mois' in duree ? { months: duree.mois } : { years: duree.ans })
+}
 
 const SAMEDI = 6
 const DIMANCHE = 7
@@ -51,6 +77,10 @@ export function echeance(
   duree: Duree,
   regle: RegleDeDecompte,
 ): Temporal.PlainDate {
+  // aucun texte lu ne dit comment une fin de mois se combine aux jours sautés ni au report
+  if (estFinDeMois(duree)) {
+    throw new Error('un délai fin de mois sous une règle de décompte : cas non défini (`ajouter`)')
+  }
   let fin: Temporal.PlainDate
   if ('jours' in duree) {
     if (!regle.jourDeDepartExclu && regle.nonComptes.length > 0) {
@@ -77,11 +107,12 @@ export function echeance(
  * mois donne le 31/10, quand J-90 donne le 02/11.
  */
 export function auPlusTardAvant(echeance: Temporal.PlainDate, duree: Duree): Temporal.PlainDate {
+  if (estFinDeMois(duree)) throw new Error('avant une fin de mois : cas non défini')
   if ('jours' in duree) return echeance.subtract({ days: duree.jours })
   return echeance.subtract('mois' in duree ? { months: duree.mois } : { years: duree.ans })
 }
 
-const multiple = (date: Temporal.PlainDate, duree: Duree, k: number) =>
+const multiple = (date: Temporal.PlainDate, duree: DureeSimple, k: number) =>
   'jours' in duree
     ? date.add({ days: duree.jours * k })
     : 'mois' in duree
@@ -102,6 +133,7 @@ export function limitePeriodique(
   periode: Duree,
   realisations: Temporal.PlainDate[],
 ): Temporal.PlainDate {
+  if (estFinDeMois(periode)) throw new Error('une période fin de mois : cas non défini')
   let limite = multiple(base, periode, 1)
   for (const r of [...realisations].sort(Temporal.PlainDate.compare)) {
     if (Temporal.PlainDate.compare(r, limite) > 0) break

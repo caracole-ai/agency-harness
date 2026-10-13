@@ -28,11 +28,16 @@ const echapper = (s: string) =>
 const corps = marked.parse(readFileSync(entree, 'utf8'), { async: false, breaks: true })
 
 // Chaque partie devient une <section> qui porte sa clé, pour la couleur
-// (marked échappe les titres comme `echapper`).
+// (marked échappe les titres comme `echapper`). Après « Sources » viennent
+// les sections du métier (PLAN-METIER-2.md M12) : la classe neutre `metier`.
 const [tete = '', ...parties] = corps.split('<h2>')
+let apresSources = false
 const sections = parties.map((p) => {
-  const cle = Object.entries(PARTIES).find(([, titre]) => p.startsWith(echapper(titre)))?.[0]
+  const cle =
+    Object.entries(PARTIES).find(([, titre]) => p.startsWith(echapper(titre)))?.[0] ??
+    (apresSources ? 'metier' : undefined)
   if (!cle) throw new Error(`partie inconnue du rapport : ${p.slice(0, 40)}`)
+  if (cle === 'sources') apresSources = true
   return `<section class="${cle}"><h2>${p}</section>`
 })
 const titre = /<h1>(.*?)<\/h1>/.exec(tete)?.[1] ?? 'Rapport de veille'

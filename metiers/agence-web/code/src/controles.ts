@@ -2,17 +2,19 @@ import {
   type Constat,
   type Controle,
   dateFr,
+  decrireEcart,
   type Interdit,
   parametresDe,
   plusGrave,
   Temporal,
+  taux,
   type Verdict,
 } from '@harnais/moteur'
 import type { ConfigAgenceWeb } from './config'
 import type { Contexte } from './modele'
 import {
-  consommeVendu,
   domaineNomme,
+  ecartForfait,
   misesEnProduction,
   recetteDuLot,
   revocationsDues,
@@ -369,13 +371,14 @@ export const I12: Controle<ContexteVeille> = {
     return [...ctx.projets.values()]
       .filter((p) => p.type === 'forfait')
       .map((p) => {
-        const c = consommeVendu(ctx, p.id, heures_par_jour)
-        if (c.part === undefined) return constat('I-12', p.id, [inconnu('jours vendus du forfait')])
-        if (c.part <= forfait_refus) return constat('I-12', p.id, [ok])
+        // l'écart de la section « Écarts », au seuil du refus (PLAN-METIER-2.md § 8)
+        const e = ecartForfait(ctx, p.id, heures_par_jour, forfait_refus)
+        const part = taux(e)
+        if (part === null) return constat('I-12', p.id, [inconnu('jours vendus du forfait')])
+        // « ne dépasse pas 110 % » : le seuil pile est conforme, là où `depasse` prévient dès le seuil
+        if (part <= e.seuil) return constat('I-12', p.id, [ok])
         return constat('I-12', p.id, [
-          aVerifier(
-            `${nombre(c.consommes)} j consommés sur ${nombre(c.vendus)} vendus (${pourcent(c.part)}), au-delà de ${pourcent(forfait_refus)}`,
-          ),
+          aVerifier(`${decrireEcart(e)}, au-delà de ${pourcent(e.seuil)}`),
         ])
       })
   },

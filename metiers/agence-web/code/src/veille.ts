@@ -1,9 +1,24 @@
-import { dateFr, type MetierVeiller, Temporal } from '@harnais/moteur'
+import { fileURLToPath } from 'node:url'
+import {
+  type Alerte,
+  appliquerPolitique,
+  chargerRegistre,
+  dateFr,
+  decrireEcart,
+  depasse,
+  type MetierVeiller,
+  PARTIES,
+  type SectionRapport,
+  Temporal,
+  taux,
+  veiller,
+} from '@harnais/moteur'
 import { ConfigAgenceWeb } from './config'
 import { lireAgenceWeb } from './connecteurs/csv-exports'
 import { CONTROLES, type ContexteVeille } from './controles'
-import { echeancesAgenceWeb, VEILLES } from './echeances'
+import { echeancesAgenceWeb, echeancesDues, INTERDIT_DE_L_ECHEANCE, VEILLES } from './echeances'
 import type { Contexte, SORTES_ACCES } from './modele'
+import { ecarts, MESURES, perimetreRecette } from './semantique'
 
 // Veiller chez un client de l'agence web (PLAN-METIER-2.md M13, § 7.4) : sa
 // config, la lecture de ses exports, les contrôles, les échéances, et la
@@ -11,7 +26,11 @@ import type { Contexte, SORTES_ACCES } from './modele'
 // nomme les personnes sur qui le dirigeant agit (un accès à révoquer, une
 // attestation à demander) ; les clients, projets et pièces y sont désignés par
 // leur identifiant et leur libellé, jamais par le nom du client ; un domaine,
-// par son nom, comme l'agence le désigne (entretien § 24).
+// par son nom, comme l'agence le désigne (entretien § 24). Ses sections
+// (PLAN-METIER-2.md M12, § 8) suivent la même règle.
+
+/** Le dossier du métier : `regles.yaml` et `scenarios/` y vivent. */
+const DOSSIER_METIER = fileURLToPath(new URL('../..', import.meta.url))
 
 // chaque sorte d'accès du modèle a ses mots ; `decrire` y cherche n'importe quel segment d'objet
 const SORTES: Record<string, string> = {
@@ -75,6 +94,106 @@ export function decrire(ctx: Contexte, objet: string): string {
   return `${entite(ctx, id)} — ${QUOI[quoi] ?? quoi}`
 }
 
+/** Les titres des sections du métier, après « Sources ». */
+export const SECTIONS = {
+  ecarts: 'Écarts',
+  horsRegles: 'À suivre, hors des règles vérifiées',
+} as const
+
+const pourcent = (x: number) => `${Math.round(x * 100)} %`
+const parObjet = <T extends { objet: string }>(a: T, b: T) =>
+  a.objet.localeCompare(b.objet, 'fr', { numeric: true })
+
+/** Un groupe d'une section : son intitulé et ses lignes, ou rien s'il est vide. */
+const groupe = (intitule: string, lignes: string[]) =>
+  lignes.length > 0 ? [`- **${intitule}** (${lignes.length})`, ...lignes] : []
+
+// tout le vendu facturé est l'état normal d'un projet fini : le facturé ne se montre qu'au-delà du seuil
+const auDela = (mesure: string) => mesure === MESURES.facture
+
+/**
+ * Les écarts (entretien § 36) : ceux qui atteignent leur seuil (le facturé,
+ * ceux qui le passent), et ceux dont le taux est inconnu alors que quelque
+ * chose est consommé (rien de vendu dans les données : le moteur ne le dit
+ * pas, la section le montre sans rien supposer). Groupés par ce qu'ils
+ * rapprochent, avec le seuil du client.
+ */
+export function sectionEcarts(
+  ctx: Contexte,
+  config: ConfigAgenceWeb,
+  aujourdhui: Temporal.PlainDate,
+): SectionRapport {
+  const montres = ecarts(ctx, config.seuils, aujourdhui).filter((e) => {
+    const t = taux(e)
+    if (t === null) return e.consomme > 0
+    return auDela(e.mesure) ? t > e.seuil : depasse(e)
+  })
+  const groupes = new Map<string, { seuil: number; lignes: string[] }>()
+  for (const e of montres) {
+    const g = groupes.get(e.mesure) ?? { seuil: e.seuil, lignes: [] }
+    g.lignes.push(
+      taux(e) === null
+        ? `  - ${e.objet} : aucun vendu dans les données, rien n'est supposé`
+        : `  - ${decrireEcart(e)}`,
+    )
+    groupes.set(e.mesure, g)
+  }
+  return {
+    titre: SECTIONS.ecarts,
+    lignes: [...groupes].flatMap(([mesure, g]) =>
+      groupe(
+        `${mesure.charAt(0).toUpperCase()}${mesure.slice(1)}, ${auDela(mesure) ? 'au-delà de' : 'dès'} ${pourcent(g.seuil)}`,
+        g.lignes,
+      ),
+    ),
+  }
+}
+
+/**
+ * Ce que le rapport du moteur ne porte pas, faute d'un interdit à citer : les
+ * échéances du § 8 qu'aucun interdit ne tient (`INTERDIT_DE_L_ECHEANCE` à
+ * `null`), à leur niveau d'alerte, et les tickets « bug » ouverts hors du
+ * périmètre recetté (I-05 : la qualification est humaine, le code dit
+ * seulement que le périmètre manque ; un ticket résolu n'attend plus rien).
+ */
+export function sectionHorsRegles(
+  ctx: Contexte,
+  config: ConfigAgenceWeb,
+  aujourdhui: Temporal.PlainDate,
+): SectionRapport {
+  const registre = appliquerPolitique(chargerRegistre(DOSSIER_METIER), config.politique)
+  const dues = echeancesDues(ctx, config.veiller, registre).filter(
+    (e) => INTERDIT_DE_L_ECHEANCE[e.cle] === null,
+  )
+  // `veiller` veut une règle : la clé de l'échéance en tient lieu, rien de ceci ne va au journal
+  const alertes = veiller(
+    dues.map(({ cle, ...e }) => ({ regle: cle, ...e })),
+    aujourdhui,
+  ).sort(parObjet)
+  const echeances = (niveau: Alerte['niveau']) =>
+    alertes
+      .filter((a) => a.niveau === niveau)
+      .map((a) => `  - **${decrire(ctx, a.objet)}** — ${a.motif}.`)
+  const recette = perimetreRecette(ctx)
+  const tickets = [...ctx.tickets.values()].filter(
+    (t) => t.type === 'bug' && t.etat !== 'resolu' && (t.lot === undefined || !recette.has(t.lot)),
+  )
+  return {
+    titre: SECTIONS.horsRegles,
+    lignes: [
+      ...groupe(PARTIES.escalades, echeances('escalade')),
+      ...groupe(PARTIES.alertes, echeances('alerte')),
+      ...groupe(
+        'Bugs hors du périmètre recetté, à qualifier par un humain (bug ou évolution)',
+        tickets.map(
+          (t) =>
+            `  - **${decrire(ctx, t.cle)}** — ${t.lot ? `le lot ${t.lot} n'a pas de PV de recette signé` : 'aucun lot : le périmètre recetté est inconnu'}. *I-05*`,
+        ),
+      ),
+    ],
+  }
+}
+
 export const VEILLER: MetierVeiller<ContexteVeille, ConfigAgenceWeb> = {
   config: ConfigAgenceWeb,
   lire: (dossier, config) => ({ ...lireAgenceWeb(dossier, config.donnees), seuils: config.seuils }),
@@ -84,4 +203,8 @@ export const VEILLER: MetierVeiller<ContexteVeille, ConfigAgenceWeb> = {
   veilles: VEILLES,
   echeances: (ctx, config, registre) => echeancesAgenceWeb(ctx, config.veiller, registre),
   decrire,
+  sections: (ctx, config, aujourdhui) => [
+    sectionEcarts(ctx, config, aujourdhui),
+    sectionHorsRegles(ctx, config, aujourdhui),
+  ],
 }

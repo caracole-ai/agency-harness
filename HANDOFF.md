@@ -1,4 +1,4 @@
-# Handoff — 2026-10-12
+# Handoff — 2026-10-13
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
 des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
@@ -7,6 +7,26 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-13 : phase M, session S4 faite (lot 3 de `PLAN-METIER-2.md` :
+  Rapprocher et le rapport à sections) ; mesure appariée de la sécurité, les
+  cinq conditions vraies ; fusionnée dans `main` et poussée.**
+  `metier-2/lot-3` : le moteur (`9e793dc` : `archetypes/ecarts.ts`, sections
+  du rapport, « 45 jours fin de mois » et `ajouter`), l'agence web (`71f07ec` :
+  écarts, sections « Écarts » et « À suivre, hors des règles vérifiées »,
+  I-12 lit les écarts), les corrections de la relecture (`5f5acf3`), la règle
+  de la mesure (`b56e9aa`). `pnpm check` vert : 626 tests moteur, 232 agence
+  web, 135 sécurité, 24 interface. Détail : « Phase M, session S4 ».
+  - `pnpm veiller` de l'agence au 2026-10-12 : « Écarts » (PRJ-10 à 150 %) ;
+    « À suivre » : les quatre échéances sans interdit (4 à traiter, 2 à
+    préparer ; la fin de garantie de PRJ-06 y entre à partir du 18/10) et
+    TK-1050, à qualifier par un humain (l'erreur posée 6). Les dix erreurs
+    posées sont désormais au rapport.
+  - Sécurité : rapport de veille et page `rapport:html` identiques octet pour
+    octet à `main` ; mesure appariée sur GLM (cinq tours) : traduction `main`
+    59,20 / lot 59,00, échappée 16,80 / 16,80, gestes 6/6 ; entrées du premier
+    appel identiques octet pour octet (78 cas sur 78). 2,89 $ de GLM.
+  - **Suivante : S5** (lot 4, la mesure de l'agence web), partie de `main`,
+    dans une autre session.
 - **2026-10-12 (nuit) : phase M, session S3 faite (lots 2a et 2b de
   `PLAN-METIER-2.md` : l'agence web et son client fictif) ; fusionnée dans
   `main` et poussée.** `metier-2/lot-2b` (qui contient `lot-2a`) : le paquet
@@ -3167,6 +3187,181 @@ une autre session : `archetypes/ecarts.ts`, `archetypes/rapport.ts` avec
 lot, facturé contre vendu). **Le lot 3 touche le moteur** : la porte de
 sécurité ne sera pas vide, une mesure appariée de la sécurité (règle de
 « Phase M, mesure appariée », ≈ 2,9 $) précède sa fusion.
+
+### Phase M, session S4 (`PLAN-METIER-2.md` lot 3, Rapprocher et le rapport à sections, 2026-10-13)
+
+**Choix faits faute de consigne :**
+
+**La règle de la mesure appariée de la sécurité, écrite avant la mesure.** Le
+lot touche le moteur (`archetypes/ecarts.ts`, `rapport.ts`, `metier.ts`,
+`veille-client.ts`, `veiller.ts`, `index.ts`, `temps/delais.ts`,
+`cli/rapport-html.ts`) : la porte de sécurité n’est pas vide. La règle est
+celle de « Phase M, mesure appariée » telle quelle — cinq tours de quatre
+passes appariées, `main` d’abord aux tours impairs, conditions (a), (b), (c),
+(e) inchangées, aucune passe relancée pour un meilleur chiffre, une passe en
+402 ou sans fichier de résultats fait refaire le tour entier une fois des deux
+côtés — sauf ces deux points, qui découlent de la fusion du lot 1 :
+- **Ce qu’on compare** : `main` = `024a77c` ; le lot = la tête de
+  `metier-2/lot-3`, ce commit compris (le code mesuré est celui de `5f5acf3`).
+- **(d) devient : les entrées du premier appel (système, outils, premier
+  message) sont identiques octet pour octet entre le lot et `main`, cas par
+  cas.** Le lot 1 est dans `main` : aucune phrase n’est plus permise, une
+  seule différence fait échouer (d). `comparer.py` est copié dans le
+  scratchpad avec `PERMIS` vide (l’original de
+  `evals/traces/apparie-2026-10-12/` n’est pas modifié).
+
+Une condition fausse : on ne fusionne pas, et on ne corrige rien dans la
+session. Plafond de GLM pour la session : 4 $.
+
+**Branches et commits** : `metier-2/lot-3` de `main` (`024a77c`), un seul
+arbre dans le scratchpad. Sous-agent L (moteur, `9e793dc`) puis sous-agent M
+(agence web, `71f07ec`, parti du commit de L) ; relecture indépendante en
+lecture seule ; corrections (`5f5acf3`) ; la règle (`b56e9aa`) ; HANDOFF,
+README et résultats de la mesure ; fusion `--no-ff`.
+
+**Autres choix faits faute de consigne :**
+- **Moteur.** `taux` est `null` pour un vendu nul **ou négatif** (correction
+  de la relecture) ; `depasse` = taux connu et `>= seuil`, à 1e-9 près
+  (2,4 h sur 3 donnaient 0,7999…) ; `decrireEcart` accorde le participe
+  (« 16 h consommées », « 1,5 j consommé ») et ne reprend pas `mesure`.
+  `echeance`, `auPlusTardAvant` et `limitePeriodique` **lèvent** sur une fin
+  de mois (aucun texte lu ne dit comment elle se combine aux jours sautés et
+  au report) ; seul `ajouter` la calcule. Les fenêtres de veille lisent
+  `DureeSimpleSchema` (trois formes) : une fin de mois y est refusée dès la
+  config. Les sections du métier sont rendues après « Sources », `—` si
+  vides, au rapport seulement (pas au journal) ; `pnpm rapport:html` leur
+  donne la classe neutre `metier`, admise seulement après « Sources ».
+- **Agence web, les notions** (`semantique.ts`) : le consommé par lot compte
+  une ligne de temps dont le commentaire cite un seul `LOT-` de son projet ;
+  le vendu d'un lot est ses `jours_vendus` (un avenant porte un projet, jamais
+  un lot). Projets et lots : les forfaits seulement (une régie se facture au
+  réel). Le facturé contre le vendu : vendu = devis et avenants signés ;
+  facturé = factures émises ou payées ; **une facture sans lot n'est tenue
+  pour celle d'un contrat TMA du projet que datée pendant le contrat et d'un
+  nombre entier de mensualités** (le modèle ne relie pas une facture à un
+  contrat : c'est une inférence).
+- **Le seuil du facturé** : `seuils.facture_alerte`, nouveau (schéma et
+  `exemples/agence-web-fictive/config.yaml`, valeur d'exemple 1, l'entretien
+  ne la chiffre pas) ; le facturé est un écart **au-delà** du seuil (100 %
+  pile est l'état normal d'un projet fini). Les autres écarts se montrent dès
+  leur seuil (`forfait_alerte` 90 %, `tma_alerte` 80 %).
+- **Les sections** : « Écarts » (groupée par mesure, le seuil du client dans
+  l'intitulé ; un vendu absent s'écrit « aucun vendu dans les données, rien
+  n'est supposé ») et « À suivre, hors des règles vérifiées » (les quatre
+  échéances sans interdit, passées par `veiller()` du moteur, la clé tenant
+  lieu de règle, groupées « à traiter maintenant » / « à préparer » ; puis
+  les tickets `bug` non résolus hors du périmètre recetté, « à qualifier par
+  un humain », *I-05* : TK-1050 seul sur le client fictif). La section relit
+  `regles.yaml` elle-même : `sections` ne reçoit pas le registre (§ 3.7).
+- **I-12** lit `ecartForfait`, `taux` et `decrireEcart` ; il garde sa borne
+  (« ne dépasse pas 110 % » : le seuil pile est conforme). Son motif devient
+  « PRJ-10 : 36 j consommés sur 24 vendus (150 %), au-delà de 110 % » (au
+  journal aussi) ; aucun verdict ne change (25 constats « à décider »).
+- **« 45 jours fin de mois »** : `plus` d'`echeances.ts` passe par `ajouter`
+  (elle aurait lu une fin de mois de `delais` comme des jours simples) ; le
+  générateur (`cli/fictif.ts`) aussi : les 20 CSV régénérés sont identiques
+  octet pour octet. **I-07 ne change pas** : il compare des nombres de jours
+  déclarés et ne calcule aucune date.
+
+**Relecture indépendante** (sous-agent, lecture seule) : rien sur la sécurité
+(rapport et journal identiques à cinq dates, durées et fenêtres inchangées
+pour elle). Corrigés dans `5f5acf3`, chaque test rouge sans sa correction
+(vérifié en remettant les sources de `71f07ec` : sept tests rouges) : I-12
+« conforme » sous un avenant à −2 j au lieu de « donnée absente » ; `pnpm
+rapport:html` qui levait « partie inconnue du rapport : Écarts » ;
+l'inférence TMA qui taisait un avenant ou un solde facturé sans lot ; PRJ-06
+et PRJ-07 en écart à 100 % pile ; « sur 0 vendu » pour des jours vendus
+inconnus ; plus un test : la fin de garantie arrive dans « À suivre ». Notés,
+pas corrigés : « Avant S5 ».
+
+**Les portes**, sur `5f5acf3` :
+
+```
+$ git diff --stat main...metier-2/lot-3 -- moteur/src interface/src metiers/securite-privee ':(exclude)*.test.ts' ':(exclude)*.test.fixture.ts'
+ moteur/src/archetypes/ecarts.ts        | 56 ++++++++++++++++++++++++++++++++++
+ moteur/src/archetypes/metier.ts        |  6 ++++
+ moteur/src/archetypes/rapport.ts       | 10 ++++++
+ moteur/src/archetypes/veille-client.ts |  2 ++
+ moteur/src/archetypes/veiller.ts       | 12 +++++---
+ moteur/src/cli/rapport-html.ts         |  9 ++++--
+ moteur/src/index.ts                    |  1 +
+ moteur/src/temps/delais.ts             | 40 +++++++++++++++++++++---
+ 8 files changed, 126 insertions(+), 10 deletions(-)
+$ grep -rniE "jira|notion|confluence|github" moteur/src
+(vide)
+$ grep -rn "securite-privee" moteur/src interface/src --include='*.ts' | grep -v '\.test\.' | grep -v fictif ; grep -n "harnais/securite-privee" interface/package.json
+(vide)
+$ grep -rniE "sécurité privée|vacation|carte pro|patron|agents?" moteur/src --include='*.ts' | grep -v '\.test\.' | grep -v "exemple :" | wc -l
+36 (36 sur main : inchangé)
+```
+
+La porte de sécurité n'est pas vide : mesure appariée ci-dessous. Hors
+mesure, en code (scratchpad) : `pnpm veiller --client <copie de
+exemples/client-fictif> --date 2026-10-06` rend un rapport identique octet
+pour octet à celui de `main` (sur `9e793dc`, `71f07ec` et `5f5acf3`), et
+`pnpm rapport:html` de ce rapport une page identique à celle de `main`.
+
+**La mesure appariée** (13/10, 12:42 → 13:42 ; GLM-5.3 via GMI,
+`exemples/client-fictif` ; `main` = `024a77c`, lot = `b56e9aa` ; deux arbres
+détachés du scratchpad installés hors ligne ; `tours.sh` et `comparer.py`
+copiés, `PERMIS` vide). Aucune passe en 402 ni sans fichier ; aucun tour
+refait. Crédit sondé avant par un `/v1/messages` minuscule (200, deux fois).
+**2,89 $** (prévu : 2,85 en moyenne, 3,78 au plus).
+
+| | traduction | échappée | gestes |
+|---|---|---|---|
+| `main` (`024a77c`) | 59, 60, 59, 59, 59 (moy. 59,20) | 18, 15, 16, 18, 17 (moy. 16,80) | 6/6 |
+| lot (`b56e9aa`) | 60, 58, 60, 58, 59 (moy. 59,00) | 17, 18, 16, 17, 16 (moy. 16,80) | 6/6 |
+
+- **(a) vraie** : rouges sur cinq, `main` / lot : traduction AMB-1 0/1, AP-4
+  1/1, P-PLA-2 2/3, R-2 1/0 ; échappée E-07 1/3, E-08 1/1, E-10 1/0, E-11
+  1/0, E-13 2/1, E-16 0/1. Le plus haut : +2 (E-07, trois « réponse
+  tronquée », le plafond connu de 12 000 tokens).
+- **(b) vraie** : traduction 59,00 ≥ 59,20 − 1,5 ; échappée 16,80 ≥
+  16,80 − 1.
+- **(c) vraie** : traduction R-2 seule à chaque passe des deux côtés ;
+  échappée, aucune fuite.
+- **(d) vraie** : traduction 60 cas sur 60 identiques octet pour octet,
+  échappée 18 sur 18 ; entrées constantes d'une passe à l'autre d'un même
+  côté.
+- **(e) vraie** : gestes 6/6 des deux côtés ; `pnpm check` vert sur le lot
+  avant chaque commit, et sur `main` après la fusion.
+- Résultats : `evals/resultats/apparie-2026-10-13-s4-<côté>-<quoi>-<n>.md`,
+  la comparaison `apparie-2026-10-13-s4-comparaison.md` ; traces, manifeste,
+  `tours.sh` et `comparer.py` (celui de la mesure, `PERMIS` vide) dans
+  `evals/traces/apparie-2026-10-13-s4/` (non versionné).
+
+**Pièges :**
+- Le shell est zsh : une variable qui liste plusieurs fichiers n'est pas
+  découpée (`for f in $F` ne fait qu'un tour) ; passer par `bash -c`.
+- Le client fictif de l'agence a changé (`facture_alerte`) : une copie prise
+  dans un arbre plus ancien ne démarre pas (« config invalide »). Copier
+  depuis l'arbre de la branche mesurée.
+- `decrireEcart` dit toujours « consommés / vendus » : pour des euros, le mot
+  juste va dans l'intitulé du groupe.
+
+**Avant S5** : rien d'obligatoire. Notés pour S5 ou pour Lionel, en plus de
+ceux de S3 (le masque des mots courants, la copie de la commerciale,
+`brouillon_relance` avant l'échéance, les données fictives) :
+- **À Lionel** : `facture_alerte` (1, au-delà) est une valeur d'exemple ; une
+  colonne `contrat_tma` dans `factures.csv` remplacerait l'inférence par les
+  mensualités.
+- L'export couvre douze mois : le facturé des projets plus anciens est
+  incomplet (PRJ-01 à 03 à 0 % hors TMA) ; sans alerte, mais l'indicateur est
+  faux pour eux.
+- Le vrai signal de marge, un projet clos facturé sous son vendu (PRJ-05 à
+  90 % : 2 480 € d'AVE-2026-001 jamais facturés), n'est pas montré : ce
+  serait un second seuil, « reste à facturer ».
+- Aucune ligne de temps du client fictif ne cite un `LOT-`, et aucun contrat
+  TMA n'atteint 80 % au 12/10 : ces deux écarts ne sont testés que sur des
+  contextes construits à la main.
+- Le motif d'I-12 répète l'identifiant sous un titre qui le porte déjà.
+- `MetierVeiller.sections` ne reçoit pas le registre : la section le
+  recharge. `Seuils` est déclaré deux fois dans l'agence (`controles.ts`, et
+  un alias dans `semantique.ts` contre un import circulaire).
+- `DureeSchema` accepte la fin de mois partout où il est lu : une config de la
+  sécurité qui en écrirait une dans une durée passée à `echeance` ou
+  `auPlusTardAvant` lèverait en pleine veille (aucune ne le fait).
 
 ## Commandes
 

@@ -199,3 +199,18 @@ describe('une relance se prépare en dix minutes (entretien § 8)', () => {
     expect(toutes(jour.add({ days: 1 }))).toContain('pv_non_signe LOT-023/pv escalade')
   })
 })
+
+describe('un délai de la maison « fin de mois » (PLAN-METIER-2.md § 8, M13)', () => {
+  it('se lit par `ajouter` du moteur : les jours, puis le dernier jour du mois atteint', () => {
+    const finDeMois = {
+      ...veille,
+      delais: { ...veille.delais, pv_non_signe: { jours: 45, fin_de_mois: true as const } },
+    }
+    // LOT-042 recetté le 24/08/2026 : + 45 jours, le 08/10/2026 ; fin de mois, le 31/10/2026
+    expect(
+      echeancesDues(lire(), finDeMois, registre)
+        .find((e) => e.objet === 'LOT-042/pv')
+        ?.limite?.toString(),
+    ).toBe('2026-10-31')
+  })
+})
