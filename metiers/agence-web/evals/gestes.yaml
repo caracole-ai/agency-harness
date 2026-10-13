@@ -1,0 +1,160 @@
+# Les gestes appris écrits à la main pour l'éval de rejeu de l'agence web
+# (PLAN-METIER-2.md § 9, point 1 ; la forme est celle de PLAN-PROMOTION.md
+# § 6.4), `pnpm evals gestes --client <copie de exemples/agence-web-fictive>`,
+# sans modèle, seuil 100 %. Le lanceur (`moteur/src/cli/evals.ts`) pose chaque
+# geste dans une copie du client (`gestes/eval-<id>.yaml`, statut proposé) et,
+# pour chaque test, un instantané de la copie du rôle du test, pris à
+# `maintenant` ; puis il rejoue chaque geste sur ses instantanés.
+#
+# Pourquoi pas les huit gestes codés (§ 9 dit « les huit ») : le lanceur ne
+# rejoue que des gestes appris (des données : SQL, gabarit, tests), et un geste
+# appris porte l'identifiant d'une intention du métier, jamais celui d'un geste
+# codé (P14, P15 ; la sécurité le vérifie dans son `evals.test.ts`) ; deux des
+# huit écrivent (`declarer_absence`, `brouillon_relance`) et l'agence ne déclare
+# aucune opération en v1 (M6). Les huit sont du code, testés par
+# `metiers/agence-web/code/src/actions.test.ts`. Ce fichier fait donc ce que
+# fait celui de la sécurité : des gestes appris écrits à la main pour des
+# intentions connues du métier (`INTENTIONS`), ceux que la promotion (§ 9,
+# point 3) devra savoir fabriquer ; ils éprouvent le rejeu sur ce métier (ses
+# types `nombre`, `date`, `periode` et l'entité `client`, ses rôles, ses
+# copies). Trois sur six : `marge_projet` et `forfaits_depasses` exigeraient
+# `heures_par_jour`, une valeur du client qu'aucune table de la copie ne
+# porte (elle s'écrirait en dur dans le SQL) ; `acces_ressource` n'a pas de
+# paramètre que les types déclarés lient sans ambiguïté (une ressource est un
+# dépôt, un domaine ou un compte).
+#
+# Les rôles des tests sont ceux dont la copie porte les tables lues : la
+# copie de la commerciale n'a pas le temps (`heures_tma` ne lui est pas
+# ouvert ; HANDOFF.md « Phase M, session S3 »).
+#
+# Chaque `contient` est recalculé depuis les CSV par
+# `metiers/agence-web/code/src/evals.test.ts` (devis envoyés, recette des lots
+# par `recetteDuLot`, heures TMA par `heuresTma`) ; écrit le 2026-10-13,
+# jamais recopié d'une sortie du modèle. Les instantanés sont pris par le
+# lanceur : aucun n'est versionné.
+
+maintenant: "2026-10-12T10:00"
+
+gestes:
+  - id: devis_sans_reponse
+    description: les devis envoyés et restés sans réponse depuis plus d'un nombre de jours, comptés à une date
+    roles: [dirigeant, po, commercial]
+    parametres:
+      jours:
+        type: nombre
+        description: "les jours écoulés depuis l'envoi : 10 pour « depuis plus de dix jours »"
+      date:
+        type: date
+        description: le jour où l'on compte, aujourd'hui sauf mention contraire
+    requetes:
+      - nom: devis
+        sql: SELECT d.id AS devis, d.client AS client, d.montant_ht_eur AS montant_ht_eur, d.envoye_le AS envoye_le FROM devis d WHERE d.etat = 'envoye' AND d.envoye_le <= date(:date, '-' || :jours || ' days') ORDER BY d.envoye_le
+    reponse:
+      ligne: null
+      tableau: devis
+      vide: Aucun devis sans réponse depuis ce nombre de jours.
+    tests:
+      - echappee: E-eval-devis-1
+        consigne: "Quels devis attendent une réponse depuis plus de dix jours ?"
+        role: commercial
+        personne: M-02
+        params: { jours: 10, date: "2026-10-12" }
+        instantane: echappees/E-eval-devis-1.json
+        contient: [DEV-2026-022, DEV-2026-023, "5400", "8100"]
+      - echappee: E-eval-devis-2
+        consigne: "Les devis envoyés il y a plus de trois jours, toujours sans réponse ?"
+        role: dirigeant
+        personne: M-01
+        params: { jours: 3, date: "2026-10-12" }
+        instantane: echappees/E-eval-devis-2.json
+        contient: [DEV-2026-022, DEV-2026-023, DEV-2026-024, "5400", "8100", "2280"]
+      - echappee: E-eval-devis-3
+        consigne: "Quels devis sont sans réponse depuis plus de vingt jours ?"
+        role: po
+        personne: M-03
+        params: { jours: 20, date: "2026-10-12" }
+        instantane: echappees/E-eval-devis-3.json
+        contient: [DEV-2026-022, "5400"]
+    origine: { fabrique_le: "2026-10-13", modele: à la main, cout_usd: 0, conversations: [] }
+
+  - id: pv_non_signes
+    description: les lots recettés dont le PV n'est pas signé depuis plus d'un nombre de jours, comptés à une date
+    roles: [dirigeant, po]
+    parametres:
+      jours:
+        type: nombre
+        description: "les jours écoulés depuis la recette : 15 pour « depuis plus de quinze jours »"
+      date:
+        type: date
+        description: le jour où l'on compte, aujourd'hui sauf mention contraire
+    requetes:
+      - nom: pv
+        sql: SELECT l.id AS lot, l.projet AS projet, COALESCE(l.recette_le, (SELECT MAX(r.date) FROM recettes r WHERE r.lot = l.id)) AS recette_le FROM lots l WHERE COALESCE(l.pv_signe_le, (SELECT MAX(r.pv_signe_le) FROM recettes r WHERE r.lot = l.id)) IS NULL AND COALESCE(l.recette_le, (SELECT MAX(r.date) FROM recettes r WHERE r.lot = l.id)) <= date(:date, '-' || :jours || ' days') ORDER BY recette_le
+    reponse:
+      ligne: null
+      tableau: pv
+      vide: Aucun PV en attente depuis ce nombre de jours.
+    tests:
+      - echappee: E-eval-pv-1
+        consigne: "Quels PV de recette ne sont pas signés depuis plus de quinze jours ?"
+        role: po
+        personne: M-03
+        params: { jours: 15, date: "2026-10-12" }
+        instantane: echappees/E-eval-pv-1.json
+        contient: [LOT-042, PRJ-16]
+      - echappee: E-eval-pv-2
+        consigne: "Quels PV attendent leur signature depuis plus de cinq jours ?"
+        role: dirigeant
+        personne: M-01
+        params: { jours: 5, date: "2026-10-12" }
+        instantane: echappees/E-eval-pv-2.json
+        contient: [LOT-023, LOT-042, PRJ-08, PRJ-16]
+      - echappee: E-eval-pv-3
+        consigne: "Y a-t-il des PV non signés depuis plus de soixante jours ?"
+        role: po
+        personne: M-03
+        params: { jours: 60, date: "2026-10-12" }
+        instantane: echappees/E-eval-pv-3.json
+        contient: [Aucun PV en attente]
+    origine: { fabrique_le: "2026-10-13", modele: à la main, cout_usd: 0, conversations: [] }
+
+  - id: heures_tma
+    description: "les heures des contrats de maintenance d'un client sur une période : incluses par mois, consommées, restantes"
+    roles: [dirigeant, po]
+    parametres:
+      client:
+        type: client
+        description: "le client, tel qu'il est écrit dans la consigne"
+      periode:
+        type: periode
+        description: "la période, un mois : du premier au dernier jour"
+    requetes:
+      - nom: heures
+        sql: SELECT c.id AS contrat, c.heures_incluses_mois AS incluses, COALESCE(SUM(t.heures), 0) AS consommees, c.heures_incluses_mois - COALESCE(SUM(t.heures), 0) AS restantes FROM contrats_tma c LEFT JOIN temps t ON t.projet = c.id AND t.date BETWEEN :du AND :au WHERE c.client = :client GROUP BY c.id ORDER BY c.id
+    reponse:
+      ligne: "{{heures.contrat}} : {{heures.consommees}} h consommées sur {{heures.incluses}} h incluses du {{du}} au {{au}}, {{heures.restantes}} h restantes."
+      tableau: null
+      vide: Aucun contrat de maintenance pour ce client.
+    tests:
+      - echappee: E-eval-tma-1
+        consigne: "Combien d'heures TMA il reste ce mois chez le cabinet d'avocats ?"
+        role: dirigeant
+        personne: M-01
+        params: { client: CLI-05, du: "2026-10-01", au: "2026-10-31" }
+        instantane: echappees/E-eval-tma-1.json
+        contient: [TMA-02, "1.5", "6.5"]
+      - echappee: E-eval-tma-2
+        consigne: "Combien d'heures de maintenance reste-t-il ce mois pour le site e-commerce ?"
+        role: po
+        personne: M-03
+        params: { client: CLI-11, du: "2026-10-01", au: "2026-10-31" }
+        instantane: echappees/E-eval-tma-2.json
+        contient: [TMA-03, "4", "11"]
+      - echappee: E-eval-tma-3
+        consigne: "Combien d'heures TMA ont été consommées en septembre chez CLI-21 ?"
+        role: po
+        personne: M-03
+        params: { client: CLI-21, du: "2026-09-01", au: "2026-09-30" }
+        instantane: echappees/E-eval-tma-3.json
+        contient: [TMA-09, "3.5", "6.5"]
+    origine: { fabrique_le: "2026-10-13", modele: à la main, cout_usd: 0, conversations: [] }

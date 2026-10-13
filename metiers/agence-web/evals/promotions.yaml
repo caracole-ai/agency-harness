@@ -1,0 +1,18 @@
+# Les cas de l'éval de la fabrication de l'agence web (PLAN-METIER-2.md § 9,
+# point 1 : « `promotions.yaml`, `rondes.yaml` : vides, avec un commentaire qui
+# le dit »). VIDE, volontairement : `pnpm evals promotion` sur l'agence n'a
+# rien à mesurer et s'arrête sur ce fichier.
+#
+# Pourquoi : un cas de fabrication rejoue des échappées étiquetées puis mesure
+# le geste fabriqué (PLAN-PROMOTION.md § 6.4) ; au lot 4, la promotion de
+# l'agence se mesure sur le journal des passes réelles (§ 9, point 3 :
+# `pnpm promotions`, ce qui est promu, rejoué, compté), pas sur des cas
+# choisis d'avance. Les écrire avant ces passes, ce serait deviner quelles
+# intentions atteindront le seuil (`promotion.occurrences` du client).
+#
+# `rondes.yaml` n'existe pas pour l'agence, alors que le plan le veut vide :
+# `moteur/src/evals/evals.test.ts` (« le rondes.yaml de chaque métier … se
+# lisent ») exige de tout `metiers/<métier>/evals/rondes.yaml` trois cas au
+# moins et des journaux fixés lisibles ; un fichier vide ferait échouer
+# `pnpm check`, et le moteur ne se touche pas dans ce lot. Il s'écrira avec
+# ses journaux fixés quand la ronde réelle du § 9, point 4 en aura.
