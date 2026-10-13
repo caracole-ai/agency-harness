@@ -9,7 +9,6 @@ import {
   type Designable,
   echappee,
   FICHIER_CONFIG,
-  fuites,
   type Identite,
   type Intention,
   Journal,
@@ -85,21 +84,28 @@ const LETTRES_MOT_PROPRE = 4
 /** Un texte écrit d'un seul tenant : le masque n'en cherche que la forme entière (les tirets y valent des espaces). */
 const dUnTenant = (texte: string) => texte.trim().split(/\s+/).join('-')
 
+/** Une valeur comparée au mot près : sans casse ni accents, sans espaces autour. */
+const normaliser = (texte: string) =>
+  texte.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+
 /**
- * Les mots du métier lus dans les données : les valeurs des colonnes qui ne
- * portent jamais un nom ni un texte libre (le secteur d'un client, la fonction
- * d'un contact, le composant d'une version). Un résumé, un commentaire, le
- * libellé d'un projet ou d'un lot n'en sont pas : ils peuvent citer un client
- * par son nom, et ce nom y deviendrait un mot courant.
+ * Les mots du métier lus dans les données : les valeurs **entières** des
+ * colonnes qui ne sont pas un nom (le secteur d'un client, la fonction d'un
+ * contact, le composant d'une version), normalisées. Ces colonnes restent du
+ * texte libre : un mot qui n'y est qu'une partie d'une valeur (« ancien de
+ * Hexalis ») peut être un nom cité, il n'en devient pas courant. Un résumé,
+ * un commentaire, le libellé d'un projet ou d'un lot n'en sont pas non plus.
  */
-function vocabulaire(ctx: Contexte): string {
-  return [
-    ...[...ctx.clients.values()].map((c) => c.secteur),
-    ...[...ctx.contacts.values()].map((c) => c.fonction),
-    ...ctx.versions.map((v) => v.composant),
-  ]
-    .filter((v) => v !== undefined)
-    .join('\n')
+function vocabulaire(ctx: Contexte): Set<string> {
+  return new Set(
+    [
+      ...[...ctx.clients.values()].map((c) => c.secteur),
+      ...[...ctx.contacts.values()].map((c) => c.fonction),
+      ...ctx.versions.map((v) => v.composant),
+    ]
+      .filter((v) => v !== undefined)
+      .map(normaliser),
+  )
 }
 
 /**
@@ -114,8 +120,8 @@ function vocabulaire(ctx: Contexte): string {
  * qu'en tête, quatre lettres au moins) se masque seul s'il est distinctif :
  * « Orsini », « Castelvert », mais pas « Industrie », que les données
  * emploient comme un mot du métier (le secteur de ce client) : il n'identifie
- * personne, et le masquer abîmerait la copie. `courant` le dit, avec le
- * même mot à mot que le masque.
+ * personne, et le masquer abîmerait la copie. `courant` le dit : le mot est,
+ * en entier, une valeur de ces colonnes.
  */
 function nomsDuClient(id: string, nom: string, courant: (mot: string) => boolean): Designable[] {
   const propres = [...nom.matchAll(/[^\s'’-]+/g)]
@@ -138,7 +144,7 @@ function nomsDuClient(id: string, nom: string, courant: (mot: string) => boolean
 function noms(s: Session): Designable[] {
   const { ctx } = s
   const mots = vocabulaire(ctx)
-  const courant = (mot: string) => fuites(mots, [organisation(mot, mot)]).length > 0
+  const courant = (mot: string) => mots.has(normaliser(mot))
   return [
     ...[...ctx.personnes.values()].map((p) => personne(p.id, p.nom)),
     ...[...ctx.sous_traitants.values()].map((p) => personne(p.id, p.nom)),

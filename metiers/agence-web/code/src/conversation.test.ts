@@ -1,3 +1,5 @@
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   accueillir,
@@ -206,6 +208,23 @@ describe('les noms qui ne partent jamais au modèle', () => {
     expect(designe('le secteur industrie')).toBe('le secteur industrie')
     expect(designe('chez Hexalis Industrie')).toBe('chez CLI-08')
     expect(designe('le Fournil des Saules')).toBe('le CLI-03')
+  })
+  it('un mot propre cité dans une de ces colonnes, sans en être toute la valeur, reste masqué seul', () => {
+    // fonction, secteur, composant : du texte libre ; seul un mot qui y est une valeur entière est du métier
+    const dossier = copieClient(exemple)
+    const remplacer = (fichier: string, avant: string, apres: string) => {
+      const chemin = join(dossier, fichier)
+      writeFileSync(chemin, readFileSync(chemin, 'utf8').replace(avant, apres))
+    }
+    remplacer('clients.csv', 'CLI-12;Cave Lumen;commerce', 'CLI-12;Cave Lumen;caviste Lumen')
+    const s2 = CONVERSATION.ouvrir(dossier)
+    const contact = [...s2.ctx.contacts.values()][0]
+    if (!contact) throw new Error('aucun contact')
+    s2.ctx.contacts.set(contact.id, { ...contact, fonction: 'président, ancien de Hexalis' })
+    const n2 = CONVERSATION.noms(s2)
+    expect(masquerTexte('chez Hexalis', n2)).toBe('chez CLI-08')
+    expect(masquerTexte('parle à Lumen', n2)).toBe('parle à CLI-12')
+    expect(masquerTexte('le secteur industrie', n2)).toBe('le secteur industrie')
   })
   it.each(TOUS)(
     '$role : la copie masquée ne porte ni le nom entier d’un client, ni un mot qui l’identifie seul ; le secteur « industrie » reste',

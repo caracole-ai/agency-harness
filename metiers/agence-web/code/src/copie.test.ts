@@ -95,6 +95,10 @@ describe('le commerce : la commerciale', () => {
     const avancement = (id: string) => projets.lignes.find((p) => p.id === id)?.avancement
     // PRJ-12 : 18 jours consommés sur 29 vendus (le geste etat_projet de la PO le dit aussi)
     expect(avancement('PRJ-12')).toBeCloseTo(18 / 29, 9)
+    // PRJ-01 (début 2025-02-03) et PRJ-15 (2025-06-02) commencent avant la première ligne
+    // de temps de l'export (2025-10-13) : leurs heures d'avant manquent, rien n'est supposé
+    expect(avancement('PRJ-01')).toBeNull()
+    expect(avancement('PRJ-15')).toBeNull()
     const heures = table(tables, 'heures_tma_par_mois')
     expect(heures.colonnes.map((c) => c.nom)).toEqual(['contrat', 'mois', 'heures'])
     const de = (contrat: string, mois: string) =>

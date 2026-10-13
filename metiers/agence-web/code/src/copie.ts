@@ -345,11 +345,19 @@ const AVANCEMENT: Calculee = {
   colonne: {
     nom: 'avancement',
     ...reel(
-      'l’avancement : les jours consommés sur les jours vendus du projet, en fraction (0.5 pour 50 %) ; null sans jours vendus',
+      'l’avancement : les jours consommés sur les jours vendus du projet, en fraction (0.5 pour 50 %) ; null sans jours vendus, ou quand le projet commence avant le premier temps saisi de l’export',
     ),
   },
-  valeur: (s, p) =>
-    consommeVendu(s.ctx, String(p.id), s.config.seuils.heures_par_jour).part ?? null,
+  valeur: (s, p) => {
+    // un projet commencé avant le premier temps de l'export (ou sans début connu) a des heures qui manquent
+    const debut = s.ctx.projets.get(String(p.id))?.debut
+    const premierTemps = s.ctx.temps.reduce<string | undefined>(
+      (min, t) => (min === undefined || t.date < min ? t.date : min),
+      undefined,
+    )
+    if (debut === undefined || premierTemps === undefined || debut < premierTemps) return null
+    return consommeVendu(s.ctx, String(p.id), s.config.seuils.heures_par_jour).part ?? null
+  },
 }
 
 /** Une table de la copie, et sa colonne calculée s'il y en a une. */

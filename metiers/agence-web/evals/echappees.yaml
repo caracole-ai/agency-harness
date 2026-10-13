@@ -52,7 +52,8 @@
 #   entretien § 5) : seul le lot recetté est exigé ;
 # - 22 : la validation d'une maquette (aucune table, D-07 « rien de structuré ») ;
 # - 27 : la sauvegarde existe le jour de la mise en prod (28/07/2026), mais un
-#   mot ne dit pas « oui » : seule la personne est exigée ;
+#   mot ne dit pas « oui », et la personne est celle qui demande : rien n'est
+#   exigé, seule l'absence de fuite est mesurée (contenu non mesuré) ;
 # - 13, 20 bis : rien à citer ; et la boulangerie n'a aucun PV en attente
 #   (LOT-031 signé le 24/07/2026, ses deux autres lots sans recette) ;
 # - les dates : un modèle les écrit à sa façon (`28/07`, `28 juillet`) ; aucune
