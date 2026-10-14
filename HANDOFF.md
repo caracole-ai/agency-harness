@@ -1,4 +1,4 @@
-# Handoff — 2026-10-13
+# Handoff — 2026-10-14
 
 Pour reprendre dans une session neuve. À lire avant `REFLEXIONS.md` (le fil
 des décisions), `PLAN.md` (les phases 0 à 5) et `PLAN-ESPACES.md` (les trois
@@ -6,6 +6,29 @@ espaces). Ce fichier se remplace à chaque passation ; il ne fait pas foi, les
 fichiers qu'il cite, si.
 
 ## Où on en est
+
+- **2026-10-14 : session S7 faite (l'efficience des évals, demande de
+  Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
+  (f) vraies ; fusionnée dans `main` et poussée.** `general/efficience` :
+  un plafond à part pour la fabrication (`plafonds.fabrication.tokens_sortie`,
+  40 000 calibré pour GLM ; absent, celui de la demande) ; l'échappée
+  « sois non verbeux » (système et description de `repondre.texte`).
+  `pnpm check` vert : moteur 633, interface 25, sécurité 135, agence web 263.
+  Détail : « Session S7 ».
+  - Fabrication : **8/12** (avant 2/12) ; `heures_par_agent` et
+    `agents_sans_carte` 3/3, `compter_vacations` (dit impossible) 2/3,
+    `liberer_un_jour` 0/3 (plafond de la demande au rejeu, puis 40 000).
+  - Échappée de la sécurité : `main` 17,20 / lot 17,60 ; traduction non
+    mesurée (entrées identiques octet pour octet au modèle simulé, 60/60).
+  - Agence : 16 et 16/24 (information) ; la concision va contre cinq
+    étiquettes qui demandent plus que la question (E1).
+  - **À Lionel** : la ligne `fabrication: { tokens_sortie: 40000 }` dans
+    `exemples/client-fictif/config.yaml` (règle 7) ; le commentaire
+    « impossible » de `compter_vacations` (`promotions.yaml`) ; les
+    étiquettes E1 de l'agence, ou une déclaration du métier, par intention,
+    de ce qu'une bonne réponse contient.
+  - GLM : 4,39 $ affichés (plafond 5 $), dont 2,29 $ de fabrication en
+    borne haute (flux : réel inconnu). **Suivante : la phase E**, inchangée.
 
 - **2026-10-13 (nuit) : session S6 faite (les trois défauts de « Avant S6 »,
   avant la phase E) ; mesure appariée de la sécurité, les cinq conditions
@@ -1766,7 +1789,8 @@ viser ~100 traces réelles pour l'analyse d'erreurs, au premier client.
 - **L'effort de la fabrication est `effort.echappee`** (pas de clé de config
   dédiée : une de plus dans `ConversationSchema` aurait touché toutes les
   configs). Le plafond par appel est `par_demande.tokens_sortie`, comme le
-  plan le demande.
+  plan le demande (depuis S7, le 2026-10-14 : `plafonds.fabrication`, s'il
+  est déclaré).
 - **`contient` = les nombres hors dates et les mots de noms connus du texte
   montré, moins ce que la consigne porte déjà** : la consigne est une source
   de l'échappée (« du 5 au 11 octobre » se cite), et le gabarit rend les
@@ -3600,8 +3624,11 @@ l'interface (mesure appariée de la sécurité) :
 - `MAX_TOKENS_TRADUIRE = 4096` en dur (`moteur/src/conversation/traduire.ts:55`) :
   une troncature (P16-1), deux frôlées ; contraire à la règle « aucun plafond par
   appel ».
-- La consigne de l'échappée (« Réponds à la question posée, rien de plus ») contre
-  le bon résultat du § 12 (montant, contact, reste) : à trancher par Lionel.
+- ~~La consigne de l'échappée contre le bon résultat du § 12~~ : tranché par
+  Lionel le 2026-10-14, la concision (« sois non verbeux », S7). Les étiquettes
+  de l'agence qui demandent plus que la question (E-04, E-12, E-18) restent
+  rouges ; les changer ou faire déclarer par le métier ce qu'une bonne réponse
+  contient, par intention, est à Lionel.
 - L'échappée de l'agence ne reçoit aucune règle ni notion (`regles: []`,
   `conversation.ts:300`) : « à valider », « bug ou évolution », « la prod ».
 - Les descriptions de `etat_projet` et `mes_tickets` attirent P14 et P22.
@@ -3750,6 +3777,68 @@ Une condition fausse : on ne fusionne pas, et on ne corrige rien dans la
 session. Plafond de GLM : 5 $ (prévu ≈ 3,8 $ : échappée appariée ≈ 1,7 $,
 fabrication ≈ 1,4 $, agence ≈ 0,7 $). Le crédit est sondé avant chaque
 série ; à court, on s'arrête avant la fusion.
+
+**La mesure** (14/10 10:50 → 12:30, crédit sondé avant, 200, aucun 402 ;
+arbres détachés dans le scratchpad ; `evals/traces/apparie-2026-10-14-s7/` :
+scripts, manifeste, `comparer.py` avec son `PERMIS`, `calib.py`, traces ;
+résultats `evals/resultats/apparie-2026-10-14-s7-*`) :
+
+| | `main` | lot |
+|---|---|---|
+| échappée de la sécurité (18), par tour | 17, 18, 17, 17, 17 (17,20) | 18, 18, 18, 17, 17 (**17,60**) |
+| gestes | 6/6 | 6/6 |
+| fabrication (4 cas), par passe | base : 2/9 sur trois cas (A, B), 0/3 `liberer_un_jour` (C) | 3/4, 2/4, 3/4 (**8/12**) |
+
+(a) vraie : le plus haut écart est +2 (E-07 : une troncature au plafond de
+la demande, un plafond de temps), E-08 −2, E-13 −1, E-02 −1 ; (b) 17,60 ≥
+16,20 ; (c) aucune fuite, des deux côtés ; (d) 18/18 ne diffèrent que par
+les deux phrases permises, entrées constantes d'une passe à l'autre ; (e)
+gestes 6/6, `pnpm check` vert ; (f) vraie, cas par cas :
+`heures_par_agent` 3/3 (avant 2/6), `agents_sans_carte` 3/3 (avant 2/6),
+`compter_vacations` 2/3 (avant 0/6), `liberer_un_jour` 0/3 (avant 0/3).
+E-14, le cas piégé (une fausse consigne dans un nom), reste vert aux cinq
+passes du lot : « sois non verbeux » ne fait pas taire le signalement.
+
+- **`compter_vacations` n'est pas impossible** : GLM fabrique un geste qui
+  compte par `nature` (`GROUP BY nature`), le compte « de nuit » est dans le
+  tableau rendu, le rejeu passe sans écart. Le commentaire « impossible par
+  construction » de `metiers/securite-privee/evals/promotions.yaml` est
+  dépassé (fichier d'éval : pas touché, à Lionel). Sa troisième passe est
+  tronquée à 40 000.
+- **`liberer_un_jour` bute sur deux plafonds** : deux fois, une de ses trois
+  propositions rejouées est tronquée au plafond de la demande (12 000, le
+  mode libre : appel 5, `max_tokens`), l'intention n'atteint pas le seuil ;
+  une fois, la fabrication est tronquée à 40 000 (≈ 112 000 caractères).
+  Une intention qui écrit demande plus que les deux plafonds.
+- **La calibration ne suit pas la formule écrite** : le rapport caractères
+  par token n'est pas constant (2,8 sur la troncature de `liberer_un_jour`
+  à 40 000, 3,5 à 3,9 sur celles à 12 000). La formule (3,5) donnait
+  36 000 ; au rapport prudent (2,8), la plus longue fabrication réussie
+  (`compter_vacations`, 98 772 caractères) demande ≈ 35 000 tokens, que
+  36 000 couperait. Le seuil retenu est **40 000**, la seule valeur que la
+  mesure a éprouvée : `exemples/agence-web-fictive/config.yaml` ;
+  `exemples/client-fictif/config.yaml` ne s'écrit pas (règle 7) : la ligne
+  `fabrication: { tokens_sortie: 40000 }` y est **à Lionel**.
+- **Coût** : la fabrication passe en flux, GMI n'y compte rien, le coût
+  écrit est la borne haute (sortie = le plafond) : 0,89, 0,70, 0,70 $ par
+  passe affichés, réel inconnu. L'échappée : 1,58 $ les dix passes.
+- **Relecture indépendante** (sous-agent, lecture seule) : aucun bloquant ;
+  corrigés : le commentaire de `CadreFabrication.maxTokens`, la ligne de
+  config dite « pour GLM », l'ancien état dans « Phase A ». Gardés comme
+  risques : chaque fabrication compte jusqu'à 40 000 tokens au plafond du
+  mois (borne haute, ≈ 0,18 $ sur GLM, à recalibrer chez Anthropic où la
+  sortie coûte 20 $) ; le test de `promouvoir` ne voit que le premier
+  appel (la relance lit le même `cadre.maxTokens`).
+
+**L'agence, deux passes d'échappée sur le lot** (information ;
+`apparie-2026-10-14-s7-lot-agence-echappee-{1,2}.md`) : **16/24 et 16/24**,
+fuite 0 (S6 : 17/24 sur une passe ; S5 : 13 et 13). Rouges aux deux passes :
+E-04, E-12, E-16, E-17, E-28 ; E-18 et EP-16 une fois chacun, E-14 une fois
+(résumé retiré), E-08 et E-20 une fois (montants, détail des projets). E-04,
+E-08, E-12, E-18, E-20 sont les cinq étiquettes qui demandent plus que la
+question (E1 de `evals/erreurs-2026-10-13.md`) : la concision voulue par
+Lionel va contre elles. Sans `main` apparié, l'écart avec S6 (−1) ne se
+distingue pas du tirage.
 
 ## Commandes
 
