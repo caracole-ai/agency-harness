@@ -296,6 +296,16 @@ describe('le plafond du mois', () => {
   })
 })
 
+describe('le plafond de la traduction', () => {
+  it('celui de la demande dans la config, jamais un nombre en dur', async () => {
+    const s = session()
+    const { modele } = await tour(s, PATRON, [{ texte: 'x' }])
+    expect(modele.appels[0]?.maxTokens).toBe(
+      s.config.conversation?.plafonds.par_demande.tokens_sortie,
+    )
+  })
+})
+
 describe('les gestes de veille', () => {
   it('lancer_veille rend le rapport et écrit la veille au journal', async () => {
     const s = session()

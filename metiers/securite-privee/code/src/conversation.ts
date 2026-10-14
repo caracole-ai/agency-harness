@@ -1,6 +1,7 @@
 import { join } from 'node:path'
 import {
   type ConfigConversation,
+  type CriteresProposition,
   chargerConfig,
   type DemandeTableau,
   echappee,
@@ -199,6 +200,18 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
   })
 }
 
+/** Les règles codées et les préférences du client : l'échappée qui propose les montre, la fabrication d'un geste qui écrit aussi. */
+const criteres = (s: Session): CriteresProposition => {
+  const codees = new Set(CONTROLES.map((c) => c.regle))
+  const preferences = (s.config.remplacement?.preferences ?? []).map((p) => PREFERENCES_EN_MOTS[p])
+  return {
+    regles: s.registre.interdits
+      .filter((i) => codees.has(i.id))
+      .map((i) => ({ id: i.id, nom: i.nom })),
+    preferences: preferences.length > 0 ? `d'abord ${preferences.join(', puis ')}` : 'aucune',
+  }
+}
+
 const configDe = (s: Pick<Session, 'dossier' | 'config'>): ConfigConversation => {
   if (!s.config.conversation) {
     throw new Error(`${s.dossier} : la config n'a pas de section « conversation »`)
@@ -256,6 +269,7 @@ export const CONVERSATION: MetierConversation<Session> = {
       const { messages } = validerReaffectation(s, id, maintenant)
       return `Validé. Message envoyé à ${messages.length} agent(s) : ${messages.map((m) => `« ${m} »`).join(' ; ')}`
     },
+    criteres,
   },
   echappee: (s, identite, conversation, consigne, intention, maintenant, modele, precisions) => {
     const personne = (a: { id: string; nom: string }) => ({
@@ -265,10 +279,6 @@ export const CONVERSATION: MetierConversation<Session> = {
     })
     const visibles = s.ctx.planning.agents.filter(
       (a) => identite.role === 'patron' || a.id === identite.personne,
-    )
-    const codees = new Set(CONTROLES.map((c) => c.regle))
-    const preferences = (s.config.remplacement?.preferences ?? []).map(
-      (p) => PREFERENCES_EN_MOTS[p],
     )
     return echappee(
       {
@@ -293,10 +303,7 @@ export const CONVERSATION: MetierConversation<Session> = {
           nomRegle: (id) => s.registre.interdits.find((i) => i.id === id)?.nom ?? id,
           proposer: identite.role === 'patron',
         },
-        regles: s.registre.interdits
-          .filter((i) => codees.has(i.id))
-          .map((i) => ({ id: i.id, nom: i.nom })),
-        preferences: preferences.length > 0 ? `d'abord ${preferences.join(', puis ')}` : 'aucune',
+        ...criteres(s),
         personnes: visibles.map(personne),
         toutes: s.ctx.planning.agents.map(personne),
       },

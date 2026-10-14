@@ -47,13 +47,6 @@ export const entreDonnees = (texte: string) =>
 /** Un nom venu des données, sur une seule ligne : il ne peut pas ouvrir une nouvelle ligne d'instructions. */
 export const surUneLigne = (nom: string) => nom.replace(/[\r\n\u2028\u2029]+/g, ' ')
 
-/**
- * La sortie d'une traduction : un appel d'outil, mais un modèle qui réfléchit
- * avant peut dépasser 1 024 tokens (réponse tronquée, vue avec GLM-5.3). Seul
- * ce qui est produit se paie ; le plafond du mois borne le coût.
- */
-export const MAX_TOKENS_TRADUIRE = 4096
-
 const JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
 
 /** Le jour de la semaine, en mots : « samedi ». */
@@ -139,6 +132,12 @@ function lire(message: Anthropic.Message, schemas: Map<string, z.ZodType<unknown
 export async function traduire(
   modele: Modele,
   effort: Effort,
+  /**
+   * Le plafond de la demande dans la config (`plafonds.par_demande.tokens_sortie`),
+   * jamais un nombre en dur : un modèle qui réfléchit avant l'appel d'outil a
+   * dépassé 1 024, puis 4 096 tokens (GLM-5.3). Seul ce qui est produit se paie.
+   */
+  maxTokens: number,
   systeme: string,
   outils: Anthropic.Tool[],
   consigne: string,
@@ -150,7 +149,7 @@ export async function traduire(
     messages: [{ role: 'user', content: messageConsigne(consigne, maintenant) }],
     outils,
     effort,
-    maxTokens: MAX_TOKENS_TRADUIRE,
+    maxTokens,
     unSeulOutil: true,
   })
   return { demande: lire(reponse.message, schemas), reponse }
@@ -204,6 +203,8 @@ export function messageDesigner(
 export async function designer(
   modele: Modele,
   effort: Effort,
+  /** Comme pour `traduire` : le plafond de la demande dans la config. */
+  maxTokens: number,
   consigne: string,
   mention: string,
   candidats: Designable[],
@@ -213,7 +214,7 @@ export async function designer(
     messages: [{ role: 'user', content: messageDesigner(consigne, mention, candidats) }],
     outils: [outilDesigner(candidats)],
     effort,
-    maxTokens: MAX_TOKENS_TRADUIRE,
+    maxTokens,
     unSeulOutil: true,
   })
   // Plusieurs appels, même à `designer` : le modèle hésite, l'humain tranche.

@@ -272,6 +272,28 @@ describe('systemeEchappee', () => {
     expect(sans).not.toMatch(/vacation|agent|patron/)
     expect(sans).toContain('Les préférences de l’entreprise, pour choisir')
   })
+  it('dit les notions du métier après les tables, qu’il propose ou non ; sans notion, rien (evals/erreurs-2026-10-13.md, E2)', () => {
+    const notion = 'Un ticket est un bug seulement si son lot est recetté (lots.recette_le).'
+    for (const proposer of [true, false]) {
+      const avec = systemeEchappee('la PO', 'Table lots : …', [], '', proposer, {
+        ...DOMAINE,
+        notions: [notion],
+      })
+      expect(avec).toContain(
+        `Table lots : …\n\nCe que les mots du métier veulent dire :\n- ${notion}\n`,
+      )
+      for (const notions of [undefined, []]) {
+        const sans = systemeEchappee('la PO', 'Table lots : …', [], '', proposer, {
+          ...DOMAINE,
+          ...(notions ? { notions } : {}),
+        })
+        expect(sans).not.toContain('mots du métier')
+        expect(sans).toBe(
+          avec.replace(`\n\nCe que les mots du métier veulent dire :\n- ${notion}`, ''),
+        )
+      }
+    }
+  })
 })
 
 /** Tout ce qui part au modèle : le système, et chaque message de chaque appel. */

@@ -5,7 +5,10 @@ import type { Domaine as DomainePrompts } from '@harnais/moteur'
 // modification n'est possible. Les identifiants à masquer avant la ronde et
 // la mission sont ceux qui désignent quelqu'un (M17) : une personne de
 // l'agence, un contact, un client, un sous-traitant. Aucune de ces phrases ne
-// porte un nom des données (les tests le vérifient).
+// porte un nom des données (les tests le vérifient). Les notions sont les mots
+// de la fiche (§ 5, vocabulaire ; I-04, I-05) et des questions de l'entretien
+// (5, 16, 17), dits dans les termes des tables que lit l'échappée : sans
+// elles, le modèle choisit sa propre lecture (`evals/erreurs-2026-10-13.md`, E2).
 
 export const DOMAINE: DomainePrompts = {
   cadre: "l'outil de suivi des projets et de la facturation d'une agence web",
@@ -14,4 +17,11 @@ export const DOMAINE: DomainePrompts = {
   places: ['<personne>', '<client>', '<projet>', '<facture>', '<ticket>', '<du>', '<au>'],
   identifiants: /\b(?:M|CT|CLI|ST)-\d+\b/g,
   rienASignaler: 'Aucun constat contraire à une règle.',
+  notions: [
+    "Bug ou évolution (I-05) : un ticket n'est un bug que s'il porte sur une fonction recettée, c'est-à-dire si son lot a été recetté (lots.recette_le, recettes) ; sinon c'est une évolution, qui attend un devis ou un décompte. Le type saisi (tickets.type) peut être vide ou faux : la réponse dit « bug » ou « évolution » avec la raison tirée des données, et laisse la qualification à une personne.",
+    'Ce qui attend la validation de la cheffe de projet (PO) : les PV de recette à faire signer (une recette passée, lots.pv_signe_le vide), les tickets à qualifier (tickets.type vide, ticket non résolu) et les maquettes à faire valider par le client, dont la validation vit dans la messagerie, absente des données.',
+    "La prod d'un site : le serveur du client et tout ce qui y donne la main ; qui y a accès se lit dans le registre des accès (acces) pour toutes les sortes, pas une seule : hébergeur, registrar, administration du site, dépôt, tiers.",
+    "Un accès est à révoquer (I-04) quand il n'a pas de révocation (acces.revoque_le vide) et que la personne n'est plus dans l'équipe, ou que le projet est clos (projets.etat) : un contrat de maintenance en cours sur ce projet garde l'accès des personnes de l'agence, jamais celui d'un sous-traitant.",
+    'Livré : en production avec le PV signé ; ni la préprod, ni la branche fusionnée.',
+  ],
 }

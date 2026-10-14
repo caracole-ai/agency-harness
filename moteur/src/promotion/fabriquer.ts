@@ -15,7 +15,13 @@ import { aCapacite, type Capacite, quiParle, type RoleDeclare } from '../convers
 import { entreDonnees, FRONTIERE, jourSemaine } from '../conversation/traduire'
 import { semaineDe } from '../echappee/boucle'
 import { creerCopie, type TableCopie } from '../echappee/copie'
-import type { Instantane } from '../echappee/echappee'
+import {
+  type CriteresProposition,
+  type Instantane,
+  preferencesEnMots,
+  REGLES_EN_TETE,
+  reglesEnMots,
+} from '../echappee/echappee'
 import { citations, contient } from '../echappee/reponse'
 import { executerGeste, liaisonDe } from '../gestes/action-apprise'
 import {
@@ -144,6 +150,8 @@ export interface CadreFabrication {
   declarations: DeclarationsGeste
   /** Le domaine que le prompt dit (PLAN-METIER-2.md M7). */
   domaine: Domaine
+  /** Pour une intention qui écrit : les règles et les préférences que l'échappée a montrées (`PropositionMetier.criteres`). */
+  criteres?: CriteresProposition
   /** Pour une intention qui écrit : les modifications validées y sont relues par l'opération (M6). */
   journal: Journal
   dossierClient: string
@@ -220,6 +228,7 @@ export function systemeFabriquer(
   gestesExistants: { id: string; description: string }[],
   declarations: DeclarationsGeste,
   domaine: Domaine,
+  criteres?: CriteresProposition,
 ): string {
   const { ecrit } = intention
   const { operation } = declarations
@@ -243,6 +252,15 @@ export function systemeFabriquer(
     ...(ecrit && operation
       ? [
           `Les modifications : pour_chaque, le nom de la requête qui rend une ligne par modification ; operation, ${operation.nom} ; colonnes, pour chaque clé de l’opération, le nom de la colonne de cette requête qui la rend : ${colonnesEnMots(operation)}. Pour chaque demande, le geste propose exactement les modifications validées, chacune telle que ${qui} l’a validée ; aucune de plus. Ce qui a fait choisir chaque valeur (ce que les données permettent, ce que les vérifications ont refusé, les préférences exprimées) se code en SQL.`,
+          ...(criteres
+            ? [
+                '',
+                REGLES_EN_TETE,
+                ...reglesEnMots(criteres.regles),
+                '',
+                preferencesEnMots(criteres.preferences),
+              ]
+            : []),
           '',
           'La réponse : tableau, le nom de la requête de pour_chaque, ligne à null ; et vide, la phrase montrée quand elle ne rend aucune ligne (rien à changer).',
           '',
@@ -824,6 +842,7 @@ export async function fabriquerGeste(cadre: CadreFabrication): Promise<IssueFabr
     cadre.gestesExistants,
     cadre.declarations,
     cadre.domaine,
+    cadre.criteres,
   )
   const validees: ValideesDe = (e) =>
     cadre.declarations.operation?.relire(cadre.journal, e.conversation) ?? []
