@@ -122,12 +122,13 @@ export interface MetierConversation<Session> {
 
 /** Comment le métier écrit une proposition de l'échappée : validée par le demandeur, puis les accords que le métier exige (PLAN-ESPACES.md § 7.2). */
 export interface PropositionMetier<Session> {
-  /** Ouvre la demande d'écriture ; rend son identifiant et le texte à montrer, rendu par le code. Lève si une règle s'y oppose. */
+  /** Ouvre la demande d'écriture ; rend son identifiant et le texte à montrer, rendu par le code. Lève si une règle s'y oppose. Avec `corrige`, elle remplace cette proposition-là. */
   ouvrir(
     s: Session,
     conversation: string,
     modifications: unknown[],
     maintenant: Temporal.ZonedDateTime,
+    corrige?: string,
   ): { id: string; texte: string }
   /** Le demandeur a dit oui : la clé sur le contenu exact, puis les demandes d'accord du métier. Rend le texte. */
   valider(s: Session, id: string, maintenant: Temporal.ZonedDateTime): string
@@ -558,11 +559,12 @@ function ouvrirProposition<S>(
   tour: Tour,
   proposition: PropositionMetier<S>,
   modifications: unknown[],
+  corrige?: string,
 ): Reponse {
   const ici = cibleDe(m, s)
   let ouverte: { id: string; texte: string }
   try {
-    ouverte = proposition.ouvrir(s, tour.conversation, modifications, tour.maintenant)
+    ouverte = proposition.ouvrir(s, tour.conversation, modifications, tour.maintenant, corrige)
   } catch (erreur) {
     ecrire(ici, tour, [
       { type: TYPE_PROPOSITION_REFUSEE, objet: tour.conversation, motif: message(erreur) },
@@ -770,7 +772,7 @@ async function agir<S>(
     ])
     if (!action.propose || fait.modifications === undefined) return fait.reponse
     if (!m.proposition) return { sorte: 'refus', texte: "ce métier n'écrit pas de proposition" }
-    return ouvrirProposition(m, s, tour, m.proposition, fait.modifications)
+    return ouvrirProposition(m, s, tour, m.proposition, fait.modifications, fait.corrige)
   }
   let texte: string
   try {
@@ -811,13 +813,19 @@ async function executer<S>(
   identite: Identite,
   params: unknown,
   maintenant: Temporal.ZonedDateTime,
-): Promise<{ reponse: Reponse; donnees?: unknown; modifications?: unknown[] }> {
+): Promise<{ reponse: Reponse; donnees?: unknown; modifications?: unknown[]; corrige?: string }> {
   try {
-    const { texte, donnees, modifications } = await action.executer(s, identite, params, maintenant)
+    const { texte, donnees, modifications, corrige } = await action.executer(
+      s,
+      identite,
+      params,
+      maintenant,
+    )
     return {
       reponse: { sorte: 'resultat', texte },
       ...(donnees !== undefined ? { donnees } : {}),
       ...(modifications !== undefined ? { modifications } : {}),
+      ...(corrige !== undefined ? { corrige } : {}),
     }
   } catch (erreur) {
     return { reponse: { sorte: 'refus', texte: message(erreur) } }

@@ -130,7 +130,7 @@ try {
     return passe
   }
 
-  const comptees = intentions(journal, debutFenetre(maintenant, jours))
+  const comptees = intentions(journal, debutFenetre(maintenant, jours), m.operation)
   if (comptees.length === 0) console.log(`Aucune demande nouvelle sur les ${jours} derniers jours.`)
   const proposees = new Set(aProposer(comptees, journal, { occurrences }))
   const fabrications: Fabrication[] = []

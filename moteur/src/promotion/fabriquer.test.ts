@@ -7,7 +7,7 @@ import { parse } from 'yaml'
 import type { Intention } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
 import type { TableCopie } from '../echappee/copie'
-import { ecrireInstantane, TYPE_ECHAPPEE } from '../echappee/echappee'
+import { ecrireInstantane } from '../echappee/echappee'
 import { fuites, masquerTexte } from '../echappee/pseudonymes'
 import {
   type DeclarationsGeste,
@@ -19,6 +19,7 @@ import {
   DECLARATIONS_EXEMPLE,
   DOMAINE_EXEMPLE,
   OPERATION_EXEMPLE,
+  reaffectationValidee,
 } from '../gestes/geste-appris.test.fixture'
 import { Journal } from '../journal/journal'
 import { modeleSimule, type Scripte } from '../modele/simule'
@@ -917,15 +918,7 @@ describe('le message de fabrication, selon que l’intention lit ou écrit', () 
   it('une proposition : ses vérifications, puis les modifications validées, relues dans le journal par l’opération', () => {
     const modifications = [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }]
     const journal = new Journal(join(mkdtempSync(join(tmpdir(), 'fabriquer-')), 'journal.sqlite'))
-    journal.ecrire([
-      {
-        type: TYPE_ECHAPPEE,
-        client: 'fictif',
-        objet: 'C-1',
-        issue: 'proposition',
-        donnees: { echappee: 'E-1', modifications },
-      },
-    ])
+    journal.ecrire(reaffectationValidee('R-1', 'C-1', modifications))
     const m = messageFabriquer(
       [{ ...base, issue: 'proposition', modifications }],
       DECLARATIONS_EXEMPLE,
@@ -1036,13 +1029,9 @@ describe('fabriquerGeste, une intention qui écrit (PLAN-METIER-2.md M6)', () =>
     const dossier = dossierAvecInstantanes()
     const c = cadre(dossier, [proposer(PROPOSE_ECRIT)])
     c.journal.ecrire(
-      propositions.map((e) => ({
-        type: TYPE_ECHAPPEE,
-        client: 'fictif',
-        objet: e.conversation,
-        issue: 'proposition',
-        donnees: { echappee: e.echappee, modifications },
-      })),
+      propositions.flatMap((e) =>
+        reaffectationValidee(`R-${e.conversation}`, e.conversation, modifications),
+      ),
     )
     const issue = await fabriquerGeste({ ...c, intention: ECRIRE, echappees: propositions })
     expect(issue).toMatchObject({ sorte: 'geste', rejeu: { ok: 3, total: 3 } })

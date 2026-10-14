@@ -22,6 +22,8 @@ export interface Resultat {
   donnees?: unknown
   /** Des modifications calculées sans rien écrire (un geste appris qui écrit) : la conversation les traite comme une proposition d'échappée (PLAN-PROMOTION.md § 10). */
   modifications?: unknown[]
+  /** La proposition que ces modifications corrigent (son identifiant, rendu par le métier) : le métier les y rattache (PLAN-CHOIX.md C2). */
+  corrige?: string
 }
 
 export interface Action<Session, Params> {

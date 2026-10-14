@@ -11,8 +11,11 @@ import { DOMAINE } from './domaine'
 import { NOMS_ACTIVITES } from './modele'
 import {
   attendus,
+  commencee,
   type Etape2,
+  type Reaffectation,
   reaffectation,
+  reaffectationsRecues,
   repondreReaffectation,
   STATUT_R,
   statutReaffectation,
@@ -277,6 +280,109 @@ const repondreAReaffectation: Action<Session, z.infer<typeof RepondreReaffectati
   },
 }
 
+const ChangerRemplacant = z.strictObject({
+  demande: z
+    .string()
+    .nullable()
+    .describe('la réaffectation proposée (R-…), ou null quand la consigne ne la nomme pas'),
+  vacation: z
+    .string()
+    .nullable()
+    .describe('la vacation à changer (V-03), ou null quand la consigne dit son jour'),
+  jour: Jour.nullable().describe(
+    'le jour de la vacation à changer, AAAA-MM-JJ, ou null quand la consigne dit la vacation',
+  ),
+  agent: IdAgent.nullable().describe("l'agent qui prend la vacation à la place (A-11)"),
+})
+type ChangerRemplacant = z.infer<typeof ChangerRemplacant>
+
+/** Le jour où commence une vacation, AAAA-MM-JJ. */
+function jourDe(s: Session, id: string): string | undefined {
+  const v = s.ctx.planning.vacations.find((x) => x.id === id)
+  return v ? intervalleDe(v).debut.toPlainDate().toString() : undefined
+}
+
+/**
+ * La réaffectation reçue que vise le patron, et la vacation à y changer :
+ * nommées, ou retrouvées sans ambiguïté parmi celles qui attendent son
+ * « oui ». Lève sinon, en disant laquelle choisir.
+ */
+function aChanger(
+  s: Session,
+  p: ChangerRemplacant,
+): { reaffectation: Reaffectation; vacation: string; agent: string } {
+  const quoi =
+    p.vacation ?? (p.jour ? `de vacation le ${dateFr(Temporal.PlainDate.from(p.jour))}` : null)
+  if (quoi === null) throw new Error('Précisez la vacation à changer (V-…) ou son jour.')
+  if (p.demande !== null) {
+    const st = statutReaffectation(s, p.demande)
+    if (st === undefined) throw new Error(`${p.demande} : réaffectation inconnue`)
+    if (st !== STATUT_R.recue) throw new Error(`${p.demande} : ${st}, elle ne se change plus`)
+  }
+  const vise = (r: Reaffectation) =>
+    r.modifications
+      .filter((m) =>
+        p.vacation !== null ? m.vacation === p.vacation : jourDe(s, m.vacation) === p.jour,
+      )
+      .map((m) => ({ reaffectation: r, vacation: m.vacation, agent: m.agent }))
+  const trouvees = (
+    p.demande !== null ? [reaffectation(s, p.demande)] : reaffectationsRecues(s)
+  ).flatMap(vise)
+  const ids = [...new Set(trouvees.map((t) => t.reaffectation.id))]
+  const [une] = trouvees
+  if (!une) {
+    throw new Error(
+      p.demande !== null
+        ? `${p.demande} ne contient pas ${quoi}`
+        : `aucune réaffectation en attente de validation ne contient ${quoi}`,
+    )
+  }
+  if (ids.length > 1) {
+    throw new Error(
+      `plusieurs réaffectations en attente contiennent ${quoi} : laquelle (${ids.join(', ')}) ?`,
+    )
+  }
+  if (trouvees.length > 1) {
+    throw new Error(
+      `${une.reaffectation.id} a plusieurs vacations ce jour-là : laquelle (${trouvees.map((t) => t.vacation).join(', ')}) ?`,
+    )
+  }
+  return une
+}
+
+const changerRemplacant: Action<Session, ChangerRemplacant> = {
+  id: 'changer_remplacant',
+  description:
+    "Le patron prend un autre agent pour une vacation d'une réaffectation proposée (R-…), avant de la valider (« oui mais tel agent pour V-03 », « plutôt tel autre mardi »).",
+  parametres: ChangerRemplacant,
+  personnes: {
+    agent:
+      "l'agent qui prend la vacation à la place, tel qu'il est écrit dans la consigne (prénom, nom, ou les deux)",
+  },
+  roles: ['patron'],
+  ecrit: true,
+  propose: true,
+  reformuler: (s, _identite, p) =>
+    `Je prends ${p.agent ? nomDe(s, p.agent) : 'un autre agent'} pour ${p.vacation ?? 'cette vacation'} et je refais la proposition.`,
+  executer: (s, _identite, p, maintenant) => {
+    if (!p.agent) throw new Error("Précisez l'agent qui prend la vacation.")
+    const { reaffectation: r, vacation, agent } = aChanger(s, p)
+    if (commencee(s, r.id, maintenant)) {
+      throw new Error(`${r.id} : une vacation a commencé, trop tard pour la changer`)
+    }
+    if (agent === p.agent) throw new Error(`${nomDe(s, agent)} est déjà proposé pour ${vacation}`)
+    const nouvel = p.agent
+    return {
+      texte: `${vacation} : ${nomDe(s, nouvel)} à la place de ${nomDe(s, agent)} (${r.id}).`,
+      donnees: { demande: r.id, vacation },
+      modifications: r.modifications.map((m) =>
+        m.vacation === vacation ? { ...m, agent: nouvel } : m,
+      ),
+      corrige: r.id,
+    }
+  },
+}
+
 const SuivreDemande = z.strictObject({
   demande: z
     .string()
@@ -413,6 +519,7 @@ export const ACTIONS: Action<Session, unknown>[] = [
   validerRemplacement,
   repondreSollicitation,
   repondreAReaffectation,
+  changerRemplacant,
   suivreDemande,
   voirPlanning,
   voirEcheances,

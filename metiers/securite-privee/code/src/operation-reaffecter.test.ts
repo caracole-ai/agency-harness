@@ -13,12 +13,13 @@ import {
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { OPERATION_REAFFECTER } from './operation-reaffecter'
+import { STATUT_R, TYPE_REAFFECTATION } from './reaffectation'
 import { ROLES } from './roles'
 import { TYPES_PARAMETRE } from './types-parametre'
 
 // L'opération `reaffecter` de la sécurité privée (PLAN-METIER-2.md § 3.4,
 // M6) : une ligne de `pour_chaque` en fait une, le journal rend les
-// réaffectations validées d'une conversation, deux réaffectations sont égales
+// réaffectations validées d'une conversation (celles de sa R-… validée), deux réaffectations sont égales
 // vacation et agent compris ; les gestes de l'éval de rejeu, écrits sous
 // l'ancienne forme, passent le gabarit avec ces déclarations.
 
@@ -43,24 +44,33 @@ describe('OPERATION_REAFFECTER', () => {
       'n’a pas de vacation',
     )
   })
-  it('relire : les réaffectations de la dernière proposition de la conversation, sans le reste de la ligne', () => {
+  it('relire : les réaffectations de la dernière R-… validée de la conversation, telles que reçues, sans le reste de la ligne', () => {
     const journal = new Journal(join(mkdtempSync(join(tmpdir(), 'reaffecter-')), 'journal.sqlite'))
-    const proposition = (objet: string, modifications: unknown) => ({
-      type: TYPE_ECHAPPEE,
+    const r = (objet: string, issue: string, donnees: unknown = {}) => ({
+      type: TYPE_REAFFECTATION,
       client: 'fictif',
       objet,
-      issue: 'proposition',
-      donnees: { echappee: 'E-1', modifications },
+      issue,
+      donnees,
     })
+    const recue = (objet: string, conversation: string, modifications: unknown) =>
+      r(objet, STATUT_R.recue, { conversation, modifications })
     journal.ecrire([
-      proposition('C-1', [{ type: 'reaffecter', vacation: 'V-01', agent: 'A-2' }]),
-      proposition('C-1', [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }]),
-      proposition('C-2', [{ type: 'reaffecter', vacation: 'V-07', agent: 'A-11' }]),
-      { type: TYPE_ECHAPPEE, client: 'fictif', objet: 'C-3', issue: 'réponse', donnees: {} },
-      proposition('C-4', [{ vacation: 'V-07' }]),
+      // C-1 : la proposition de l'échappée, remplacée par le patron, puis la sienne validée.
+      { type: TYPE_ECHAPPEE, client: 'fictif', objet: 'C-1', issue: 'proposition', donnees: {} },
+      recue('R-1', 'C-1', [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }]),
+      r('R-1', STATUT_R.remplacee, { par: 'R-1-2' }),
+      recue('R-1-2', 'C-1', [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-11' }]),
+      r('R-1-2', STATUT_R.validee),
+      // C-2 : validée telle quelle ; C-3 : jamais validée ; C-4 : sans la forme.
+      recue('R-2', 'C-2', [{ type: 'reaffecter', vacation: 'V-07', agent: 'A-11' }]),
+      r('R-2', STATUT_R.validee),
+      recue('R-3', 'C-3', [{ type: 'reaffecter', vacation: 'V-01', agent: 'A-2' }]),
+      recue('R-4', 'C-4', [{ vacation: 'V-07' }]),
+      r('R-4', STATUT_R.validee),
     ])
     expect(OPERATION_REAFFECTER.relire(journal, 'C-1')).toEqual([
-      { vacation: 'V-03', agent: 'A-9' },
+      { vacation: 'V-03', agent: 'A-11' },
     ])
     expect(OPERATION_REAFFECTER.relire(journal, 'C-2')).toEqual([
       { vacation: 'V-07', agent: 'A-11' },
