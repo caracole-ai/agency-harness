@@ -3686,6 +3686,71 @@ par du contenu manquant. Les traces GLM de S5 n'existent plus (perdues avec
 l'arbre `lot-4` du scratchpad) : les trois réponses retirées à tort sont
 reprises mot pour mot dans `reponse.test.ts` et `echappee.test.ts`.
 
+### Session S7 : l'efficience des évals (2026-10-14)
+
+Demande de Lionel : « deux seuils différents pour le mode libre et le mode
+fabrication (à calibrer pour la fabrication) » ; des réponses non bavardes
+(« sois non verbeux ») ; « le but est d'obtenir de meilleurs scores sur les
+évals en général pour aller vers un harnais efficient ». Branche
+`general/efficience`, code en `133e9e0`.
+
+**Choix faits faute de consigne :**
+
+- **Le seuil de la fabrication** : `plafonds.fabrication.tokens_sortie`,
+  optionnel ; absent, la fabrication garde celui de la demande (rien ne
+  change pour un client qui ne le déclare pas). Le temps n'a pas de seuil à
+  part : la fabrication passe en flux, et le délai du SDK ne l'a jamais
+  coupée (une fabrication de ≈ 6 min sous 240 s, 2026-10-10).
+- **La concision** : la phrase « Réponds à la question posée, rien de
+  plus » était déjà dans le système, et 7 réponses sur 21 en disaient plus
+  (passe 16). Elle dit maintenant « et sois non verbeux », « pas de compte
+  si on demande une liste », et la description de `repondre.texte` le redit
+  au moment où le modèle écrit (« un total sans son détail, une liste sans
+  son compte ») : des exemples sans métier.
+- **`exemples/client-fictif/` ne s'écrit pas** (règle 7 de
+  `PLAN-METIER-2.md`) : la fabrication de la sécurité se mesure sur une
+  copie qui déclare le seuil ; la ligne calibrée va dans
+  `exemples/agence-web-fictive/config.yaml`, et dans celle du client fictif
+  quand Lionel l'écrit ou l'autorise.
+- **E-12 de l'agence** attend le détail d'un total (les deux factures) : la
+  concision voulue par Lionel va contre cette étiquette ; elle ne se touche
+  pas, l'écart est dit.
+
+**La règle de la mesure, écrite avant la mesure.** Ce qu'on compare :
+`main` = `bd3e27c` ; le lot = la tête de `general/efficience`, ce commit
+compris (le code mesuré est celui de `133e9e0`).
+
+- **Traduction : aucune passe avec modèle.** Les entrées du premier appel
+  (système, outils, message), relevées au modèle simulé (`--modele simule`,
+  sans dépense), sont identiques octet pour octet sur les 60 cas : le lot ne
+  peut pas la faire bouger.
+- **Échappée de la sécurité : la mesure appariée** de S4, cinq tours de deux
+  passes (`main` d'abord aux tours impairs), aucune passe relancée pour un
+  meilleur chiffre, une passe en 402 ou sans fichier de résultats fait
+  refaire le tour entier une fois des deux côtés. (a) aucun cas à 4 rouges
+  de plus sur le lot ; (b) moyenne du lot ≥ moyenne de `main` − 1 ; (c)
+  aucune fuite que `main` n'a pas ; (d) les entrées du premier appel ne
+  diffèrent que par les deux phrases du lot (`PERMIS` : la phrase de
+  concision du système et la description de `repondre.texte`, relevées au
+  modèle simulé sur les 18 cas) ; (e) gestes 6/6 des deux côtés, `pnpm
+  check` vert sur le lot.
+- **La fabrication de la sécurité** : trois passes de `pnpm evals promotion`
+  sur le lot, sur une copie du client fictif qui déclare
+  `fabrication: { tokens_sortie: 40000 }` (le haut de la calibration). Base :
+  2/9 sur les trois premiers cas (phases A et B), 0/3 sur `liberer_un_jour`
+  (phase C). (f) le lot ne fait pas moins que la base, cas par cas.
+- **La calibration** : la réflexion de chaque fabrication réussie, lue dans
+  les traces, en tokens (≈ 3,5 caractères par token, le rapport des
+  troncatures à 12 000) ; le seuil = 1,25 × la plus longue, arrondi au
+  millier supérieur, 40 000 au plus.
+- **L'agence** : deux passes d'échappée sur le lot, pour information (S6 :
+  17/24 sur une passe).
+
+Une condition fausse : on ne fusionne pas, et on ne corrige rien dans la
+session. Plafond de GLM : 5 $ (prévu ≈ 3,8 $ : échappée appariée ≈ 1,7 $,
+fabrication ≈ 1,4 $, agence ≈ 0,7 $). Le crédit est sondé avant chaque
+série ; à court, on s'arrête avant la fusion.
+
 ## Commandes
 
 ```sh
