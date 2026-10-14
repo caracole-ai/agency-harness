@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import {
+  type Choix,
   type ConfigConversation,
   type CriteresProposition,
   chargerConfig,
@@ -25,6 +26,7 @@ import {
   ouvrirReaffectation,
   reaffectation,
   reaffectationFinie,
+  STATUT_R,
   statutReaffectation,
   validerReaffectation,
 } from './reaffectation'
@@ -125,6 +127,28 @@ export const INTENTIONS: Intention[] = [
   },
 ]
 
+/** Les autres possibles de chaque vacation d'une proposition, dans l'ordre des préférences, l'agent proposé exclu. */
+function autresPossibles(s: Session, id: string, modifications: Modification[]) {
+  return modifications.map((m) => {
+    const v = s.ctx.planning.vacations.find((x) => x.id === m.vacation)
+    if (!v) throw new Error(`vacation ${m.vacation} inconnue`)
+    return { vacation: m.vacation, possibles: evaluer(s, id, v, [m.agent]).possibles }
+  })
+}
+
+/** Chaque autre possible d'une proposition, à prendre d'un clic : `changer_remplacant`, sans modèle (PLAN-CHOIX.md, lot 3). */
+const choixProposition = (s: Session, id: string): Choix[] =>
+  statutReaffectation(s, id) !== STATUT_R.recue
+    ? []
+    : autresPossibles(s, id, reaffectation(s, id).modifications).flatMap(
+        ({ vacation, possibles }) =>
+          possibles.map((c) => ({
+            libelle: `Prendre ${c.nom} pour ${vacation}`,
+            action: 'changer_remplacant',
+            params: { demande: id, vacation, jour: null, agent: c.agent },
+          })),
+      )
+
 /** Le texte d'une proposition, rendu par le code : ce qui change, les autres possibles de chaque vacation, ce qui reste à décider. */
 function decrireProposition(
   s: Session,
@@ -132,11 +156,9 @@ function decrireProposition(
   modifications: Modification[],
   remplace?: string,
 ): string {
-  const autres = modifications.map((m) => {
-    const v = s.ctx.planning.vacations.find((x) => x.id === m.vacation)
-    if (!v) throw new Error(`vacation ${m.vacation} inconnue`)
-    const possibles = evaluer(s, id, v, [m.agent]).possibles.map((c) => c.nom)
-    return `${m.vacation} — autres possibles : ${possibles.length > 0 ? possibles.join(', ') : 'aucun'}`
+  const autres = autresPossibles(s, id, modifications).map(({ vacation, possibles }) => {
+    const noms = possibles.map((c) => c.nom)
+    return `${vacation} — autres possibles : ${noms.length > 0 ? noms.join(', ') : 'aucun'}`
   })
   const aVerifier = constatsNouveaux(s, modifications).filter((c) => c.verdict === 'à vérifier')
   return [
@@ -293,6 +315,7 @@ export const CONVERSATION: MetierConversation<Session> = {
       return `Validé. Message envoyé à ${messages.length} agent(s) : ${messages.map((m) => `« ${m} »`).join(' ; ')}`
     },
     criteres,
+    choix: choixProposition,
   },
   echappee: (s, identite, conversation, consigne, intention, maintenant, modele, precisions) => {
     const personne = (a: { id: string; nom: string }) => ({

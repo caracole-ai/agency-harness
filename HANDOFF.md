@@ -34,9 +34,12 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 **S9 fusionnée** (`PLAN-CHOIX.md`) : le patron change un agent dans une
 proposition (`changer_remplacant`, en mots) ; une proposition corrigée
-n'apprend rien et le dossier de promotion la compte. **Suivante : lot 3 de
-S9**, les boutons « Prendre X pour V-03 » dans l'interface (sans modèle,
-vérification visuelle).
+n'apprend rien et le dossier de promotion la compte. **Lot 3 fait sur
+`general/choix-boutons`, non fusionné** (une fusion par session) : chaque
+autre possible d'une proposition est un bouton « Prendre X pour V-03 »
+(`PropositionMetier.choix`, `traiterGeste`, `/api/geste`), même suite
+qu'une consigne traduite, sans modèle ; vu à 1280 et 390 px. **Suivante :
+le fusionner** (`pnpm check` vert suffit : aucun modèle en jeu).
 
 **Choix faits seul (S9) :** la nouvelle R-… se rattache à la conversation
 d'origine par un champ générique `corrige` (`Resultat`,
@@ -49,6 +52,11 @@ traduction base 60 + 59, lot 60 + 60 sur les cas communs ; cas neufs 12/12 ;
 `liberer_un_jour` 3/3 ; gestes 6/6 des deux côtés ; échappées identiques au
 simulé. Fuite : R-2 seule, des deux côtés ; Lionel a lu « fuite 0 » comme
 « pas de fuite de plus que `main` » (la règle des mesures passées).
+
+**Gelée (Lionel, 2026-10-14) : la promotion automatique** (compteur,
+seuil, dossiers, fabrication la nuit). Plus de session dessus ; le code
+reste ; l'apprentissage viendra d'un « retiens ça » du patron. La phase E
+retirera l'étape `promotions` de `pnpm nuit`.
 
 ## La méthode (Lionel, 2026-10-14 : « anti-over-engineer et KISS »)
 
@@ -91,6 +99,9 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
+- Une proposition corrigée depuis une autre conversation reste dans
+  « Confirmations en attente » de la sienne : son « oui » refuse
+  (« remplacée par … »), elle n'offre plus de choix ; à masquer un jour.
 - À Lionel : R-2 (« Aisha ») fuit à chaque passe : le niveau 2 de
   `designer` envoie au modèle les candidats avec leur nom, contre « aucun
   nom ne part au modèle ». Les règles de mesure disent désormais « pas de

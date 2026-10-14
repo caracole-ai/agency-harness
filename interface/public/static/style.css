@@ -591,6 +591,13 @@ textarea {
   padding: 0 0.8rem;
   font-size: 0.8125rem;
 }
+/* Les autres choix d'une proposition : sous Oui / Non, sur leur propre ligne. */
+.actions .choix {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
 .repondu {
   font-family: var(--font-mono);
   font-size: 0.66rem;
@@ -916,6 +923,10 @@ textarea {
 .suggestion:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--fg);
+}
+/* Un autre choix d'une proposition peut tenir sur deux lignes. */
+.actions .choix .suggestion {
+  white-space: normal;
 }
 .saisie {
   display: flex;
