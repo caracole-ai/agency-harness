@@ -58,6 +58,10 @@ conversation:
   plafonds:
     # Relevés pour GLM : jusqu'à 45 s par appel, et sa réflexion est longue.
     par_demande: { tours: 12, tokens_sortie: 12000, secondes: 240 }
+    # La fabrication d'un geste appris, à part : GLM y réfléchit jusqu'à
+    # ≈ 100 000 caractères (calibré pour GLM sur trois passes, 2026-10-14 ;
+    # à recalibrer pour un autre modèle, chez Anthropic la sortie coûte 20 $).
+    fabrication: { tokens_sortie: 40000 }
     par_mois_usd: 30
   # conservation_jours : les instantanés des échappées (echappees/<id>.json)
   # sont purgés passé ce délai par `pnpm promotions`, sauf ceux qu'un geste

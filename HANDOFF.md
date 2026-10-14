@@ -22,8 +22,9 @@ fichiers qu'il cite, si.
     mesurée (entrées identiques octet pour octet au modèle simulé, 60/60).
   - Agence : 16 et 16/24 (information) ; la concision va contre cinq
     étiquettes qui demandent plus que la question (E1).
-  - **À Lionel** : la ligne `fabrication: { tokens_sortie: 40000 }` dans
-    `exemples/client-fictif/config.yaml` (règle 7) ; le commentaire
+  - La ligne `fabrication: { tokens_sortie: 40000 }` est dans
+    `exemples/client-fictif/config.yaml` (règle 7 levée pour elle par Lionel,
+    2026-10-14). **À Lionel** : le commentaire
     « impossible » de `compter_vacations` (`promotions.yaml`) ; les
     étiquettes E1 de l'agence, ou une déclaration du métier, par intention,
     de ce qu'une bonne réponse contient.
