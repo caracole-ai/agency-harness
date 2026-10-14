@@ -4118,6 +4118,43 @@ corriger).
   à Lionel).
 - Libellé « coût réel » sous l'abonnement.
 
+**La solution 1, choisie par Lionel (« go pour la solution 1 ») : le métier
+déclare un départage complet.** Code en `72a58c2`, dans la sécurité seule
+(`metiers/securite-privee/code/src/conversation.ts`) :
+- les deux préférences dites comme `remplacement.ts` les calcule : « connaît
+  le site » = une vacation sur ce site finie avant le début de celle-ci ;
+  « le moins d'heures dans la semaine » = ses autres vacations, du lundi 0 h
+  au lundi suivant 0 h (des échappées comptaient autrement : A-9 à 16 h
+  choisi contre A-2 et A-11 à 0 h) ;
+- puis, à égalité, le numéro d'agent le plus bas (A-2 avant A-10). Par
+  identifiant, pas par nom : le modèle ne voit que les identifiants (le mot
+  « petit », nom d'un agent fictif, a été refusé par le contrôle des fuites
+  et reformulé).
+
+**Choix faits faute de consigne :** le geste codé `gerer_absence` départage
+toujours par ordre alphabétique du nom (`classer`) ; il n'est pas touché
+(ses tests et ses étiquettes en dépendent). Les deux départages diffèrent
+donc sur des ex æquo : à aligner, à Lionel.
+
+**La règle de la quatrième mesure, écrite avant elle.** Le lot = la tête de
+`general/ouverts`, ce commit compris ; la base = `main` + `3fb0728`, comme
+à la troisième. Sonnet 5.5 par l'abonnement.
+- Au modèle simulé : traduction (60) identique octet pour octet à la base ;
+  l'agence (24) ne diffère que par le bloc des notions (ses entrées sont
+  celles de la troisième mesure : (b) y est vraie, 33 contre 30, elle
+  n'est pas rejouée) ; l'échappée de la sécurité (18) ne diffère que par la
+  ligne des préférences.
+- **(a)** `liberer_un_jour`, trois passes sur le lot : vraie si au moins
+  une écrit le geste avec zéro écart.
+- **(c)** l'échappée de la sécurité, deux passes sur la base et deux sur le
+  lot : vraie si le total du lot ≥ celui de la base − 1, fuite 0 partout.
+  Comptées à part : les troncatures et les pannes de l'abonnement.
+- `pnpm check` vert.
+
+Une condition fausse : on ne fusionne pas. Coût en équivalent API estimé
+≈ 0,9 $ la fabrication (0,21 à 0,32 $ la passe) et ≈ 2,2 $ la sécurité,
+≈ 3,1 $ en tout, aucun débit.
+
 ## Commandes
 
 ```sh
