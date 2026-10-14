@@ -152,6 +152,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `src/modele/` (l'accès au modèle derrière une interface à nous, `Modele` ;
   l'adaptateur du SDK d'Anthropic, délai lu dans la config, un appel long
   en flux avec une borne haute du coût quand le fournisseur ne compte pas ;
+  celui de l'abonnement, `abonnement.ts`, par le binaire de Claude Code
+  isolé comme la ronde : la conversation part en texte, le tour revient en
+  sortie structurée, les outils restent exécutés par le moteur ;
   l'adaptateur simulé des tests ; le coût d'un appel et le coût du mois lu
   dans le journal) et
   `src/conversation/config.ts` (la section `conversation` de la config
@@ -435,9 +438,11 @@ pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maint
                          # config, sauf --modele simule (aucun appel). Sur une COPIE du client fictif
                          # Le modèle et sa clé viennent de la config (`conversation.modele`) :
                          # sans `acces`, l'API d'Anthropic et ANTHROPIC_API_KEY ; avec `acces`, un
-                         # autre point d'accès au même format et la variable qu'il nomme. Le client
-                         # fictif désigne GLM-5.3 chez GMI Cloud (GMI_API_KEY), la référence
-                         # jusqu'à nouvel ordre (2026-10-08)
+                         # autre point d'accès au même format et la variable qu'il nomme, ou
+                         # `{ binaire: claude }`, l'abonnement par le binaire (ANTHROPIC_API_KEY
+                         # absente, coût estimé). Les clients fictifs désignent Sonnet 5.5 par
+                         # l'abonnement, la référence depuis le 2026-10-14 (GLM-5.3 chez GMI
+                         # Cloud avant)
 pnpm promotions --client <copie> [--date 2026-10-08] [--sans-modele]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
                          # intention (échappées finies proprement) ; au seuil, le modèle fabrique

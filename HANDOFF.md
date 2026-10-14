@@ -19,8 +19,10 @@ fichiers qu'il cite, si.
   validations contradictoires que le rejeu accepte déjà. GLM 1,97 $. Une
   suite (`aa060ac`, règle `ba52e8a`) : la fabrication dit ce que le rejeu
   accepte, la notion bug ou évolution corrigée, l'agence à 20 000 / 420 s ;
-  **sa mesure est interrompue : crédit GMI épuisé (402), à recharger par
-  Lionel**, puis la rejouer telle quelle. Détail : « Session S8 ».
+  sa mesure est interrompue : crédit GMI épuisé (402). Puis, demande de
+  Lionel, **Sonnet 5.5 par l'abonnement remplace GLM** (`3fb0728`,
+  `modele/abonnement.ts`) ; une troisième règle, appariée sur ce modèle
+  (base = `main` + l'adaptateur). Détail : « Session S8 ».
 
 - **2026-10-14 : session S7 faite (l'efficience des évals, demande de
   Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
@@ -4026,6 +4028,52 @@ traces `evals/traces/apparie-2026-10-14-s8b/`. Dépense : 0,43 $.
 - Ni fusion ni correction : la mesure n'a pas eu lieu. **À Lionel :
   recharger le crédit GMI** ; puis rejouer cette règle telle quelle (elle
   n'a pas été jugée) avant toute autre correction.
+
+**Sonnet 5.5 par l'abonnement, à la place de GLM** (Lionel, après la
+recharge : « pour arrêter de consommer du token sur GMI tu vas remplacer
+GLM5.3 par sonnet 5.5 de mon abonnement »). Code en `3fb0728` :
+`conversation.modele.acces` accepte `{ binaire: claude }` ;
+`moteur/src/modele/abonnement.ts` lance le binaire isolé comme la ronde
+(préflight `claude auth status`, ANTHROPIC_API_KEY absente, ni réglages ni
+hooks ni outil de Claude Code, dossier vide) ; la conversation part en
+texte, tour par tour, le tour revient en sortie structurée au schéma des
+outils du moteur, qui les exécute lui-même ; le plafond de l'appel passe
+par `CLAUDE_CODE_MAX_OUTPUT_TOKENS`. Essai réel avant la règle : E-05 et
+P-ABS-1 verts, fuite 0.
+
+**Choix faits faute de consigne :**
+- Les deux clients fictifs passent à `claude-sonnet-5-5` (la règle 7 levée
+  pour les lignes du modèle par la demande de Lionel). Prix estimés,
+  déduits du coût que rapporte le binaire (2 / 10 $ par million, écriture
+  de cache à 1 h 4 $, lecture 0,1 $) : l'abonnement ne facture pas à
+  l'appel, le plafond du mois compte en équivalent API.
+- Les plafonds restent ceux calibrés pour GLM : seul ce qui est produit
+  compte, et Sonnet réfléchit moins long (E-05 : 1 091 tokens de sortie).
+- La règle `ba52e8a` ne se rejoue pas telle quelle : ses bases (S7, la
+  première mesure) sont des passes GLM. Elle est remplacée par une mesure
+  appariée sur le même modèle.
+
+**La règle de la troisième mesure, écrite avant elle.** Le lot = la tête
+de `general/ouverts`, ce commit compris ; la base = `main` (`418e623`) +
+`3fb0728` seul (l'adaptateur et les configs), arbre détaché. Même modèle,
+même abonnement, en même temps.
+- Au modèle simulé : traduction (60) et échappée de la sécurité (18)
+  identiques octet pour octet entre base et lot ; l'agence ne diffère que
+  par le bloc des notions. L'échappée de la sécurité n'est pas rejouée
+  avec modèle (ses entrées ne changent pas, son plafond monte).
+- **(a)** `liberer_un_jour`, trois passes sur le lot : vraie si au moins
+  une écrit le geste avec zéro écart. Comptées à part : les troncatures de
+  la fabrication et des rejeux.
+- **(b)** l'agence, deux passes sur la base et deux sur le lot : vraie si
+  le total du lot ≥ celui de la base, les cas E2 (E-05, E-16, E-17, E-28,
+  EP-16) verts sur le lot au moins autant de fois que sur la base, fuite 0
+  partout. Comptés à part : E-04, E-15, E-20 et les troncatures.
+- `pnpm check` vert.
+
+Une condition fausse : on ne fusionne pas, rien n'est corrigé ensuite dans
+la session. Coût : aucun débit à l'appel ; en équivalent API estimé
+≈ 1,3 $ la passe de l'agence (E-05 : 0,055 $) et ≈ 0,5 $ la fabrication,
+≈ 6,7 $ en tout, pris sur les limites de l'abonnement.
 
 ## Commandes
 
