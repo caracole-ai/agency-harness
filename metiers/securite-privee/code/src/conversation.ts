@@ -46,11 +46,25 @@ import { ConfigSecurite, decrire, type PREFERENCES } from './veille'
 // de qui parle avec ses données (PLAN-ESPACES.md § 5.6). Qui a le droit de
 // parler, c'est le registre d'accès du harnais qui le dit (REFLEXIONS.md, décidé le 2026-10-08).
 
-/** Les préférences du patron, dites en mots pour le modèle. */
+/**
+ * Les préférences du patron, dites en mots pour le modèle, comme
+ * `remplacement.ts` les calcule : sans la définition, deux échappées lisent
+ * « la semaine » à leur façon et choisissent deux remplaçants (2026-10-14).
+ */
 const PREFERENCES_EN_MOTS: Record<(typeof PREFERENCES)[number], string> = {
-  connait_site: 'un agent qui connaît déjà le site',
-  moins_d_heures_semaine: "celui qui a le moins d'heures dans la semaine",
+  connait_site:
+    'un agent qui connaît déjà le site (il y a fait une vacation, finie avant le début de celle-ci)',
+  moins_d_heures_semaine:
+    "celui qui a le moins d'heures dans la semaine de la vacation (ses autres vacations, comptées du lundi 0 h au lundi suivant 0 h)",
 }
+
+/**
+ * Le départage déclaré quand les préférences laissent des agents à égalité :
+ * sans lui, chaque échappée prend un des ex æquo, et un geste appris ne peut
+ * pas reproduire ce choix (`liberer_un_jour`, 2026-10-14). Par identifiant, pas
+ * par nom : le modèle ne voit que les identifiants.
+ */
+const DEPARTAGE = "à égalité, le numéro d'agent le plus bas (A-2 avant A-10)"
 
 /**
  * Les sortes de demandes nouvelles déjà connues : le mot-clé que le modèle
@@ -208,7 +222,7 @@ const criteres = (s: Session): CriteresProposition => {
     regles: s.registre.interdits
       .filter((i) => codees.has(i.id))
       .map((i) => ({ id: i.id, nom: i.nom })),
-    preferences: preferences.length > 0 ? `d'abord ${preferences.join(', puis ')}` : 'aucune',
+    preferences: `${preferences.length > 0 ? `d'abord ${preferences.join(', puis ')} ; ` : ''}${DEPARTAGE}`,
   }
 }
 
