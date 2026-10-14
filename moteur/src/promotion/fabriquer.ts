@@ -251,7 +251,7 @@ export function systemeFabriquer(
     '',
     ...(ecrit && operation
       ? [
-          `Les modifications : pour_chaque, le nom de la requête qui rend une ligne par modification ; operation, ${operation.nom} ; colonnes, pour chaque clé de l’opération, le nom de la colonne de cette requête qui la rend : ${colonnesEnMots(operation)}. Pour chaque demande, le geste propose exactement les modifications validées, chacune telle que ${qui} l’a validée ; aucune de plus. Ce qui a fait choisir chaque valeur (ce que les données permettent, ce que les vérifications ont refusé, les préférences exprimées) se code en SQL.`,
+          `Les modifications : pour_chaque, le nom de la requête qui rend une ligne par modification ; operation, ${operation.nom} ; colonnes, pour chaque clé de l’opération, le nom de la colonne de cette requête qui la rend : ${colonnesEnMots(operation)}. Pour chaque demande, le geste propose exactement les modifications validées, chacune telle que ${qui} l’a validée ; aucune de plus. Si ${qui} a validé, dans des demandes différentes, des modifications différentes de la même chose, chacune convient : le geste en rend une seule, n’importe laquelle, et ne cherche pas de règle qui les reproduise toutes. Ce qui a fait choisir chaque valeur (ce que les données permettent, ce que les vérifications ont refusé, les préférences exprimées) se code en SQL.`,
           ...(criteres
             ? [
                 '',

@@ -82,7 +82,10 @@ conversation:
     #   plafonds.par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }
   plafonds:
     # Relevés pour GLM : jusqu'à 45 s par appel, et sa réflexion est longue.
-    par_demande: { tours: 12, tokens_sortie: 12000, secondes: 240 }
+    # Le même calibrage que le client fictif de la sécurité (S8) : deux
+    # échappées coupées à 12 000 tokens (E-15, E-20) et une au plafond de
+    # temps (E-15 : 6 616 tokens en 355 s, GMI à 18 tokens/s ce jour-là).
+    par_demande: { tours: 12, tokens_sortie: 20000, secondes: 420 }
     # La fabrication d'un geste appris, à part : GLM y réfléchit jusqu'à
     # ≈ 100 000 caractères (calibré pour GLM sur trois passes, 2026-10-14 ;
     # à recalibrer pour un autre modèle, chez Anthropic la sortie coûte 20 $).

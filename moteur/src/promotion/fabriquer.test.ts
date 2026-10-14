@@ -276,6 +276,10 @@ describe('systemeFabriquer et messageFabriquer', () => {
       'Les rôles : patron seulement ; les autres ne proposent pas de modification.',
     )
     expect(s).not.toContain('Les règles qu’une proposition doit respecter')
+    // Ce que vérifie le rejeu (`rejouerTest`), dit au modèle : S8, `liberer_un_jour`.
+    expect(s).toContain(
+      'Si le patron a validé, dans des demandes différentes, des modifications différentes de la même chose, chacune convient : le geste en rend une seule, n’importe laquelle, et ne cherche pas de règle qui les reproduise toutes.',
+    )
     const { operation: _o, ...sansOperation } = DECLARATIONS_EXEMPLE
     expect(() =>
       systemeFabriquer({ ...INTENTION, ecrit: true }, [], '', [], sansOperation, DOMAINE),
