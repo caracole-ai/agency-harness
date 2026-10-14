@@ -8,8 +8,7 @@ fichiers qu'il cite, si.
 ## Où on en est
 
 - **2026-10-14 : session S8 (les trois problèmes ouverts, « règle tout ça
-  d'abord ») ; mesurée, une condition fausse : `general/ouverts` n'est pas
-  fusionnée.** Code `875ce1a`, règle `b2ad779` : le plafond de la traduction
+  d'abord ») ; fusionnée dans `main` et poussée après la quatrième mesure.** Code `875ce1a`, règle `b2ad779` : le plafond de la traduction
   lu dans la config ; `Domaine.notions` (l'agence en déclare cinq) ;
   `PropositionMetier.criteres` (la fabrication d'un geste qui écrit reçoit
   règles et préférences) ; client fictif à 20 000 tokens et 420 s par
@@ -23,9 +22,12 @@ fichiers qu'il cite, si.
   Lionel, **Sonnet 5.5 par l'abonnement remplace GLM** (`3fb0728`,
   `modele/abonnement.ts`) ; une troisième mesure, appariée sur ce modèle
   (base = `main` + l'adaptateur) : agence **33 contre 30**, E2 6/10 contre
-  3/10, fuite 0 ; mais **`liberer_un_jour` 0/3** (les échappées ne
-  choisissent pas le même remplaçant d'une fois à l'autre) : **non
-  fusionnée**. Détail : « Session S8 ».
+  3/10, fuite 0 ; mais `liberer_un_jour` 0/3 (les échappées ne
+  choisissent pas le même remplaçant d'une fois à l'autre). Solution 1 de
+  Lionel (`72a58c2`) : la sécurité déclare ses préférences comme son code
+  les calcule, puis un départage par numéro d'agent ; quatrième mesure :
+  **`liberer_un_jour` 3/3, sécurité 36 contre 36, fuite 0 : fusionnée et
+  poussée.** Détail : « Session S8 ».
 
 - **2026-10-14 : session S7 faite (l'efficience des évals, demande de
   Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
@@ -4154,6 +4156,35 @@ donc sur des ex æquo : à aligner, à Lionel.
 Une condition fausse : on ne fusionne pas. Coût en équivalent API estimé
 ≈ 0,9 $ la fabrication (0,21 à 0,32 $ la passe) et ≈ 2,2 $ la sécurité,
 ≈ 3,1 $ en tout, aucun débit.
+
+**La quatrième mesure** (14/10 18:10 → 18:16, Sonnet 5.5 par l'abonnement,
+aucune panne ; base = `main` + `3fb0728`, lot = `fbdab83` ;
+`evals/traces/apparie-2026-10-14-s8d/`, résultats
+`evals/resultats/apparie-2026-10-14-s8d-*`).
+- Au modèle simulé : traduction 60/60 identique ; sécurité 16/18
+  diffèrent par la seule ligne des préférences, 2 identiques ; agence 24/24
+  par le seul bloc des notions. **Vraie.**
+- **(a) Vraie** : `liberer_un_jour` **3/3** (0/3 à la troisième mesure),
+  sans troncature ni panne. Les 9 échappées rejouées choisissent toutes
+  A-2 (V-07 et V-03) ; le geste classe connaît le site, puis les heures de
+  la semaine, puis le numéro.
+- **(b)** non rejouée, vraie à la troisième mesure (33 contre 30), entrées
+  inchangées depuis.
+- **(c) Vraie** : sécurité lot 18 + 18 = 36, base 18 + 18 = 36, fuite 0.
+- `pnpm check` vert : moteur 642, interface 25, sécurité 137, agence 263.
+
+**Toutes les conditions vraies : `general/ouverts` est fusionnée dans
+`main` et poussée.** Coût en équivalent API estimé : 2,90 $ (fabrication
+1,12, sécurité lot 0,97, base 0,81), aucun débit. Total S8 : GLM 2,40 $
+débités ; abonnement ≈ 6,08 $ estimés.
+
+**Ouvert, à Lionel :**
+- `gerer_absence` départage par nom, le geste appris par numéro : à aligner
+  ou non.
+- Les tableaux disent « coût réel » sous l'abonnement (une estimation).
+- E1 (ce qu'une bonne réponse contient, par intention) ; E-04, E-12, E-20
+  rouges sur Sonnet comme sur GLM.
+- La traduction n'a pas été mesurée sur Sonnet (un cas : P-ABS-1 vert).
 
 ## Commandes
 
