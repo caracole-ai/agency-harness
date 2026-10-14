@@ -1,5 +1,6 @@
-import { type OperationApprise, SansCandidat, TYPE_ECHAPPEE } from '@harnais/moteur'
+import { type OperationApprise, SansCandidat } from '@harnais/moteur'
 import { z } from 'zod'
+import { STATUT_R, TYPE_REAFFECTATION } from './reaffectation'
 
 // L'opération d'écriture des gestes appris de la sécurité privée
 // (PLAN-METIER-2.md § 3.4, M6), déplacée du moteur : réaffecter une vacation
@@ -34,20 +35,31 @@ export const OPERATION_REAFFECTER: OperationApprise<Reaffectation> = {
     }
     return { vacation, agent }
   },
-  /** Les réaffectations de la proposition de cette conversation, lues sans connaître le reste de la ligne ; rien si elles n'en ont pas la forme. */
+  /**
+   * Les réaffectations validées de cette conversation : celles de la dernière
+   * réaffectation (`R-…`) de la conversation que le patron a validée, telles
+   * que reçues (le contenu que la clé couvre), sans le reste de la ligne ;
+   * rien si aucune ne l'est ou si elles n'en ont pas la forme (PLAN-CHOIX.md C3).
+   */
   relire: (journal, conversation) => {
-    const ligne = journal
-      .historique(conversation)
-      .filter((l) => l.type === TYPE_ECHAPPEE && l.issue === 'proposition')
+    const lignes = journal.lire().filter((l) => l.type === TYPE_REAFFECTATION)
+    const donnees = (l: (typeof lignes)[number]) =>
+      l.donnees
+        ? (JSON.parse(l.donnees) as { conversation?: unknown; modifications?: unknown })
+        : {}
+    const validees = new Set(lignes.filter((l) => l.issue === STATUT_R.validee).map((l) => l.objet))
+    const recue = lignes
+      .filter(
+        (l) =>
+          l.issue === STATUT_R.recue &&
+          validees.has(l.objet) &&
+          donnees(l).conversation === conversation,
+      )
       .at(-1)
     const lu = z
       .array(z.looseObject({ vacation: z.string().min(1), agent: z.string().min(1) }))
       .min(1)
-      .safeParse(
-        ligne?.donnees
-          ? (JSON.parse(ligne.donnees) as { modifications?: unknown }).modifications
-          : undefined,
-      )
+      .safeParse(recue ? donnees(recue).modifications : undefined)
     return lu.success ? lu.data.map(({ vacation, agent }) => ({ vacation, agent })) : []
   },
   egal: (a, b) => a.vacation === b.vacation && a.agent === b.agent,

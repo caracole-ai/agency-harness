@@ -15,6 +15,7 @@ import {
   type Identite,
   type IdentiteVerifiee,
   ISSUE_GESTE,
+  intentions,
   messageConsigne,
   modeleSimule,
   REGLE_SANS_HUMAIN,
@@ -32,10 +33,14 @@ import {
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
 import { parse } from 'yaml'
+import { ACTIONS } from './actions'
 import { CONVERSATION } from './conversation'
+import { OPERATION_REAFFECTER } from './operation-reaffecter'
 import {
   ouvrirReaffectation,
+  reaffectation,
   STATUT_R,
+  statutReaffectation,
   TYPE_REAFFECTATION,
   validerReaffectation,
 } from './reaffectation'
@@ -401,6 +406,179 @@ describe('une demande nouvelle jusqu’au planning : proposition, validation, ac
       sorte: 'refus',
       texte: 'cette sollicitation ne vous est pas adressée',
     })
+  })
+})
+
+describe('le patron change un agent dans une proposition (PLAN-CHOIX.md, critère de succès)', async () => {
+  const s = session()
+  const PROPOSEES = [
+    { type: 'reaffecter', vacation: 'V-03', agent: 'A-9' },
+    { type: 'reaffecter', vacation: 'V-07', agent: 'A-2' },
+  ]
+  const origine = await tour(
+    s,
+    PATRON,
+    [
+      { outil: 'demande_nouvelle', entree: { intention: 'liberer_un_jour', resume: 'x' } },
+      { outil: 'verifier', entree: { modifications: PROPOSEES } },
+      { outil: 'proposer', entree: { modifications: PROPOSEES, resume: 'Deux vacations.' } },
+    ],
+    'Libère Karim mardi et Sophie mercredi',
+  )
+  if (origine.r.sorte !== 'proposition') throw new Error(`${origine.r.sorte} : ${origine.r.texte}`)
+  const { empreinte } = origine.r
+  const ancienne = `R-${origine.conversation.replace(/^C-/, '')}`
+  // Une autre conversation, comme `pnpm parler` sans `--conversation` : la mention, pas l'identifiant.
+  const change = await tour(
+    s,
+    PATRON,
+    outil('changer_remplacant', { demande: null, vacation: 'V-03', jour: null, agent: 'Aïcha' }),
+    'oui, mais Aïcha pour V-03',
+  )
+  if (change.r.sorte !== 'proposition') throw new Error(`${change.r.sorte} : ${change.r.texte}`)
+  const nouvelle = `${ancienne}-2`
+
+  it('une nouvelle proposition, passée par les contrôles, où seule V-03 change', () => {
+    expect(change.r.texte).toMatch(
+      new RegExp(`^Proposition ${nouvelle} \\(remplace ${ancienne}\\)`),
+    )
+    expect(change.r.texte).toContain('Karim Haddad → Aïcha Traoré')
+    expect(change.r.texte).toContain('Sophie Marchand → Julien Lefèvre')
+    expect(change.r.texte).toMatch(/Valider \? \(oui \/ non\)$/)
+    expect(reaffectation(s, nouvelle)).toEqual({
+      id: nouvelle,
+      conversation: origine.conversation,
+      modifications: [{ ...PROPOSEES[0], agent: 'A-11' }, PROPOSEES[1]],
+    })
+  })
+  it('l’ancienne est remplacée : son « oui » ne valide plus rien', async () => {
+    expect(statutReaffectation(s, ancienne)).toBe(STATUT_R.remplacee)
+    const oui = await confirmer(
+      CONVERSATION,
+      s,
+      PATRON,
+      origine.conversation,
+      empreinte,
+      true,
+      maintenant,
+    )
+    expect(oui).toEqual({
+      sorte: 'refus',
+      texte: `${ancienne} : remplacée par ${nouvelle}, à valider à sa place`,
+    })
+  })
+  it('au « oui », Aïcha et Julien sont sollicités comme aujourd’hui', async () => {
+    if (change.r.sorte !== 'proposition') throw new Error(change.r.sorte)
+    const oui = await confirmer(
+      CONVERSATION,
+      s,
+      PATRON,
+      change.conversation,
+      change.r.empreinte,
+      true,
+      maintenant,
+    )
+    expect(oui.texte).toMatch(/^Validé\. Message envoyé à 2 agent\(s\)/)
+    expect(oui.texte).toContain('Aïcha, peux-tu prendre')
+    expect(oui.texte).toContain('Julien, peux-tu prendre')
+  })
+  it('la promotion ne la compte pas : le patron l’a corrigée', () => {
+    expect(OPERATION_REAFFECTER.relire(s.journal, origine.conversation)).toEqual([
+      { vacation: 'V-03', agent: 'A-11' },
+      { vacation: 'V-07', agent: 'A-2' },
+    ])
+    const depuis = maintenant.toPlainDate()
+    expect(intentions(s.journal, depuis, OPERATION_REAFFECTER)).toEqual([])
+    expect(intentions(s.journal, depuis)[0]?.occurrences).toBe(1)
+  })
+})
+
+describe('changer un agent : ce qui ne se change pas', () => {
+  const changer = ACTIONS.find((a) => a.id === 'changer_remplacant')
+  if (!changer) throw new Error('changer_remplacant absent')
+  const params = (p: Record<string, unknown>) => ({
+    demande: null,
+    vacation: 'V-03',
+    jour: null,
+    agent: 'A-11',
+    ...p,
+  })
+  const ouverte = (s: Session) =>
+    ouvrirReaffectation(
+      s,
+      'C-change',
+      [
+        { type: 'reaffecter', vacation: 'V-03', agent: 'A-9' },
+        { type: 'reaffecter', vacation: 'V-07', agent: 'A-2' },
+      ],
+      maintenant,
+    ).id
+  const essai = (s: Session, p: Record<string, unknown>, quand = maintenant) =>
+    Promise.resolve()
+      .then(() => changer.executer(s, PATRON, params(p), quand))
+      .then(
+        () => 'exécuté',
+        (e: Error) => e.message,
+      )
+
+  it('par son jour, sans nommer la R-… : la seule en attente qui a une vacation ce jour-là', async () => {
+    const s = session()
+    const id = ouverte(s)
+    const r = await changer.executer(
+      s,
+      PATRON,
+      params({ vacation: null, jour: '2026-10-14' }),
+      maintenant,
+    )
+    expect(r.corrige).toBe(id)
+    expect(r.modifications).toEqual([
+      { type: 'reaffecter', vacation: 'V-03', agent: 'A-9' },
+      { type: 'reaffecter', vacation: 'V-07', agent: 'A-11' },
+    ])
+  })
+  it('refuse : une vacation absente, une R-… validée, deux en attente, trop tard, le même agent', async () => {
+    const s = session()
+    const id = ouverte(s)
+    expect(await essai(s, { vacation: 'V-18' })).toBe(
+      'aucune réaffectation en attente de validation ne contient V-18',
+    )
+    expect(await essai(s, { demande: id, vacation: 'V-18' })).toBe(`${id} ne contient pas V-18`)
+    expect(await essai(s, { agent: 'A-9' })).toBe('Mehdi Saïdi est déjà proposé pour V-03')
+    expect(await essai(s, {}, aParis('2026-10-13T09:00'))).toBe(
+      `${id} : une vacation a commencé, trop tard pour la changer`,
+    )
+    const autre = ouverte(s)
+    expect(await essai(s, {})).toBe(
+      `plusieurs réaffectations en attente contiennent V-03 : laquelle (${id}, ${autre}) ?`,
+    )
+    validerReaffectation(s, id, maintenant)
+    expect(await essai(s, { demande: id })).toBe(
+      `${id} : ${STATUT_R.demandee}, elle ne se change plus`,
+    )
+  })
+  it('une règle violée refuse et se journalise ; l’ancienne reste à valider', async () => {
+    const s = session()
+    const id = ouverte(s)
+    // La carte professionnelle de Sophie Marchand a expiré le 01/10.
+    const { r, conversation } = await tour(
+      s,
+      PATRON,
+      outil('changer_remplacant', { demande: id, vacation: 'V-03', jour: null, agent: 'Sophie' }),
+    )
+    expect(r.sorte).toBe('je_ne_sais_pas')
+    expect(lignes(s, conversation).some((l) => l.type === TYPE_PROPOSITION_REFUSEE)).toBe(true)
+    expect(statutReaffectation(s, id)).toBe(STATUT_R.recue)
+  })
+  it('un agent ne peut pas l’appeler', async () => {
+    const s = session()
+    const id = ouverte(s)
+    const { r } = await tour(
+      s,
+      agent('A-9'),
+      outil('changer_remplacant', { demande: id, vacation: 'V-03', jour: null, agent: 'Aïcha' }),
+    )
+    expect(r.sorte).not.toBe('proposition')
+    expect(statutReaffectation(s, id)).toBe(STATUT_R.recue)
   })
 })
 

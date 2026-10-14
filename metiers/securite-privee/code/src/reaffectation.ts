@@ -33,6 +33,7 @@ export const STATUT_R = {
   refusee: 'refusée par un agent',
   sansReponse: 'sans réponse',
   tropTard: 'trop tard',
+  remplacee: 'remplacée',
 } as const
 export type Statut2 = (typeof STATUT_R)[keyof typeof STATUT_R]
 
@@ -41,7 +42,8 @@ export type Statut2 = (typeof STATUT_R)[keyof typeof STATUT_R]
  * elle-même : chaque « oui » qui laisse des agents à attendre s'inscrit ainsi.
  */
 const SUIVANTS: Record<Statut2, Statut2[]> = {
-  [STATUT_R.recue]: [STATUT_R.validee, STATUT_R.tropTard],
+  // Le patron change un agent avant de valider : une autre R-… la remplace (PLAN-CHOIX.md C2).
+  [STATUT_R.recue]: [STATUT_R.validee, STATUT_R.tropTard, STATUT_R.remplacee],
   [STATUT_R.validee]: [STATUT_R.demandee],
   [STATUT_R.demandee]: [
     STATUT_R.demandee,
@@ -56,10 +58,11 @@ const SUIVANTS: Record<Statut2, Statut2[]> = {
   [STATUT_R.refusee]: [],
   [STATUT_R.sansReponse]: [],
   [STATUT_R.tropTard]: [],
+  [STATUT_R.remplacee]: [],
 }
 const finie = (s: Statut2 | undefined) => s !== undefined && SUIVANTS[s].length === 0
 
-/** Une réaffectation finie (écrite, refusée, sans réponse, trop tard) ne bouge plus. */
+/** Une réaffectation finie (écrite, refusée, sans réponse, trop tard, remplacée) ne bouge plus. */
 export const reaffectationFinie = (s: Session, id: string) => finie(statutReaffectation(s, id))
 
 export interface Reaffectation {
@@ -182,13 +185,58 @@ export function ouvrirReaffectation(
   return { id: id(n) }
 }
 
+/**
+ * Le patron change des agents d'une réaffectation reçue (PLAN-CHOIX.md C2) :
+ * une nouvelle s'ouvre, rattachée à la même conversation (celle de la
+ * proposition d'origine, que la promotion relit), avec les mêmes contrôles ;
+ * l'ancienne passe à « remplacée » et ne se valide plus. Un refus des
+ * contrôles laisse l'ancienne telle quelle.
+ */
+export function corrigerReaffectation(
+  s: Session,
+  ancienne: string,
+  modifications: Modification[],
+  maintenant: Temporal.ZonedDateTime,
+): { id: string } {
+  const st = statutReaffectation(s, ancienne)
+  if (st !== STATUT_R.recue) throw new Error(`${ancienne} : ${st ?? 'réaffectation inconnue'}`)
+  const { id } = ouvrirReaffectation(
+    s,
+    reaffectation(s, ancienne).conversation,
+    modifications,
+    maintenant,
+  )
+  passer(s, ancienne, STATUT_R.remplacee, maintenant, {
+    motif: `remplacée par ${id}`,
+    donnees: { par: id },
+  })
+  return { id }
+}
+
+/** Les réaffectations reçues, pas encore validées ni remplacées, dans l'ordre du journal. */
+export function reaffectationsRecues(s: Session): Reaffectation[] {
+  const ids = new Set(
+    s.journal
+      .lire()
+      .filter((l) => l.type === TYPE_REAFFECTATION && l.objet !== null)
+      .map((l) => l.objet as string),
+  )
+  return [...ids]
+    .filter((id) => statutReaffectation(s, id) === STATUT_R.recue)
+    .map((id) => reaffectation(s, id))
+}
+
+/** La première vacation d'une réaffectation a commencé : plus rien ne s'y change. Ne journalise rien. */
+export function commencee(s: Session, id: string, maintenant: Temporal.ZonedDateTime): boolean {
+  return reaffectation(s, id).modifications.some(
+    (m) =>
+      Temporal.ZonedDateTime.compare(maintenant, intervalleDe(vacation(s, m.vacation)).debut) >= 0,
+  )
+}
+
 /** La première vacation modifiée a commencé : il est trop tard, rien ne s'écrit. */
 function tropTard(s: Session, id: string, maintenant: Temporal.ZonedDateTime): Etape2 | null {
-  const debuts = reaffectation(s, id).modifications.map(
-    (m) => intervalleDe(vacation(s, m.vacation)).debut,
-  )
-  const premier = debuts.sort(Temporal.ZonedDateTime.compare)[0]
-  if (!premier || Temporal.ZonedDateTime.compare(maintenant, premier) < 0) return null
+  if (!commencee(s, id, maintenant)) return null
   const motif = 'une vacation modifiée a commencé : rien n’est écrit'
   passer(s, id, STATUT_R.tropTard, maintenant, { motif })
   return { statut: STATUT_R.tropTard, motif }
@@ -223,6 +271,8 @@ export function validerReaffectation(
   maintenant: Temporal.ZonedDateTime,
 ): { agents: string[]; messages: string[] } {
   const { modifications } = reaffectation(s, id)
+  const par = donnees<{ par: string }>(dernier(historique(s, id), STATUT_R.remplacee))?.par
+  if (par !== undefined) throw new Error(`${id} : remplacée par ${par}, à valider à sa place`)
   const trop = tropTard(s, id, maintenant)
   if (trop) throw new Error(`${id} : ${trop.motif}`)
   exigerSansRefus(s, modifications)

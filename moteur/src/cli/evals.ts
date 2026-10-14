@@ -397,7 +397,7 @@ if (quoi === 'traduire') {
           const config = m.config(s)
           const journal = m.journal(s)
           const { jours, occurrences } = config.promotion
-          const comptees = intentions(journal, debutFenetre(quand, jours))
+          const comptees = intentions(journal, debutFenetre(quand, jours), m.operation)
           const i = aProposer(comptees, journal, { occurrences }).find(
             (x) => x.intention === c.intention,
           )

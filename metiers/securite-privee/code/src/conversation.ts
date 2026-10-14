@@ -21,6 +21,7 @@ import { DOMAINE } from './domaine'
 import { constatsNouveaux, decrireModifications, Modification } from './modifications'
 import { OPERATION_REAFFECTER } from './operation-reaffecter'
 import {
+  corrigerReaffectation,
   ouvrirReaffectation,
   reaffectation,
   reaffectationFinie,
@@ -125,7 +126,12 @@ export const INTENTIONS: Intention[] = [
 ]
 
 /** Le texte d'une proposition, rendu par le code : ce qui change, les autres possibles de chaque vacation, ce qui reste à décider. */
-function decrireProposition(s: Session, id: string, modifications: Modification[]): string {
+function decrireProposition(
+  s: Session,
+  id: string,
+  modifications: Modification[],
+  remplace?: string,
+): string {
   const autres = modifications.map((m) => {
     const v = s.ctx.planning.vacations.find((x) => x.id === m.vacation)
     if (!v) throw new Error(`vacation ${m.vacation} inconnue`)
@@ -134,7 +140,7 @@ function decrireProposition(s: Session, id: string, modifications: Modification[
   })
   const aVerifier = constatsNouveaux(s, modifications).filter((c) => c.verdict === 'à vérifier')
   return [
-    `Proposition ${id}`,
+    `Proposition ${id}${remplace !== undefined ? ` (remplace ${remplace})` : ''}`,
     decrireModifications(s, modifications),
     '',
     ...autres,
@@ -274,10 +280,13 @@ export const CONVERSATION: MetierConversation<Session> = {
     if (identite.role === 'agent') s.ctx.agent(identite.personne ?? '')
   },
   proposition: {
-    ouvrir: (s, conversation, modifications, maintenant) => {
+    ouvrir: (s, conversation, modifications, maintenant, corrige) => {
       const modifs = z.array(Modification).parse(modifications)
-      const { id } = ouvrirReaffectation(s, conversation, modifs, maintenant)
-      return { id, texte: decrireProposition(s, id, modifs) }
+      const { id } =
+        corrige === undefined
+          ? ouvrirReaffectation(s, conversation, modifs, maintenant)
+          : corrigerReaffectation(s, corrige, modifs, maintenant)
+      return { id, texte: decrireProposition(s, id, modifs, corrige) }
     },
     valider: (s, id, maintenant) => {
       const { messages } = validerReaffectation(s, id, maintenant)

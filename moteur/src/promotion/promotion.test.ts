@@ -11,6 +11,7 @@ import {
   TYPE_OUTIL_ECHAPPEE,
 } from '../echappee/echappee'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
+import { OPERATION_EXEMPLE, reaffectationValidee } from '../gestes/geste-appris.test.fixture'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { Temporal } from '../temps/temporal'
@@ -196,6 +197,59 @@ const DEPUIS = Temporal.PlainDate.from('2026-09-09')
 const MAINTENANT = Temporal.ZonedDateTime.from('2026-10-08T23:59[Europe/Paris]')
 const SEUIL = { occurrences: 3 }
 const JOURS = 30
+
+describe('une proposition corrigée par le patron (PLAN-CHOIX.md C3)', () => {
+  /** C-4 : l'échappée propose V-07 → A-9 ; le patron prend A-11 (R-4-2 remplace R-4) et valide. */
+  function avecCorrigee(): { journal: Journal; dossier: string } {
+    const rempli = journalRempli()
+    rempli.journal.ecrire(
+      [
+        echappee('C-4', 'E-4', INTENTION, 'proposition', 'Libère Karim mardi.', {
+          modifications: [{ type: 'reaffecter', ...MODIFICATIONS[0] }],
+          constats: [],
+        }),
+        {
+          type: REAFFECTATION,
+          client: CLIENT,
+          objet: 'R-4',
+          issue: RECUE,
+          donnees: { conversation: 'C-4', modifications: MODIFICATIONS },
+        },
+        { type: REAFFECTATION, client: CLIENT, objet: 'R-4', issue: 'remplacée' },
+        ...reaffectationValidee('R-4-2', 'C-4', [{ vacation: 'V-07', agent: 'A-11' }]),
+      ],
+      '2026-10-08T08:00:00Z',
+    )
+    return rempli
+  }
+
+  it('n’apprend rien de la proposition corrigée ; celle validée telle quelle compte comme avant', () => {
+    const { journal } = avecCorrigee()
+    const [i] = intentions(journal, DEPUIS, OPERATION_EXEMPLE)
+    expect(i).toMatchObject({ intention: INTENTION, occurrences: 3 })
+    expect(i?.conversations).toEqual(['C-1', 'C-2', 'C-3'])
+    expect(
+      echappeesDe(journal, INTENTION, DEPUIS, OPERATION_EXEMPLE).map((e) => e.conversation),
+    ).not.toContain('C-4')
+    // Sans l'opération du métier, rien ne se relit : la suite seule décide.
+    expect(intentions(journal, DEPUIS)[0]?.occurrences).toBe(4)
+    journal.fermer()
+  })
+
+  it('le dossier la compte : « 1 proposition corrigée par le patron »', () => {
+    const { journal, dossier } = avecCorrigee()
+    const [i] = aProposer(intentions(journal, DEPUIS, OPERATION_EXEMPLE), journal, SEUIL)
+    if (!i) throw new Error('jeu de test sans intention à proposer')
+    const md = readFileSync(
+      ecrireDossier(dossier, CLIENT, i, journal, MAINTENANT, JOURS, undefined, OPERATION_EXEMPLE),
+      'utf8',
+    )
+    expect(md).toContain('1 proposition corrigée par le patron, non retenue : C-4.')
+    expect(md).not.toContain('### C-4')
+    expect(md).toContain('### C-1 (E-1)')
+    journal.fermer()
+  })
+})
 
 describe('intentions', () => {
   it('compte les échappées finies proprement par intention, avec leurs conversations, leurs consignes et leur coût', () => {

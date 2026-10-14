@@ -7,6 +7,7 @@ import { personneLue } from '../conversation/roles'
 import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE, OUTIL_VERIFIER } from '../echappee/boucle'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { DOSSIER_GESTES } from '../gestes/geste-appris'
+import type { OperationApprise } from '../gestes/operation'
 import type { Journal, Ligne } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import type { Constat } from '../regles/verdict'
@@ -254,14 +255,42 @@ export function suiteDe(lignes: Ligne[], conversation: string): string {
   return SUITE_NON_VALIDEE
 }
 
+/** Une proposition validée qui n'est pas exactement celle de l'échappée : le patron l'a corrigée ; elle n'apprend rien, le dossier la compte (PLAN-CHOIX.md C3). */
+interface Corrigee {
+  corrigee: true
+  intention: string
+  conversation: string
+}
+
+/** Les modifications proposées sont exactement celles validées : autant, chacune égale (`operation.egal`) à celle de son objet. */
+function memes(
+  proposees: unknown[],
+  validees: unknown[],
+  operation: OperationApprise<unknown>,
+): boolean {
+  return (
+    proposees.length === validees.length &&
+    proposees.every((p) =>
+      validees.some((v) => operation.objet(v) === operation.objet(p) && operation.egal(v, p)),
+    )
+  )
+}
+
 /**
  * Une échappée finie proprement (P9), dont le journal garde tout (P8) :
  * `reponse` au contrôle `ok`, ou `proposition` validée ou écrite dans cette
- * conversation ; avec son identifiant, son rôle, son texte et son instantané.
- * Un abandon, un résumé retiré, une proposition sans suite, ou une ligne
- * d'avant le lot 0 (sans instantané) ne comptent pas.
+ * conversation telle que l'échappée l'a faite (relue par l'opération du
+ * métier, quand il en déclare une) ; avec son identifiant, son rôle, son
+ * texte et son instantané. Un abandon, un résumé retiré, une proposition sans
+ * suite, ou une ligne d'avant le lot 0 (sans instantané) ne comptent pas ; une
+ * proposition corrigée par le patron se rend à part.
  */
-function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefined {
+function lireEchappee(
+  l: Ligne,
+  lignes: Ligne[],
+  journal: Journal,
+  operation?: OperationApprise<unknown>,
+): EchappeeJournalisee | Corrigee | undefined {
   if (l.type !== TYPE_ECHAPPEE || l.objet === null) return undefined
   const d = donneesDe(l) as DonneesEchappee
   if (
@@ -279,6 +308,13 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
       : l.issue === ('proposition' satisfies IssueEchappee['sorte']) &&
         suiteDe(lignes, l.objet) !== SUITE_NON_VALIDEE
   if (!propre) return undefined
+  if (
+    l.issue === ('proposition' satisfies IssueEchappee['sorte']) &&
+    operation !== undefined &&
+    !memes(d.modifications ?? [], operation.relire(journal, l.objet), operation)
+  ) {
+    return { corrigee: true, intention: d.intention, conversation: l.objet }
+  }
   const id = d.echappee
   const personne = personneLue(d)
   const outils = (nom: string) =>
@@ -326,30 +362,46 @@ function lireEchappee(l: Ligne, lignes: Ligne[]): EchappeeJournalisee | undefine
   }
 }
 
-/** Les échappées finies proprement depuis `depuis` (inclus), dans l'ordre du journal. */
-function echappeesDepuis(lignes: Ligne[], depuis: Temporal.PlainDate): EchappeeJournalisee[] {
+/** Les échappées finies proprement depuis `depuis` (inclus), et les propositions corrigées par le patron, dans l'ordre du journal. */
+function echappeesDepuis(
+  lignes: Ligne[],
+  depuis: Temporal.PlainDate,
+  journal: Journal,
+  operation?: OperationApprise<unknown>,
+): { propres: EchappeeJournalisee[]; corrigees: Corrigee[] } {
   const jour = depuis.toString()
-  return lignes.flatMap((l) => {
+  const lues = lignes.flatMap((l) => {
     if (l.type !== TYPE_ECHAPPEE || l.horodatage.slice(0, 10) < jour) return []
-    const e = lireEchappee(l, lignes)
+    const e = lireEchappee(l, lignes, journal, operation)
     return e ? [e] : []
   })
+  return {
+    propres: lues.filter((e): e is EchappeeJournalisee => !('corrigee' in e)),
+    corrigees: lues.filter((e): e is Corrigee => 'corrigee' in e),
+  }
 }
 
-/** Les échappées finies proprement d'une intention depuis `depuis` (inclus), dans l'ordre du journal. */
+/** Les échappées finies proprement d'une intention depuis `depuis` (inclus), dans l'ordre du journal ; `operation` : celle du métier, qui écarte les propositions corrigées. */
 export function echappeesDe(
   journal: Journal,
   intention: string,
   depuis: Temporal.PlainDate,
+  operation?: OperationApprise<unknown>,
 ): EchappeeJournalisee[] {
-  return echappeesDepuis(journal.lire(), depuis).filter((e) => e.intention === intention)
+  return echappeesDepuis(journal.lire(), depuis, journal, operation).propres.filter(
+    (e) => e.intention === intention,
+  )
 }
 
 /** Les échappées finies proprement depuis `depuis` (inclus), groupées par intention, triées par occurrences décroissantes puis intention. */
-export function intentions(journal: Journal, depuis: Temporal.PlainDate): IntentionComptee[] {
+export function intentions(
+  journal: Journal,
+  depuis: Temporal.PlainDate,
+  operation?: OperationApprise<unknown>,
+): IntentionComptee[] {
   const lignes = journal.lire()
   const groupes = new Map<string, IntentionComptee>()
-  for (const e of echappeesDepuis(lignes, depuis)) {
+  for (const e of echappeesDepuis(lignes, depuis, journal, operation).propres) {
     const g = groupes.get(e.intention) ?? {
       intention: e.intention,
       occurrences: 0,
@@ -410,7 +462,8 @@ function controleDe(e: EchappeeJournalisee): string {
  * dossier), écrit la ligne `promotion proposée` au journal, et rend le
  * chemin. Avec `fabrication`, le dossier gagne sa section « Geste proposé »
  * et la ligne la porte dans ses `donnees` (§ 6.3) ; une fabrication
- * `injoignable` n'inscrit pas la ligne : l'intention reste à proposer.
+ * `injoignable` n'inscrit pas la ligne : l'intention reste à proposer. Avec
+ * `operation`, il compte les propositions corrigées par le patron.
  */
 export function ecrireDossier(
   dossierClient: string,
@@ -420,9 +473,12 @@ export function ecrireDossier(
   maintenant: Temporal.ZonedDateTime,
   fenetreJours: number,
   fabrication?: Fabrication,
+  operation?: OperationApprise<unknown>,
 ): string {
   const lignes = journal.lire()
-  const echappees = echappeesDe(journal, i.intention, debutFenetre(maintenant, fenetreJours))
+  const lues = echappeesDepuis(lignes, debutFenetre(maintenant, fenetreJours), journal, operation)
+  const echappees = lues.propres.filter((e) => e.intention === i.intention)
+  const corrigees = lues.corrigees.filter((e) => e.intention === i.intention)
 
   const consignes = echappees.map(
     (e) => `- ${quand(e.horodatage)}, ${e.conversation}, ${ISSUES[e.issue]} : « ${e.consigne} »`,
@@ -476,6 +532,12 @@ export function ecrireDossier(
     '',
     `${i.occurrences} demandes en ${fenetreJours} jours, pour un coût total de ${dollars(i.cout_usd)} $.`,
     '',
+    ...(corrigees.length > 0
+      ? [
+          `${corrigees.length} proposition${corrigees.length > 1 ? 's' : ''} corrigée${corrigees.length > 1 ? 's' : ''} par le patron, non retenue${corrigees.length > 1 ? 's' : ''} : ${corrigees.map((c) => c.conversation).join(', ')}.`,
+          '',
+        ]
+      : []),
     '## Les consignes',
     '',
     ...consignes,

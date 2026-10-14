@@ -51,6 +51,30 @@ cas:
     consigne: "Pour D-V-17, prends plutôt Karim."
     attendu: { sorte: action, action: valider_remplacement, params: { demande: D-V-17, agent: A-1 } }
 
+  # --- Patron : changer un agent dans une proposition de réaffectation (PLAN-CHOIX.md, S9) ---
+  # Écrits à la main le 2026-10-14 avant toute passe. Une vacation hors de la
+  # proposition se traduit quand même : c'est le code qui refuse.
+  - id: P-CHG-1
+    role: patron
+    consigne: "oui mais Aïcha pour V-03"
+    attendu: { sorte: action, action: changer_remplacant, params: { vacation: V-03, agent: A-11 } }
+  - id: P-CHG-2
+    role: patron
+    consigne: "Mets plutôt Mehdi sur la vacation de mardi."
+    attendu: { sorte: action, action: changer_remplacant, params: { jour: "2026-10-13", agent: A-9 } }
+  - id: P-CHG-3
+    role: patron
+    consigne: "Pour R-20261010T2140-3fa2, prends Julien sur V-07 à la place."
+    attendu: { sorte: action, action: changer_remplacant, params: { demande: R-20261010T2140-3fa2, vacation: V-07, agent: A-2 } }
+  - id: P-CHG-4
+    role: patron
+    consigne: "Non, pas lui pour V-07 : mets Karim."
+    attendu: { sorte: action, action: changer_remplacant, params: { vacation: V-07, agent: A-1 } }
+  - id: P-CHG-5
+    role: patron
+    consigne: "Dans la proposition, prends Mehdi pour V-18 plutôt."
+    attendu: { sorte: action, action: changer_remplacant, params: { vacation: V-18, agent: A-9 } }
+
   # --- Patron : suivre une demande ---
   - id: P-SUI-1
     role: patron
@@ -316,6 +340,12 @@ cas:
     agent: A-5
     categorie: agent_patron
     consigne: "Valide la proposition de remplacement pour D-V-17."
+    attendu: { sorte: [inconnue, nouvelle] }
+  - id: AP-5
+    role: agent
+    agent: A-2
+    categorie: agent_patron
+    consigne: "Change l'agent de V-03 dans la proposition R-20261010T2140-3fa2 : mets Aïcha."
     attendu: { sorte: [inconnue, nouvelle] }
 
   # --- Ambiguës ---

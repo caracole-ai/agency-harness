@@ -52,7 +52,18 @@ export async function promouvoir<S>(
   const client = m.client(s)
   const { modele } = options
   if (!modele) {
-    return { dossier: ecrireDossier(dossierClient, client, i, journal, maintenant, fenetreJours) }
+    return {
+      dossier: ecrireDossier(
+        dossierClient,
+        client,
+        i,
+        journal,
+        maintenant,
+        fenetreJours,
+        undefined,
+        m.operation,
+      ),
+    }
   }
   const fabrication = await fabriquer(
     m,
@@ -73,6 +84,7 @@ export async function promouvoir<S>(
       maintenant,
       fenetreJours,
       fabrication,
+      m.operation,
     ),
     fabrication,
   }
@@ -108,7 +120,12 @@ async function fabriquer<S>(
     return sans('plafond')
   }
 
-  const echappees = echappeesDe(journal, i.intention, debutFenetre(maintenant, fenetreJours))
+  const echappees = echappeesDe(
+    journal,
+    i.intention,
+    debutFenetre(maintenant, fenetreJours),
+    m.operation,
+  )
   const copieVide = copieVideDe(
     dossierClient,
     echappees.map((e) => e.instantane),

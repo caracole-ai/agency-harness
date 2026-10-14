@@ -1,7 +1,8 @@
 import { z } from 'zod'
+import { VALIDEE } from '../approbation/jeton'
 import type { Domaine } from '../conversation/domaine'
 import type { RoleDeclare } from '../conversation/roles'
-import { TYPE_ECHAPPEE } from '../echappee/echappee'
+import type { Evenement } from '../journal/journal'
 import { type DeclarationsGeste, type GesteAppris, SansCandidat } from './geste-appris'
 import type { OperationApprise } from './operation'
 import type { TypeParametreDeclare } from './types-parametre'
@@ -57,24 +58,45 @@ export const OPERATION_EXEMPLE: OperationApprise<Reaffectation> = {
     }
     return { vacation, agent }
   },
+  /** Comme la sécurité privée : la dernière réaffectation validée de la conversation, telle que reçue (PLAN-CHOIX.md C3). */
   relire: (journal, conversation) => {
-    const ligne = journal
-      .historique(conversation)
-      .filter((l) => l.type === TYPE_ECHAPPEE && l.issue === 'proposition')
+    const lignes = journal.lire().filter((l) => l.type === 'reaffectation')
+    const donnees = (l: (typeof lignes)[number]) =>
+      l.donnees
+        ? (JSON.parse(l.donnees) as { conversation?: unknown; modifications?: unknown })
+        : {}
+    const validees = new Set(lignes.filter((l) => l.issue === VALIDEE).map((l) => l.objet))
+    const recue = lignes
+      .filter(
+        (l) =>
+          l.issue === 'reçue' && validees.has(l.objet) && donnees(l).conversation === conversation,
+      )
       .at(-1)
     const lu = z
       .array(z.looseObject({ vacation: z.string().min(1), agent: z.string().min(1) }))
       .min(1)
-      .safeParse(
-        ligne?.donnees
-          ? (JSON.parse(ligne.donnees) as { modifications?: unknown }).modifications
-          : undefined,
-      )
+      .safeParse(recue ? donnees(recue).modifications : undefined)
     return lu.success ? lu.data.map(({ vacation, agent }) => ({ vacation, agent })) : []
   },
   egal: (a, b) => a.vacation === b.vacation && a.agent === b.agent,
   objet: (m) => m.vacation,
 }
+
+/** Une réaffectation reçue puis validée, comme la sécurité privée l'inscrit : ce que `relire` relit. */
+export const reaffectationValidee = (
+  objet: string,
+  conversation: string,
+  modifications: unknown[],
+): Evenement[] => [
+  {
+    type: 'reaffectation',
+    client: 'fictif',
+    objet,
+    issue: 'reçue',
+    donnees: { conversation, modifications },
+  },
+  { type: 'reaffectation', client: 'fictif', objet, issue: VALIDEE, donnees: { jeton: 'j' } },
+]
 
 /** Le domaine de la sécurité privée, tel qu'elle le déclare, pour les métiers simulés des tests (PLAN-METIER-2.md § 3.5). */
 export const DOMAINE_EXEMPLE: Domaine = {
