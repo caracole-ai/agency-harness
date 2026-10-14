@@ -128,7 +128,7 @@ const Repondre = z.strictObject({
   texte: z
     .string()
     .describe(
-      'la réponse au demandeur ; chaque chiffre et chaque nom viennent d’un résultat de requete',
+      'la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; chaque chiffre et chaque nom viennent d’un résultat de requete',
     ),
 })
 const Abandonner = z.strictObject({

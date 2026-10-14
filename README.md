@@ -155,7 +155,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   l'adaptateur simulé des tests ; le coût d'un appel et le coût du mois lu
   dans le journal) et
   `src/conversation/config.ts` (la section `conversation` de la config
-  client : modèle, prix, effort, plafonds, seuil de promotion),
+  client : modèle, prix, effort, plafonds de la demande et de la fabrication,
+  seuil de promotion),
   `src/conversation/actions.ts` (la forme d'un geste du quotidien, les outils
   stricts envoyés au modèle et les deux méta-outils),
   `src/conversation/roles.ts` (`PLAN-METIER-2.md` M1 à M3 : les rôles sont

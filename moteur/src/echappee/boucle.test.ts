@@ -99,6 +99,12 @@ describe('les outils envoyés au modèle', () => {
     expect(json).toContain('les modifications proposées')
     expect(json).not.toMatch(/réaffectation|patron/)
   })
+  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse', () => {
+    const json = JSON.stringify(outilsEchappee(outils()))
+    expect(json).toContain(
+      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte)',
+    )
+  })
 })
 
 describe('une question', () => {

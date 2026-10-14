@@ -132,7 +132,7 @@ export interface Rejeu {
 export interface CadreFabrication {
   modele: Modele
   effort: Effort
-  /** Le plafond par demande de la config, jamais un nombre en dur. */
+  /** Le plafond de la fabrication dans la config (`plafondFabrication`), jamais un nombre en dur. */
   maxTokens: number
   intention: Intention
   /** Les échappées finies proprement de cette intention ; seules les réponses servent, ou les propositions validées pour une intention qui écrit. */

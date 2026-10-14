@@ -72,7 +72,11 @@ const CONFIG: ConfigConversation = {
     prix_par_million_usd: { entree: 1, sortie: 1, cache_ecrit: 0, cache_lu: 0 },
     effort: { traduire: 'low', echappee: 'medium' },
   },
-  plafonds: { par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }, par_mois_usd: 30 },
+  plafonds: {
+    par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 },
+    fabrication: { tokens_sortie: 20000 },
+    par_mois_usd: 30,
+  },
   promotion: { occurrences: 3, jours: 30, conservation_jours: 90 },
 }
 const INTENTIONS: Intention[] = [
@@ -408,6 +412,13 @@ describe('promouvoir', () => {
     expect(Object.keys(modele.appels[0]?.outils[0]?.input_schema.properties ?? {})).not.toContain(
       'modifications',
     )
+    METIER.fermer(s)
+  })
+  it('la fabrication reçoit son plafond de la config, pas celui de la demande', async () => {
+    const s = dossierAvecEchappees()
+    const modele = modeleSimule([proposer(PROPOSE)])
+    await promouvoir(METIER, s, s.dossier, auSeuil(s), MAINTENANT, 30, { modele })
+    expect(modele.appels[0]?.maxTokens).toBe(CONFIG.plafonds.fabrication?.tokens_sortie)
     METIER.fermer(s)
   })
   it('une intention hors du catalogue : non tentée', async () => {

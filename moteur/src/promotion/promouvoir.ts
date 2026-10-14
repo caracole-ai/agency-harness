@@ -1,5 +1,5 @@
 import { stringify } from 'yaml'
-import { prixDe } from '../conversation/config'
+import { plafondFabrication, prixDe } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
 import type { BilanTraduction } from '../evals/traduction'
 import { ISSUE_GESTE, lireFichiersGestes, TYPE_GESTE_APPRIS } from '../gestes/charger'
@@ -126,7 +126,7 @@ async function fabriquer<S>(
   const issue = await fabriquerGeste({
     modele,
     effort: config.modele.effort.echappee,
-    maxTokens: config.plafonds.par_demande.tokens_sortie,
+    maxTokens: plafondFabrication(config),
     intention,
     echappees,
     gestesExistants,

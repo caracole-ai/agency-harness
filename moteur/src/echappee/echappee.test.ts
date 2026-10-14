@@ -254,7 +254,7 @@ describe('systemeEchappee', () => {
   it('dit de répondre à la question posée, rien de plus (PLAN-GENERAL.md G4 a)', () => {
     for (const proposer of [true, false]) {
       expect(systemeEchappee('le patron', 'Table agents : …', [], '', proposer, DOMAINE)).toContain(
-        'Réponds à la question posée, rien de plus : pas de détail ligne par ligne si on demande un total, pas de remarque ajoutée.',
+        'Réponds à la question posée, rien de plus, et sois non verbeux : pas de détail ligne par ligne si on demande un total, pas de compte si on demande une liste, pas de remarque ajoutée.',
       )
     }
   })
