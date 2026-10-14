@@ -31,7 +31,7 @@ import {
 } from './designation'
 import type { Domaine } from './domaine'
 import { aCapacite, IdentiteSchema, type RoleDeclare, roleDe } from './roles'
-import type { Tableau } from './tableau'
+import type { Choix, Tableau } from './tableau'
 import {
   type Demande,
   designer,
@@ -134,12 +134,15 @@ export interface PropositionMetier<Session> {
   valider(s: Session, id: string, maintenant: Temporal.ZonedDateTime): string
   /** Les règles et les préférences d'une proposition, celles que l'échappée montre : la fabrication d'un geste qui écrit les reçoit aussi. */
   criteres(s: Session): CriteresProposition
+  /** Les autres choix d'une proposition ouverte (exemple : un autre agent pour une vacation), chacun un geste ; absent, aucun. */
+  choix?(s: Session, id: string): Choix[]
 }
 
 export type Reponse =
   | { sorte: 'resultat'; texte: string }
   | { sorte: 'confirmation'; texte: string; empreinte: string }
-  | { sorte: 'proposition'; texte: string; empreinte: string }
+  /** `choix` : les autres choix que le métier offre sur cette proposition, chacun appelé par `traiterGeste`. */
+  | { sorte: 'proposition'; texte: string; empreinte: string; choix?: Choix[] }
   | { sorte: 'je_ne_sais_pas'; texte: string }
   | { sorte: 'refus'; texte: string }
   /** Une personne nommée que le code n'a pas trouvée seul : la question, et les candidats à choisir (vides : personne ne ressemble). */
@@ -292,6 +295,29 @@ const ligneConsigne = (
   motif: tour.consigne,
   donnees: { identite: tour.identite, ...donnees },
 })
+
+/**
+ * Un geste appelé directement, sans traduction (un choix offert par le
+ * métier, cliqué dans l'interface) : la même suite qu'une demande traduite
+ * (le rôle, les personnes, les contrôles, le « oui »), rien de plus ; la
+ * consigne journalisée est le libellé du choix. Aucun appel au modèle tant
+ * que les personnes sont données par leur identifiant (PLAN-CHOIX.md, lot 3).
+ */
+export async function traiterGeste<S>(
+  m: MetierConversation<S>,
+  dossier: string,
+  modele: Modele,
+  tour: Tour,
+  choix: Omit<Choix, 'libelle'>,
+): Promise<Reponse> {
+  return avecSession(m, dossier, tour.identite, (s) =>
+    apresLeDossier(m, s, modele, tour, {
+      sorte: 'traduite',
+      demande: { sorte: 'action', action: choix.action, params: choix.params },
+      appris: [],
+    }),
+  )
+}
 
 /** Un tour : une consigne, une réponse. Le dossier ne s'ouvre qu'après la traduction. */
 export async function traiterConsigne<S>(
@@ -590,10 +616,12 @@ function ouvrirProposition<S>(
       donnees: attente,
     },
   ])
+  const choix = proposition.choix?.(s, ouverte.id) ?? []
   return {
     sorte: 'proposition',
     texte: `${ouverte.texte}\nValider ? (oui / non)`,
     empreinte: e,
+    ...(choix.length > 0 ? { choix } : {}),
   }
 }
 

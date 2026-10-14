@@ -11,6 +11,14 @@ export interface DemandeTableau {
   depuis: string
 }
 
+/** Un autre choix offert sur une proposition en attente : un geste du métier, appelé directement (un bouton), sans modèle (PLAN-CHOIX.md, lot 3). */
+export interface Choix {
+  /** Rendu par le code, montré tel quel ; il va au journal comme la consigne, jamais au modèle. */
+  libelle: string
+  action: string
+  params: Record<string, unknown>
+}
+
 export interface Tableau {
   demandes: DemandeTableau[]
   /** Les lignes « en attente d'une réponse » que l'interface montre à part (exemple : les délégations proposées). */

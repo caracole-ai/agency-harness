@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  type Choix,
   DOSSIER_GESTES,
   empreinteGeste,
   FICHIER_PERSONNES,
@@ -549,5 +550,81 @@ describe('un parcours simulé : absence, validation, oui', async () => {
     expect(lignes[0]?.type).toBe('confirmation')
     const ids = lignes.map((l) => l.id)
     expect(ids).toEqual([...ids].sort((x, y) => y - x))
+  })
+})
+
+describe('un autre choix d’une proposition, cliqué : /api/geste (PLAN-CHOIX.md, lot 3)', async () => {
+  const PROPOSEES = [
+    { type: 'reaffecter', vacation: 'V-03', agent: 'A-9' },
+    { type: 'reaffecter', vacation: 'V-07', agent: 'A-2' },
+  ]
+  // Le script s'arrête à la proposition : un appel de plus au modèle ferait échouer le clic.
+  const dossier = copie()
+  const a = app(
+    [
+      { outil: 'demande_nouvelle', entree: { intention: 'liberer_un_jour', resume: 'x' } },
+      { outil: 'verifier', entree: { modifications: PROPOSEES } },
+      { outil: 'proposer', entree: { modifications: PROPOSEES, resume: 'Deux vacations.' } },
+    ],
+    dossier,
+  )
+  const etat = async () =>
+    (await (await lire(a, '/api/etat')).json()) as Etat & {
+      aValider: { confirmations: { choix: Choix[] }[] }
+    }
+  const premiere = (await (
+    await poster(a, '/api/consigne', {
+      identite: PATRON,
+      consigne: 'Libère Karim mardi et Sophie mercredi',
+    })
+  ).json()) as { conversation: string; reponse: Reponse }
+  const avant = await etat()
+  const choix =
+    premiere.reponse.sorte === 'proposition'
+      ? premiere.reponse.choix?.find(
+          (c) => c.params.vacation === 'V-03' && c.params.agent === 'A-11',
+        )
+      : undefined
+  const clic = (identite: Identite, corps: Partial<Choix> = {}) =>
+    poster(a, '/api/geste', { identite, conversation: premiere.conversation, ...choix, ...corps })
+  const r = await clic(PATRON)
+  const apres = (await r.json()) as { conversation: string; reponse: Reponse }
+  const ensuite = await etat()
+
+  it('la proposition offre chaque autre possible comme un choix, dans la bulle et dans « à valider »', () => {
+    expect(choix).toEqual({
+      libelle: 'Prendre Aïcha Traoré pour V-03',
+      action: 'changer_remplacant',
+      params: {
+        demande: expect.stringMatching(/^R-/),
+        vacation: 'V-03',
+        jour: null,
+        agent: 'A-11',
+      },
+    })
+    expect(avant.aValider.confirmations[0]?.choix).toContainEqual(choix)
+  })
+  it('le clic rouvre la proposition sans modèle, dans la même conversation ; le libellé est au journal', () => {
+    expect(r.status).toBe(200)
+    expect(apres.conversation).toBe(premiere.conversation)
+    expect(apres.reponse.sorte).toBe('proposition')
+    expect(apres.reponse.texte).toMatch(/^Proposition R-\S+-2 \(remplace R-\S+\)/)
+    expect(apres.reponse.texte).toContain('Karim Haddad → Aïcha Traoré')
+    expect(ensuite.ia.appels).toBe(avant.ia.appels)
+    expect(ensuite.aValider.confirmations).toHaveLength(1)
+    expect(journalDe(dossier).some((l) => l.motif === 'Prendre Aïcha Traoré pour V-03')).toBe(true)
+  })
+  it('un agent n’ouvre pas le geste ; un corps incomplet : 400', async () => {
+    const agent = (await (
+      await clic({ role: 'agent', personne: 'A-9' }, { libelle: 'Prendre' })
+    ).json()) as {
+      reponse: Reponse
+    }
+    expect(agent.reponse).toEqual({
+      sorte: 'refus',
+      texte: "l'action changer_remplacant n'est pas ouverte à ce rôle",
+    })
+    expect((await clic(PATRON, { action: '' })).status).toBe(400)
+    expect((await clic(PATRON, { libelle: '' })).status).toBe(400)
   })
 })

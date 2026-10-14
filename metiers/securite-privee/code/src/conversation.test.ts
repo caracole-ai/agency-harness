@@ -453,6 +453,12 @@ describe('le patron change un agent dans une proposition (PLAN-CHOIX.md, critèr
   })
   it('l’ancienne est remplacée : son « oui » ne valide plus rien', async () => {
     expect(statutReaffectation(s, ancienne)).toBe(STATUT_R.remplacee)
+    expect(CONVERSATION.proposition?.choix?.(s, ancienne)).toEqual([])
+    expect(CONVERSATION.proposition?.choix?.(s, nouvelle)).toContainEqual({
+      libelle: 'Prendre Mehdi Saïdi pour V-03',
+      action: 'changer_remplacant',
+      params: { demande: nouvelle, vacation: 'V-03', jour: null, agent: 'A-9' },
+    })
     const oui = await confirmer(
       CONVERSATION,
       s,

@@ -10,6 +10,7 @@ const API = {
   journal: '/api/journal?limite=200',
   consigne: '/api/consigne',
   confirmer: '/api/confirmer',
+  geste: '/api/geste',
   gestes: '/api/gestes',
   activerGeste: '/api/gestes/activer',
   retirerGeste: '/api/gestes/retirer',
@@ -297,12 +298,16 @@ function carteConfirmation(c) {
       el('time', { datetime: c.horodatage, texte: instant(c.horodatage) }),
     ),
     el('p', { classe: 'texte', texte: c.texte }),
-    zoneReponse(conf, c.nom),
+    zoneReponse(conf, c.nom, c.choix),
   )
 }
 
-/** Oui / Non, si la personne choisie est celle à qui la question est posée ; sinon, de quoi changer de personne. */
-function zoneReponse(conf, nom) {
+/**
+ * Oui / Non, et les autres choix d'une proposition (chacun un geste, sans
+ * modèle), si la personne choisie est celle à qui la question est posée ;
+ * sinon, de quoi changer de personne.
+ */
+function zoneReponse(conf, nom, choix = []) {
   const cle = `${conf.conversation}|${conf.empreinte}`
   if (!memeIdentite(conf.identite, ici.identite)) {
     return el(
@@ -332,6 +337,20 @@ function zoneReponse(conf, nom) {
       texte: 'Non',
       onclick: () => repondre(conf, false),
     }),
+    choix.length > 0
+      ? el(
+          'div',
+          { classe: 'choix', role: 'group', 'aria-label': 'Ou bien' },
+          ...choix.map((c) =>
+            el('button', {
+              classe: 'bouton bouton--outil bouton--petit suggestion',
+              type: 'button',
+              texte: c.libelle,
+              onclick: () => choisir(conf, c),
+            }),
+          ),
+        )
+      : null,
   )
   boutons.set(cle, [...(boutons.get(cle) ?? []), zone])
   return zone
@@ -720,7 +739,7 @@ function bulleOutil(reponse, conf) {
   if (enAttente) {
     const attente = { ...conf, empreinte: reponse.empreinte }
     ici.attente = attente
-    corps.append(zoneReponse(attente, nomDe(conf.identite)))
+    corps.append(zoneReponse(attente, nomDe(conf.identite), reponse.choix))
   }
   // « Vous parlez de qui ? » : chaque candidat, à cliquer, envoie son nom dans la même conversation.
   if (reponse.sorte === 'precision' && reponse.candidats.length > 0) {
@@ -829,14 +848,14 @@ function occuper(oui) {
 
 /** Les boutons d'une confirmation, partout où ils sont, remplacés par la réponse donnée (et son sort, si elle a été refusée). */
 function marquerRepondu(conf, oui, refusee) {
+  fermer(conf, `Réponse : ${oui ? 'oui' : 'non'}${refusee ? ', refusée' : ''}`)
+}
+
+/** Les boutons d'une confirmation, où qu'ils soient, remplacés par ce qui lui est arrivé. */
+function fermer(conf, texte) {
   const cle = `${conf.conversation}|${conf.empreinte}`
   for (const zone of boutons.get(cle) ?? []) {
-    zone.replaceWith(
-      el('p', {
-        classe: 'repondu',
-        texte: `Réponse : ${oui ? 'oui' : 'non'}${refusee ? ', refusée' : ''}`,
-      }),
-    )
+    zone.replaceWith(el('p', { classe: 'repondu', texte }))
   }
   boutons.delete(cle)
   if (ici.attente && `${ici.attente.conversation}|${ici.attente.empreinte}` === cle)
@@ -891,6 +910,33 @@ async function repondre(conf, oui) {
     attente.remove()
     marquerRepondu(conf, oui, reponse.sorte === 'refus')
     bulleOutil(reponse, conf)
+  } catch (erreur) {
+    attente.remove()
+    bulleErreur(erreur.message)
+  } finally {
+    occuper(false)
+    rafraichir()
+  }
+}
+
+/** Un autre choix d'une proposition, cliqué : le geste part sans modèle, dans la même conversation ; la proposition d'avant est remplacée. */
+async function choisir(conf, choix) {
+  if (ici.occupe) return
+  occuper(true)
+  bulleClient(choix.libelle, conf.identite)
+  const attente = bulleAttente()
+  try {
+    const r = await appeler(API.geste, {
+      identite: conf.identite,
+      conversation: conf.conversation,
+      libelle: choix.libelle,
+      action: choix.action,
+      params: choix.params,
+    })
+    attente.remove()
+    if (r.reponse.sorte === 'proposition') fermer(conf, `Remplacée : ${choix.libelle}`)
+    ici.conversation = r.conversation
+    bulleOutil(r.reponse, { conversation: r.conversation, identite: conf.identite })
   } catch (erreur) {
     attente.remove()
     bulleErreur(erreur.message)

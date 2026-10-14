@@ -33,6 +33,7 @@ import {
   TYPE_CONFIRMATION,
   TYPE_CONFIRMATION_ATTENDUE,
   traiterConsigne,
+  traiterGeste,
   verifierRegistre,
 } from '@harnais/moteur'
 import { serveStatic } from '@hono/node-server/serve-static'
@@ -66,7 +67,7 @@ const donnees = <T>(l: Ligne): T | undefined =>
 /** Ce que garde une ligne `confirmation_attendue` (la forme écrite par `traiterConsigne`). */
 interface Attente {
   identite: Identite
-  demande: { sorte: 'action' | 'reaffectation' }
+  demande: { sorte: 'action' } | { sorte: 'reaffectation'; id: string }
   empreinte: string
 }
 
@@ -142,6 +143,11 @@ function confirmationsEnAttente(m: Metier, s: unknown, lignes: Ligne[]) {
         texte: l.motif ?? '',
         empreinte: attente.empreinte,
         sorte: attente.demande.sorte === 'reaffectation' ? 'proposition' : 'action',
+        // Les autres choix d'une proposition, chacun un geste à cliquer (PLAN-CHOIX.md, lot 3).
+        choix:
+          attente.demande.sorte === 'reaffectation'
+            ? (m.proposition?.choix?.(s, attente.demande.id) ?? [])
+            : [],
         horodatage: l.horodatage,
       }
     })
@@ -344,6 +350,36 @@ export function creerApp(options: {
       maintenant: quand,
       conversation,
     })
+    return c.json({ conversation, reponse })
+  })
+
+  // Un choix offert par le métier sur une proposition, cliqué : le geste sans
+  // traduction, par la même suite qu'une consigne traduite (le rôle, les
+  // personnes, les contrôles, le « oui ») ; rien qu'une consigne ne pourrait
+  // demander. Le libellé est journalisé comme la consigne (PLAN-CHOIX.md, lot 3).
+  app.post('/api/geste', async (c) => {
+    const corps = await lireCorps(c.req.raw)
+    const { libelle, action, params } = corps
+    if (typeof libelle !== 'string' || libelle.trim() === '' || libelle.length > CONSIGNE_MAX) {
+      throw new ErreurRequete(`libelle attendu : ${CONSIGNE_MAX} caractères au plus`)
+    }
+    if (typeof action !== 'string' || action === '') throw new ErreurRequete('action attendue')
+    if (typeof params !== 'object' || params === null || Array.isArray(params)) {
+      throw new ErreurRequete('params attendus : un objet')
+    }
+    if (corps.conversation !== undefined && !ID_CONVERSATION.test(String(corps.conversation))) {
+      throw new ErreurRequete(`conversation inconnue : ${String(corps.conversation)}`)
+    }
+    const identite = entrer(corps.identite, corps.conversation as string | undefined)
+    const quand = maintenant()
+    const conversation = (corps.conversation as string | undefined) ?? idConversation(quand)
+    const reponse = await traiterGeste(
+      m,
+      dossier,
+      modele,
+      { identite, consigne: libelle.trim(), maintenant: quand, conversation },
+      { action, params: params as Record<string, unknown> },
+    )
     return c.json({ conversation, reponse })
   })
 
