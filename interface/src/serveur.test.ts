@@ -627,4 +627,26 @@ describe('un autre choix d’une proposition, cliqué : /api/geste (PLAN-CHOIX.m
     expect((await clic(PATRON, { action: '' })).status).toBe(400)
     expect((await clic(PATRON, { libelle: '' })).status).toBe(400)
   })
+  it('corrigée depuis une autre conversation, l’ancienne n’est plus dans « à valider »', async () => {
+    const remplacante = (await etat()).aValider.confirmations[0]
+    const id = remplacante?.texte.match(/^Proposition (R-\S+)/)?.[1]
+    if (!id) throw new Error('aucune proposition en attente')
+    const ailleurs = (await (
+      await poster(a, '/api/geste', {
+        identite: PATRON,
+        libelle: 'Prendre Mehdi Saïdi pour V-03',
+        action: 'changer_remplacant',
+        params: { demande: id, vacation: 'V-03', jour: null, agent: 'A-9' },
+      })
+    ).json()) as { conversation: string; reponse: Reponse }
+    expect(ailleurs.conversation).not.toBe(premiere.conversation)
+    const nouvelle = ailleurs.reponse.texte.match(/^Proposition (R-\S+) \(remplace (R-\S+)\)/)
+    expect(nouvelle?.[2]).toBe(id)
+    expect((await etat()).aValider.confirmations).toEqual([
+      expect.objectContaining({
+        conversation: ailleurs.conversation,
+        texte: expect.stringMatching(`^Proposition ${nouvelle?.[1]} `),
+      }),
+    ])
+  })
 })

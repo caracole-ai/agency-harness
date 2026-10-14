@@ -67,7 +67,7 @@ const donnees = <T>(l: Ligne): T | undefined =>
 /** Ce que garde une ligne `confirmation_attendue` (la forme écrite par `traiterConsigne`). */
 interface Attente {
   identite: Identite
-  demande: { sorte: 'action' } | { sorte: 'reaffectation'; id: string }
+  demande: { sorte: 'action' } | { sorte: 'reaffectation'; id: string; corrige?: string }
   empreinte: string
 }
 
@@ -120,20 +120,28 @@ function nomDe(m: Metier, s: unknown, identite: Identite): string {
   return nom
 }
 
-/** Les confirmations en attente : la dernière ligne `confirmation_attendue`/`confirmation` de chaque conversation est une attente. */
+/**
+ * Les confirmations en attente : la dernière ligne `confirmation_attendue`/`confirmation`
+ * de chaque conversation est une attente, sauf une proposition qu'une autre a
+ * remplacée (corrigée depuis une autre conversation : son « oui » ne valide plus rien).
+ */
 function confirmationsEnAttente(m: Metier, s: unknown, lignes: Ligne[]) {
   const dernieres = new Map<string, Ligne>()
+  const remplacees = new Set<string>()
   for (const l of lignes) {
     if ((l.type === TYPE_CONFIRMATION_ATTENDUE || l.type === TYPE_CONFIRMATION) && l.objet) {
       dernieres.set(l.objet, l)
     }
+    const demande = l.type === TYPE_CONFIRMATION_ATTENDUE ? donnees<Attente>(l)?.demande : undefined
+    if (demande?.sorte === 'reaffectation' && demande.corrige) remplacees.add(demande.corrige)
   }
   return [...dernieres.values()]
     .filter((l) => l.type === TYPE_CONFIRMATION_ATTENDUE)
     .reverse()
-    .map((l) => {
+    .flatMap((l) => {
       const attente = donnees<Attente>(l)
       if (!attente) throw new Error(`ligne ${l.id} : confirmation attendue sans données`)
+      if (attente.demande.sorte === 'reaffectation' && remplacees.has(attente.demande.id)) return []
       // Une ligne d'avant porte `identite.agent` (PLAN-METIER-2.md M2) : relue sous les deux graphies.
       const identite = IdentiteSchema.parse(attente.identite)
       return {

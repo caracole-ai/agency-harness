@@ -29,6 +29,12 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
   `/api/geste`, sans modèle). Une proposition corrigée n'apprend rien ; la
   nouvelle R-… se rattache à la conversation d'origine par le champ générique
   `corrige`. Deux R-… en attente : « laquelle ? ».
+- **`general/masquer-remplacees`, non fusionnée** (une fusion par session) :
+  une proposition corrigée depuis une autre conversation ne reste plus dans
+  « Confirmations en attente ». L'attente de la nouvelle garde `corrige`,
+  l'interface ne liste pas celle qu'elle remplace ; le « oui » sur l'ancienne
+  répond toujours « remplacée par … ». Vu à 1280 et 390 px. À fusionner
+  (`pnpm check` vert suffit : aucun modèle en jeu).
 - **Dernières mesures (Sonnet, `evals/resultats/apparie-2026-10-14-s9-*`)** :
   traduction 120 contre 119 sur les cas communs, cas neufs 12/12,
   `liberer_un_jour` 3/3, gestes 6/6, échappée de la sécurité 18/18 ; agence
@@ -64,9 +70,6 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
-- Une proposition corrigée depuis une autre conversation reste dans
-  « Confirmations en attente » de la sienne : son « oui » refuse
-  (« remplacée par … »), elle n'offre plus de choix ; à masquer.
 - À Lionel : R-2 (« Aisha ») fuit à chaque passe : le niveau 2 de `designer`
   envoie au modèle les candidats avec leur nom, contre « aucun nom ne part au
   modèle ».
