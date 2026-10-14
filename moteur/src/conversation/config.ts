@@ -24,16 +24,21 @@ export const ConversationSchema = z.strictObject({
     }),
     effort: z.strictObject({ traduire: z.enum(EFFORTS), echappee: z.enum(EFFORTS) }),
     /**
-     * Un point d'accès au format Anthropic autre que celui d'Anthropic (GMI Cloud…).
+     * Un point d'accès au format Anthropic autre que celui d'Anthropic (GMI
+     * Cloud…), ou l'abonnement claude.ai par le binaire de Claude Code (son nom
+     * ou un chemin ; aucune clé, ANTHROPIC_API_KEY absente : PLAN-RONDE.md § 0.a).
      * Absent : l'API d'Anthropic, la clé dans `ANTHROPIC_API_KEY`.
      */
     acces: z
-      .strictObject({
-        url: z.url(),
-        authentification: z.enum(AUTHENTIFICATIONS),
-        /** Le nom de la variable d'environnement qui porte la clé, jamais la clé elle-même. */
-        variable_cle: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
-      })
+      .union([
+        z.strictObject({
+          url: z.url(),
+          authentification: z.enum(AUTHENTIFICATIONS),
+          /** Le nom de la variable d'environnement qui porte la clé, jamais la clé elle-même. */
+          variable_cle: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
+        }),
+        z.strictObject({ binaire: z.string().min(1) }),
+      ])
       .optional(),
   }),
   plafonds: z.strictObject({

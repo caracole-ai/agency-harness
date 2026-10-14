@@ -15,9 +15,9 @@ const section = () =>
 describe('ConversationSchema', () => {
   it('la config du client fictif passe', () => {
     const c = ConversationSchema.parse(section())
-    expect(c.modele.id).toBe('zai-org/GLM-5.3')
-    expect(prixDe(c)).toEqual({ entree: 1.4, sortie: 4.4, cacheEcrit: 0, cacheLu: 0.26 })
-    expect(c.modele.acces?.variable_cle).toBe('GMI_API_KEY')
+    expect(c.modele.id).toBe('claude-sonnet-5-5')
+    expect(prixDe(c)).toEqual({ entree: 2, sortie: 10, cacheEcrit: 4, cacheLu: 0.1 })
+    expect(c.modele.acces).toEqual({ binaire: 'claude' })
   })
   it('une clé inconnue refuse', () => {
     const s = section() as Record<string, unknown>
@@ -80,5 +80,15 @@ describe('ConversationSchema', () => {
         variable_cle: 'eyJhbGciOi.la-cle-elle-meme',
       }),
     ).toBe(false)
+  })
+  it('l’abonnement : un binaire nommé, rien d’autre', () => {
+    const avec = (acces: unknown) => {
+      const s = section() as { modele: Record<string, unknown> }
+      s.modele.acces = acces
+      return ConversationSchema.safeParse(s).success
+    }
+    expect(avec({ binaire: 'claude' })).toBe(true)
+    expect(avec({ binaire: '' })).toBe(false)
+    expect(avec({ binaire: 'claude', variable_cle: 'GMI_API_KEY' })).toBe(false)
   })
 })
