@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { type ConfigConversation, VARIABLE_CLE_ANTHROPIC } from '../conversation/config'
+import { modeleAbonnement } from './abonnement'
 import type { Modele, UsageModele } from './modele'
 
 // L'adaptateur du SDK officiel d'Anthropic (PLAN-ESPACES.md § 4.2). Un appel,
@@ -82,14 +83,19 @@ export function usageBorne(requete: unknown, maxTokens: number): UsageModele {
 }
 
 /**
- * Le modèle que nomme la config du client, avec sa clé lue dans la variable
- * qu'elle désigne. Une variable absente arrête, avec ce qu'il faut faire.
+ * Le modèle que nomme la config du client : par l'abonnement si elle nomme un
+ * binaire, sinon avec sa clé lue dans la variable qu'elle désigne. Une
+ * variable absente arrête, avec ce qu'il faut faire.
  */
 export function modeleDepuisConfig(
   config: ConfigConversation,
   env: Record<string, string | undefined>,
 ): Modele {
   const acces = config.modele.acces
+  const delaiMs = config.plafonds.par_demande.secondes * 1000
+  if (acces && 'binaire' in acces) {
+    return modeleAbonnement(config.modele.id, acces.binaire, delaiMs, env)
+  }
   const variable = acces?.variable_cle ?? VARIABLE_CLE_ANTHROPIC
   const cle = env[variable]
   if (!cle) {
@@ -99,6 +105,6 @@ export function modeleDepuisConfig(
     config.modele.id,
     cle,
     acces ? { url: acces.url, bearer: acces.authentification === 'bearer' } : undefined,
-    config.plafonds.par_demande.secondes * 1000,
+    delaiMs,
   )
 }

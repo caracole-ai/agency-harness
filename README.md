@@ -152,6 +152,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `src/modele/` (l'accès au modèle derrière une interface à nous, `Modele` ;
   l'adaptateur du SDK d'Anthropic, délai lu dans la config, un appel long
   en flux avec une borne haute du coût quand le fournisseur ne compte pas ;
+  celui de l'abonnement, `abonnement.ts`, par le binaire de Claude Code
+  isolé comme la ronde : la conversation part en texte, le tour revient en
+  sortie structurée, les outils restent exécutés par le moteur ;
   l'adaptateur simulé des tests ; le coût d'un appel et le coût du mois lu
   dans le journal) et
   `src/conversation/config.ts` (la section `conversation` de la config
@@ -168,13 +171,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `src/conversation/noms.ts` (`Designable`, avec sa `sorte` : personne ou
   organisation ; `m.noms(s)` rend tout nom qui ne part jamais au modèle),
   `src/conversation/domaine.ts` (`PLAN-METIER-2.md` M7 : le domaine que disent
-  les prompts du moteur, déclaré par le métier),
+  les prompts du moteur, déclaré par le métier, et ses notions : ce que le
+  métier entend par ses mots, que l'échappée dit après les tables),
   `src/conversation/tableau.ts` (M10 : `Tableau`, ce que l'interface montre
   d'un métier), `src/cli/metier.ts` (M10 : `metierDe`, `moduleDe` : le
   métier d'un dossier client, chargé depuis `config.yaml: metier` par
   toutes les CLI et l'interface), `src/conversation/traduire.ts` (une consigne → une action,
-  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
-  modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
+  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai, au
+  plafond de la demande dans la config ; le modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
   niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
   de la mention à départager),
   `src/personnes/personnes.ts` (le registre d'accès, `personnes.yaml` dans le
@@ -241,7 +245,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `gestes/<id>.yaml` écrit au statut proposé si zéro écart. Une intention qui
   écrit se fabrique depuis ses propositions validées par le patron (les
   consignes masquées, les requêtes, les vérifications, les réaffectations en
-  identifiants) ; son rejeu compare les réaffectations, pas un texte : les
+  identifiants, et les règles et préférences que le métier déclare pour une
+  proposition, `PropositionMetier.criteres`) ; son rejeu compare les réaffectations, pas un texte : les
   mêmes vacations, chacune à un agent que le patron a validé pour elle.
   `promouvoir.ts` enchaîne pour `pnpm promotions` : hors catalogue, rien
   n'est tenté ; sinon fabrication, écriture, puis la passe de traduction
@@ -433,9 +438,11 @@ pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maint
                          # config, sauf --modele simule (aucun appel). Sur une COPIE du client fictif
                          # Le modèle et sa clé viennent de la config (`conversation.modele`) :
                          # sans `acces`, l'API d'Anthropic et ANTHROPIC_API_KEY ; avec `acces`, un
-                         # autre point d'accès au même format et la variable qu'il nomme. Le client
-                         # fictif désigne GLM-5.3 chez GMI Cloud (GMI_API_KEY), la référence
-                         # jusqu'à nouvel ordre (2026-10-08)
+                         # autre point d'accès au même format et la variable qu'il nomme, ou
+                         # `{ binaire: claude }`, l'abonnement par le binaire (ANTHROPIC_API_KEY
+                         # absente, coût estimé). Les clients fictifs désignent Sonnet 5.5 par
+                         # l'abonnement, la référence depuis le 2026-10-14 (GLM-5.3 chez GMI
+                         # Cloud avant)
 pnpm promotions --client <copie> [--date 2026-10-08] [--sans-modele]
                          # le coût de l'IA du mois et son plafond, les demandes nouvelles par
                          # intention (échappées finies proprement) ; au seuil, le modèle fabrique

@@ -296,6 +296,25 @@ describe('le plafond du mois', () => {
   })
 })
 
+describe('le plafond de la traduction', () => {
+  it('celui de la demande dans la config, jamais un nombre en dur', async () => {
+    const s = session()
+    const { modele } = await tour(s, PATRON, [{ texte: 'x' }])
+    expect(modele.appels[0]?.maxTokens).toBe(
+      s.config.conversation?.plafonds.par_demande.tokens_sortie,
+    )
+  })
+})
+
+describe('les critères d’une proposition', () => {
+  it('les préférences du client dans son ordre, définies comme le code les calcule, puis le départage par numéro', () => {
+    const c = CONVERSATION.proposition?.criteres(session())
+    expect(c?.preferences).toBe(
+      "d'abord un agent qui connaît déjà le site (il y a fait une vacation, finie avant le début de celle-ci), puis celui qui a le moins d'heures dans la semaine de la vacation (ses autres vacations, comptées du lundi 0 h au lundi suivant 0 h) ; à égalité, le numéro d'agent le plus bas (A-2 avant A-10)",
+    )
+  })
+})
+
 describe('les gestes de veille', () => {
   it('lancer_veille rend le rapport et écrit la veille au journal', async () => {
     const s = session()

@@ -378,6 +378,30 @@ describe('promouvoir', () => {
     expect(Object.keys(appel?.outils[0]?.input_schema.properties ?? {})).toContain('modifications')
     METIER.fermer(s)
   })
+  it('une intention qui écrit : la fabrication reçoit les règles et les préférences que le métier déclare pour ses propositions', async () => {
+    const s = dossierAvecPropositions()
+    const avecCriteres: MetierConversation<Session> = {
+      ...METIER,
+      proposition: {
+        ouvrir: () => ({ id: 'R-1', texte: '' }),
+        valider: () => '',
+        criteres: () => ({
+          regles: [{ id: 'I-01', nom: 'carte professionnelle valide' }],
+          preferences: "d'abord un agent qui connaît déjà le site",
+        }),
+      },
+    }
+    const modele = modeleSimule([proposer(PROPOSE_LIBERER)])
+    await promouvoir(avecCriteres, s, s.dossier, auSeuil(s, 'liberer_un_jour'), MAINTENANT, 30, {
+      modele,
+    })
+    const systeme = modele.appels[0]?.systeme ?? ''
+    expect(systeme).toContain('- I-01 — carte professionnelle valide')
+    expect(systeme).toContain(
+      "pour choisir entre des propositions qui respectent toutes les règles : d'abord un agent qui connaît déjà le site.",
+    )
+    METIER.fermer(s)
+  })
   it('une intention qui écrit : un rejeu qui ajoute une modification est un écart de fond', async () => {
     const s = dossierAvecPropositions()
     const { fabrication } = await promouvoir(

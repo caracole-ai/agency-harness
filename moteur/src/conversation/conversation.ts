@@ -1,6 +1,6 @@
 import { empreinte } from '../approbation/jeton'
 import type { TableCopie } from '../echappee/copie'
-import type { Echappee } from '../echappee/echappee'
+import type { CriteresProposition, Echappee } from '../echappee/echappee'
 import { masquerConsigne, type Precision } from '../echappee/pseudonymes'
 import { verifierReponse } from '../echappee/reponse'
 import { actionApprise } from '../gestes/action-apprise'
@@ -131,6 +131,8 @@ export interface PropositionMetier<Session> {
   ): { id: string; texte: string }
   /** Le demandeur a dit oui : la clé sur le contenu exact, puis les demandes d'accord du métier. Rend le texte. */
   valider(s: Session, id: string, maintenant: Temporal.ZonedDateTime): string
+  /** Les règles et les préférences d'une proposition, celles que l'échappée montre : la fabrication d'un geste qui écrit les reçoit aussi. */
+  criteres(s: Session): CriteresProposition
 }
 
 export type Reponse =
@@ -376,6 +378,7 @@ async function avantLeDossier<S>(
       traduite = await traduire(
         modele,
         config.modele.effort.traduire,
+        config.plafonds.par_demande.tokens_sortie,
         systemeTraduire(roleDe(m.roles, tour.identite), m.domaine, actions, intentions),
         outilsDe(toutes, role, m.domaine),
         tour.consigne,
@@ -644,6 +647,7 @@ export async function resoudre<S>(
           choix = await designer(
             modele,
             config.modele.effort.traduire,
+            config.plafonds.par_demande.tokens_sortie,
             tour.consigne,
             mention,
             liste,

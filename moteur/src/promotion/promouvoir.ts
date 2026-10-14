@@ -133,6 +133,7 @@ async function fabriquer<S>(
     personnes: m.noms(s),
     declarations: m,
     domaine: m.domaine,
+    ...(intention.ecrit && m.proposition ? { criteres: m.proposition.criteres(s) } : {}),
     journal,
     dossierClient,
     copieVide,

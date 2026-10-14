@@ -275,10 +275,36 @@ describe('systemeFabriquer et messageFabriquer', () => {
     expect(s).toContain(
       'Les rôles : patron seulement ; les autres ne proposent pas de modification.',
     )
+    expect(s).not.toContain('Les règles qu’une proposition doit respecter')
+    // Ce que vérifie le rejeu (`rejouerTest`), dit au modèle : S8, `liberer_un_jour`.
+    expect(s).toContain(
+      'Si le patron a validé, dans des demandes différentes, des modifications différentes de la même chose, chacune convient : le geste en rend une seule, n’importe laquelle, et ne cherche pas de règle qui les reproduise toutes.',
+    )
     const { operation: _o, ...sansOperation } = DECLARATIONS_EXEMPLE
     expect(() =>
       systemeFabriquer({ ...INTENTION, ecrit: true }, [], '', [], sansOperation, DOMAINE),
     ).toThrow('ce métier n’écrit pas par un geste appris')
+  })
+  it('une intention qui écrit : les règles et les préférences que l’échappée a montrées, s’il les déclare ; une lecture, jamais', () => {
+    const criteres = {
+      regles: [{ id: 'I-01', nom: 'carte professionnelle valide' }],
+      preferences: "d'abord un agent qui connaît déjà le site",
+    }
+    const s = systemeFabriquer(
+      { ...INTENTION, ecrit: true },
+      ['patron'],
+      'Table vacations : …',
+      [],
+      DECLARATIONS_EXEMPLE,
+      DOMAINE,
+      criteres,
+    )
+    expect(s).toContain(
+      "les préférences exprimées) se code en SQL.\n\nLes règles qu’une proposition doit respecter :\n- I-01 — carte professionnelle valide\n\nLes préférences de l’entreprise, pour choisir entre des propositions qui respectent toutes les règles : d'abord un agent qui connaît déjà le site.\n\nLa réponse : tableau",
+    )
+    const lecture = (c?: typeof criteres) =>
+      systemeFabriquer(INTENTION, ['patron'], '', [], DECLARATIONS_EXEMPLE, DOMAINE, c)
+    expect(lecture(criteres)).toBe(lecture())
   })
   it('un autre métier : son cadre, ses types, ses rôles, et aucune phrase de la sécurité', () => {
     const autre: DeclarationsGeste = {

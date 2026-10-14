@@ -154,4 +154,7 @@ describe('modeleDepuisConfig', () => {
     ).toThrow('variable GMI_API_KEY absente : exporter la clé, ou passer --modele simule')
     expect(() => modeleDepuisConfig(config(), {})).toThrow('variable ANTHROPIC_API_KEY absente')
   })
+  it('un binaire nommé : l’abonnement, sans clé', () => {
+    expect(modeleDepuisConfig(config({ binaire: 'claude' }), {}).id).toBe('zai-org/GLM-5.3')
+  })
 })

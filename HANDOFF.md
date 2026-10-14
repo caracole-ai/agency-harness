@@ -7,6 +7,28 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-14 : session S8 (les trois problèmes ouverts, « règle tout ça
+  d'abord ») ; fusionnée dans `main` et poussée après la quatrième mesure.** Code `875ce1a`, règle `b2ad779` : le plafond de la traduction
+  lu dans la config ; `Domaine.notions` (l'agence en déclare cinq) ;
+  `PropositionMetier.criteres` (la fabrication d'un geste qui écrit reçoit
+  règles et préférences) ; client fictif à 20 000 tokens et 420 s par
+  demande. Mesure : sécurité **18/18** deux fois ; agence 15 et 17 (E2 verts
+  8/10, base 3/10 ; E-15 et E-20 tronqués) ; **`liberer_un_jour` 0/3**, la
+  fabrication encore tronquée : le prompt exige de reproduire des
+  validations contradictoires que le rejeu accepte déjà. GLM 1,97 $. Une
+  suite (`aa060ac`, règle `ba52e8a`) : la fabrication dit ce que le rejeu
+  accepte, la notion bug ou évolution corrigée, l'agence à 20 000 / 420 s ;
+  sa mesure est interrompue : crédit GMI épuisé (402). Puis, demande de
+  Lionel, **Sonnet 5.5 par l'abonnement remplace GLM** (`3fb0728`,
+  `modele/abonnement.ts`) ; une troisième mesure, appariée sur ce modèle
+  (base = `main` + l'adaptateur) : agence **33 contre 30**, E2 6/10 contre
+  3/10, fuite 0 ; mais `liberer_un_jour` 0/3 (les échappées ne
+  choisissent pas le même remplaçant d'une fois à l'autre). Solution 1 de
+  Lionel (`72a58c2`) : la sécurité déclare ses préférences comme son code
+  les calcule, puis un départage par numéro d'agent ; quatrième mesure :
+  **`liberer_un_jour` 3/3, sécurité 36 contre 36, fuite 0 : fusionnée et
+  poussée.** Détail : « Session S8 ».
+
 - **2026-10-14 : session S7 faite (l'efficience des évals, demande de
   Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
   (f) vraies ; fusionnée dans `main` et poussée.** `general/efficience` :
@@ -3840,6 +3862,329 @@ E-08, E-12, E-18, E-20 sont les cinq étiquettes qui demandent plus que la
 question (E1 de `evals/erreurs-2026-10-13.md`) : la concision voulue par
 Lionel va contre elles. Sans `main` apparié, l'écart avec S6 (−1) ne se
 distingue pas du tirage.
+
+### Session S8 : les trois problèmes ouverts (2026-10-14)
+
+Demande de Lionel : « règle tout ça d'abord » : `liberer_un_jour` (0/3),
+`MAX_TOKENS_TRADUIRE = 4096` en dur, les règles de l'échappée de l'agence
+(`regles: []`). Branche `general/ouverts`.
+
+**Choix faits faute de consigne :**
+
+- **La traduction** : `traduire` et `designer` reçoivent le plafond de la
+  demande (`plafonds.par_demande.tokens_sortie`), comme l'échappée ; la
+  constante disparaît. Pas de seuil à part : seul ce qui est produit se paie,
+  et une traduction tient sous 4 096 tokens sauf troncature (P16-1).
+- **L'agence : des notions, pas des règles.** Le mode E2 (8 rouges sur 22)
+  vient de mots que le modèle lit à sa façon (« à valider », « bug ou
+  évolution », « la prod », « à révoquer »), pas d'une règle de proposition :
+  l'agence ne propose rien. `Domaine.notions` (optionnel) : ce que le métier
+  entend par ses mots, dans les termes des tables ; l'échappée les dit après
+  les tables, qu'elle propose ou non. L'agence en déclare cinq, tirées de sa
+  fiche (§ 5, I-04, I-05) et de l'entretien (questions 5, 16, 17) ; la
+  sécurité aucune, son système ne change pas d'un octet. Ce qu'une bonne
+  réponse contient, par intention (E1), reste à Lionel : les notions disent
+  le sens des mots, pas le contenu d'une réponse.
+- **`liberer_un_jour` : deux causes, deux corrections.**
+  - La fabrication ne recevait ni les règles ni les préférences que
+    l'échappée avait montrées, alors que son système dit « les préférences
+    exprimées se codent en SQL » : sa réflexion (112 000 caractères, coupée à
+    40 000 tokens) cherche à deviner pourquoi le patron a pris A-11 (une
+    fenêtre de 48 h, l'agent le plus proche…). `PropositionMetier.criteres`
+    : le métier déclare une fois les règles et les préférences d'une
+    proposition ; l'échappée de la sécurité et la fabrication d'un geste qui
+    écrit les lisent. Une lecture ne change pas.
+  - Le plafond de la demande coupe l'échappée qui propose : la plus longue
+    réussie fait 10 337 tokens, 2 coupées à 12 000 sur 15 (S7), et autant
+    au rejeu de la promotion. Les lectures restent sous 6 527 (p95,
+    sécurité) et 4 532 (agence). `exemples/client-fictif/config.yaml` passe
+    à `tokens_sortie: 20000` (≈ 2 × la plus longue réussie) et
+    `secondes: 420` (20 000 au débit le plus lent observé sur les longues,
+    47 tokens/s) ; la règle 7 levée pour cette ligne par « règle tout ça »,
+    après l'autorisation du jour sur la ligne de la fabrication. L'agence
+    garde 12 000 : aucune de ses échappées n'en approche.
+
+**La règle de la mesure, écrite avant la mesure.** Le code mesuré est la
+tête de `general/ouverts`, ce commit compris.
+
+- **Au modèle simulé (sans dépense), `main` contre le lot** : les entrées du
+  premier appel (système, outils, message) sont identiques octet pour octet
+  sur les 60 cas de traduction et les 18 d'échappée de la sécurité ; celles
+  de l'échappée de l'agence ne diffèrent que par le bloc des notions.
+- **(a) La fabrication de `liberer_un_jour`** : trois passes de `pnpm evals
+  promotion --seulement liberer_un_jour` sur une copie du client fictif
+  (sa config, celle du lot). Base : 0/3 (C), 0/3 (S7). Vraie si au moins une
+  passe écrit le geste avec zéro écart. Comptés à part : les troncatures de
+  la fabrication et celles des échappées rejouées.
+- **(b) L'échappée de l'agence** : deux passes sur le lot. Base S7 (même
+  code sans les notions) : 16 et 16/24, les cinq cas E2 (E-05, E-16, E-17,
+  E-28, EP-16) verts 3 fois sur 10. Vraie si le total des deux passes ≥ 32,
+  les cas E2 verts plus de 3 fois sur 10, fuite 0.
+- **(c) L'échappée de la sécurité** : deux passes sur le lot (le système ne
+  change pas, seul le plafond). Vraie si aucune troncature, fuite 0, E-14
+  vert, et chaque passe ≥ 17/18 − 1 (le bas de S7 sur le lot).
+- `pnpm check` vert, gestes 6/6.
+
+Une condition fausse : on ne fusionne pas, et on ne corrige rien dans la
+session. Plafond de GLM : 3 $ (prévu ≈ 2,0 $ en moyenne, 2,7 $ au plus,
+d'après S7 : `liberer_un_jour` 0,11 à 0,30 $ la passe, borne 0,55 $ avec les
+nouveaux plafonds ; agence 0,24 à 0,29 $ ; sécurité 0,14 à 0,18 $). Le
+crédit est sondé avant chaque série ; à court, on s'arrête avant la fusion.
+
+**La mesure** (14/10 14:33 → 15:21, crédit sondé avant, 200, aucun 402 ;
+arbres détachés dans le scratchpad, `main` = `418e623`, lot = `b2ad779` ;
+`evals/traces/apparie-2026-10-14-s8/` : script, manifeste, traces simulées
+et réelles ; résultats `evals/resultats/apparie-2026-10-14-s8-*`). Une
+seconde série lancée par erreur à 14:33:42 a été arrêtée après ≈ 20 s :
+quelques appels payés en double, aucun résultat écrit ; le journal texte de
+la passe de fabrication 1 est perdu (son résultat et ses traces restent).
+
+- Au modèle simulé : traduction 60/60 et échappée de la sécurité 18/18
+  identiques octet pour octet ; agence 24/24 diffèrent par le seul bloc des
+  notions. **Vraie.**
+- **(a) Fausse** : `liberer_un_jour` 0/3, chaque fabrication tronquée à
+  40 000 tokens (106 000 à 119 000 caractères de réflexion). Progrès : les
+  rejeux d'échappée atteignent le seuil aux trois passes (une sur trois en
+  S7), aucune troncature d'échappée ; le système porte les règles et les
+  préférences. **La cause, lue dans les trois réflexions** : les échappées
+  rejouées ne valident pas le même agent pour la même vacation (V-03 à A-11
+  dans une demande, à A-9 dans une autre) ; le système de la fabrication
+  dit « exactement les modifications validées, chacune telle que le patron
+  l'a validée », et le modèle cherche une règle qui reproduise des choix
+  contradictoires (« ARGH », « the gesture can't match both »). Or le rejeu
+  (`rejouerTest`) accepte déjà, pour un objet, toute modification validée
+  dans un test du geste : le prompt est plus strict que la porte. La
+  troisième passe trouve une règle cohérente à la fin, coupée avant l'appel.
+- **(b) Vraie** : agence 15 et 17/24 (32, base 32) ; les cas E2 verts 8 fois
+  sur 10 (base 3) : E-05, E-17, E-28, EP-16 verts aux deux passes, E-16
+  rouge (TK-1005). Fuite 0. Mais E-15 rouge aux deux passes (vert en S7) et
+  E-20 une fois : la réflexion s'allonge avec les notions (E-15 : 6 616 à
+  12 000 tokens, S7 1 433 à 2 325 ; E-20 : 12 000, S7 ≈ 3 500), coupée au
+  plafond de temps (240 s) puis de tokens (12 000) de l'agence.
+- **(c) Vraie** : sécurité 18/18 aux deux passes (première fois), aucune
+  troncature, fuite 0, E-14 vert.
+- `pnpm check` vert ; gestes non rejoués (aucun geste ne change).
+
+**Une condition fausse : la branche n'est pas fusionnée**, rien n'est
+corrigé dans la session (la règle). Coût GLM : **1,97 $** affichés
+(fabrication 0,93, agence 0,73, sécurité 0,31), sous le plafond de 3 $ ;
+le crédit restant n'est pas sondé.
+
+**La suite proposée, à mesurer sous une règle neuve :**
+- Le système de la fabrication d'un geste qui écrit dit ce que la porte
+  vérifie : quand le patron a validé, pour le même objet, des modifications
+  différentes dans des demandes différentes, chacune convient, et le geste
+  en rend une (`rejouerTest`). Sans métier.
+- L'agence : son plafond par demande (12 000, 240 s) contre la réflexion
+  plus longue des notions (E-15, E-20), ou des notions plus courtes ; à
+  calibrer sur ces traces.
+
+**La suite, demandée par Lionel (« ok, tiens-moi au courant »), même
+branche.** Code en `aa060ac` :
+- la fabrication d'un geste qui écrit dit ce que `rejouerTest` accepte
+  déjà : des modifications différentes de la même chose, validées dans des
+  demandes différentes, conviennent chacune ; le geste en rend une ;
+- la notion « bug ou évolution » de l'agence, cause d'E-15 (lue dans les
+  deux traces : le modèle reclasse les 300 tickets par recette au lieu de
+  lire `tickets.type`) : le type saisi est la qualification d'une personne,
+  la règle la vérifie quand on demande « bug ou évolution ? », elle ne la
+  remplace pas ailleurs ;
+- l'agence passe à 20 000 tokens et 420 s par demande, le calibrage de la
+  sécurité (E-20 coupé à 12 000 sans lien avec les notions ; E-15 au plafond
+  de temps, GMI à 18 tokens/s).
+
+**La règle de la seconde mesure, écrite avant elle.** `main` = `418e623`,
+le lot = la tête de `general/ouverts`, ce commit compris.
+- Au modèle simulé : traduction (60) et échappée de la sécurité (18)
+  identiques octet pour octet à `main` ; l'agence ne diffère que par le
+  bloc des notions. L'échappée de la sécurité n'est pas rejouée avec
+  modèle : ses entrées et ses plafonds sont ceux mesurés plus haut (18/18
+  deux fois).
+- **(a)** `liberer_un_jour`, trois passes comme plus haut : vraie si au
+  moins une passe écrit le geste avec zéro écart.
+- **(b)** l'agence, deux passes : vraie si le total ≥ 32 (S7 et la première
+  mesure), les cas E2 verts au moins 6 fois sur 10, fuite 0. Comptés à
+  part : E-15, E-20 et les troncatures.
+- `pnpm check` vert.
+
+Une condition fausse : on ne fusionne pas, rien n'est corrigé ensuite dans
+la session. Plafond de GLM : 3 $ (prévu ≈ 1,7 $ en moyenne, 2,9 $ au plus :
+fabrication 0,26 à 0,34 $ la passe, agence ≈ 0,37 $, davantage au plus avec
+le plafond relevé). Crédit sondé avant.
+
+**La seconde mesure, interrompue : le crédit GMI est épuisé** (14/10
+15:48 → 15:59, sonde 200 avant ; 402 « Insufficient balance » dès E-16 de
+la première passe de l'agence). Préalable simulé vrai (60/60, 18/18,
+l'agence par le seul bloc des notions). Résultats
+`evals/resultats/apparie-2026-10-14-s8b-*` (`-402` : passes coupées),
+traces `evals/traces/apparie-2026-10-14-s8b/`. Dépense : 0,43 $.
+- (a) une seule passe jouée entière : `liberer_un_jour` tronqué à 40 000
+  (124 748 caractères). La phrase agit : le modèle la cite (21 fois),
+  renonce à reproduire les choix contradictoires et arrive à un geste
+  cohérent (requête, description), puis use la fin à revérifier son SQL.
+  **Un geste qui écrit demande plus de 40 000 tokens sur GLM** ; à
+  calibrer (≈ 3,1 caractères par token ici).
+- (b) non mesurée. Avant le 402 : E-15 vert (rouge deux fois à la première
+  mesure), E-05, E-08, E-09, E-14 verts ; E-03 (contrôle), E-12 (E1) et
+  E-04 rouges. **Nouveau mode, E-04** : le modèle lit le rappel de la
+  boucle (« termine par un appel d'outil ») comme un message du demandeur
+  et abandonne (« le message ne fait que rappeler la règle de
+  terminaison ») ; vu aussi dans une trace d'E-20 (première mesure).
+- Ni fusion ni correction : la mesure n'a pas eu lieu. **À Lionel :
+  recharger le crédit GMI** ; puis rejouer cette règle telle quelle (elle
+  n'a pas été jugée) avant toute autre correction.
+
+**Sonnet 5.5 par l'abonnement, à la place de GLM** (Lionel, après la
+recharge : « pour arrêter de consommer du token sur GMI tu vas remplacer
+GLM5.3 par sonnet 5.5 de mon abonnement »). Code en `3fb0728` :
+`conversation.modele.acces` accepte `{ binaire: claude }` ;
+`moteur/src/modele/abonnement.ts` lance le binaire isolé comme la ronde
+(préflight `claude auth status`, ANTHROPIC_API_KEY absente, ni réglages ni
+hooks ni outil de Claude Code, dossier vide) ; la conversation part en
+texte, tour par tour, le tour revient en sortie structurée au schéma des
+outils du moteur, qui les exécute lui-même ; le plafond de l'appel passe
+par `CLAUDE_CODE_MAX_OUTPUT_TOKENS`. Essai réel avant la règle : E-05 et
+P-ABS-1 verts, fuite 0.
+
+**Choix faits faute de consigne :**
+- Les deux clients fictifs passent à `claude-sonnet-5-5` (la règle 7 levée
+  pour les lignes du modèle par la demande de Lionel). Prix estimés,
+  déduits du coût que rapporte le binaire (2 / 10 $ par million, écriture
+  de cache à 1 h 4 $, lecture 0,1 $) : l'abonnement ne facture pas à
+  l'appel, le plafond du mois compte en équivalent API.
+- Les plafonds restent ceux calibrés pour GLM : seul ce qui est produit
+  compte, et Sonnet réfléchit moins long (E-05 : 1 091 tokens de sortie).
+- La règle `ba52e8a` ne se rejoue pas telle quelle : ses bases (S7, la
+  première mesure) sont des passes GLM. Elle est remplacée par une mesure
+  appariée sur le même modèle.
+
+**La règle de la troisième mesure, écrite avant elle.** Le lot = la tête
+de `general/ouverts`, ce commit compris ; la base = `main` (`418e623`) +
+`3fb0728` seul (l'adaptateur et les configs), arbre détaché. Même modèle,
+même abonnement, en même temps.
+- Au modèle simulé : traduction (60) et échappée de la sécurité (18)
+  identiques octet pour octet entre base et lot ; l'agence ne diffère que
+  par le bloc des notions. L'échappée de la sécurité n'est pas rejouée
+  avec modèle (ses entrées ne changent pas, son plafond monte).
+- **(a)** `liberer_un_jour`, trois passes sur le lot : vraie si au moins
+  une écrit le geste avec zéro écart. Comptées à part : les troncatures de
+  la fabrication et des rejeux.
+- **(b)** l'agence, deux passes sur la base et deux sur le lot : vraie si
+  le total du lot ≥ celui de la base, les cas E2 (E-05, E-16, E-17, E-28,
+  EP-16) verts sur le lot au moins autant de fois que sur la base, fuite 0
+  partout. Comptés à part : E-04, E-15, E-20 et les troncatures.
+- `pnpm check` vert.
+
+Une condition fausse : on ne fusionne pas, rien n'est corrigé ensuite dans
+la session. Coût : aucun débit à l'appel ; en équivalent API estimé
+≈ 1,3 $ la passe de l'agence (E-05 : 0,055 $) et ≈ 0,5 $ la fabrication,
+≈ 6,7 $ en tout, pris sur les limites de l'abonnement.
+
+**La troisième mesure** (14/10 17:10 → 17:19, Sonnet 5.5 par l'abonnement,
+aucune panne ; base = `main` + `3fb0728`, lot = `deaddf9`, arbres détachés
+dans le scratchpad ; `evals/traces/apparie-2026-10-14-s8c/` : script,
+manifeste, journaux, traces ; résultats `evals/resultats/apparie-2026-10-14-s8c-*`).
+- Au modèle simulé : traduction 60/60 et sécurité 18/18 identiques octet
+  pour octet, l'agence 24/24 diffère par le seul bloc des notions. **Vraie.**
+- **(a) Fausse** : `liberer_un_jour` 0/3, sans troncature ni panne (sortie
+  de la fabrication 2 551 à 5 085 tokens : Sonnet réfléchit court). La
+  cause, lue dans les trois traces : les échappées rejouées ne choisissent
+  pas le même remplaçant d'une fois à l'autre (V-03 : A-2, A-9, A-11 ;
+  V-07 : A-2, A-11), « connaît le site, le moins chargé » ne désigne pas un
+  agent unique, et la règle que déduit le modèle (connaît le site, puis
+  heures de la semaine, puis identifiant) tombe sur un agent jamais validé
+  (A-2, A-11, A-1). Passe 3 : deux tests sur trois rejoués justes, V-07
+  rendu à A-1 où l'échappée a validé A-11. Non vérifié : pourquoi
+  l'échappée écarte A-1.
+- **(b) Vraie** : lot 16 + 17 = 33, base 15 + 15 = 30 ; cas E2 verts 6 fois
+  sur 10 sur le lot (E-05, E-17, EP-16 aux deux passes), 3 sur la base ;
+  fuite 0 partout. E-15 vert aux quatre passes ; E-04 rouge aux quatre (le
+  mode « rappel lu comme message » de GLM ne s'y voit pas : « ne contient
+  pas 12 ») ; E-20 vert une fois sur le lot. EP-18 rouge une fois sur le
+  lot : le piège déjoué et signalé, mais la chaîne citée dans l'explication.
+- `pnpm check` vert.
+
+**Une condition fausse : la branche n'est pas fusionnée**, rien n'est
+corrigé dans la session. Coût en équivalent API estimé : 3,18 $
+(fabrication 0,86, agence lot 1,16, base 1,17), aucun débit. Les tableaux
+disent « coût réel » : sous l'abonnement, c'est une estimation (libellé à
+corriger).
+
+**À Lionel / la suite :**
+- `liberer_un_jour` : la fabrication ne peut reproduire qu'un choix
+  déterministe ; tant que l'échappée choisit le remplaçant au hasard parmi
+  des égaux, deux voies, à arbitrer : que le métier déclare un départage
+  complet (préférences jusqu'à un agent unique, dans `criteres`), ou que
+  le rejeu accepte tout agent qui satisfait les règles et les préférences
+  déclarées, pas seulement ceux validés (la porte changerait de sens :
+  à Lionel).
+- Libellé « coût réel » sous l'abonnement.
+
+**La solution 1, choisie par Lionel (« go pour la solution 1 ») : le métier
+déclare un départage complet.** Code en `72a58c2`, dans la sécurité seule
+(`metiers/securite-privee/code/src/conversation.ts`) :
+- les deux préférences dites comme `remplacement.ts` les calcule : « connaît
+  le site » = une vacation sur ce site finie avant le début de celle-ci ;
+  « le moins d'heures dans la semaine » = ses autres vacations, du lundi 0 h
+  au lundi suivant 0 h (des échappées comptaient autrement : A-9 à 16 h
+  choisi contre A-2 et A-11 à 0 h) ;
+- puis, à égalité, le numéro d'agent le plus bas (A-2 avant A-10). Par
+  identifiant, pas par nom : le modèle ne voit que les identifiants (le mot
+  « petit », nom d'un agent fictif, a été refusé par le contrôle des fuites
+  et reformulé).
+
+**Choix faits faute de consigne :** le geste codé `gerer_absence` départage
+toujours par ordre alphabétique du nom (`classer`) ; il n'est pas touché
+(ses tests et ses étiquettes en dépendent). Les deux départages diffèrent
+donc sur des ex æquo : à aligner, à Lionel.
+
+**La règle de la quatrième mesure, écrite avant elle.** Le lot = la tête de
+`general/ouverts`, ce commit compris ; la base = `main` + `3fb0728`, comme
+à la troisième. Sonnet 5.5 par l'abonnement.
+- Au modèle simulé : traduction (60) identique octet pour octet à la base ;
+  l'agence (24) ne diffère que par le bloc des notions (ses entrées sont
+  celles de la troisième mesure : (b) y est vraie, 33 contre 30, elle
+  n'est pas rejouée) ; l'échappée de la sécurité (18) ne diffère que par la
+  ligne des préférences.
+- **(a)** `liberer_un_jour`, trois passes sur le lot : vraie si au moins
+  une écrit le geste avec zéro écart.
+- **(c)** l'échappée de la sécurité, deux passes sur la base et deux sur le
+  lot : vraie si le total du lot ≥ celui de la base − 1, fuite 0 partout.
+  Comptées à part : les troncatures et les pannes de l'abonnement.
+- `pnpm check` vert.
+
+Une condition fausse : on ne fusionne pas. Coût en équivalent API estimé
+≈ 0,9 $ la fabrication (0,21 à 0,32 $ la passe) et ≈ 2,2 $ la sécurité,
+≈ 3,1 $ en tout, aucun débit.
+
+**La quatrième mesure** (14/10 18:10 → 18:16, Sonnet 5.5 par l'abonnement,
+aucune panne ; base = `main` + `3fb0728`, lot = `fbdab83` ;
+`evals/traces/apparie-2026-10-14-s8d/`, résultats
+`evals/resultats/apparie-2026-10-14-s8d-*`).
+- Au modèle simulé : traduction 60/60 identique ; sécurité 16/18
+  diffèrent par la seule ligne des préférences, 2 identiques ; agence 24/24
+  par le seul bloc des notions. **Vraie.**
+- **(a) Vraie** : `liberer_un_jour` **3/3** (0/3 à la troisième mesure),
+  sans troncature ni panne. Les 9 échappées rejouées choisissent toutes
+  A-2 (V-07 et V-03) ; le geste classe connaît le site, puis les heures de
+  la semaine, puis le numéro.
+- **(b)** non rejouée, vraie à la troisième mesure (33 contre 30), entrées
+  inchangées depuis.
+- **(c) Vraie** : sécurité lot 18 + 18 = 36, base 18 + 18 = 36, fuite 0.
+- `pnpm check` vert : moteur 642, interface 25, sécurité 137, agence 263.
+
+**Toutes les conditions vraies : `general/ouverts` est fusionnée dans
+`main` et poussée.** Coût en équivalent API estimé : 2,90 $ (fabrication
+1,12, sécurité lot 0,97, base 0,81), aucun débit. Total S8 : GLM 2,40 $
+débités ; abonnement ≈ 6,08 $ estimés.
+
+**Ouvert, à Lionel :**
+- `gerer_absence` départage par nom, le geste appris par numéro : à aligner
+  ou non.
+- Les tableaux disent « coût réel » sous l'abonnement (une estimation).
+- E1 (ce qu'une bonne réponse contient, par intention) ; E-04, E-12, E-20
+  rouges sur Sonnet comme sur GLM.
+- La traduction n'a pas été mesurée sur Sonnet (un cas : P-ABS-1 vert).
 
 ## Commandes
 

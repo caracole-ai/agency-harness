@@ -93,6 +93,26 @@ export interface Instantane {
 /** Le motif d'une ligne de journal : l'entrée d'un outil, tronquée. */
 export const MOTIF_MAX = 300
 
+/** Ce qu'une proposition doit respecter, puis préférer : ce que le métier déclare (`PropositionMetier.criteres`). */
+export interface CriteresProposition {
+  regles: { id: string; nom: string }[]
+  /** En mots, exemple : « d'abord un agent qui connaît déjà le site » ; « aucune » sans préférence. */
+  preferences: string
+}
+
+/** Les mêmes phrases pour l'échappée qui propose et la fabrication d'un geste qui écrit. */
+export const REGLES_EN_TETE = 'Les règles qu’une proposition doit respecter :'
+export const reglesEnMots = (regles: { id: string; nom: string }[]) =>
+  regles.map((r) => `- ${r.id} — ${r.nom}`)
+export const preferencesEnMots = (preferences: string) =>
+  `Les préférences de l’entreprise, pour choisir entre des propositions qui respectent toutes les règles : ${preferences}.`
+
+/** Les notions du métier (`Domaine.notions`), précédées d'une ligne vide ; rien sans notion. */
+export const notionsEnMots = (domaine: Domaine): string[] =>
+  domaine.notions && domaine.notions.length > 0
+    ? ['', 'Ce que les mots du métier veulent dire :', ...domaine.notions.map((n) => `- ${n}`)]
+    : []
+
 export function systemeEchappee(
   quiParle: string,
   tables: string,
@@ -114,14 +134,15 @@ export function systemeEchappee(
     '',
     'Les tables (SQLite) :',
     tables,
+    ...notionsEnMots(domaine),
     ...(proposer
       ? [
           '',
-          'Les règles qu’une proposition doit respecter :',
-          ...regles.map((r) => `- ${r.id} — ${r.nom}`),
+          REGLES_EN_TETE,
+          ...reglesEnMots(regles),
           'verifier te dit ce qu’une modification enfreint ; une proposition qui enfreint une règle est refusée.',
           '',
-          `Les préférences de l’entreprise, pour choisir entre des propositions qui respectent toutes les règles : ${preferences}.`,
+          preferencesEnMots(preferences),
         ]
       : []),
     '',

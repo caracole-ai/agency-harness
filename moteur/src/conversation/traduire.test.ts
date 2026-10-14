@@ -10,7 +10,6 @@ import {
   DESIGNER,
   designer,
   entreDonnees,
-  MAX_TOKENS_TRADUIRE,
   messageDesigner,
   outilDesigner,
   systemeTraduire,
@@ -80,12 +79,15 @@ const maintenant = Temporal.PlainDateTime.from('2026-10-10T21:40').toZonedDateTi
 const actions = actionsDe(ACTIONS, 'patron')
 const systeme = systemeTraduire(PATRON, SECURITE, actions, INTENTIONS)
 const schemas = new Map(actions.map((a) => [a.id, schemaMontre(a)]))
+/** Le plafond que la conversation lit dans la config (`plafonds.par_demande.tokens_sortie`). */
+const PLAFOND = 12000
 
 async function essai(pas: Scripte) {
   const modele = modeleSimule([pas])
   const r = await traduire(
     modele,
     'low',
+    PLAFOND,
     systeme,
     outilsDe(ACTIONS, 'patron', SECURITE),
     'Aïcha ne vient pas demain',
@@ -197,7 +199,7 @@ describe('traduire', () => {
     )
     expect(appel).toMatchObject({
       effort: 'low',
-      maxTokens: MAX_TOKENS_TRADUIRE,
+      maxTokens: PLAFOND,
       unSeulOutil: true,
     })
   })
@@ -316,7 +318,7 @@ describe('designer : le second appel, sur la liste courte', () => {
   ]
   const appeler = (pas: Scripte) => {
     const modele = modeleSimule([pas])
-    return designer(modele, 'low', 'Aisha ne vient pas', 'Aisha', candidats).then((r) => ({
+    return designer(modele, 'low', PLAFOND, 'Aisha ne vient pas', 'Aisha', candidats).then((r) => ({
       ...r,
       modele,
     }))

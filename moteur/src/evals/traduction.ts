@@ -283,9 +283,11 @@ export async function jouerTraduction<S>(
   for (const c of cas) {
     const joue = await jouerCas(m, source, c, modeleDe, async (dossier, modele, identite) => {
       const actions = actionsDe(toutes, c.role)
+      const config = configDuDossier(m, dossier)
       const { demande } = await traduire(
         modele,
-        configDuDossier(m, dossier).modele.effort.traduire,
+        config.modele.effort.traduire,
+        config.plafonds.par_demande.tokens_sortie,
         systemeTraduire(roleDe(m.roles, identite), m.domaine, actions, intentions),
         outilsDe(toutes, c.role, m.domaine),
         c.consigne,

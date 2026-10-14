@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { z } from 'zod'
 import { type Agence, type Executer, executerSync, preflight } from '../agence/config'
-import type { Effort } from '../modele/modele'
+import type { Effort, UsageModele } from '../modele/modele'
 
 // Le binaire `claude` en mode non interactif (PLAN-RONDE.md § 6.2, § 0.a) :
 // le préflight de l'abonnement, la ligne de commande, un délai mural de la
@@ -45,6 +45,8 @@ export interface IssueClaude {
   sortie?: unknown
   /** `total_cost_usd` : estimé par le binaire. */
   cout: number
+  /** `usage` : les tokens comptés par le binaire, quand il les rend. */
+  usage?: UsageModele
   tours: number
   /** `success`, `error_max_turns`, `error_max_budget_usd`… */
   sousType?: string
@@ -62,6 +64,14 @@ const SortieClaude = z.looseObject({
   structured_output: z.unknown().optional(),
   total_cost_usd: z.number().nonnegative(),
   num_turns: z.number().int().nonnegative(),
+  usage: z
+    .looseObject({
+      input_tokens: z.number().int().nonnegative(),
+      output_tokens: z.number().int().nonnegative(),
+      cache_creation_input_tokens: z.number().int().nonnegative().optional(),
+      cache_read_input_tokens: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
 })
 
 /**
@@ -198,6 +208,16 @@ export async function lancerClaude(
     tours: json.num_turns,
     sousType: json.subtype,
     dureeMs,
+    ...(json.usage
+      ? {
+          usage: {
+            entree: json.usage.input_tokens,
+            sortie: json.usage.output_tokens,
+            cacheEcrit: json.usage.cache_creation_input_tokens ?? 0,
+            cacheLu: json.usage.cache_read_input_tokens ?? 0,
+          },
+        }
+      : {}),
     ...(json.structured_output !== undefined ? { sortie: json.structured_output } : {}),
   }
   const raison =

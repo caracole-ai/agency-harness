@@ -351,6 +351,10 @@ describe('les cinq phrases-refus de l’entretien § 12', () => {
     expect(outils).toEqual(['requete', 'repondre', 'abandonner'])
     expect(modele.appels[1]?.systeme).toContain('Tu ne peux rien proposer de changer.')
     expect(modele.appels[0]?.outils.map((o) => o.name)).not.toContain('proposer')
+    // Les notions du métier, sans proposition : evals/erreurs-2026-10-13.md, E2.
+    expect(modele.appels[1]?.systeme).toContain(
+      `Ce que les mots du métier veulent dire :\n- ${DOMAINE.notions?.join('\n- ')}\n`,
+    )
   })
   it('20 bis — la PO : « Envoie la relance du PV à la boulangerie » ; rien ne s’envoie, rien ne s’écrit', async () => {
     const s = session()

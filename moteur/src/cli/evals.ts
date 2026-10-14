@@ -7,8 +7,9 @@
 // gardée dans `evals/traces/<horodatage>-<métier>-<quoi>/` (non versionné) et
 // le tableau dans `evals/resultats/<horodatage>-<métier>-<quoi>.md`.
 // `traduire`, `echappee` et `promotion` appellent le vrai modèle : exige la
-// clé que nomme la config (ANTHROPIC_API_KEY sans `acces`) et coûte (≈ 0,3 $
-// les deux premières passes, ≈ 0,2 $ la fabrication, avec GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
+// clé que nomme la config (ANTHROPIC_API_KEY sans `acces`), ou l'abonnement
+// par le binaire (`acces: { binaire }`, le coût est alors une estimation), et
+// coûte (≈ 0,3 $ les deux premières passes, ≈ 0,2 $ la fabrication, avec GLM-5.3). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
 // vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
 // porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du client (`m.noms`)
 // partis au modèle, colonne du tableau, seuil 0. `ronde` (PLAN-RONDE.md § 5.4)

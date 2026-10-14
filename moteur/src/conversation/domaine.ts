@@ -17,6 +17,12 @@ export interface Domaine {
   identifiants: RegExp
   /** La phrase rendue quand aucun constat, exemple : « Aucune vacation contraire à une règle. » */
   rienASignaler: string
+  /**
+   * Ce que le métier entend par ses mots, dans les termes des tables que lit
+   * l'échappée, exemple : « Un ticket est un bug seulement si son lot est
+   * recetté (lots.recette_le) ; sinon, une évolution. » Absent : aucune.
+   */
+  notions?: string[]
 }
 
 /** Le motif des identifiants pour `.test()` : sans `g`, qui garderait `lastIndex` d'un appel à l'autre. */
