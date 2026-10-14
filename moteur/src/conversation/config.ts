@@ -42,6 +42,12 @@ export const ConversationSchema = z.strictObject({
       tokens_sortie: z.number().int().positive(),
       secondes: z.number().int().positive(),
     }),
+    /**
+     * Le plafond d'une fabrication de geste appris (PLAN-PROMOTION.md § 6.1), à
+     * part de celui d'une demande : sa réflexion relit chaque réponse montrée et
+     * dépasse celle d'une échappée. Absent, celui de la demande.
+     */
+    fabrication: z.strictObject({ tokens_sortie: z.number().int().positive() }).optional(),
     par_mois_usd: z.number().positive(),
   }),
   promotion: z.strictObject({
@@ -52,6 +58,10 @@ export const ConversationSchema = z.strictObject({
   }),
 })
 export type ConfigConversation = z.infer<typeof ConversationSchema>
+
+/** Les tokens de sortie laissés à une fabrication : son plafond s'il est déclaré, sinon celui de la demande. */
+export const plafondFabrication = (c: ConfigConversation): number =>
+  c.plafonds.fabrication?.tokens_sortie ?? c.plafonds.par_demande.tokens_sortie
 
 /** Les prix de la config, dans les noms du moteur. */
 export const prixDe = (c: ConfigConversation): PrixModele => {
