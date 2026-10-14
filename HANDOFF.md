@@ -3841,6 +3841,74 @@ question (E1 de `evals/erreurs-2026-10-13.md`) : la concision voulue par
 Lionel va contre elles. Sans `main` apparié, l'écart avec S6 (−1) ne se
 distingue pas du tirage.
 
+### Session S8 : les trois problèmes ouverts (2026-10-14)
+
+Demande de Lionel : « règle tout ça d'abord » : `liberer_un_jour` (0/3),
+`MAX_TOKENS_TRADUIRE = 4096` en dur, les règles de l'échappée de l'agence
+(`regles: []`). Branche `general/ouverts`.
+
+**Choix faits faute de consigne :**
+
+- **La traduction** : `traduire` et `designer` reçoivent le plafond de la
+  demande (`plafonds.par_demande.tokens_sortie`), comme l'échappée ; la
+  constante disparaît. Pas de seuil à part : seul ce qui est produit se paie,
+  et une traduction tient sous 4 096 tokens sauf troncature (P16-1).
+- **L'agence : des notions, pas des règles.** Le mode E2 (8 rouges sur 22)
+  vient de mots que le modèle lit à sa façon (« à valider », « bug ou
+  évolution », « la prod », « à révoquer »), pas d'une règle de proposition :
+  l'agence ne propose rien. `Domaine.notions` (optionnel) : ce que le métier
+  entend par ses mots, dans les termes des tables ; l'échappée les dit après
+  les tables, qu'elle propose ou non. L'agence en déclare cinq, tirées de sa
+  fiche (§ 5, I-04, I-05) et de l'entretien (questions 5, 16, 17) ; la
+  sécurité aucune, son système ne change pas d'un octet. Ce qu'une bonne
+  réponse contient, par intention (E1), reste à Lionel : les notions disent
+  le sens des mots, pas le contenu d'une réponse.
+- **`liberer_un_jour` : deux causes, deux corrections.**
+  - La fabrication ne recevait ni les règles ni les préférences que
+    l'échappée avait montrées, alors que son système dit « les préférences
+    exprimées se codent en SQL » : sa réflexion (112 000 caractères, coupée à
+    40 000 tokens) cherche à deviner pourquoi le patron a pris A-11 (une
+    fenêtre de 48 h, l'agent le plus proche…). `PropositionMetier.criteres`
+    : le métier déclare une fois les règles et les préférences d'une
+    proposition ; l'échappée de la sécurité et la fabrication d'un geste qui
+    écrit les lisent. Une lecture ne change pas.
+  - Le plafond de la demande coupe l'échappée qui propose : la plus longue
+    réussie fait 10 337 tokens, 2 coupées à 12 000 sur 15 (S7), et autant
+    au rejeu de la promotion. Les lectures restent sous 6 527 (p95,
+    sécurité) et 4 532 (agence). `exemples/client-fictif/config.yaml` passe
+    à `tokens_sortie: 20000` (≈ 2 × la plus longue réussie) et
+    `secondes: 420` (20 000 au débit le plus lent observé sur les longues,
+    47 tokens/s) ; la règle 7 levée pour cette ligne par « règle tout ça »,
+    après l'autorisation du jour sur la ligne de la fabrication. L'agence
+    garde 12 000 : aucune de ses échappées n'en approche.
+
+**La règle de la mesure, écrite avant la mesure.** Le code mesuré est la
+tête de `general/ouverts`, ce commit compris.
+
+- **Au modèle simulé (sans dépense), `main` contre le lot** : les entrées du
+  premier appel (système, outils, message) sont identiques octet pour octet
+  sur les 60 cas de traduction et les 18 d'échappée de la sécurité ; celles
+  de l'échappée de l'agence ne diffèrent que par le bloc des notions.
+- **(a) La fabrication de `liberer_un_jour`** : trois passes de `pnpm evals
+  promotion --seulement liberer_un_jour` sur une copie du client fictif
+  (sa config, celle du lot). Base : 0/3 (C), 0/3 (S7). Vraie si au moins une
+  passe écrit le geste avec zéro écart. Comptés à part : les troncatures de
+  la fabrication et celles des échappées rejouées.
+- **(b) L'échappée de l'agence** : deux passes sur le lot. Base S7 (même
+  code sans les notions) : 16 et 16/24, les cinq cas E2 (E-05, E-16, E-17,
+  E-28, EP-16) verts 3 fois sur 10. Vraie si le total des deux passes ≥ 32,
+  les cas E2 verts plus de 3 fois sur 10, fuite 0.
+- **(c) L'échappée de la sécurité** : deux passes sur le lot (le système ne
+  change pas, seul le plafond). Vraie si aucune troncature, fuite 0, E-14
+  vert, et chaque passe ≥ 17/18 − 1 (le bas de S7 sur le lot).
+- `pnpm check` vert, gestes 6/6.
+
+Une condition fausse : on ne fusionne pas, et on ne corrige rien dans la
+session. Plafond de GLM : 3 $ (prévu ≈ 2,0 $ en moyenne, 2,7 $ au plus,
+d'après S7 : `liberer_un_jour` 0,11 à 0,30 $ la passe, borne 0,55 $ avec les
+nouveaux plafonds ; agence 0,24 à 0,29 $ ; sécurité 0,14 à 0,18 $). Le
+crédit est sondé avant chaque série ; à court, on s'arrête avant la fusion.
+
 ## Commandes
 
 ```sh
