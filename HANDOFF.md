@@ -7,6 +7,13 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-14 : S9 planifiée, pas commencée.** Lionel : « quand plusieurs
+  agents sont disponibles on peut les proposer au patron plutôt que choisir
+  pour lui ». `PLAN-CHOIX.md` (branche `general/choix-patron`) : garder la
+  recommandation, un geste `changer_remplacant` (le moteur sait déjà rouvrir
+  une proposition), et d'abord corriger l'apprentissage, qui lit la
+  proposition de l'échappée au lieu de ce qui a été validé.
+
 - **2026-10-14 : session S8 (les trois problèmes ouverts, « règle tout ça
   d'abord ») ; fusionnée dans `main` et poussée après la quatrième mesure.** Code `875ce1a`, règle `b2ad779` : le plafond de la traduction
   lu dans la config ; `Domaine.notions` (l'agence en déclare cinq) ;
