@@ -7,8 +7,8 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = `6cc3d76` (S8 fusionnée). `pnpm check` vert :
-moteur 642, interface 25, sécurité 137, agence web 263.
+`main` = `origin/main` = la fusion de `general/choix-patron` (S9).
+`pnpm check` vert : moteur 644, interface 25, sécurité 145, agence web 263.
 
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent :
   la sécurité privée (`metiers/securite-privee`, client
@@ -32,37 +32,23 @@ moteur 642, interface 25, sécurité 137, agence web 263.
 
 ## La suite
 
-**S9 : `PLAN-CHOIX.md`** (branche `general/choix-patron`), lots 1 et 2 faits
-en un seul (27884fd) : `relire` lit la R-… validée, la promotion écarte une
-proposition corrigée et son dossier la compte ; `changer_remplacant`
-(patron, `propose`), 6 cas de traduction neufs. Lot 3 (les boutons) : plus
-tard.
+**S9 fusionnée** (`PLAN-CHOIX.md`) : le patron change un agent dans une
+proposition (`changer_remplacant`, en mots) ; une proposition corrigée
+n'apprend rien et le dossier de promotion la compte. **Suivante : lot 3 de
+S9**, les boutons « Prendre X pour V-03 » dans l'interface (sans modèle,
+vérification visuelle).
 
-**Choix faits seul (S9) :**
-- La nouvelle R-… se rattache à la conversation d'origine, sinon la
-  promotion ne voit pas la correction faite depuis une autre conversation
-  (`parler` et l'interface en ouvrent une par consigne) : champ générique
-  `corrige` sur `Resultat` et `PropositionMetier.ouvrir` (le moteur ne sait
-  toujours rien du métier) ; le plan disait le moteur intouché.
-- Le patron nomme la vacation (V-03) ou son jour (« mardi ») ; deux R-… en
-  attente qui la contiennent : refus, « laquelle ? ».
+**Choix faits seul (S9) :** la nouvelle R-… se rattache à la conversation
+d'origine par un champ générique `corrige` (`Resultat`,
+`PropositionMetier.ouvrir`), sinon une correction faite depuis une autre
+conversation échappe à la promotion ; le patron nomme la vacation ou son
+jour, deux R-… en attente : « laquelle ? ».
 
-**La règle de la mesure de S9, écrite avant elle.** Base = `main`
-(`6cc3d76`), lot = la tête de `general/choix-patron`, ce commit compris ;
-arbres détachés ; Sonnet 5.5 par l'abonnement.
-- Au modèle simulé : l'échappée (sécurité 18, agence 24) identique à la
-  base hors horodatages ; la traduction ne diffère que par le geste neuf.
-- **(a)** Traduction, deux passes de chaque côté, sur les 60 cas communs :
-  total du lot ≥ total de la base − 1 ; `agent_patron` et pièges à 100 %
-  sur le lot ; fuite 0.
-- **(b)** Les 6 cas neufs, sur les deux passes du lot : ≥ 10 sur 12, AP-5
-  à 2 sur 2.
-- **(c)** `liberer_un_jour` (`pnpm evals promotion`), trois passes sur le
-  lot : au moins une écrit le geste avec zéro écart.
-- **(d)** `pnpm evals gestes` : le lot égal à la base ; `pnpm check` vert.
-
-Une condition fausse : pas de fusion. Comptées à part : troncatures et pannes
-de l'abonnement. Coût en équivalent API estimé ≈ 7 $, aucun débit.
+**Mesure S9 (Sonnet, `evals/resultats/apparie-2026-10-14-s9-*`)** :
+traduction base 60 + 59, lot 60 + 60 sur les cas communs ; cas neufs 12/12 ;
+`liberer_un_jour` 3/3 ; gestes 6/6 des deux côtés ; échappées identiques au
+simulé. Fuite : R-2 seule, des deux côtés ; Lionel a lu « fuite 0 » comme
+« pas de fuite de plus que `main` » (la règle des mesures passées).
 
 ## La méthode (Lionel, 2026-10-14 : « anti-over-engineer et KISS »)
 
@@ -105,6 +91,10 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
+- À Lionel : R-2 (« Aisha ») fuit à chaque passe : le niveau 2 de
+  `designer` envoie au modèle les candidats avec leur nom, contre « aucun
+  nom ne part au modèle ». Les règles de mesure disent désormais « pas de
+  fuite de plus que `main` ».
 - À Lionel : la bascule vers la clé d'API avant un client réel ; la mise à
   jour à distance d'un harnais livré ; la phase E (tâche cron) ; aligner le
   départage de `gerer_absence` (par nom) sur celui des propositions (par
