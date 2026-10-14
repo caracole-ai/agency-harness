@@ -50,6 +50,11 @@ traduction base 60 + 59, lot 60 + 60 sur les cas communs ; cas neufs 12/12 ;
 simulé. Fuite : R-2 seule, des deux côtés ; Lionel a lu « fuite 0 » comme
 « pas de fuite de plus que `main` » (la règle des mesures passées).
 
+**Gelée (Lionel, 2026-10-14) : la promotion automatique** (compteur,
+seuil, dossiers, fabrication la nuit). Plus de session dessus ; le code
+reste ; l'apprentissage viendra d'un « retiens ça » du patron. La phase E
+retirera l'étape `promotions` de `pnpm nuit`.
+
 ## La méthode (Lionel, 2026-10-14 : « anti-over-engineer et KISS »)
 
 - **Lire les traces avant toute correction.** Une cause se cherche dans ce
