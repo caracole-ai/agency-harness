@@ -168,13 +168,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `src/conversation/noms.ts` (`Designable`, avec sa `sorte` : personne ou
   organisation ; `m.noms(s)` rend tout nom qui ne part jamais au modèle),
   `src/conversation/domaine.ts` (`PLAN-METIER-2.md` M7 : le domaine que disent
-  les prompts du moteur, déclaré par le métier),
+  les prompts du moteur, déclaré par le métier, et ses notions : ce que le
+  métier entend par ses mots, que l'échappée dit après les tables),
   `src/conversation/tableau.ts` (M10 : `Tableau`, ce que l'interface montre
   d'un métier), `src/cli/metier.ts` (M10 : `metierDe`, `moduleDe` : le
   métier d'un dossier client, chargé depuis `config.yaml: metier` par
   toutes les CLI et l'interface), `src/conversation/traduire.ts` (une consigne → une action,
-  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai ; le
-  modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
+  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai, au
+  plafond de la demande dans la config ; le modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
   niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
   de la mention à départager),
   `src/personnes/personnes.ts` (le registre d'accès, `personnes.yaml` dans le
@@ -241,7 +242,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `gestes/<id>.yaml` écrit au statut proposé si zéro écart. Une intention qui
   écrit se fabrique depuis ses propositions validées par le patron (les
   consignes masquées, les requêtes, les vérifications, les réaffectations en
-  identifiants) ; son rejeu compare les réaffectations, pas un texte : les
+  identifiants, et les règles et préférences que le métier déclare pour une
+  proposition, `PropositionMetier.criteres`) ; son rejeu compare les réaffectations, pas un texte : les
   mêmes vacations, chacune à un agent que le patron a validé pour elle.
   `promouvoir.ts` enchaîne pour `pnpm promotions` : hors catalogue, rien
   n'est tenté ; sinon fabrication, écriture, puis la passe de traduction

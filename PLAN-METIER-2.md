@@ -336,6 +336,8 @@ export interface Domaine {
   identifiants: RegExp
   /** La phrase rendue quand aucun constat : « Aucune vacation contraire à une règle. » */
   rienASignaler: string
+  /** Ajouté le 2026-10-14 (S8) : ce que le métier entend par ses mots, dans les termes des tables ; l'échappée les dit. Absent : aucune. */
+  notions?: string[]
 }
 ```
 

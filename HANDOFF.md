@@ -7,6 +7,18 @@ fichiers qu'il cite, si.
 
 ## Où on en est
 
+- **2026-10-14 : session S8 (les trois problèmes ouverts, « règle tout ça
+  d'abord ») ; mesurée, une condition fausse : `general/ouverts` n'est pas
+  fusionnée.** Code `875ce1a`, règle `b2ad779` : le plafond de la traduction
+  lu dans la config ; `Domaine.notions` (l'agence en déclare cinq) ;
+  `PropositionMetier.criteres` (la fabrication d'un geste qui écrit reçoit
+  règles et préférences) ; client fictif à 20 000 tokens et 420 s par
+  demande. Mesure : sécurité **18/18** deux fois ; agence 15 et 17 (E2 verts
+  8/10, base 3/10 ; E-15 et E-20 tronqués) ; **`liberer_un_jour` 0/3**, la
+  fabrication encore tronquée : le prompt exige de reproduire des
+  validations contradictoires que le rejeu accepte déjà. GLM 1,97 $. Détail
+  et suite proposée : « Session S8 ».
+
 - **2026-10-14 : session S7 faite (l'efficience des évals, demande de
   Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
   (f) vraies ; fusionnée dans `main` et poussée.** `general/efficience` :
@@ -3908,6 +3920,54 @@ session. Plafond de GLM : 3 $ (prévu ≈ 2,0 $ en moyenne, 2,7 $ au plus,
 d'après S7 : `liberer_un_jour` 0,11 à 0,30 $ la passe, borne 0,55 $ avec les
 nouveaux plafonds ; agence 0,24 à 0,29 $ ; sécurité 0,14 à 0,18 $). Le
 crédit est sondé avant chaque série ; à court, on s'arrête avant la fusion.
+
+**La mesure** (14/10 14:33 → 15:21, crédit sondé avant, 200, aucun 402 ;
+arbres détachés dans le scratchpad, `main` = `418e623`, lot = `b2ad779` ;
+`evals/traces/apparie-2026-10-14-s8/` : script, manifeste, traces simulées
+et réelles ; résultats `evals/resultats/apparie-2026-10-14-s8-*`). Une
+seconde série lancée par erreur à 14:33:42 a été arrêtée après ≈ 20 s :
+quelques appels payés en double, aucun résultat écrit ; le journal texte de
+la passe de fabrication 1 est perdu (son résultat et ses traces restent).
+
+- Au modèle simulé : traduction 60/60 et échappée de la sécurité 18/18
+  identiques octet pour octet ; agence 24/24 diffèrent par le seul bloc des
+  notions. **Vraie.**
+- **(a) Fausse** : `liberer_un_jour` 0/3, chaque fabrication tronquée à
+  40 000 tokens (106 000 à 119 000 caractères de réflexion). Progrès : les
+  rejeux d'échappée atteignent le seuil aux trois passes (une sur trois en
+  S7), aucune troncature d'échappée ; le système porte les règles et les
+  préférences. **La cause, lue dans les trois réflexions** : les échappées
+  rejouées ne valident pas le même agent pour la même vacation (V-03 à A-11
+  dans une demande, à A-9 dans une autre) ; le système de la fabrication
+  dit « exactement les modifications validées, chacune telle que le patron
+  l'a validée », et le modèle cherche une règle qui reproduise des choix
+  contradictoires (« ARGH », « the gesture can't match both »). Or le rejeu
+  (`rejouerTest`) accepte déjà, pour un objet, toute modification validée
+  dans un test du geste : le prompt est plus strict que la porte. La
+  troisième passe trouve une règle cohérente à la fin, coupée avant l'appel.
+- **(b) Vraie** : agence 15 et 17/24 (32, base 32) ; les cas E2 verts 8 fois
+  sur 10 (base 3) : E-05, E-17, E-28, EP-16 verts aux deux passes, E-16
+  rouge (TK-1005). Fuite 0. Mais E-15 rouge aux deux passes (vert en S7) et
+  E-20 une fois : la réflexion s'allonge avec les notions (E-15 : 6 616 à
+  12 000 tokens, S7 1 433 à 2 325 ; E-20 : 12 000, S7 ≈ 3 500), coupée au
+  plafond de temps (240 s) puis de tokens (12 000) de l'agence.
+- **(c) Vraie** : sécurité 18/18 aux deux passes (première fois), aucune
+  troncature, fuite 0, E-14 vert.
+- `pnpm check` vert ; gestes non rejoués (aucun geste ne change).
+
+**Une condition fausse : la branche n'est pas fusionnée**, rien n'est
+corrigé dans la session (la règle). Coût GLM : **1,97 $** affichés
+(fabrication 0,93, agence 0,73, sécurité 0,31), sous le plafond de 3 $ ;
+le crédit restant n'est pas sondé.
+
+**La suite proposée, à mesurer sous une règle neuve :**
+- Le système de la fabrication d'un geste qui écrit dit ce que la porte
+  vérifie : quand le patron a validé, pour le même objet, des modifications
+  différentes dans des demandes différentes, chacune convient, et le geste
+  en rend une (`rejouerTest`). Sans métier.
+- L'agence : son plafond par demande (12 000, 240 s) contre la réflexion
+  plus longue des notions (E-15, E-20), ou des notions plus courtes ; à
+  calibrer sur ces traces.
 
 ## Commandes
 
