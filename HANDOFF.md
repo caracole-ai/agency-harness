@@ -3969,6 +3969,39 @@ le crédit restant n'est pas sondé.
   plus longue des notions (E-15, E-20), ou des notions plus courtes ; à
   calibrer sur ces traces.
 
+**La suite, demandée par Lionel (« ok, tiens-moi au courant »), même
+branche.** Code en `aa060ac` :
+- la fabrication d'un geste qui écrit dit ce que `rejouerTest` accepte
+  déjà : des modifications différentes de la même chose, validées dans des
+  demandes différentes, conviennent chacune ; le geste en rend une ;
+- la notion « bug ou évolution » de l'agence, cause d'E-15 (lue dans les
+  deux traces : le modèle reclasse les 300 tickets par recette au lieu de
+  lire `tickets.type`) : le type saisi est la qualification d'une personne,
+  la règle la vérifie quand on demande « bug ou évolution ? », elle ne la
+  remplace pas ailleurs ;
+- l'agence passe à 20 000 tokens et 420 s par demande, le calibrage de la
+  sécurité (E-20 coupé à 12 000 sans lien avec les notions ; E-15 au plafond
+  de temps, GMI à 18 tokens/s).
+
+**La règle de la seconde mesure, écrite avant elle.** `main` = `418e623`,
+le lot = la tête de `general/ouverts`, ce commit compris.
+- Au modèle simulé : traduction (60) et échappée de la sécurité (18)
+  identiques octet pour octet à `main` ; l'agence ne diffère que par le
+  bloc des notions. L'échappée de la sécurité n'est pas rejouée avec
+  modèle : ses entrées et ses plafonds sont ceux mesurés plus haut (18/18
+  deux fois).
+- **(a)** `liberer_un_jour`, trois passes comme plus haut : vraie si au
+  moins une passe écrit le geste avec zéro écart.
+- **(b)** l'agence, deux passes : vraie si le total ≥ 32 (S7 et la première
+  mesure), les cas E2 verts au moins 6 fois sur 10, fuite 0. Comptés à
+  part : E-15, E-20 et les troncatures.
+- `pnpm check` vert.
+
+Une condition fausse : on ne fusionne pas, rien n'est corrigé ensuite dans
+la session. Plafond de GLM : 3 $ (prévu ≈ 1,7 $ en moyenne, 2,9 $ au plus :
+fabrication 0,26 à 0,34 $ la passe, agence ≈ 0,37 $, davantage au plus avec
+le plafond relevé). Crédit sondé avant.
+
 ## Commandes
 
 ```sh
