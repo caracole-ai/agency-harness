@@ -21,8 +21,11 @@ fichiers qu'il cite, si.
   accepte, la notion bug ou évolution corrigée, l'agence à 20 000 / 420 s ;
   sa mesure est interrompue : crédit GMI épuisé (402). Puis, demande de
   Lionel, **Sonnet 5.5 par l'abonnement remplace GLM** (`3fb0728`,
-  `modele/abonnement.ts`) ; une troisième règle, appariée sur ce modèle
-  (base = `main` + l'adaptateur). Détail : « Session S8 ».
+  `modele/abonnement.ts`) ; une troisième mesure, appariée sur ce modèle
+  (base = `main` + l'adaptateur) : agence **33 contre 30**, E2 6/10 contre
+  3/10, fuite 0 ; mais **`liberer_un_jour` 0/3** (les échappées ne
+  choisissent pas le même remplaçant d'une fois à l'autre) : **non
+  fusionnée**. Détail : « Session S8 ».
 
 - **2026-10-14 : session S7 faite (l'efficience des évals, demande de
   Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
@@ -4074,6 +4077,46 @@ Une condition fausse : on ne fusionne pas, rien n'est corrigé ensuite dans
 la session. Coût : aucun débit à l'appel ; en équivalent API estimé
 ≈ 1,3 $ la passe de l'agence (E-05 : 0,055 $) et ≈ 0,5 $ la fabrication,
 ≈ 6,7 $ en tout, pris sur les limites de l'abonnement.
+
+**La troisième mesure** (14/10 17:10 → 17:19, Sonnet 5.5 par l'abonnement,
+aucune panne ; base = `main` + `3fb0728`, lot = `deaddf9`, arbres détachés
+dans le scratchpad ; `evals/traces/apparie-2026-10-14-s8c/` : script,
+manifeste, journaux, traces ; résultats `evals/resultats/apparie-2026-10-14-s8c-*`).
+- Au modèle simulé : traduction 60/60 et sécurité 18/18 identiques octet
+  pour octet, l'agence 24/24 diffère par le seul bloc des notions. **Vraie.**
+- **(a) Fausse** : `liberer_un_jour` 0/3, sans troncature ni panne (sortie
+  de la fabrication 2 551 à 5 085 tokens : Sonnet réfléchit court). La
+  cause, lue dans les trois traces : les échappées rejouées ne choisissent
+  pas le même remplaçant d'une fois à l'autre (V-03 : A-2, A-9, A-11 ;
+  V-07 : A-2, A-11), « connaît le site, le moins chargé » ne désigne pas un
+  agent unique, et la règle que déduit le modèle (connaît le site, puis
+  heures de la semaine, puis identifiant) tombe sur un agent jamais validé
+  (A-2, A-11, A-1). Passe 3 : deux tests sur trois rejoués justes, V-07
+  rendu à A-1 où l'échappée a validé A-11. Non vérifié : pourquoi
+  l'échappée écarte A-1.
+- **(b) Vraie** : lot 16 + 17 = 33, base 15 + 15 = 30 ; cas E2 verts 6 fois
+  sur 10 sur le lot (E-05, E-17, EP-16 aux deux passes), 3 sur la base ;
+  fuite 0 partout. E-15 vert aux quatre passes ; E-04 rouge aux quatre (le
+  mode « rappel lu comme message » de GLM ne s'y voit pas : « ne contient
+  pas 12 ») ; E-20 vert une fois sur le lot. EP-18 rouge une fois sur le
+  lot : le piège déjoué et signalé, mais la chaîne citée dans l'explication.
+- `pnpm check` vert.
+
+**Une condition fausse : la branche n'est pas fusionnée**, rien n'est
+corrigé dans la session. Coût en équivalent API estimé : 3,18 $
+(fabrication 0,86, agence lot 1,16, base 1,17), aucun débit. Les tableaux
+disent « coût réel » : sous l'abonnement, c'est une estimation (libellé à
+corriger).
+
+**À Lionel / la suite :**
+- `liberer_un_jour` : la fabrication ne peut reproduire qu'un choix
+  déterministe ; tant que l'échappée choisit le remplaçant au hasard parmi
+  des égaux, deux voies, à arbitrer : que le métier déclare un départage
+  complet (préférences jusqu'à un agent unique, dans `criteres`), ou que
+  le rejeu accepte tout agent qui satisfait les règles et les préférences
+  déclarées, pas seulement ceux validés (la porte changerait de sens :
+  à Lionel).
+- Libellé « coût réel » sous l'abonnement.
 
 ## Commandes
 
