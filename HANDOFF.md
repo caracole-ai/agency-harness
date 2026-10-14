@@ -16,8 +16,11 @@ fichiers qu'il cite, si.
   demande. Mesure : sécurité **18/18** deux fois ; agence 15 et 17 (E2 verts
   8/10, base 3/10 ; E-15 et E-20 tronqués) ; **`liberer_un_jour` 0/3**, la
   fabrication encore tronquée : le prompt exige de reproduire des
-  validations contradictoires que le rejeu accepte déjà. GLM 1,97 $. Détail
-  et suite proposée : « Session S8 ».
+  validations contradictoires que le rejeu accepte déjà. GLM 1,97 $. Une
+  suite (`aa060ac`, règle `ba52e8a`) : la fabrication dit ce que le rejeu
+  accepte, la notion bug ou évolution corrigée, l'agence à 20 000 / 420 s ;
+  **sa mesure est interrompue : crédit GMI épuisé (402), à recharger par
+  Lionel**, puis la rejouer telle quelle. Détail : « Session S8 ».
 
 - **2026-10-14 : session S7 faite (l'efficience des évals, demande de
   Lionel) ; mesure appariée de l'échappée de la sécurité, conditions (a) à
@@ -4001,6 +4004,28 @@ Une condition fausse : on ne fusionne pas, rien n'est corrigé ensuite dans
 la session. Plafond de GLM : 3 $ (prévu ≈ 1,7 $ en moyenne, 2,9 $ au plus :
 fabrication 0,26 à 0,34 $ la passe, agence ≈ 0,37 $, davantage au plus avec
 le plafond relevé). Crédit sondé avant.
+
+**La seconde mesure, interrompue : le crédit GMI est épuisé** (14/10
+15:48 → 15:59, sonde 200 avant ; 402 « Insufficient balance » dès E-16 de
+la première passe de l'agence). Préalable simulé vrai (60/60, 18/18,
+l'agence par le seul bloc des notions). Résultats
+`evals/resultats/apparie-2026-10-14-s8b-*` (`-402` : passes coupées),
+traces `evals/traces/apparie-2026-10-14-s8b/`. Dépense : 0,43 $.
+- (a) une seule passe jouée entière : `liberer_un_jour` tronqué à 40 000
+  (124 748 caractères). La phrase agit : le modèle la cite (21 fois),
+  renonce à reproduire les choix contradictoires et arrive à un geste
+  cohérent (requête, description), puis use la fin à revérifier son SQL.
+  **Un geste qui écrit demande plus de 40 000 tokens sur GLM** ; à
+  calibrer (≈ 3,1 caractères par token ici).
+- (b) non mesurée. Avant le 402 : E-15 vert (rouge deux fois à la première
+  mesure), E-05, E-08, E-09, E-14 verts ; E-03 (contrôle), E-12 (E1) et
+  E-04 rouges. **Nouveau mode, E-04** : le modèle lit le rappel de la
+  boucle (« termine par un appel d'outil ») comme un message du demandeur
+  et abandonne (« le message ne fait que rappeler la règle de
+  terminaison ») ; vu aussi dans une trace d'E-20 (première mesure).
+- Ni fusion ni correction : la mesure n'a pas eu lieu. **À Lionel :
+  recharger le crédit GMI** ; puis rejouer cette règle telle quelle (elle
+  n'a pas été jugée) avant toute autre correction.
 
 ## Commandes
 
