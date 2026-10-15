@@ -10,21 +10,20 @@ import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 
-// Pour les tests de la ronde (PLAN-RONDE.md § 5.4) : un métier minimal et un
-// journal écrit à la main, qui porte tout ce que la ronde ne doit jamais lire
-// (noms, résultats de requête, textes montrés, instantanés) à côté de ce
-// qu'elle lit (consignes version modèle, issues, comptes).
+// Pour les tests de la mission et du chantier : un métier minimal et un
+// journal écrit à la main, qui porte tout ce que le chantier ne doit jamais
+// lire (noms, résultats de requête, textes montrés) à côté de ce
+// qu'une mission en garde (consignes version modèle, identifiants d'échappée).
 
 export const CLIENT_ESSAI = 'client essai'
 export const PERSONNES_ESSAI = [
   { id: 'A-1', nom: 'Rosalie Vernet', sorte: 'personne' as const },
   { id: 'A-2', nom: 'Octave Brunel', sorte: 'personne' as const },
 ]
-/** Ce qui ne doit jamais sortir du journal vers la ronde. */
+/** Ce qui ne doit jamais sortir du journal vers un modèle de l'agence. */
 export const SECRETS_ESSAI = {
   resultat: 'Rosalie Vernet | 24 | site Bastion',
   texte: 'Rosalie Vernet a fait 24 heures au Bastion.',
-  instantane: 'echappees/E-20261010T0800-aaaa.json',
 }
 
 export const CONFIG_ESSAI: ConfigConversation = {
@@ -57,13 +56,12 @@ export const INTENTIONS_ESSAI: Intention[] = [
   { id: 'liberer_un_jour', description: "libérer un agent d'une journée", ecrit: true },
 ]
 
-/** Le domaine du métier d'essai : celui du métier livré, recopié, pour que la ronde d'essai reçoive le même système qu'avant (PLAN-METIER-2.md M7). */
+/** Le domaine du métier d'essai : celui du métier livré, recopié (PLAN-METIER-2.md M7). */
 export const DOMAINE_ESSAI: Domaine = {
   cadre: "l'outil de planning d'une entreprise de sécurité privée",
   objets: 'le planning et les agents',
   modifications:
     'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
-  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
   identifiants: /\bA-\d+\b/g,
   rienASignaler: 'Aucune vacation contraire à une règle.',
 }
@@ -97,7 +95,6 @@ export const METIER_ESSAI: MetierConversation<Session> = {
   ],
   vocabulaire: () => ({ noms: PERSONNES_ESSAI }),
   noms: () => PERSONNES_ESSAI,
-  typesParametre: [],
   domaine: DOMAINE_ESSAI,
   verifierIdentite: () => undefined,
 }
@@ -143,7 +140,6 @@ export function echappeeEssai(
         cout_usd: 0.01,
         ...(issue === 'reponse' ? { controle_reponse: 'ok', texte: SECRETS_ESSAI.texte } : {}),
         ...(issue === 'abandon' ? { abandon: 'plafond de tours atteint' } : {}),
-        instantane: SECRETS_ESSAI.instantane,
         ...extra,
       },
     },
@@ -158,7 +154,7 @@ export function echappeeEssai(
  * abandon ; le 2026-10-11, une échappée (après la fenêtre du 10).
  */
 export function dossierEssai(): string {
-  const dossier = mkdtempSync(join(tmpdir(), 'ronde-'))
+  const dossier = mkdtempSync(join(tmpdir(), 'client-'))
   writeFileSync(join(dossier, 'config.yaml'), `client: ${CLIENT_ESSAI}\nmetier: essai\n`)
   const s = METIER_ESSAI.ouvrir(dossier)
   const ecrire = (horodatage: string, e: Omit<Evenement, 'client'>[]) =>

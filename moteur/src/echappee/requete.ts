@@ -7,9 +7,8 @@ import type { Copie } from './copie'
 // copie est déjà en lecture seule ; la liste de mots refusés est une ceinture
 // en plus (PLAN-ESPACES.md § 6.3). `node:sqlite` est synchrone : une requête
 // sans fin (récursion, produit de tables) figerait le processus ; elle tourne
-// donc dans un processus à part, tué passé le délai. Un geste appris passe
-// ses paramètres liés (`:nom`), jamais collés dans le SQL
-// (PLAN-PROMOTION.md § 4.1).
+// donc dans un processus à part, tué passé le délai. Des paramètres se
+// passent liés (`:nom`), jamais collés dans le SQL.
 
 export const LIGNES_MAX = 200
 export const SQL_MAX = 2000

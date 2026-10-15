@@ -18,8 +18,8 @@ export interface AccesModele {
 /**
  * @param delaiMs le temps laissé à un appel avant que le SDK ne l'abandonne :
  * celui de la demande dans la config (`plafonds.par_demande.secondes`), jamais
- * un nombre en dur (un 60 s codé ici faisait échouer la fabrication d'un geste
- * appris, dont la réflexion dépasse la minute : 2026-10-10).
+ * un nombre en dur (un 60 s codé ici faisait échouer un appel dont la
+ * réflexion dépasse la minute : 2026-10-10).
  */
 export function modeleAnthropic(
   id: string,

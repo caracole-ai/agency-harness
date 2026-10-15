@@ -4,26 +4,17 @@ import {
   CATEGORIE_AGENT_PATRON,
   DESCRIPTION_MAX,
   FichierEchappee,
-  FichierGestes,
   FichierTraduire,
   FORMAT_INTENTION,
-  type GesteAppris,
-  gesteDe,
-  lireFichiersGestes,
-  personneDuTest,
-  TESTS_MIN,
 } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
 import { ACTIONS } from './actions'
 import { INTENTIONS } from './conversation'
-import { OPERATION_REAFFECTER } from './operation-reaffecter'
 
 // Les fichiers d'étiquettes des évals (`evals/`) se lisent et couvrent ce que
 // le plan exige (PLAN-ESPACES.md § 9.1) : sans appel au modèle, cette garde
-// tourne dans `pnpm check`. Les gestes appris (de l'éval de rejeu, et ceux du
-// client fictif s'il en a) passent le même test d'honnêteté que les gestes
-// codés (PLAN-PROMOTION.md § 7.3, P13).
+// tourne dans `pnpm check`.
 
 const evals = fileURLToPath(new URL('../../evals', import.meta.url))
 const fictif = fileURLToPath(new URL('../../../../exemples/client-fictif', import.meta.url))
@@ -70,63 +61,6 @@ describe('les consignes de l’éval de traduction', () => {
   it('les agents nommés existent au client fictif', () => {
     for (const c of traduire.cas.filter((x) => x.personne))
       expect(agentsFictif, c.id).toContain(`${c.personne};`)
-  })
-})
-
-describe('les gestes appris (PLAN-PROMOTION.md § 7.3)', () => {
-  const gestes: GesteAppris[] = [
-    ...FichierGestes.parse(parse(readFileSync(`${evals}/gestes.yaml`, 'utf8'))).gestes,
-    ...lireFichiersGestes(fictif).flatMap((f) => {
-      expect(f.erreur, f.fichier).toBeUndefined()
-      return f.contenu ? [gesteDe(f.contenu)] : []
-    }),
-  ]
-  it('au moins un à l’éval de rejeu', () => {
-    expect(gestes.length).toBeGreaterThanOrEqual(1)
-  })
-  it('chacun a au moins trois tests, de rôles qu’il ouvre, aux échappées distinctes, chacun avec de quoi vérifier', () => {
-    for (const g of gestes) {
-      expect(g.tests.length, g.id).toBeGreaterThanOrEqual(TESTS_MIN)
-      expect(new Set(g.tests.map((t) => t.echappee)).size, g.id).toBe(g.tests.length)
-      for (const t of g.tests) {
-        expect(g.roles, `${g.id} ${t.echappee} (${t.role})`).toContain(t.role)
-        // Un geste qui lit attend un texte ; un geste qui écrit, les réaffectations validées (PLAN-PROMOTION.md § 10).
-        expect(
-          g.modifications === undefined ? t.contient.length : (t.modifications?.length ?? 0),
-          `${g.id} ${t.echappee}`,
-        ).toBeGreaterThan(0)
-        expect(
-          t.role === 'agent' ? personneDuTest(t) !== null : personneDuTest(t) === null,
-          `${g.id} ${t.echappee}`,
-        ).toBe(true)
-      }
-    }
-  })
-  it('sa description tient en 200 caractères ; son identifiant est une intention du catalogue, qui écrit si le geste écrit, jamais un geste codé (P14, P15, § 10)', () => {
-    for (const g of gestes) {
-      expect(g.description.length, g.id).toBeLessThanOrEqual(DESCRIPTION_MAX)
-      const intention = INTENTIONS.find((i) => i.id === g.id)
-      expect(intention, g.id).toBeDefined()
-      expect(intention?.ecrit, g.id).toBe(g.modifications !== undefined)
-      expect(
-        ACTIONS.map((a) => a.id),
-        g.id,
-      ).not.toContain(g.id)
-    }
-  })
-  it('les agents de ses tests existent au client fictif', () => {
-    for (const g of gestes) {
-      for (const t of g.tests) {
-        const reaffectes = (t.modifications ?? []).map(
-          (m) => OPERATION_REAFFECTER.modification.parse(m).agent,
-        )
-        for (const id of [personneDuTest(t), ...Object.values(t.params), ...reaffectes].filter(
-          (v): v is string => typeof v === 'string' && /^A-\d+$/.test(v),
-        )) {
-          expect(agentsFictif, `${g.id} ${t.echappee}`).toContain(`${id};`)
-        }
-      }
-    }
   })
 })
 

@@ -26,7 +26,6 @@ const DOMAINE: Domaine = {
   cadre: 'l’outil d’essai',
   objets: 'les essais',
   modifications: null,
-  places: ['<du>', '<au>'],
   identifiants: /\bX-\d+\b/g,
   rienASignaler: 'Rien.',
 }

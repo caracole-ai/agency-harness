@@ -17,7 +17,7 @@ main.
 | **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, les premiers interdits codés de la sécurité privée (2026-10-05), et Veiller : `pnpm veiller`, la config client, le journal et le rapport (2026-10-06) ; le remplacement validé par le patron et la délégation (étape 5, 2026-10-06). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
-| **Client** | données, exceptions, savoir tacite, seuils ; ses gestes appris (`gestes/<intention>.yaml`, des données que le patron active) et les instantanés de ses échappées (`echappees/<id>.json`) | `clients/<client>/` — **jamais versionné** | ce client seul |
+| **Client** | données, exceptions, savoir tacite, seuils ; ses missions commandées (`missions/<date>/<intention>.yaml`, un geste que le patron a demandé) | `clients/<client>/` — **jamais versionné** | ce client seul |
 
 Le capital, ce sont les **interdits et les tests**, pas les prompts : un prompt
 se réécrit à chaque changement de modèle, un test reste vrai des années.
@@ -63,7 +63,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   comme une proposition d'échappée) fait le 2026-10-11, phase C du grand
   plan (G5). **Retirée le 2026-10-15** (`REFLEXIONS.md`) : plus aucune
   promotion automatique, un geste nouveau se construit sur commande du
-  patron ; les gestes appris et l'atelier restent.
+  patron ; les gestes appris, l'atelier et les instantanés sont retirés le
+  même jour : un geste est du code, écrit par le chantier.
 - `PLAN-GENERAL.md` — **le grand plan** (2026-10-10 ; phases A, B et C
   faites le 2026-10-11 ; D en cours : session D1 faite, D2 à faire) : où on en
   est, les décisions G1 à G11 (fusion automatique sous huit conditions en
@@ -98,36 +99,33 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   2026-10-11, relus, fusionnés dans `main` ; mesurés pour de vrai sur une
   copie du client fictif et un clone de la nuit local (deux chantiers
   fusionnés, un retiré, un refusé pour une raison écrite : passe 20 de
-  `evals/erreurs-2026-10-08.md`).
+  `evals/erreurs-2026-10-08.md`). **La ronde est retirée le 2026-10-15**
+  (`REFLEXIONS.md`) : aucun modèle ne cherche plus ce qui manque, le
+  chantier ne code que les missions que le patron commande.
 - `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
-  secret) : le modèle de chaque rôle (ronde, plan, implémentation, relecture)
+  secret) : le modèle de chaque rôle du chantier (plan, implémentation, relecture)
   et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
   `anthropic` : la clé d'API, avant la finalisation), les prix relus dans la
-  doc d'Anthropic, les bornes de la ronde et du chantier, le clone de la nuit
+  doc d'Anthropic, les bornes du chantier, le clone de la nuit
   (`depot_nuit`, `PLAN-GENERAL.md` G3), les règles d'outils (bornées à
   l'arbre de travail : `Write(./**)`) et les chemins autorisés au chantier,
   écrits avec `${metier}` et résolus avec le métier de la mission ;
   `evals_clients` donne, par métier, le client fictif de la condition 4
   (`PLAN-METIER-2.md` M9).
 - `memoire/` — la mémoire de la nuit (`PLAN-RONDE.md` R10), écrite par le
-  code : `INDEX.md` (une ligne par événement), `rondes/`, `chantiers/`,
+  code : `INDEX.md` (une ligne par événement), `chantiers/`,
   `CONVENTIONS.md` (on y ajoute, on n'en retire jamais), `MESURES.md`. Aucun
   nom ni identifiant de personne, de conversation ou d'échappée : un test de
   `pnpm check` relit tout le dossier.
 - `metiers/<métier>/evals/` — les cas d'évals du métier (`consignes`,
-  `echappees`, `gestes`, `rondes`, en YAML ;
-  `PLAN-METIER-2.md` M8) ; `evals/` garde `resultats/`, `traces/`, `rondes/`
-  et les analyses `erreurs-*.md`, et les fichiers écrits depuis le
+  `echappees`, en YAML ; `PLAN-METIER-2.md` M8) ; `evals/` garde
+  `resultats/`, `traces/` et les analyses `erreurs-*.md`, et les fichiers écrits depuis le
   2026-10-12 portent le métier dans leur nom.
-- `metiers/<métier>/evals/rondes.yaml` et `evals/rondes/` — les cas de `pnpm evals ronde` :
-  des journaux fixés (copies du journal de deux copies du client fictif
-  remplies par de vraies consignes, sans les résultats de requête) et les
-  missions attendues, en **brouillon** de la session D1 (`etiquettes:
-  brouillon`) jusqu'aux étiquettes de Lionel.
-- `methode/architecture-pour-modeles.md` — la carte du harnais que lisent la
-  ronde, le plan, l'implémentation et la relecture (`PLAN-RONDE.md` R6) :
-  les bandes et qui y écrit, ce qu'est un geste, les deux étages, ce qu'un
-  modèle ne fait jamais, ce qui mérite une mission, comment finir.
+- `methode/architecture-pour-modeles.md` — la carte du harnais que lisent le
+  plan, l'implémentation et la relecture d'un chantier (`PLAN-RONDE.md` R6) :
+  les bandes et qui y écrit, ce qu'est un geste, d'où vient un geste nouveau
+  (la commande du patron), ce qu'un modèle ne fait jamais, ce qu'est une
+  mission, comment finir.
 - `methode/chantier.md` — le système ajouté au plan, à l'implémentation et à
   la relecture d'un chantier (`PLAN-RONDE.md` § 6.4) : où écrire et où
   jamais, les conventions du dépôt, ce qu'est un geste (trois cas de
@@ -155,7 +153,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   l'adaptateur du SDK d'Anthropic, délai lu dans la config, un appel long
   en flux avec une borne haute du coût quand le fournisseur ne compte pas ;
   celui de l'abonnement, `abonnement.ts`, par le binaire de Claude Code
-  isolé comme la ronde : la conversation part en texte, le tour revient en
+  isolé : la conversation part en texte, le tour revient en
   sortie structurée, les outils restent exécutés par le moteur ;
   l'adaptateur simulé des tests ; le coût d'un appel et le coût du mois lu
   dans le journal) et
@@ -168,7 +166,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `designe_autrui`, `propose`, `ecrit`, `valide`, `administre` ; le moteur
   demande une capacité, jamais un rôle par son nom ; `Identite { role,
   personne }` ; l'ancienne graphie `agent` se lit encore, par les aides de
-  ce fichier seulement, plus `TestAppris` et `pnpm parler --agent`),
+  ce fichier seulement, plus `pnpm parler --agent`),
   `src/conversation/noms.ts` (`Designable`, avec sa `sorte` : personne ou
   organisation ; `m.noms(s)` rend tout nom qui ne part jamais au modèle),
   `src/conversation/domaine.ts` (`PLAN-METIER-2.md` M7 : le domaine que disent
@@ -200,10 +198,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   données », la boucle bornée (tours, tokens, temps ; un seul outil par
   tour demandé, que GMI ignore : chaque appel reçoit son résultat), et
   `echappee.ts` qui assemble copie, système et journal ; chaque échappée
-  laisse au journal son identifiant `E-…`, le rôle, le texte final tel que
-  montré et l'instantané de sa copie, `echappees/<id>.json` chez le client,
-  pour qu'un geste appris puisse la rejouer ; `requete.ts` lie les paramètres
-  d'un geste appris, `:agent`, jamais collés dans le SQL ; `pseudonymes.ts`,
+  laisse au journal son identifiant `E-…`, le rôle, la consigne version
+  modèle et le texte final tel que montré (rien des données hors du
+  journal) ; `pseudonymes.ts`,
   `PLAN-PSEUDONYMES.md`, masque les noms en identifiants dans ce qui part au
   modèle, les restitue dans ce qui est montré et mesure une fuite, au mot
   près ; l'argent, `PLAN-METIER-2.md` M11 : une colonne `decimales: 2` se
@@ -215,67 +212,29 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   proposition de l'échappée s'écrit par une réaffectation groupée
   (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
   patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
-  coup sous la clé d'accord. `src/gestes/` (`PLAN-PROMOTION.md`
-  lot 1) : un **geste appris** est une donnée, `gestes/<intention>.yaml` chez
-  le client (`geste-appris.ts` : schéma fermé, SQL paramétré, gabarit rendu
-  par le code, empreinte ; les types de paramètre sont ceux du moteur, `date`,
-  `periode`, `nombre`, plus ceux que le métier déclare, `types-parametre.ts`,
-  `PLAN-METIER-2.md` M5) ; il ne se charge que si
-  son empreinte est celle de la dernière ligne `geste appris` / `activé` du
-  journal, sinon écarté, `refusé` et alerte G-01 (`charger.ts`, relu à chaque
-  consigne) ; chargé, il devient une action comme les autres, exécutée sans
-  modèle sur la copie du rôle (`action-apprise.ts`), et son intention sort
-  de la liste des demandes nouvelles. Un geste appris qui **écrit**
-  (`PLAN-PROMOTION.md` § 10) porte `modifications { pour_chaque, operation,
-  colonnes }` (une modification par ligne d'une de ses requêtes, selon
-  l'opération que le métier déclare, `operation.ts`, `PLAN-METIER-2.md` M6 ;
-  la sécurité déclare `reaffecter`, l'ancienne forme `reaffecter { vacation,
-  agent }` se lit encore) et n'est ouvert qu'aux rôles qui ont la capacité
-  `ecrit` (le patron, pour la sécurité) : exécuté sans modèle, il ne fait que calculer ses réaffectations,
-  que la conversation traite exactement comme une proposition d'échappée
-  (contrôles du métier, « oui » du patron, « oui » de chaque agent, clé sur
-  la liste exacte). La promotion automatique (espace 3, `src/promotion/`)
-  est **retirée** depuis le 2026-10-15 : un geste nouveau se construit sur
-  commande du patron. Restent dans `src/gestes/` la vérification en code
-  (`verifier.ts` : gabarit sur une copie vide, rejeu de chaque test sur son
-  instantané, aucune valeur en dur venue d'une consigne, description
-  distincte des gestes existants) et la purge des instantanés que plus
-  aucun geste appris ne cite (`instantanes.ts`, faite par la nuit passé
-  90 jours).
-  `atelier.ts` (lot 3) est ce que l'atelier et le patron font ensuite d'un
-  geste, par `pnpm gestes` ou par l'interface, aux mêmes exigences : lister
-  (statut, tests, dernière vérification, activable ou pourquoi pas), vérifier
-  (la vérification en code, puis avec `--avec-modele` la passe de traduction
-  qui décide), activer (exige une ligne `vérifié` sans écart et avec modèle
-  sur l'empreinte exacte du fichier ; écrit `statut: actif` et `validation`
-  dans le YAML, puis la ligne `activé` au journal, la clé que le chargement
-  exige), retirer (`statut: retire`, ligne `retiré` : plus chargé dès la
-  consigne suivante).
+  coup sous la clé d'accord. Un geste codé qui écrit fait de même
+  (`propose: true`) : il ne fait que calculer ses modifications, que la
+  conversation traite comme une proposition d'échappée. `src/gestes/commande.ts`
+  (REFLEXIONS.md, 2026-10-15) : les demandes sans geste du journal, groupées
+  par intention, et la commande du patron (`geste commandé` au journal) ;
+  les gestes appris, l'atelier et la promotion sont retirés : un geste est
+  du code, écrit par le chantier sur commande du patron.
   `src/agence/config.ts` (`PLAN-RONDE.md` § 4.1) charge `agence.yaml`
   (schéma strict) et fait le préflight au moment de l'appel : sous
   `acces: claude`, `ANTHROPIC_API_KEY` absente et `claude auth status`
   connecté ; sous `acces: anthropic`, la clé exigée. `src/chantier/memoire.ts`
   écrit et relit `memoire/` (R10) : une écriture qui porterait un nom ou un
   identifiant lève, le texte libre d'un modèle y entre nettoyé.
-  `src/ronde/` (`PLAN-RONDE.md` § 5, la ronde de nuit) : `resume.ts` fait en
-  code le résumé du journal sur une fenêtre de jours (par demande : le rôle, la
-  consigne version modèle, ce qu'elle est devenue ; une échappée sans
-  `consigne_modele` est comptée, pas montrée ; un geste sans valeur de
-  personne ni texte libre ; les comptes sur 30 jours, un abandon par la
-  catégorie de son motif), `rapport.ts` le schéma strict du rapport et la
-  revalidation en code, `ronde.ts` le catalogue (gestes, intentions,
-  missions ouvertes), le système, l'appel (par le binaire
-  ou par la clé selon `agence.yaml`, une relance sur un échec de forme), les
-  fichiers chez le client, la ligne au journal et la mémoire ; rien ne part si
-  un nom partirait. `src/chantier/claude.ts` lance le binaire `claude -p`
+  `src/chantier/claude.ts` lance le binaire `claude -p`
   (préflight, ligne de commande, délai mural, JSON lu par un schéma) ; la
-  ronde s'en sert isolée (`--setting-sources ""`, aucun outil, ni MCP ni
-  session), le chantier avec les réglages de l'arbre seulement
+  conversation sous l'abonnement s'en sert isolée (`--setting-sources ""`),
+  le chantier avec les réglages de l'arbre seulement
   (`--setting-sources project` : ni les hooks ni le `CLAUDE.md` de
   l'utilisateur). Le chantier (`PLAN-RONDE.md` § 6, `PLAN-GENERAL.md` G1 à
-  G3) : `mission.ts` (la mission de la ronde, la décision en code :
-  question pour l'atelier, écartée ou retirée ; ce qui
-  part au modèle, par types), `arbre.ts` (le clone de la nuit vérifié, un
+  G3) : `mission.ts` (la mission d'un geste commandé : écrite par le code à la
+  commande depuis le journal, sans nom, `missions/<date>/<id>.yaml` chez le
+  client ; la décision en code, retirée ou geste déjà codé ; ce qui part au
+  modèle, par types ; l'état d'une commande pour l'interface), `arbre.ts` (le clone de la nuit vérifié, un
   `git worktree` par mission, le commit ; jamais merge ni push), `garde.ts`
   (le diff dans la bande, la mémoire en ajout seul aux conventions, aucun
   test retiré ni tu, `lignes_max`, les cas de traduction des gestes
@@ -284,13 +243,11 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   retrait par `git revert -m 1` ; le seul module qui fusionne ou pousse),
   `chantier.ts` (plan → implémentation → garde → `pnpm check` → relecture →
   une reprise au plus → honnêteté → dossier → mémoire → fusion), `nuit.ts`
-  (le clone remis à `origin/main`, purge des instantanés → ronde → chantier, la ligne de
+  (le clone remis à `origin/main` → chantier des missions commandées, la ligne de
   la nuit ; idempotente).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `metiers/<métier>/evals/`
-  (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches, et porte la
-  passe de traduction qui décide « activable » (`passeTraduction`), partagée
-  entre `pnpm evals` et `pnpm gestes verifier`.
+  (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches.
 - `interface/` — l'interface, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
   chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
@@ -305,26 +262,21 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   le rôle sans identifiant, sinon la première personne du registre dont le
   rôle administre ; l'agence web s'ouvre sous M-01) et `/api/tableau` (le nom
   et les textes de qui parle, ouverts à tout rôle passé par la porte). Cinq onglets
-  (à valider, règles, délégations proposées, appris, journal), réservés à la
+  (à valider, règles, délégations proposées, gestes, journal), réservés à la
   capacité `administre` (le patron, pour la sécurité), et
   la conversation toujours visible ; l'identité est choisie dans le registre
-  d'accès, pas authentifiée, et la page le dit. « Appris » (« Ce que l'outil
-  a appris », `PLAN-PROMOTION.md` § 7.2) montre les gestes appris proposés
-  (activables, ou pourquoi pas), actifs et retirés ; le patron active après
-  une confirmation à l'écran, ou retire avec un motif (`/api/gestes`,
-  `/api/gestes/activer`, `/api/gestes/retirer` ; « par » est son identité
-  vérifiée, jamais un champ du corps). Le même onglet montre d'abord les
-  **demandes sans geste** (`/api/sans-geste` : les `consigne`/`nouvelle` du
+  d'accès, pas authentifiée, et la page le dit. « Gestes » (« Ce que l'outil
+  ne sait pas encore faire ») montre les **demandes sans geste** (`/api/sans-geste` : les `consigne`/`nouvelle` du
   journal groupées par intention, les plus fréquentes d'abord, avec leurs
   derniers résumés) ; « Créer ce geste » les commande
   (`/api/sans-geste/commander`, aucun modèle) : le code écrit la mission
-  `geste_code` chez le client (`rondes/<date>/<intention>.yaml`, depuis les
+  `geste_code` chez le client (`missions/<date>/<intention>.yaml`, depuis les
   consignes version modèle des échappées de l'intention, sans nom), puis une
   ligne `geste commandé` ; la nuit la prend, le chantier code le geste sous
   ses portes. La carte dit où en est la commande : mission écrite, chantier
   du … (fusionné : disponible à la prochaine mise à jour de l'outil), puis
-  disponible quand le métier chargé porte le geste. La ronde n'écrit jamais
-  de mission `geste_code`.
+  disponible quand le métier chargé porte le geste. « par » est l'identité
+  vérifiée, jamais un champ du corps.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -350,7 +302,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
     contre vendu : `semantique.ts`) et deux sections du rapport (« Écarts »,
     « À suivre, hors des règles vérifiées »), la copie par capacité et ses
     huit gestes (`actions.ts`), ses évals (`metiers/agence-web/evals/`, 96
-    consignes, 24 échappées, 3 gestes appris) ; rien ne s'écrit chez le
+    consignes, 24 échappées) ; rien ne s'écrit chez le
     client ;
   - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
     instantanés datés, d'où viennent les lignes `texte` ;
@@ -441,55 +393,19 @@ pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maint
                          # absente, coût estimé). Les clients fictifs désignent Sonnet 5.5 par
                          # l'abonnement, la référence depuis le 2026-10-14 (GLM-5.3 chez GMI
                          # Cloud avant)
-pnpm gestes --client <copie> lister | verifier <id> [--avec-modele] | activer <id> --par <nom> | retirer <id> --motif "<texte>" [--par <nom>]
-                         # l'atelier devant les gestes appris (gestes/*.yaml) : la liste avec la
-                         # dernière vérification et « activable » ; vérifier = gabarit, rejeu des
-                         # tests sur leurs instantanés, valeurs en dur, description (0 $), et avec
-                         # --avec-modele la passe de traduction qui décide (≈ 0,15 $) ; activer
-                         # exige cette passe sans écart sur l'empreinte exacte du fichier et pose
-                         # la clé au journal (--par obligatoire) ; retirer le retire dès la
-                         # consigne suivante. <id> : l'identifiant, ou le nom du fichier quand
-                         # plusieurs le portent. Le patron fait la même chose dans l'interface.
-                         # Sur une COPIE du client fictif
-pnpm evals traduire|echappee|gestes --client exemples/client-fictif [--seulement id,id] [--modele simule]
-                         # les évals de la conversation et du rejeu des gestes appris (cas dans
+pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
+                         # les évals de la conversation (cas dans
                          # metiers/<métier du --client>/evals/,
                          # copie fraîche par cas) : traduire et echappee appellent le vrai
-                         # modèle (≈ 0,3 $ les deux passes avec GLM-5.3) ; gestes rejoue les gestes appris sur leurs
-                         # instantanés sans modèle (0 $, seuil 100 % ; textes ou réaffectations
-                         # attendus) ; chaque cas avec modèle a
+                         # modèle (≈ 0,3 $ équivalent les deux passes) ; chaque cas a
                          # sa colonne « fuite » : les noms du client (m.noms) partis au modèle,
                          # comptés en code (la consigne telle qu'écrite permise à la traduction),
                          # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
                          # traces dans evals/traces/<horodatage>-<métier>-<quoi>/ (non versionné),
                          # tableau dans evals/resultats/<horodatage>-<métier>-<quoi>.md
-pnpm evals ronde --client exemples/client-fictif [--seulement R-1] [--modele simule]
-                         # la ronde contre des journaux fixés (evals/rondes/*.json) et les missions
-                         # attendues du rondes.yaml du métier : précision, rappel, fuite ; le modèle
-                         # d'agence.yaml, memoire/ ni lue ni écrite. Étiquettes en brouillon
-                         # (session D1) : « brouillon, pas une mesure », jusqu'à celles de Lionel
-pnpm ronde --client <copie> --date 2026-10-10 [--depuis 2026-10-01] [--refaire] [--sans-modele]
-pnpm ronde --verifier-modeles
-                         # la ronde de nuit (PLAN-RONDE.md § 5) : le résumé du journal fait en code
-                         # (consignes version modèle, issues, comptes ; jamais une donnée, un nom,
-                         # un résultat ni un texte montré), le catalogue, la carte et la mémoire
-                         # partent au modèle « ronde » d'agence.yaml, qui désigne au plus
-                         # missions_max missions ; le code revalide (R3 : échappées de la fenêtre,
-                         # consignes-types sans identifiant ni nom, geste actif, mission ouverte
-                         # ou retirée) ; écrit rondes/<date>.md, .json, une
-                         # mission par fichier rondes/<date>/<id>.yaml, la ligne « ronde » au
-                         # journal (des comptes), et memoire/. Une seconde fois pour la même date :
-                         # rien, sauf --refaire (qui efface rondes/<date>/, une mission commandée
-                         # ce jour-là comprise : un drapeau de laboratoire). Une mission déjà
-                         # écrite (commandée le jour même) n'est jamais écrasée.
-                         # --sans-modele : le résumé seul, aucun appel.
-                         # Sous acces: claude (le laboratoire), l'abonnement par le binaire
-                         # `claude` : ANTHROPIC_API_KEY doit être absente, le coût est « estimé
-                         # par le binaire » (≈ 0,2 à 0,4 $ par ronde sur Fable 5.1).
-                         # --verifier-modeles : un appel minuscule à chaque modèle de l'agence.
-pnpm chantier --mission <copie>/rondes/2026-10-10/<id>.yaml [--sans-modele] [--refaire]
-                         # le chantier d'une mission (PLAN-RONDE.md § 6) : décidé en code
-                         # (question pour l'atelier, écartée : aucun appel),
+pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sans-modele] [--refaire]
+                         # le chantier d'une mission commandée (PLAN-RONDE.md § 6) : décidé en
+                         # code (retirée, geste déjà codé : aucun appel),
                          # puis, dans un arbre de travail du clone de la nuit (agence.yaml :
                          # depot_nuit, jamais l'arbre courant ni un arbre sale), Fable planifie,
                          # Opus code dans la bande métier, le code garde le diff et rejoue
@@ -498,18 +414,19 @@ pnpm chantier --mission <copie>/rondes/2026-10-10/<id>.yaml [--sans-modele] [--r
                          # traduire avec le modèle du quotidien : exige sa clé) ; dossier
                          # <copie>/chantiers/<id>.md, memoire/ du clone, et fusion --no-ff dans
                          # main du clone + étiquette chantier/<id> + push si les huit conditions
-                         # de G1 sont vertes. Déjà tentée : rien, sauf --refaire. --sans-modele :
+                         # de G1 sont vertes. Déjà tentée : rien, sauf --refaire (qui rouvre la
+                         # branche telle quelle : pour repartir de main, supprimer la branche
+                         # chantier/<id> du clone). --sans-modele :
                          # la décision et ce que le plan recevrait, aucun appel ni git.
 pnpm chantier retirer <id> --motif "<texte>" --client <copie>
                          # G2 : git revert -m 1 de la fusion sur main du clone, push, la mémoire
-                         # (motif, intentions : la ronde ne la repropose pas, même sous un autre
-                         # nom), la ligne « retiré » au journal du client.
+                         # (motif, intentions : jamais refaite, même sous un autre nom), la ligne
+                         # « retiré » au journal du client.
 pnpm nuit --client <copie> [--date 2026-10-10]
                          # la nuit (PLAN-RONDE.md § 7) : le clone de la nuit remis à origin/main
                          # (fetch + reset --hard, ce clone seulement ; sale ou arbre courant : la
-                         # nuit s'arrête avant tout appel), puis la purge des instantanés
-                         # d'échappée (90 jours) → la ronde (sa mémoire écrite et poussée depuis
-                         # le clone) → le chantier de la première mission non traitée, au plus
+                         # nuit s'arrête avant tout appel), puis le chantier de la première
+                         # mission commandée non traitée, au plus
                          # missions_max_par_nuit → la ligne de la nuit dans
                          # memoire/MESURES.md. Une étape qui échoue n'arrête pas les suivantes ;
                          # relancée la même nuit, elle ne refait rien. Rien n'est installé ; au
@@ -518,7 +435,7 @@ pnpm nuit --client <copie> [--date 2026-10-10]
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,
-                         # délégations, appris (activer ou retirer un geste appris), journal, et la
+                         # délégations, gestes (les demandes sans geste, « Créer ce geste »), journal, et la
                          # conversation. Exige la clé de la config, sauf
                          # --modele simule (rejoue --script, un tableau de réponses). Sur une COPIE
 ```

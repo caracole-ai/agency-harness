@@ -7,7 +7,7 @@ import { VARIABLE_CLE_ANTHROPIC } from '../conversation/config'
 import { EFFORTS, type PrixModele } from '../modele/modele'
 
 // La config de l'agence (`agence.yaml`, à la racine du dépôt, sans secret) :
-// les modèles de la ronde et du chantier par rôle, leurs prix, les bornes
+// les modèles du chantier par rôle, leurs prix, les bornes
 // (PLAN-RONDE.md § 4.1, R7). Deux accès (§ 0.a) : `claude`, l'abonnement par
 // le binaire, au laboratoire ; `anthropic`, la clé d'API de l'agence
 // (PLAN-GENERAL.md G10), avant la finalisation. Le préflight se fait au moment
@@ -48,7 +48,6 @@ const CheminAutorise = z
 
 export const AgenceSchema = z.strictObject({
   modeles: z.strictObject({
-    ronde: ModeleAgence,
     chantier: z.strictObject({
       plan: ModeleAgence,
       implementation: ModeleAgence,
@@ -58,15 +57,10 @@ export const AgenceSchema = z.strictObject({
   prix_par_million_usd: z.record(z.string().min(1), Prix),
   claude: z.strictObject({ binaire: z.string().min(1) }),
   depot_nuit: z.string().min(1),
-  ronde: z.strictObject({
-    missions_max: entier(),
-    comptes_jours: entier(),
-    tokens_sortie: entier(),
-    delai_secondes: entier(),
-    memoire: z.strictObject({ index_lignes: entier(), rondes_jours: entier() }),
-  }),
   chantier: z.strictObject({
     missions_max_par_nuit: entier(),
+    /** Les dernières lignes de `memoire/INDEX.md` que le plan d'un chantier lit (R10). */
+    memoire_index_lignes: entier(),
     tours_max: entier(),
     budget_usd_par_mission: z.number().positive(),
     lignes_max: entier(),
@@ -85,7 +79,6 @@ export type Agence = z.infer<typeof AgenceSchema>
 export function chargerAgence(racine: string): Agence {
   const agence = chargerConfig(join(racine, FICHIER_AGENCE), AgenceSchema)
   const modeles = [
-    agence.modeles.ronde,
     agence.modeles.chantier.plan,
     agence.modeles.chantier.implementation,
     agence.modeles.chantier.revue,

@@ -1,6 +1,7 @@
 import {
   type Action,
   dateFr,
+  dureeHeures,
   type Identite,
   passerVeille,
   Temporal,
@@ -414,6 +415,25 @@ const suivreDemande: Action<Session, z.infer<typeof SuivreDemande>> = {
   },
 }
 
+/** Les bornes d'une période demandée ; une borne nulle ne borne pas. */
+const bornes = (p: { du: string | null; au: string | null }) => ({
+  du: p.du ? Temporal.PlainDate.from(p.du) : undefined,
+  au: p.au ? Temporal.PlainDate.from(p.au) : undefined,
+})
+
+/** Une vacation est dans la période quand son jour de début est entre `du` et `au` inclus. */
+function dansPeriode(
+  debut: Temporal.ZonedDateTime,
+  du: Temporal.PlainDate | undefined,
+  au: Temporal.PlainDate | undefined,
+): boolean {
+  const jour = debut.toPlainDate()
+  return (
+    (!du || Temporal.PlainDate.compare(jour, du) >= 0) &&
+    (!au || Temporal.PlainDate.compare(jour, au) <= 0)
+  )
+}
+
 const VoirPlanning = z.strictObject({
   agent: z
     .string()
@@ -438,17 +458,10 @@ const voirPlanning: Action<Session, z.infer<typeof VoirPlanning>> = {
   },
   executer: (s, identite, p) => {
     const agent = agentVise(identite, p.agent)
-    const du = p.du ? Temporal.PlainDate.from(p.du) : undefined
-    const au = p.au ? Temporal.PlainDate.from(p.au) : undefined
+    const { du, au } = bornes(p)
     const vacations = (agent ? s.ctx.vacationsDe(agent) : s.ctx.planning.vacations)
       .map((v) => ({ v, debut: intervalleDe(v).debut }))
-      .filter(({ debut }) => {
-        const jour = debut.toPlainDate()
-        return (
-          (!du || Temporal.PlainDate.compare(jour, du) >= 0) &&
-          (!au || Temporal.PlainDate.compare(jour, au) <= 0)
-        )
-      })
+      .filter(({ debut }) => dansPeriode(debut, du, au))
       .sort((a, b) => Temporal.ZonedDateTime.compare(a.debut, b.debut))
     // Le nom complet de l'agent visé, même sans vacation : le patron voit qui l'outil a compris.
     return {
@@ -458,6 +471,78 @@ const voirPlanning: Action<Session, z.infer<typeof VoirPlanning>> = {
           : identite.role === 'patron' && agent
             ? `Aucune vacation pour ${nomDe(s, agent)}.`
             : 'Aucune vacation.',
+    }
+  },
+}
+
+/** La période dite en mots : ses deux bornes, ou celle qui manque. */
+function enMots(p: { du: string | null; au: string | null }): string {
+  const jour = (j: string) => dateFr(Temporal.PlainDate.from(j))
+  if (p.du && p.au) return `du ${jour(p.du)} au ${jour(p.au)}`
+  if (p.du) return `depuis le ${jour(p.du)}`
+  if (p.au) return `jusqu'au ${jour(p.au)}`
+  return 'sur tout le planning'
+}
+
+const enHeures = (h: number) => `${Math.round(h * 10) / 10} h`
+
+const HeuresParAgent = z.strictObject({
+  agent: z
+    .string()
+    .nullable()
+    .describe("l'agent dont on compte les heures (A-1), ou null pour tous"),
+  du: Jour.nullable().describe('premier jour inclus, AAAA-MM-JJ, ou null (sans borne)'),
+  au: Jour.nullable().describe('dernier jour inclus, AAAA-MM-JJ, ou null (sans borne)'),
+})
+const heuresParAgent: Action<Session, z.infer<typeof HeuresParAgent>> = {
+  id: 'heures_par_agent',
+  description:
+    "Compter les heures de vacation d'un agent, ou de tous, entre deux dates, d'après le planning (faites ou à venir), sans le montrer vacation par vacation.",
+  parametres: HeuresParAgent,
+  personnes: {
+    agent:
+      "l'agent dont on compte les heures, tel qu'il est écrit dans la consigne ; null pour tous, ou pour soi-même quand c'est un agent qui parle",
+  },
+  roles: ['patron', 'agent'],
+  ecrit: false,
+  reformuler: (s, identite, p) => {
+    const agent = agentVise(identite, p.agent)
+    return `Je compte les heures${agent ? ` de ${nomDe(s, agent)}` : ' de chaque agent'}.`
+  },
+  executer: (s, identite, p) => {
+    const { du, au } = bornes(p)
+    if (du && au && Temporal.PlainDate.compare(du, au) > 0) {
+      throw new Error('La période est inversée.')
+    }
+    // Une vacation compte entière sur son jour de début, comme `voir_planning` et la copie de l'échappée.
+    const heures = (agent: string) =>
+      s.ctx
+        .vacationsDe(agent)
+        .map((v) => intervalleDe(v))
+        .filter((i) => dansPeriode(i.debut, du, au))
+        .reduce((total, i) => total + dureeHeures(i), 0)
+    const quand = enMots(p)
+    const agent = agentVise(identite, p.agent)
+    if (agent) {
+      const h = heures(agent)
+      return {
+        texte:
+          identite.role === 'patron'
+            ? `${nomDe(s, agent)} : ${enHeures(h)} ${quand}.`
+            : `Tes heures ${quand} : ${enHeures(h)}.`,
+        donnees: { heures: h },
+      }
+    }
+    // Tous, du moins d'heures au plus ; à égalité, l'ordre du planning (le tri est stable).
+    const parAgent = s.ctx.planning.agents
+      .map((a) => ({ agent: a.id, nom: a.nom, heures: heures(a.id) }))
+      .sort((a, b) => a.heures - b.heures)
+    return {
+      texte: [
+        `Les heures de chaque agent ${quand} :`,
+        ...parAgent.map((a) => `${a.nom} : ${enHeures(a.heures)}`),
+      ].join('\n'),
+      donnees: { heures: parAgent.map(({ agent, heures }) => ({ agent, heures })) },
     }
   },
 }
@@ -522,6 +607,7 @@ export const ACTIONS: Action<Session, unknown>[] = [
   changerRemplacant,
   suivreDemande,
   voirPlanning,
+  heuresParAgent,
   voirEcheances,
   mesTitres,
   lancerVeille,

@@ -9,8 +9,7 @@ export const TYPE_APPEL = 'appel_modele'
 
 /**
  * Ce qui a demandé l'appel : traduire une consigne, désigner la personne
- * qu'elle nomme (REFLEXIONS.md, décidé le 2026-10-08), une échappée ; ou
- * vérifier la traduction d'un geste appris à l'atelier.
+ * qu'elle nomme (REFLEXIONS.md, décidé le 2026-10-08), une échappée.
  */
 export type UsageAppel = 'traduire' | 'designer' | 'echappee' | 'verifier'
 

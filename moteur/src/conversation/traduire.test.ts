@@ -71,7 +71,6 @@ const SECURITE: Domaine = {
   objets: 'le planning et les agents',
   modifications:
     'Une modification réaffecte une vacation à un autre agent ; créer ou supprimer une vacation n’est pas possible.',
-  places: ['<agent>', '<du>', '<au>', '<site>', '<vacation>'],
   identifiants: /\bA-\d+\b/g,
   rienASignaler: 'Aucune vacation contraire à une règle.',
 }
@@ -278,7 +277,6 @@ describe('le domaine du métier', () => {
       cadre: "l'outil de gestion d'une agence web",
       objets: 'les projets, les tickets et le temps passé',
       modifications: null,
-      places: ['<personne>', '<projet>', '<du>', '<au>'],
       identifiants: /\bM-\d+\b/g,
       rienASignaler: 'Aucun écart.',
     }

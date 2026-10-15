@@ -146,6 +146,33 @@ cas:
     consigne: "Le planning de A-4, s'il te plaît."
     attendu: { sorte: action, action: voir_planning, params: { agent: A-4 } }
 
+  # --- Les heures d'un agent, ou de tous (geste commandé le 2026-10-15) ---
+  # Écrits à la main le 2026-10-15 depuis les consignes-types, avant toute
+  # passe. « Cette semaine » = lundi 05/10 au dimanche 11/10 ; « la semaine
+  # prochaine » = 12/10 au 18/10. P-HEU-2 : `au` non comparé (null ou le jour).
+  - id: P-HEU-1
+    role: patron
+    consigne: "Donne-moi les heures de Karim du 5 au 11 octobre."
+    attendu: { sorte: action, action: heures_par_agent, params: { agent: A-1, du: "2026-10-05", au: "2026-10-11" } }
+  - id: P-HEU-2
+    role: patron
+    consigne: "Sophie, elle en est à combien d'heures depuis le début du mois ?"
+    attendu: { sorte: action, action: heures_par_agent, params: { agent: A-3, du: "2026-10-01" } }
+  - id: P-HEU-3
+    role: patron
+    consigne: "Les heures de tout le monde la semaine prochaine ?"
+    attendu: { sorte: action, action: heures_par_agent, params: { agent: null, du: "2026-10-12", au: "2026-10-18" } }
+  - id: A-HEU-1
+    role: agent
+    agent: A-2
+    consigne: "Combien d'heures j'ai fait cette semaine ?"
+    attendu: { sorte: action, action: heures_par_agent, params: { du: "2026-10-05", au: "2026-10-11" } }
+  - id: A-HEU-2
+    role: agent
+    agent: A-9
+    consigne: "j'en suis à combien d'heures du 12 au 18 ?"
+    attendu: { sorte: action, action: heures_par_agent, params: { du: "2026-10-12", au: "2026-10-18" } }
+
   # --- Patron : les échéances ---
   - id: P-ECH-1
     role: patron
@@ -264,11 +291,11 @@ cas:
   - id: N-1
     role: patron
     consigne: "Qui a le moins d'heures cette semaine ?"
-    attendu: { sorte: nouvelle, intention: [heures_par_agent] }
+    attendu: { sorte: action, action: heures_par_agent, params: { agent: null, du: "2026-10-05", au: "2026-10-11" } }
   - id: N-2
     role: patron
     consigne: "Combien d'heures a fait Karim cette semaine ?"
-    attendu: { sorte: nouvelle, intention: [heures_par_agent] }
+    attendu: { sorte: action, action: heures_par_agent, params: { agent: A-1, du: "2026-10-05", au: "2026-10-11" } }
   - id: N-3
     role: patron
     consigne: "Refais la semaine de Karim en lui laissant son mercredi."
@@ -297,6 +324,15 @@ cas:
     role: patron
     consigne: "Si Sophie ne revient pas avant le 20, qui peut reprendre ses vacations ?"
     attendu: { sorte: nouvelle, intention: [simuler_absence] }
+  # Écrits à la main le 2026-10-15 : N-1 et N-2 ont maintenant un geste.
+  - id: N-9
+    role: patron
+    consigne: "Quels agents n'ont pas de carte professionnelle renseignée ?"
+    attendu: { sorte: nouvelle, intention: [agents_sans_carte] }
+  - id: N-10
+    role: patron
+    consigne: "Combien de vacations de nuit y a-t-il sur le Chantier Bellevue ?"
+    attendu: { sorte: nouvelle, intention: [compter_vacations] }
 
   # --- Hors sujet ---
   - id: H-1

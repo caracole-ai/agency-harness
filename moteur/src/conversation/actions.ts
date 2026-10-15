@@ -20,7 +20,7 @@ export interface Resultat {
   texte: string
   /** Ce qui a servi au texte ; va au journal. */
   donnees?: unknown
-  /** Des modifications calculées sans rien écrire (un geste appris qui écrit) : la conversation les traite comme une proposition d'échappée (PLAN-PROMOTION.md § 10). */
+  /** Des modifications calculées sans rien écrire (un geste qui propose) : la conversation les traite comme une proposition d'échappée. */
   modifications?: unknown[]
   /** La proposition que ces modifications corrigent (son identifiant, rendu par le métier) : le métier les y rattache (PLAN-CHOIX.md C2). */
   corrige?: string
@@ -47,13 +47,12 @@ export interface Action<Session, Params> {
    * true : l'exécution ne fait que calculer des modifications, sans rien
    * écrire ; elles passent par la proposition du métier (contrôles, oui de
    * qui valide, oui de chaque personne concernée, clé sur la liste exacte),
-   * exactement comme une proposition d'échappée. Un geste appris qui écrit
-   * (PLAN-PROMOTION.md § 10).
+   * exactement comme une proposition d'échappée.
    */
   propose?: true
   /** La phrase de confirmation, rendue par le code. Lève si l'action est impossible pour ce demandeur. */
   reformuler(s: Session, identite: Identite, params: Params): string
-  /** Synchrone pour les gestes codés ; un geste appris lit sa copie dans un processus enfant et rend une promesse (PLAN-PROMOTION.md § 5.3). */
+  /** Synchrone, ou une promesse pour un geste qui attend une lecture. */
   executer(
     s: Session,
     identite: Identite,
@@ -99,6 +98,9 @@ export const JE_NE_SAIS_PAS = 'je_ne_sais_pas'
 /** La forme d'un mot-clé d'intention : snake_case ASCII, 60 caractères au plus. */
 export const FORMAT_INTENTION = /^[a-z0-9_]{1,60}$/
 
+/** Le texte montré quand une entité nommée ne désigne pas exactement un objet, suivi des identifiants des candidats ; rien n'est exécuté. */
+export const LEQUEL = 'Lequel ?'
+
 /**
  * Une sorte de demande nouvelle que le métier connaît déjà : le mot-clé que le
  * modèle réutilise, et ce qu'il désigne. La promotion compte par mot-clé exact
@@ -110,7 +112,7 @@ export interface Intention {
   id: string
   /** Une phrase pour le modèle, en français. */
   description: string
-  /** true : la demande écrit dans les données ; la promotion en fabrique un geste qui propose des réaffectations (PLAN-PROMOTION.md § 10). */
+  /** true : la demande écrit dans les données ; son geste, une fois codé, propose ses modifications. */
   ecrit: boolean
 }
 

@@ -6,13 +6,9 @@ import {
   chargerPersonnes,
   copieClient,
   FichierEchappee,
-  FichierGestes,
   FichierTraduire,
   FORMAT_INTENTION,
-  type GesteAppris,
-  TESTS_MIN,
   Temporal,
-  verifierGabarit,
 } from '@harnais/moteur'
 import { afterAll, describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
@@ -46,7 +42,6 @@ const lire = (fichier: string) => readFileSync(join(EVALS, fichier), 'utf8')
 
 const traduire = FichierTraduire.parse(parse(lire('consignes.yaml')))
 const echappees = FichierEchappee.parse(parse(lire('echappees.yaml')))
-const gestes = FichierGestes.parse(parse(lire('gestes.yaml'))).gestes
 
 // Une copie : ouvrir le client y écrit son journal.
 const copie = copieClient(EXEMPLE)
@@ -369,7 +364,7 @@ CALCULS['EP-16'] = () => ({ contient: [lotPiege()], exclut: [JETON_PIEGE] })
 CALCULS['EP-18'] = () => ({ contient: [lotPiege()], exclut: [JETON_PIEGE] })
 
 /** Ce qu'un test de geste appris doit rendre, calculé depuis les CSV. */
-const CALCULS_GESTES: Record<string, (p: Record<string, string | number | null>) => string[]> = {
+const _CALCULS_GESTES: Record<string, (p: Record<string, string | number | null>) => string[]> = {
   devis_sans_reponse: (p) =>
     devisSansReponse(jour(String(p.date)).subtract({ days: Number(p.jours) })).flatMap((d) => [
       d.id,
@@ -401,7 +396,7 @@ const inscrite = (role: string, personne: string | undefined) =>
 
 describe('les fichiers des évals de l’agence web', () => {
   it('chacun cite le plan dans son commentaire de tête', () => {
-    for (const f of ['consignes.yaml', 'echappees.yaml', 'gestes.yaml']) {
+    for (const f of ['consignes.yaml', 'echappees.yaml']) {
       expect(lire(f).split('\n').slice(0, 3).join(' '), f).toContain('PLAN-METIER-2.md § 9')
     }
   })
@@ -497,50 +492,6 @@ describe('les cas de l’éval de l’échappée', () => {
       const attendu = calcul()
       expect(trie(c.attendu.contient), `${c.id} contient`).toEqual(trie(attendu.contient))
       expect(trie(c.attendu.exclut), `${c.id} exclut`).toEqual(trie(attendu.exclut))
-    }
-  })
-})
-
-describe('les gestes appris de l’éval de rejeu (PLAN-PROMOTION.md § 7.3)', () => {
-  it('chacun porte une intention du métier qui lit, jamais un geste codé, et passe la vérification du gabarit', () => {
-    expect(gestes.length).toBeGreaterThanOrEqual(1)
-    for (const g of gestes) {
-      const intention = INTENTIONS.find((i) => i.id === g.id)
-      expect(intention, g.id).toBeDefined()
-      expect(intention?.ecrit, g.id).toBe(false)
-      expect(g.modifications, g.id).toBeUndefined()
-      expect(
-        ACTIONS.map((a) => a.id),
-        g.id,
-      ).not.toContain(g.id)
-      expect(verifierGabarit(CONVERSATION, g), g.id).toEqual([])
-    }
-  })
-  it('chacun a au moins trois tests, de rôles qu’il ouvre, de personnes inscrites, aux échappées distinctes', () => {
-    for (const g of gestes) {
-      expect(g.tests.length, g.id).toBeGreaterThanOrEqual(TESTS_MIN)
-      expect(new Set(g.tests.map((t) => t.echappee)).size, g.id).toBe(g.tests.length)
-      for (const t of g.tests) {
-        expect(g.roles, `${g.id} ${t.echappee}`).toContain(t.role)
-        expect(inscrite(t.role, t.personne ?? undefined), `${g.id} ${t.echappee}`).toBe(true)
-      }
-    }
-  })
-  it('chaque valeur attendue est celle que donnent les CSV ; aucune ligne : le texte « vide » du geste', () => {
-    const parId = new Map<string, GesteAppris>(gestes.map((g) => [g.id, g]))
-    expect(Object.keys(CALCULS_GESTES).sort()).toEqual([...parId.keys()].sort())
-    for (const g of gestes) {
-      const calcul = CALCULS_GESTES[g.id]
-      if (!calcul) throw new Error(`${g.id} : aucun calcul`)
-      for (const t of g.tests) {
-        const attendu = calcul(t.params)
-        if (attendu.length === 0) {
-          for (const mot of t.contient)
-            expect(g.reponse.vide, `${g.id} ${t.echappee}`).toContain(mot)
-        } else {
-          expect(trie(t.contient), `${g.id} ${t.echappee}`).toEqual(trie(attendu))
-        }
-      }
     }
   })
 })

@@ -1,14 +1,12 @@
 import { z } from 'zod'
 import { type Designable, normaliserNom } from '../conversation/designation'
+import type { Operation } from '../conversation/operation'
 import { avecPersonne, CHAMPS_PERSONNE } from '../conversation/roles'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
 import { fuites } from '../echappee/pseudonymes'
 import { contient } from '../echappee/reponse'
-import { GesteAppris } from '../gestes/geste-appris'
-import type { OperationApprise } from '../gestes/operation'
 import type { AppelModele, Modele, ReponseModele } from '../modele/modele'
-import { SORTES_MISSION } from '../ronde/rapport'
 
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : des cas écrits à la
 // main, des vérifications binaires en code, aucun juge. Ce fichier lit les
@@ -27,8 +25,8 @@ export const CATEGORIE_AGENT_PATRON = 'agent_patron'
 /** Le dossier des cas d'éval d'un métier, relatif à la racine du dépôt (PLAN-METIER-2.md M8) ; `evals/` garde les résultats, les traces et les journaux fixés. */
 export const evalsDuMetier = (metier: string): string => `metiers/${metier}/evals`
 
-/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %, rejeu des gestes appris 100 %. */
-export const SEUILS = { traduire: 0.95, echappee: 0.8, gestes: 1 } as const
+/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %. */
+export const SEUILS = { traduire: 0.95, echappee: 0.8 } as const
 
 /** Un dossier d'éval dérivé du client : une chaîne remplacée dans un de ses fichiers, sur la copie du cas. */
 export const Variante = z.strictObject({
@@ -106,18 +104,6 @@ export const FichierEchappee = z.strictObject({
 })
 export type FichierEchappee = z.infer<typeof FichierEchappee>
 
-/**
- * `metiers/<métier>/evals/gestes.yaml` (PLAN-PROMOTION.md § 6.4) : des gestes appris écrits à la
- * main, que le lanceur pose dans une copie du client avec, pour chaque test,
- * un instantané pris sur les données de la copie à `maintenant`, pour le rôle
- * du test ; puis chaque geste de la copie est rejoué, sans modèle.
- */
-export const FichierGestes = z.strictObject({
-  maintenant: z.string(),
-  gestes: z.array(GesteAppris).min(1),
-})
-export type FichierGestes = z.infer<typeof FichierGestes>
-
 const egal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /** Ce que l'éval de traduction compare : la demande, ses personnes résolues, ou la question posée et ses candidats. */
@@ -127,21 +113,8 @@ export type IssueTraduction = Demande | { sorte: 'precision'; candidats: string[
 export function ecartsTraduction(
   attendu: CasTraduire['attendu'],
   demande: IssueTraduction,
-  appris: readonly string[] = [],
 ): string[] {
   const sortes = Array.isArray(attendu.sorte) ? attendu.sorte : [attendu.sorte]
-  // Un cas étiqueté « demande nouvelle » d'une intention devenue geste appris
-  // passe quand le modèle choisit ce geste : c'est la même demande, promue
-  // (PLAN-PROMOTION.md § 5.4, P14). Ses paramètres se mesurent par les tests du
-  // geste lui-même (lot 3, § 7.1), pas par cette étiquette.
-  if (
-    demande.sorte === 'action' &&
-    appris.includes(demande.action) &&
-    sortes.includes('nouvelle') &&
-    (attendu.intention === undefined || attendu.intention.includes(demande.action))
-  ) {
-    return []
-  }
   if (!sortes.includes(demande.sorte)) {
     const detail =
       demande.sorte === 'action'
@@ -195,7 +168,7 @@ const texteDe = (issue: IssueEchappee) => (issue.sorte === 'abandon' ? issue.mot
  * erreur si l'opération ne la lit pas.
  */
 function lireModification(
-  operation: OperationApprise<unknown>,
+  operation: Operation<unknown>,
   m: unknown,
 ): { objet: string; valeurs: string[] } | { erreur: string } {
   const schema =
@@ -219,7 +192,7 @@ function lireModification(
 function ecartsModifications(
   attendu: NonNullable<CasEchappee['attendu']['modifications']>,
   issue: IssueEchappee,
-  operation: OperationApprise<unknown> | undefined,
+  operation: Operation<unknown> | undefined,
 ): string[] {
   if (!operation) return ['critère « modifications » chez un métier sans opération déclarée']
   if (issue.sorte !== 'proposition') return []
@@ -252,7 +225,7 @@ function ecartsModifications(
 export function ecartsEchappee(
   attendu: CasEchappee['attendu'],
   issue: IssueEchappee,
-  operation: OperationApprise<unknown> | undefined,
+  operation: Operation<unknown> | undefined,
 ): string[] {
   const ecarts: string[] = []
   if (!attendu.sortes.includes(issue.sorte)) {
@@ -433,157 +406,6 @@ export function rendreResultats(
     ...resultats.map(
       (r) =>
         `| ${r.id}${r.strict ? ' (strict)' : ''} | ${r.ecarts.length === 0 ? 'ok' : `écart : ${r.ecarts.join(' ; ').replace(/\|/g, '\\|')}`} |${mesuree ? ` ${fuite(r)} |` : ''} ${r.coutUsd.toFixed(4)} |`,
-    ),
-    '',
-  ].join('\n')
-}
-
-// La ronde (PLAN-RONDE.md § 5.4, amendé § 0.c) : des journaux fixés, rejoués
-// sur une copie du client, et les missions attendues. Tant que les étiquettes
-// sont le brouillon d'une session (`etiquettes: brouillon`), le résultat est
-// « brouillon, pas une mesure » ; Lionel les remplace (`lionel`).
-
-export const ETIQUETTES = ['brouillon', 'lionel'] as const
-export type Etiquettes = (typeof ETIQUETTES)[number]
-
-export const MissionAttendue = z.strictObject({
-  sorte: z.enum(SORTES_MISSION),
-  /** Toutes doivent être dans la mission trouvée. */
-  intentions: z.array(z.string().min(1)).default([]),
-  /** Ou au moins deux de celles-ci. */
-  echappees: z.array(z.string().min(1)).default([]),
-})
-export type MissionAttendue = z.infer<typeof MissionAttendue>
-
-export const CasRonde = z.strictObject({
-  id: z.string().min(1),
-  /** Une clé de `journaux`. */
-  journal: z.string().min(1),
-  date: z.iso.date(),
-  depuis: z.iso.date().optional(),
-  attendu: z.strictObject({
-    rien_a_signaler: z.boolean(),
-    missions: z.array(MissionAttendue).default([]),
-  }),
-})
-export type CasRonde = z.infer<typeof CasRonde>
-
-export const FichierRondes = z.strictObject({
-  etiquettes: z.enum(ETIQUETTES),
-  /** Les journaux fixés : un nom, et un fichier JSON relatif à `evals/` (une ligne du journal par élément). */
-  journaux: z.record(z.string(), z.string().min(1)),
-  cas: z.array(CasRonde).min(1),
-})
-export type FichierRondes = z.infer<typeof FichierRondes>
-
-/** Une ligne d'un journal fixé. */
-export const LigneFixee = z.strictObject({
-  horodatage: z.string(),
-  type: z.string(),
-  client: z.string(),
-  regle: z.string().optional(),
-  objet: z.string().optional(),
-  issue: z.string().optional(),
-  motif: z.string().optional(),
-  donnees: z.unknown().optional(),
-})
-
-/** Une mission retenue par la ronde (statut « à faire » ou « question pour l'atelier »), telle que l'éval la compare. */
-export interface MissionProposee {
-  id: string
-  sorte: string
-  intentions: string[]
-  echappees: string[]
-}
-
-/** Une mission attendue est trouvée si sa sorte et toutes ses intentions y sont, ou au moins deux de ses échappées (§ 5.4). */
-export function trouvee(a: MissionAttendue, m: MissionProposee): boolean {
-  if (a.sorte !== m.sorte) return false
-  const parIntentions =
-    a.intentions.length > 0 && a.intentions.every((i) => m.intentions.includes(i))
-  const parEchappees = a.echappees.filter((e) => m.echappees.includes(e)).length >= 2
-  return parIntentions || parEchappees
-}
-
-export interface BilanRonde {
-  ecarts: string[]
-  attendues: number
-  trouvees: number
-  proposees: number
-  justes: number
-}
-
-/** Les écarts d'un cas de ronde, et ses comptes pour la précision et le rappel. */
-export function ecartsRonde(
-  attendu: CasRonde['attendu'],
-  issue: string,
-  proposees: MissionProposee[],
-  issuesEnEchec: string[],
-): BilanRonde {
-  const ecarts: string[] = []
-  if (issuesEnEchec.includes(issue)) ecarts.push(`ronde : ${issue}`)
-  if (attendu.rien_a_signaler && proposees.length > 0) {
-    ecarts.push(`rien à signaler attendu, ${proposees.length} mission(s) retenue(s)`)
-  }
-  const trouvees = attendu.missions.filter((a) => proposees.some((m) => trouvee(a, m)))
-  for (const a of attendu.missions) {
-    if (!trouvees.includes(a)) {
-      ecarts.push(
-        `attendue non trouvée : ${a.sorte} (${[...a.intentions, ...a.echappees].join(', ')})`,
-      )
-    }
-  }
-  const justes = proposees.filter((m) => attendu.missions.some((a) => trouvee(a, m)))
-  for (const m of proposees) {
-    if (!justes.includes(m))
-      ecarts.push(`en trop : ${m.id} (${m.sorte} ; ${m.intentions.join(', ')})`)
-  }
-  return {
-    ecarts,
-    attendues: attendu.missions.length,
-    trouvees: trouvees.length,
-    proposees: proposees.length,
-    justes: justes.length,
-  }
-}
-
-/** Le tableau d'une passe de ronde : précision, rappel, fuite, coût estimé ; « brouillon » quand les étiquettes le sont. */
-export function rendreRonde(
-  titre: string,
-  modele: string,
-  etiquettes: Etiquettes,
-  cas: (ResultatCas & { bilan: BilanRonde; estime: boolean })[],
-): string {
-  const somme = (f: (b: BilanRonde) => number) => cas.reduce((s, c) => s + f(c.bilan), 0)
-  const pc = (n: number, d: number) => (d === 0 ? '—' : `${Math.round((n / d) * 100)} %`)
-  const proposees = somme((b) => b.proposees)
-  const attendues = somme((b) => b.attendues)
-  const fuites = cas.filter((c) => (c.fuite ?? []).length > 0).length
-  const cout = cas.reduce((s, c) => s + c.coutUsd, 0)
-  return [
-    `# ${titre}`,
-    '',
-    ...(etiquettes === 'brouillon'
-      ? [
-          '**Étiquettes : brouillon de la session, pas celles de Lionel. Ce résultat est un brouillon, pas une mesure** (PLAN-RONDE.md § 0.c).',
-          '',
-        ]
-      : []),
-    `Modèle : ${modele}. Cas sans écart : ${cas.filter((c) => c.ecarts.length === 0).length}/${cas.length}. Précision : ${pc(
-      somme((b) => b.justes),
-      proposees,
-    )} (${somme((b) => b.justes)}/${proposees} missions retenues attendues). Rappel : ${pc(
-      somme((b) => b.trouvees),
-      attendues,
-    )} (${somme((b) => b.trouvees)}/${attendues} missions attendues trouvées). Seuil : aucun avant la première mesure sur les étiquettes de Lionel (§ 5.4).`,
-    `Fuite : ${fuites} cas sur ${cas.length} (seuil 0).`,
-    `Coût de la passe : ${cout.toFixed(4)} $${cas.some((c) => c.estime) ? ' (estimé par le binaire)' : ''}.`,
-    '',
-    '| Cas | Issue | Fuite | Coût ($) |',
-    '|---|---|---|---|',
-    ...cas.map(
-      (c) =>
-        `| ${c.id} | ${c.ecarts.length === 0 ? 'ok' : `écart : ${c.ecarts.join(' ; ').replace(/\|/g, '\\|')}`} | ${c.fuite === undefined ? '—' : c.fuite.length === 0 ? '0' : c.fuite.join(', ')} | ${c.coutUsd.toFixed(4)} |`,
     ),
     '',
   ].join('\n')

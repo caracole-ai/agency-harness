@@ -38,11 +38,11 @@ const statut =
   })
 
 describe('agence.yaml', () => {
-  it("celui du dépôt se charge : les quatre rôles sous l'abonnement", () => {
+  it("celui du dépôt se charge : les trois rôles du chantier sous l'abonnement", () => {
     const a = chargerAgence(RACINE)
-    expect(a.modeles.ronde.acces).toBe('claude')
+    expect(a.modeles.chantier.plan.acces).toBe('claude')
     expect(a.modeles.chantier.implementation.acces).toBe('claude')
-    expect(prixAgence(a, a.modeles.ronde.modele).sortie).toBeGreaterThan(0)
+    expect(prixAgence(a, a.modeles.chantier.plan.modele).sortie).toBeGreaterThan(0)
   })
 
   it('un champ inconnu refuse', () => {
@@ -50,7 +50,7 @@ describe('agence.yaml', () => {
   })
 
   it('un réglage manquant refuse', () => {
-    const { ronde: _ronde, ...sans } = brut()
+    const { depot_nuit: _depot, ...sans } = brut()
     expect(() => chargerAgence(racineAvec(sans))).toThrow(/invalide/)
   })
 
@@ -70,14 +70,14 @@ describe('agence.yaml', () => {
   })
 
   it('un modèle sous acces: anthropic sans prix refuse', () => {
-    const a = brut() as { modeles: { ronde: Record<string, unknown> } }
-    a.modeles.ronde = { acces: 'anthropic', modele: 'modele-sans-prix', effort: 'high' }
+    const a = brut() as { modeles: { chantier: { plan: Record<string, unknown> } } }
+    a.modeles.chantier.plan = { acces: 'anthropic', modele: 'modele-sans-prix', effort: 'high' }
     expect(() => chargerAgence(racineAvec(a))).toThrow(/aucun prix/)
   })
 
   it("le chargement n'exige aucune variable d'environnement", () => {
-    const a = brut() as { modeles: { ronde: Record<string, unknown> } }
-    a.modeles.ronde = { ...a.modeles.ronde, acces: 'anthropic' }
+    const a = brut() as { modeles: { chantier: { plan: Record<string, unknown> } } }
+    a.modeles.chantier.plan = { ...a.modeles.chantier.plan, acces: 'anthropic' }
     expect(() => chargerAgence(racineAvec(a))).not.toThrow()
   })
 })

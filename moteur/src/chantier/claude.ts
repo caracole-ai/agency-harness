@@ -5,8 +5,8 @@ import type { Effort, UsageModele } from '../modele/modele'
 
 // Le binaire `claude` en mode non interactif (PLAN-RONDE.md § 6.2, § 0.a) :
 // le préflight de l'abonnement, la ligne de commande, un délai mural de la
-// config, le JSON lu par un schéma minimal. La ronde s'en sert (sortie
-// structurée `--json-schema`, aucun outil) ; le chantier (lot 2) aussi. Le coût
+// config, le JSON lu par un schéma minimal. Le chantier s'en sert, et la
+// conversation sous l'abonnement (sortie structurée `--json-schema`). Le coût
 // est celui que le binaire rapporte : une estimation, jamais une mesure.
 
 export interface LancementClaude {
@@ -14,7 +14,7 @@ export interface LancementClaude {
   effort: Effort
   /** Le message, passé sur l'entrée standard. */
   prompt: string
-  /** Remplace le système de Claude Code (la ronde : le sien, rien d'autre). */
+  /** Remplace le système de Claude Code (le sien, rien d'autre). */
   systeme?: string
   /** Un fichier ajouté au système de Claude Code (le chantier : `methode/chantier.md`). */
   systemeAjouteFichier?: string

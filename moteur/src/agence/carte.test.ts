@@ -4,8 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { interdits } from '../chantier/memoire'
 import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from './fictif'
 
-// PLAN-RONDE.md § 4.3 : la carte lue par les modèles de la ronde et du
-// chantier ne cite aucun nom ni aucun identifiant d'un client fictif
+// PLAN-RONDE.md § 4.3 : la carte lue par les modèles du chantier ne cite aucun nom ni aucun identifiant d'un client fictif
 // (chacun, PLAN-METIER-2.md M9).
 
 describe('methode/architecture-pour-modeles.md', () => {
@@ -25,7 +24,7 @@ describe('methode/architecture-pour-modeles.md', () => {
     expect(carte).toContain('Non vérifié, risque')
   })
 
-  it('ne dit aucun métier : la ronde reçoit le cadre du domaine (PLAN-METIER-2.md M7)', () => {
+  it('ne dit aucun métier : le métier vient du domaine (PLAN-METIER-2.md M7)', () => {
     expect(carte).not.toMatch(/sécurité privée|ici, la/)
   })
 })

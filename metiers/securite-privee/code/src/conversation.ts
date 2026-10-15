@@ -40,7 +40,6 @@ import {
   vacationDe,
 } from './remplacement'
 import { ROLES } from './roles'
-import { TYPES_PARAMETRE } from './types-parametre'
 import { ConfigSecurite, decrire, type PREFERENCES } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
@@ -77,11 +76,6 @@ const DEPARTAGE = "à égalité, le numéro d'agent le plus bas (A-2 avant A-10)
  * revient y entre.
  */
 export const INTENTIONS: Intention[] = [
-  {
-    id: 'heures_par_agent',
-    description: 'les heures faites par un agent, ou par tous, sur une période',
-    ecrit: false,
-  },
   {
     id: 'compter_vacations',
     description: 'compter des vacations (de nuit, par site, par agent)',
@@ -290,9 +284,7 @@ export const CONVERSATION: MetierConversation<Session> = {
   intentions: INTENTIONS,
   roles: ROLES,
   domaine: DOMAINE,
-  typesParametre: TYPES_PARAMETRE,
   operation: OPERATION_REAFFECTER,
-  copie: tablesPour,
   vocabulaire: (s, identite) => ({
     noms: s.ctx.planning.agents
       .filter((a) => identite.role === 'patron' || a.id === identite.personne)
@@ -330,7 +322,6 @@ export const CONVERSATION: MetierConversation<Session> = {
     return echappee(
       {
         client: s.config.client,
-        dossierClient: s.dossier,
         conversation,
         journal: s.journal,
         config: configDe(s),

@@ -4,7 +4,6 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
 import { fuites } from '../echappee/pseudonymes'
-import { METIER_ESSAI, PERSONNES_ESSAI } from '../ronde/essai.test.fixture'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { commandeSync } from './arbre'
 import { AUCUN_CLIENT_EVALS, faireChantier, type OptionsChantier, TYPE_CHANTIER } from './chantier'
@@ -33,7 +32,8 @@ import {
 } from './fusion'
 import { fichierConsignes } from './garde'
 import { ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
-import type { Mission } from './mission'
+import { METIER_ESSAI, PERSONNES_ESSAI } from './metier-essai.test.fixture'
+import { DOSSIER_MISSIONS, type Mission } from './mission'
 
 // PLAN-RONDE.md § 6.4 et PLAN-GENERAL.md G1, G2, G3, en simulé : le binaire
 // `claude` est un script qui écrit un diff connu et rend un JSON ; `pnpm` est
@@ -459,7 +459,7 @@ describe('G2 : le retrait défait la fusion', () => {
     const s = await faireChantier(METIER_ESSAI, {
       racine: depots.racine,
       agence: agenceEssai('claude-absent', depots.depot),
-      mission: join(dossier, 'rondes', '2026-10-10', 'simuler_absence.yaml'),
+      mission: join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'simuler_absence.yaml'),
       env: ENV_ESSAI,
       maintenant: MAINTENANT,
     })
@@ -604,7 +604,7 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     expect(r.appels()).toHaveLength(2)
   })
 
-  it('--sans-modele sur une mission commandée par le patron (sans estimation) : le chantier, « non estimée », des consignes sans identifiant', async () => {
+  it('--sans-modele sur une mission commandée par le patron : le chantier, des consignes sans identifiant', async () => {
     const depots = creerDepots()
     const { binaire, appels } = binaireSimule({ plan: PLAN_VERT })
     const { commande, emises } = commandeSimulee()
@@ -621,9 +621,7 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     expect(r).toMatchObject({ sorte: 'sans_modele', decision: { sorte: 'chantier' } })
     const dossier = readFileSync(r.dossier, 'utf8')
     expect(dossier).toContain('Décision : **chantier**')
-    expect(dossier).toContain(
-      'sorte : geste_code ; métier : essai ; écrit : oui ; estimation : non estimée (mission écrite par le code, sur commande du patron)',
-    )
+    expect(dossier).toContain('sorte : geste_code ; métier : essai ; écrit : oui')
     expect(dossier).toContain('  - « Libère le mardi 13 de <personne>. »')
     expect(dossier).not.toMatch(/A-\d|E-2026|Rosalie/)
     expect(appels()).toEqual([])

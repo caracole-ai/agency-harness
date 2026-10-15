@@ -1,30 +1,16 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   type Choix,
-  DOSSIER_GESTES,
-  empreinteGeste,
+  DOSSIER_MISSIONS,
   FICHIER_PERSONNES,
-  type FichierGeste,
-  type GesteListe,
-  gesteDe,
   type Identite,
-  ISSUE_GESTE,
   Journal,
   type Ligne,
-  lireFichiersGestes,
   lireMission,
   metierDe,
   modeleSimule,
@@ -37,7 +23,6 @@ import {
   TYPE_CONFIRMATION_ATTENDUE,
   TYPE_CONSIGNE,
   TYPE_ECHAPPEE,
-  TYPE_GESTE_APPRIS,
   TYPE_GESTE_COMMANDE,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
@@ -339,155 +324,6 @@ describe('les erreurs de requête', () => {
   })
 })
 
-describe('ce que l’outil a appris : /api/gestes, activer, retirer (PLAN-PROMOTION.md § 7.2)', () => {
-  const TEST = {
-    echappee: 'E-1',
-    consigne: 'Combien d’heures a fait Julien ?',
-    role: 'patron' as const,
-    agent: null,
-    params: { agent: 'A-2', du: '2026-10-05', au: '2026-10-11' },
-    instantane: 'echappees/E-1.json',
-    contient: ['16'],
-  }
-  const GESTE: FichierGeste = {
-    id: 'heures_par_agent',
-    description: 'les heures faites par un agent sur une période',
-    roles: ['patron'],
-    parametres: {
-      agent: { type: 'agent', description: "l'agent nommé" },
-      periode: { type: 'periode', description: 'la période' },
-    },
-    requetes: [{ nom: 'heures', sql: 'SELECT 1 AS heures FROM agents WHERE id = :agent' }],
-    reponse: { ligne: '{{heures.heures}} heures', tableau: null, vide: 'Rien.' },
-    tests: [TEST, { ...TEST, echappee: 'E-2' }, { ...TEST, echappee: 'E-3' }],
-    origine: { fabrique_le: '2026-10-10', modele: 'simulé', cout_usd: 0.01, conversations: [] },
-    statut: 'propose',
-  }
-  const jeton = empreinteGeste(gesteDe(GESTE))
-  /** Une copie avec le geste proposé et, si on le demande, sa ligne « vérifié » avec modèle au seuil. */
-  function copieAvecGeste(verifie: boolean): string {
-    const dossier = copie()
-    mkdirSync(join(dossier, DOSSIER_GESTES))
-    writeFileSync(join(dossier, DOSSIER_GESTES, 'heures_par_agent.yaml'), JSON.stringify(GESTE))
-    if (verifie) {
-      const j = new Journal(join(dossier, 'journal.sqlite'))
-      j.ecrire([
-        {
-          type: TYPE_GESTE_APPRIS,
-          client: 'client fictif (sécurité privée)',
-          objet: GESTE.id,
-          issue: ISSUE_GESTE.verifie,
-          donnees: { jeton, ecarts: [], traduction: { taux: 0.97, atteint: true, cout_usd: 0.15 } },
-        },
-      ])
-      j.fermer()
-    }
-    return dossier
-  }
-  /** Le statut et la validation du fichier, relus par le moteur. */
-  const fichier = (dossier: string) => {
-    const [lu] = lireFichiersGestes(dossier)
-    return { statut: lu?.contenu?.statut, validation: lu?.contenu?.validation }
-  }
-
-  it('la liste est au patron seul ; un geste vérifié avec modèle au seuil est activable, sinon la liste dit pourquoi', async () => {
-    const a = app([], copieAvecGeste(true))
-    expect((await lire(a, '/api/gestes', { role: 'agent', agent: 'A-2' })).status).toBe(403)
-    const r = await lire(a, '/api/gestes')
-    expect(r.status).toBe(200)
-    const [g] = (await r.json()) as GesteListe[]
-    expect(g).toMatchObject({
-      fichier: 'heures_par_agent.yaml',
-      id: 'heures_par_agent',
-      statut: 'propose',
-      tests: 3,
-      activable: true,
-      verification: { ecarts: [], traduction: { taux: 0.97, atteint: true } },
-    })
-    const [sans] = (await (
-      await lire(app([], copieAvecGeste(false)), '/api/gestes')
-    ).json()) as GesteListe[]
-    expect(sans).toMatchObject({ activable: false, motif: 'jamais vérifié' })
-  })
-  it('activer : le patron seul, « par » est son identité vérifiée ; le YAML passe actif, la ligne activé est au journal ; une seconde fois, 400', async () => {
-    const dossier = copieAvecGeste(true)
-    const a = app([], dossier)
-    expect(
-      (
-        await poster(a, '/api/gestes/activer', {
-          identite: { role: 'agent', agent: 'A-2' },
-          id: 'x',
-        })
-      ).status,
-    ).toBe(403)
-    expect((await poster(a, '/api/gestes/activer', { identite: PATRON })).status).toBe(400)
-    const r = await poster(a, '/api/gestes/activer', { identite: PATRON, id: 'heures_par_agent' })
-    expect(r.status).toBe(200)
-    expect(await r.json()).toEqual({
-      fichier: join(DOSSIER_GESTES, 'heures_par_agent.yaml'),
-      jeton,
-    })
-    expect(fichier(dossier)).toEqual({
-      statut: 'actif',
-      validation: { par: 'patron', le: '2026-10-10', jeton },
-    })
-    const activee = journalDe(dossier).find(
-      (l) => l.type === TYPE_GESTE_APPRIS && l.issue === ISSUE_GESTE.active,
-    )
-    expect(activee?.horodatage).toBe('2026-10-10T19:40:00Z')
-    expect(JSON.parse(activee?.donnees ?? '{}')).toMatchObject({ jeton, par: 'patron' })
-    const encore = await poster(a, '/api/gestes/activer', {
-      identite: PATRON,
-      id: 'heures_par_agent',
-    })
-    expect(encore.status).toBe(400)
-    expect(((await encore.json()) as { erreur: string }).erreur).toBe(
-      'heures_par_agent.yaml : déjà actif',
-    )
-    const [g] = (await (await lire(a, '/api/gestes')).json()) as GesteListe[]
-    expect(g).toMatchObject({ statut: 'actif', activable: false, validation: { par: 'patron' } })
-  })
-  it('activer un geste jamais vérifié : 400, rien n’est écrit', async () => {
-    const dossier = copieAvecGeste(false)
-    const r = await poster(app([], dossier), '/api/gestes/activer', {
-      identite: PATRON,
-      id: 'heures_par_agent',
-    })
-    expect(r.status).toBe(400)
-    expect(((await r.json()) as { erreur: string }).erreur).toBe(
-      'heures_par_agent.yaml : jamais vérifié',
-    )
-    expect(fichier(dossier)).toEqual({ statut: 'propose', validation: undefined })
-  })
-  it('retirer : un motif est exigé ; le YAML passe retiré, la ligne retiré porte le motif et « par »', async () => {
-    const dossier = copieAvecGeste(true)
-    const a = app([], dossier)
-    const sansMotif = await poster(a, '/api/gestes/retirer', {
-      identite: PATRON,
-      id: 'heures_par_agent',
-    })
-    expect(sansMotif.status).toBe(400)
-    expect(((await sansMotif.json()) as { erreur: string }).erreur).toBe('motif attendu')
-    const r = await poster(a, '/api/gestes/retirer', {
-      identite: PATRON,
-      id: 'heures_par_agent.yaml',
-      motif: 'trop large',
-    })
-    expect(r.status).toBe(200)
-    expect(fichier(dossier)).toEqual({ statut: 'retire', validation: undefined })
-    const retiree = journalDe(dossier).find(
-      (l) => l.type === TYPE_GESTE_APPRIS && l.issue === ISSUE_GESTE.retire,
-    )
-    expect(retiree?.motif).toBe('trop large')
-    expect(JSON.parse(retiree?.donnees ?? '{}')).toMatchObject({ jeton, par: 'patron' })
-    const [g] = (await (await lire(a, '/api/gestes')).json()) as GesteListe[]
-    expect(g).toMatchObject({ statut: 'retire', activable: false })
-  })
-  it('la page a l’onglet « Appris »', async () => {
-    expect(await (await app().request('/')).text()).toContain("Ce que l'outil a appris")
-  })
-})
-
 describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2026-10-15)', () => {
   const CLIENT = 'client fictif (sécurité privée)'
   const nouvelle = (conversation: string, intention: string, resume: string, consigne: string) => ({
@@ -628,7 +464,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       compte: 2,
     })
     expect(journalDe(dossier).filter((l) => l.type === TYPE_APPEL)).toEqual([])
-    const chemin = join(dossier, 'rondes', '2026-10-10', 'remise_des_cles.yaml')
+    const chemin = join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'remise_des_cles.yaml')
     const { mission } = lireMission(chemin)
     expect(mission).toMatchObject({
       id: 'remise_des_cles',
@@ -698,9 +534,14 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       /^releve_kilometrique : aucune consigne utilisable/,
     )
     expect(journalDe(dossier).filter((l) => l.type === TYPE_GESTE_COMMANDE)).toEqual([])
-    expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'releve_kilometrique.yaml'))).toBe(
-      false,
-    )
+    expect(
+      existsSync(join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'releve_kilometrique.yaml')),
+    ).toBe(false)
+  })
+  it('la page a l’onglet « Gestes » : ce que l’outil ne sait pas encore faire, sans gestes appris', async () => {
+    const page = await (await app().request('/')).text()
+    expect(page).toContain("Ce que l'outil ne sait pas encore faire")
+    expect(page).not.toMatch(/geste appris|gestes appris/)
   })
 })
 

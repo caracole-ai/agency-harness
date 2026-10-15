@@ -1,6 +1,5 @@
-// pnpm evals traduire|echappee|gestes|ronde --client <dossier> [--seulement id,id] [--modele simule]
-// Les évals de la conversation (PLAN-ESPACES.md § 9) et du rejeu des gestes
-// appris : chaque cas, écrit à la main dans
+// pnpm evals traduire|echappee --client <dossier> [--seulement id,id] [--modele simule]
+// Les évals de la conversation (PLAN-ESPACES.md § 9) : chaque cas, écrit à la main dans
 // `metiers/<métier>/evals/` (le métier du client, PLAN-METIER-2.md M8),
 // tourne sur une copie fraîche du client (ou sur une variante dérivée de lui,
 // pour un homonyme) ; la sortie est vérifiée en code, la trace complète est
@@ -9,64 +8,43 @@
 // `traduire` et `echappee` appellent le vrai modèle : exige la
 // clé que nomme la config (ANTHROPIC_API_KEY sans `acces`), ou l'abonnement
 // par le binaire (`acces: { binaire }`, le coût est alors une estimation), et
-// coûte (≈ 0,3 $ les deux passes). `gestes` rejoue sans modèle, 0 $. `--modele simule` ne sert qu'à
+// coûte (≈ 0,3 $ les deux passes). `--modele simule` ne sert qu'à
 // vérifier le câblage (tous les cas finissent en écart). Chaque cas avec modèle
 // porte sa fuite (PLAN-PSEUDONYMES.md § 7) : les noms du client (`m.noms`)
-// partis au modèle, colonne du tableau, seuil 0. `ronde` (PLAN-RONDE.md § 5.4)
-// rejoue les journaux fixés du `rondes.yaml` du métier (les journaux restent
-// dans `evals/`) sur une copie et lance la ronde avec le modèle
-// d'`agence.yaml` (sous acces: claude, l'abonnement : le
-// coût est estimé par le binaire), sans rien écrire dans `memoire/` ; tant que
-// les étiquettes sont un brouillon, le résultat aussi.
+// partis au modèle, colonne du tableau, seuil 0.
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { parse, stringify } from 'yaml'
-import { z } from 'zod'
-import { chargerAgence } from '../agence/config'
+import { parse } from 'yaml'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { avecSession } from '../conversation/conversation'
-import { ecrireInstantane } from '../echappee/echappee'
 import {
-  type BilanRonde,
   bilan,
-  type Etiquettes,
   ecartsEchappee,
-  ecartsRonde,
   evalsDuMetier,
   FichierEchappee,
-  FichierGestes,
-  FichierRondes,
   FichierTraduire,
-  LigneFixee,
   type ResultatCas,
   rendreResultats,
-  rendreRonde,
   SEUILS,
 } from '../evals/evals'
 import {
-  apprisDuDossier,
   casDuFichier,
   configDuDossier,
   copieClient,
   jouerCas,
   jouerTraduction,
 } from '../evals/traduction'
-import { lireFichiersGestes } from '../gestes/charger'
-import { type FichierGeste, gesteDe, personneDuTest } from '../gestes/geste-appris'
-import { rejouerTest } from '../gestes/verifier'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
-import { STATUTS_MISSION } from '../ronde/rapport'
-import { type AppelRonde, faireRonde, ISSUES_RONDE } from '../ronde/ronde'
 import { aParis, FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const EVALS = join(RACINE, 'evals')
-const QUOIS = ['traduire', 'echappee', 'gestes', 'ronde'] as const
+const QUOIS = ['traduire', 'echappee'] as const
 type Quoi = (typeof QUOIS)[number]
 
 const { values, positionals } = parseArgs({
@@ -94,13 +72,10 @@ const { metier } = chargerConfig(join(source, FICHIER_CONFIG), ConfigBase)
 const m = await metierDe(source)
 /** Les cas du métier du client ; `EVALS` garde les résultats, les traces et les journaux fixés. */
 const CAS = join(RACINE, evalsDuMetier(metier))
-const avecModele = quoi !== 'gestes'
-// La ronde n'appelle pas le modèle du client : celui de l'agence, préflight au moment de l'appel.
-const avecModeleClient = avecModele && quoi !== 'ronde'
 
 // La clé se vérifie au démarrage, sur une copie (ouvrir écrit un journal),
 // pas au premier cas : une variable absente arrête tout.
-if (avecModeleClient && values.modele === undefined) {
+if (values.modele === undefined) {
   const essai = copieClient(source)
   try {
     modeleDepuisConfig(configDuDossier(m, essai), process.env)
@@ -119,7 +94,7 @@ mkdirSync(dossierTraces, { recursive: true })
 mkdirSync(join(EVALS, 'resultats'), { recursive: true })
 const seulement = values.seulement ? new Set(values.seulement.split(',')) : undefined
 /** L'identifiant du modèle qui a joué la passe, tel que l'adaptateur le donne. */
-let idModele = values.modele === 'simule' ? 'simulé' : avecModele ? '' : 'aucun (rejeu)'
+let idModele = values.modele === 'simule' ? 'simulé' : ''
 
 const garder = (r: ResultatCas, trace: unknown, id?: string) => {
   if (id) idModele = id
@@ -134,27 +109,12 @@ const garder = (r: ResultatCas, trace: unknown, id?: string) => {
 }
 
 const resultats: ResultatCas[] = []
-const seuil: number = quoi === 'ronde' ? 0 : SEUILS[quoi]
-/** Pour une passe `ronde` : le bilan de chaque cas, et les étiquettes. */
-const rondes: (ResultatCas & { bilan: BilanRonde; estime: boolean })[] = []
-let etiquettes: Etiquettes = 'brouillon'
+const seuil: number = SEUILS[quoi]
 
 if (quoi === 'traduire') {
   const fichier = FichierTraduire.parse(parse(readFileSync(join(CAS, 'consignes.yaml'), 'utf8')))
-  const { appris, erreurs } = apprisDuDossier(m, source)
-  for (const e of erreurs) console.error(e)
-  if (appris.length > 0) {
-    console.log(`Gestes appris chargés : ${appris.map((a) => a.id).join(', ')}`)
-  }
   resultats.push(
-    ...(await jouerTraduction(
-      m,
-      source,
-      casDuFichier(fichier, seulement),
-      appris,
-      modeleDe,
-      garder,
-    )),
+    ...(await jouerTraduction(m, source, casDuFichier(fichier, seulement), modeleDe, garder)),
   )
 } else if (quoi === 'echappee') {
   const fichier = FichierEchappee.parse(parse(readFileSync(join(CAS, 'echappees.yaml'), 'utf8')))
@@ -190,148 +150,6 @@ if (quoi === 'traduire') {
     resultats.push(joue.resultat)
     garder(joue.resultat, joue.trace, joue.idModele)
   }
-} else if (quoi === 'gestes') {
-  // Le rejeu, sans modèle (§ 6.4) : les gestes écrits à la main de
-  // `gestes.yaml` sont posés dans une copie avec un instantané par test, pris
-  // sur les données de la copie ; puis chaque geste de la copie, ceux du
-  // dossier passé en --client compris, est rejoué sur ses instantanés.
-  const fichier = FichierGestes.parse(parse(readFileSync(join(CAS, 'gestes.yaml'), 'utf8')))
-  const copieMetier = m.copie
-  if (!copieMetier) throw new Error(`le métier ${metier} n'expose pas sa copie`)
-  const dossier = copieClient(source)
-  try {
-    const quand = aParis(fichier.maintenant)
-    const s = m.ouvrir(dossier)
-    try {
-      for (const g of fichier.gestes) {
-        const f: FichierGeste = { ...g, statut: 'propose' }
-        mkdirSync(join(dossier, 'gestes'), { recursive: true })
-        writeFileSync(join(dossier, 'gestes', `eval-${g.id}.yaml`), stringify(f))
-        for (const test of g.tests) {
-          const personne = personneDuTest(test)
-          const identite = {
-            role: test.role,
-            ...(personne !== null ? { personne } : {}),
-          }
-          m.verifierIdentite(s, identite)
-          ecrireInstantane(dossier, {
-            echappee: test.echappee,
-            horodatage: quand.toInstant().toString(),
-            ...identite,
-            tables: copieMetier(s, identite, quand),
-          })
-        }
-      }
-    } finally {
-      m.fermer(s)
-    }
-    for (const f of lireFichiersGestes(dossier)) {
-      if (!f.contenu) {
-        const r = { id: f.fichier, ecarts: [f.erreur ?? 'illisible'], coutUsd: 0, strict: false }
-        resultats.push(r)
-        garder(r, { id: f.fichier, erreur: f.erreur })
-        continue
-      }
-      if (f.contenu.statut === 'retire') continue
-      const geste = gesteDe(f.contenu)
-      for (const test of geste.tests) {
-        const id = `${geste.id}/${test.echappee}`
-        if (seulement && !seulement.has(id)) continue
-        const rejeu = await rejouerTest(geste, test, dossier, m)
-        const ecarts =
-          'erreur' in rejeu
-            ? [rejeu.erreur]
-            : [
-                ...rejeu.manque.map((mot) => `ne contient pas « ${mot} »`),
-                ...rejeu.enTrop.map((mot) => `propose « ${mot} », jamais validé`),
-              ]
-        const r = { id, ecarts, coutUsd: 0, strict: false }
-        resultats.push(r)
-        garder(r, { id, fichier: f.fichier, test, rejeu })
-      }
-    }
-  } finally {
-    rmSync(dossier, { recursive: true, force: true })
-  }
-} else if (quoi === 'ronde') {
-  const fichier = FichierRondes.parse(parse(readFileSync(join(CAS, 'rondes.yaml'), 'utf8')))
-  etiquettes = fichier.etiquettes
-  const agence = chargerAgence(RACINE)
-  idModele =
-    values.modele === 'simule'
-      ? 'simulé'
-      : `${agence.modeles.ronde.modele} (acces: ${agence.modeles.ronde.acces})`
-  const simule: AppelRonde = async () => ({
-    ok: true,
-    sortie: { observations: [], missions: [], rien_a_signaler: true },
-    cout_usd: 0,
-    estime: false,
-  })
-  for (const c of fichier.cas.filter((x) => !seulement || seulement.has(x.id))) {
-    const nom = fichier.journaux[c.journal]
-    if (!nom) throw new Error(`${c.id} : journal fixé inconnu : ${c.journal}`)
-    const lignes = z.array(LigneFixee).parse(JSON.parse(readFileSync(join(EVALS, nom), 'utf8')))
-    const dossier = copieClient(source)
-    try {
-      const { journal } = m.ouvrirJournal(dossier)
-      try {
-        for (const { horodatage, ...e } of lignes) journal.ecrire([e], horodatage)
-      } finally {
-        journal.fermer()
-      }
-      const r = await faireRonde(m, {
-        racine: RACINE,
-        dossierClient: dossier,
-        date: Temporal.PlainDate.from(c.date),
-        ...(c.depuis ? { depuis: Temporal.PlainDate.from(c.depuis) } : {}),
-        agence,
-        env: process.env,
-        memoire: false,
-        ...(values.modele === 'simule' ? { appel: simule } : {}),
-      })
-      if (r.sorte !== 'faite') throw new Error(`${c.id} : ronde ${r.sorte}`)
-      const proposees = r.missions
-        .filter(
-          (x) => x.statut === STATUTS_MISSION.a_faire || x.statut === STATUTS_MISSION.question,
-        )
-        .map((x) => ({
-          id: x.mission.id,
-          sorte: x.mission.sorte,
-          intentions: x.mission.intentions,
-          echappees: x.mission.echappees,
-        }))
-      const b = ecartsRonde(c.attendu, r.issue, proposees, [
-        ISSUES_RONDE.echouee,
-        ISSUES_RONDE.refusee,
-        ISSUES_RONDE.fuite,
-      ])
-      const resultat = {
-        id: c.id,
-        ecarts: b.ecarts,
-        coutUsd: r.cout_usd,
-        strict: false,
-        fuite: r.fuite,
-        bilan: b,
-        estime: r.estime,
-      }
-      rondes.push(resultat)
-      resultats.push(resultat)
-      garder(resultat, {
-        id: c.id,
-        systeme: r.systeme,
-        message: r.message,
-        issue: r.issue,
-        raison: r.raison,
-        rapport: r.rapport,
-        missions: r.missions,
-        ecarts: r.ecarts,
-        fuite: r.fuite,
-        cout_usd: r.cout_usd,
-      })
-    } finally {
-      rmSync(dossier, { recursive: true, force: true })
-    }
-  }
 }
 
 const b = bilan(resultats, seuil)
@@ -339,26 +157,6 @@ const chemin = join(EVALS, 'resultats', `${tampon}-${metier}-${quoi}.md`)
 const TITRES: Record<Quoi, string> = {
   traduire: 'de la traduction',
   echappee: "de l'échappée",
-  gestes: 'du rejeu des gestes appris',
-  ronde: 'de la ronde',
-}
-if (quoi === 'ronde') {
-  writeFileSync(
-    chemin,
-    rendreRonde(`Évals ${TITRES[quoi]} — ${tampon}`, idModele, etiquettes, rondes),
-  )
-  const justes = rondes.reduce((s, r) => s + r.bilan.justes, 0)
-  const proposees = rondes.reduce((s, r) => s + r.bilan.proposees, 0)
-  const trouvees = rondes.reduce((s, r) => s + r.bilan.trouvees, 0)
-  const attendues = rondes.reduce((s, r) => s + r.bilan.attendues, 0)
-  console.log(
-    `\nPrécision ${justes}/${proposees}, rappel ${trouvees}/${attendues}, fuite ${b.fuites.length} cas (seuil 0), coût ${b.coutUsd.toFixed(4)} $${rondes.some((r) => r.estime) ? ' (estimé par le binaire)' : ''}.`,
-  )
-  if (etiquettes === 'brouillon')
-    console.log('Étiquettes en brouillon : brouillon, pas une mesure.')
-  console.log(`Résultats : ${chemin}\nTraces : ${dossierTraces}`)
-  if (b.fuites.length > 0) process.exitCode = 1
-  process.exit()
 }
 writeFileSync(
   chemin,

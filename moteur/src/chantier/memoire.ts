@@ -10,10 +10,9 @@ import { join } from 'node:path'
 import type { Designable } from '../conversation/designation'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
 import { fuites } from '../echappee/pseudonymes'
-import type { Temporal } from '../temps/temporal'
 
 // La mémoire de la nuit, dans le dépôt (PLAN-RONDE.md R10, PLAN-GENERAL.md
-// décision 2) : `memoire/INDEX.md` (une ligne par événement), `rondes/`,
+// décision 2) : `memoire/INDEX.md` (une ligne par événement),
 // `chantiers/`, `CONVENTIONS.md` (on y ajoute, on n'en retire jamais),
 // `MESURES.md` (une ligne par nuit). Écrite par le code ; le texte libre d'un
 // modèle y passe nettoyé. Rien n'y entre qui porte un nom de salarié, un
@@ -24,18 +23,10 @@ export const DOSSIER_MEMOIRE = 'memoire'
 export const FICHIER_INDEX = 'INDEX.md'
 export const FICHIER_CONVENTIONS = 'CONVENTIONS.md'
 export const FICHIER_MESURES = 'MESURES.md'
-export const DOSSIER_RONDES_MEMOIRE = 'rondes'
 export const DOSSIER_CHANTIERS_MEMOIRE = 'chantiers'
 
 /** Ce que la mémoire raconte (R10). */
-export const SORTES_MEMOIRE = [
-  'ronde',
-  'chantier',
-  'fusion',
-  'refus',
-  'retrait',
-  'mise à jour',
-] as const
+export const SORTES_MEMOIRE = ['chantier', 'fusion', 'refus', 'retrait', 'mise à jour'] as const
 export type SorteMemoire = (typeof SORTES_MEMOIRE)[number]
 
 /** « ce que j'ai appris » : au plus tant de lignes (R10). */
@@ -49,7 +40,7 @@ export interface EvenementMemoire {
   date: string
   client: string
   sorte: SorteMemoire
-  /** La date d'une ronde, l'identifiant (slug) d'une mission. */
+  /** L'identifiant (slug) d'une mission. */
   id: string
   titre: string
   issue: string
@@ -146,65 +137,6 @@ export function lireIndex(racine: string): EvenementMemoire[] {
         { date, client, sorte: sorte as SorteMemoire, id, titre: titre ?? '', issue: issue ?? '' },
       ]
     })
-}
-
-/** Ce que la ronde d'un jour retient pour la mémoire : des missions, par slug et par types ; rien de ce qui est chez le client. */
-export interface RondeMemoire {
-  date: string
-  client: string
-  missions: {
-    id: string
-    sorte: string
-    /** Texte du modèle : nettoyé avant d'entrer. */
-    titre: string
-    intentions: string[]
-    /** `à faire`, `écartée`, `question pour l'atelier`… */
-    statut: string
-    /** Écrite par le code. */
-    raison?: string
-  }[]
-  /** `faite`, `rien à signaler`, `rapport refusé : …`, `échouée : …` */
-  issue: string
-  cout?: { usd: number; estime: boolean }
-}
-
-/** Écrit `memoire/rondes/<date>-<client>.md` (remplacé si la ronde est refaite) et sa ligne d'index ; rend le chemin. */
-export function ecrireRonde(racine: string, r: RondeMemoire, personnes: Designable[]): string {
-  const missions = r.missions.map(
-    (m) =>
-      `- \`${m.id}\` (${m.sorte}) : ${nettoyer(m.titre, personnes)} ; intentions : ${
-        m.intentions.length > 0 ? m.intentions.join(', ') : 'aucune'
-      } ; ${m.statut}${m.raison ? ` (${m.raison})` : ''}`,
-  )
-  const contenu = [
-    `# Ronde du ${r.date} — ${r.client}`,
-    '',
-    `Issue : ${r.issue}${r.cout ? ` ; coût : ${coutEcrit(r.cout)}` : ''}.`,
-    '',
-    '## Missions',
-    '',
-    ...(missions.length > 0 ? missions : ['Aucune.']),
-    '',
-  ].join('\n')
-  exigerPropre(contenu, personnes, 'la ronde')
-  const chemin = dossier(racine, DOSSIER_RONDES_MEMOIRE, `${r.date}-${slugClient(r.client)}.md`)
-  mkdirSync(join(chemin, '..'), { recursive: true })
-  writeFileSync(chemin, contenu)
-  const retenues = r.missions.filter((m) => m.statut !== 'écartée').length
-  ajouterIndex(
-    racine,
-    {
-      date: r.date,
-      client: r.client,
-      sorte: 'ronde',
-      id: r.date,
-      titre: `${r.missions.length} mission(s) proposée(s), ${retenues} retenue(s)`,
-      issue: r.issue,
-      ...(r.cout ? { cout: r.cout } : {}),
-    },
-    personnes,
-  )
-  return chemin
 }
 
 /** Ce qu'un chantier laisse à la mémoire (R10) ; écrit au lot 2. */
@@ -310,7 +242,7 @@ export function lireConventions(racine: string): string {
   return existsSync(chemin) ? readFileSync(chemin, 'utf8') : ''
 }
 
-/** Une mission retirée (G2) : son identifiant et ses intentions, car la ronde donne au même travail un autre nom d'une nuit à l'autre. */
+/** Une mission retirée (G2) : son identifiant et ses intentions, car le même travail peut revenir sous un autre nom. */
 export interface MissionRetiree {
   id: string
   intentions: string[]
@@ -346,7 +278,7 @@ export function ecrireRetrait(
   )
 }
 
-/** Les missions retirées (G2) : la ronde ne les repropose jamais, ni sous un autre nom. */
+/** Les missions retirées (G2) : jamais refaites, ni sous un autre nom. */
 export const missionsRetirees = (racine: string): MissionRetiree[] =>
   lireIndex(racine)
     .filter((e) => e.sorte === 'retrait')
@@ -357,53 +289,6 @@ export const missionsRetirees = (racine: string): MissionRetiree[] =>
         .map((i) => i.trim())
         .filter((i) => i.length > 0),
     }))
-
-/** Ce que la ronde lit de la mémoire (R10), pour un client : sans le nom d'aucun client. */
-export interface MemoirePourRonde {
-  /** Les dernières lignes de l'index de ce client avant aujourd'hui, sans la colonne du client. */
-  index: string[]
-  conventions: string
-  /** Les rondes de ce client des derniers jours, avant aujourd'hui. */
-  rondes: string[]
-  retirees: MissionRetiree[]
-}
-
-export function pourRonde(
-  racine: string,
-  client: string,
-  aujourdhui: Temporal.PlainDate,
-  bornes: { index_lignes: number; rondes_jours: number },
-): MemoirePourRonde {
-  // Ce qui s'est passé avant aujourd'hui : une ronde refaite ne relit pas ses passes du jour.
-  const index = lireIndex(racine)
-    .filter((e) => e.client === colonne(client) && e.date < aujourdhui.toString())
-    .slice(-bornes.index_lignes)
-    .map((e) => [e.date, e.sorte, e.id, e.titre, e.issue].join(SEP))
-  const slug = slugClient(client)
-  const depuis = aujourdhui.subtract({ days: bornes.rondes_jours }).toString()
-  const avant = aujourdhui.toString()
-  const dossierRondes = dossier(racine, DOSSIER_RONDES_MEMOIRE)
-  const rondes = existsSync(dossierRondes)
-    ? readdirSync(dossierRondes)
-        .filter((f) => f.endsWith(`-${slug}.md`))
-        .filter((f) => {
-          const date = f.slice(0, 10)
-          return date >= depuis && date < avant
-        })
-        .sort()
-        .map((f) =>
-          readFileSync(join(dossierRondes, f), 'utf8')
-            // Le titre porte le nom du client : la ronde ne le reçoit pas (R2).
-            .replace(/^# Ronde du (\S+) — .*$/m, '# Ronde du $1'),
-        )
-    : []
-  return {
-    index,
-    conventions: lireConventions(racine),
-    rondes,
-    retirees: missionsRetirees(racine),
-  }
-}
 
 /** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du client, les conventions, les chantiers qui citent ses intentions. */
 export function pourChantier(

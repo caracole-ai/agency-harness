@@ -19,7 +19,7 @@ import { DOSSIER_MEMOIRE, interdits } from './memoire'
 // fusionné : la branche reste, la mémoire dit pourquoi. La mémoire se commet
 // toujours à part, après la fusion : `git revert -m 1` de la fusion ne la
 // défait jamais. Le retrait défait la fusion, pousse, et la mémoire garde le
-// motif et les intentions (la ronde ne repropose pas le même travail).
+// motif et les intentions (le même travail n'est jamais refait).
 
 /** Les huit conditions de G1, dans l'ordre du plan. */
 export const CONDITIONS = {
@@ -217,7 +217,7 @@ export function retirerFusion(o: {
   }
 }
 
-/** La mémoire écrite hors d'un chantier (une ronde de la nuit), commise seule et poussée ; rend true s'il y avait à commettre. */
+/** La mémoire écrite hors d'un chantier (la ligne de la nuit), commise seule et poussée ; rend true s'il y avait à commettre. */
 export function publierMemoire(o: {
   commande: Commande
   depot: string

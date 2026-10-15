@@ -6,13 +6,12 @@ import { stringify } from 'yaml'
 import { type Agence, chargerAgence } from '../agence/config'
 import { RACINE_DEPOT } from '../agence/fictif'
 import { TYPE_CONSIGNE } from '../conversation/conversation'
-import { CLIENT_ESSAI, dossierEssai, METIER_ESSAI } from '../ronde/essai.test.fixture'
-import { DOSSIER_RONDES, FICHIER_CARTE } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { type Commande, commandeSync } from './arbre'
-import { FICHIER_METHODE } from './chantier'
+import { FICHIER_CARTE, FICHIER_METHODE } from './chantier'
 import { fichierConsignes } from './garde'
-import { commanderMission, type Mission } from './mission'
+import { CLIENT_ESSAI, dossierEssai, METIER_ESSAI } from './metier-essai.test.fixture'
+import { commanderMission, DOSSIER_MISSIONS, type Mission } from './mission'
 
 // Pour les tests du chantier (PLAN-RONDE.md § 6.4, PLAN-GENERAL.md G1 à G3) :
 // trois dépôts git réels et jetables (un dépôt nu qui joue `origin`, le clone
@@ -243,19 +242,18 @@ export const MISSION_ESSAI: Mission = {
   intentions: ['simuler_absence'],
   consignes_types: ['et si <agent> était absent du <du> au <au>, qui reprendrait ?'],
   ecrit: false,
-  estimation: 'moyenne',
   date: '2026-10-10',
   metier: 'essai',
   statut: 'à faire',
 }
 
-/** Un dossier client d'essai (celui de la ronde) qui porte une mission ; rend le chemin du fichier. */
+/** Un dossier client d'essai qui porte une mission ; rend le chemin du fichier. */
 export function clientAvecMission(mission: Mission = MISSION_ESSAI): {
   dossier: string
   fichier: string
 } {
   const dossier = dossierEssai()
-  const d = join(dossier, 'rondes', mission.date)
+  const d = join(dossier, DOSSIER_MISSIONS, mission.date)
   mkdirSync(d, { recursive: true })
   const fichier = join(d, `${mission.id}.yaml`)
   writeFileSync(fichier, stringify(mission))
@@ -293,7 +291,7 @@ export function clientAvecCommande(): { dossier: string; fichier: string } {
   } finally {
     METIER_ESSAI.fermer(s)
   }
-  return { dossier, fichier: join(dossier, DOSSIER_RONDES, '2026-10-10', `${intention}.yaml`) }
+  return { dossier, fichier: join(dossier, DOSSIER_MISSIONS, '2026-10-10', `${intention}.yaml`) }
 }
 
 /** Un geste nouveau, ses trois cas et son test : ce qu'une implémentation verte écrit. */

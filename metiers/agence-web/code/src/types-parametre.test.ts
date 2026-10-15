@@ -1,33 +1,17 @@
 import { fileURLToPath } from 'node:url'
-import { copieClient, TYPES_MOTEUR, typeDe } from '@harnais/moteur'
+import { copieClient } from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
 import { CONVERSATION } from './conversation'
-import { TYPES_PARAMETRE } from './types-parametre'
+import { entites, resoudreEntite, type SorteEntite } from './types-parametre'
 
-// Les types de paramètre de l'agence web et la résolution d'une entité
-// (PLAN-METIER-2.md § 3.3, M5), sur une copie du client fictif : l'identifiant
-// exact, sinon le nom exact, sinon tous les candidats.
+// La résolution d'une entité de l'agence web (PLAN-METIER-2.md § 3.3, M5),
+// sur une copie du client fictif : l'identifiant exact, sinon le nom exact,
+// sinon tous les candidats.
 
 const exemple = fileURLToPath(new URL('../../../../exemples/agence-web-fictive', import.meta.url))
 const s = CONVERSATION.ouvrir(copieClient(exemple))
-const resoudre = (type: string, mention: string) => {
-  const t = typeDe(TYPES_PARAMETRE, type)
-  if (!t.resoudre) throw new Error(`${type} sans resoudre`)
-  return t.resoudre(mention, s).map((d) => d.id)
-}
-
-describe('les types déclarés', () => {
-  it('personne est une personne ; les six entités sont résolues par le métier ; le moteur garde les siens', () => {
-    expect(typeDe(TYPES_PARAMETRE, 'personne').sorte).toBe('personne')
-    for (const nom of ['projet', 'client', 'ticket', 'lot', 'facture', 'devis']) {
-      const t = typeDe(TYPES_PARAMETRE, nom)
-      expect(t.sorte).toBe('entite')
-      expect(t.resoudre).toBeTypeOf('function')
-    }
-    for (const nom of TYPES_MOTEUR) expect(typeDe(TYPES_PARAMETRE, nom).sorte).toBe(nom)
-    expect(() => typeDe(TYPES_PARAMETRE, 'vacation')).toThrow('type de paramètre inconnu')
-  })
-})
+const resoudre = (sorte: SorteEntite, mention: string) =>
+  resoudreEntite(mention, entites(s, sorte)).map((e) => e.id)
 
 describe('résoudre une entité', () => {
   it("l'identifiant exact, à la casse près", () => {

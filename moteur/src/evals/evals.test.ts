@@ -1,11 +1,7 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
 import { z } from 'zod'
+import type { Operation } from '../conversation/operation'
 import type { IssueEchappee } from '../echappee/boucle'
-import type { OperationApprise } from '../gestes/operation'
 import { USAGE_NUL } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
 import {
@@ -13,18 +9,11 @@ import {
   CasEchappee,
   CasTraduire,
   ecartsEchappee,
-  ecartsRonde,
   ecartsTraduction,
-  evalsDuMetier,
-  FichierRondes,
   fuiteDe,
-  LigneFixee,
-  type MissionProposee,
   modeleTrace,
   rendreResultats,
-  rendreRonde,
   textesEnvoyes,
-  trouvee,
 } from './evals'
 
 // Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9) ;
@@ -91,24 +80,6 @@ describe('ecartsTraduction', () => {
     }
     expect(ecartsTraduction(v, { ...v })).toEqual([])
   })
-  it('une demande nouvelle attendue, devenue geste appris : l’action du même nom passe, une autre non', () => {
-    const attendu = { sorte: 'nouvelle' as const, intention: ['heures_par_agent'] }
-    const heures = {
-      sorte: 'action' as const,
-      action: 'heures_par_agent',
-      params: { agent: 'A-2', du: '2026-10-05', au: '2026-10-11' },
-    }
-    expect(ecartsTraduction(attendu, heures, ['heures_par_agent'])).toEqual([])
-    expect(ecartsTraduction(attendu, heures)).toEqual([
-      'sorte action heures_par_agent, attendu nouvelle',
-    ])
-    expect(
-      ecartsTraduction(attendu, { ...heures, action: 'compter_vacations' }, ['compter_vacations']),
-    ).toEqual(['sorte action compter_vacations, attendu nouvelle'])
-    expect(
-      ecartsTraduction({ sorte: 'action', action: 'voir_planning' }, heures, ['heures_par_agent']),
-    ).toEqual(['action heures_par_agent, attendu voir_planning'])
-  })
   it('une autre sorte est un écart ; une liste de sortes en accepte plusieurs', () => {
     expect(ecartsTraduction({ sorte: 'inconnue' }, absence)).toEqual([
       'sorte action gerer_absence, attendu inconnue',
@@ -147,17 +118,12 @@ describe('ecartsTraduction', () => {
 
 describe('ecartsEchappee', () => {
   /** Une opération déclarée par un métier simulé (PLAN-METIER-2.md M6, M8) : l'objet est la vacation. */
-  const OPERATION_ESSAI: OperationApprise<{ vacation: string; agent: string }> = {
+  const OPERATION_ESSAI: Operation<{ vacation: string; agent: string }> = {
     nom: 'reaffecter',
-    enMots: 'réaffecter',
-    colonnes: z.strictObject({ vacation: z.string(), agent: z.string() }),
     modification: z.strictObject({ vacation: z.string().min(1), agent: z.string().min(1) }),
-    depuisLigne: () => ({ vacation: '', agent: '' }),
-    relire: () => [],
-    egal: (a, b) => a.vacation === b.vacation && a.agent === b.agent,
     objet: (m) => m.vacation,
   }
-  const operation = OPERATION_ESSAI as OperationApprise<unknown>
+  const operation = OPERATION_ESSAI as Operation<unknown>
   const reponse = (texte: string): IssueEchappee => ({
     sorte: 'reponse',
     texte,
@@ -291,8 +257,7 @@ describe('ecartsEchappee', () => {
     ).toEqual([])
   })
   it('l’opération d’un autre métier : ses propres champs, son propre objet', () => {
-    const lots: OperationApprise<{ lot: string; personne: string }> = {
-      ...(OPERATION_ESSAI as unknown as OperationApprise<{ lot: string; personne: string }>),
+    const lots: Operation<{ lot: string; personne: string }> = {
       nom: 'confier_lot',
       modification: z.strictObject({ lot: z.string(), personne: z.string() }),
       objet: (m) => m.lot,
@@ -308,7 +273,7 @@ describe('ecartsEchappee', () => {
           { lot: 'LOT-003', personne: 'M-2' },
           { lot: 'LOT-004', personne: 'M-5' },
         ]),
-        lots as OperationApprise<unknown>,
+        lots as Operation<unknown>,
       ),
     ).toEqual(['modifie LOT-004, permis : LOT-003', 'modifie LOT-004 avec M-5, interdit'])
   })
@@ -446,101 +411,5 @@ describe('la fuite (PLAN-PSEUDONYMES.md § 7)', () => {
     expect(texte).toContain('| A | ok | 0 | 0.0000 |')
     expect(texte).toContain('| B | ok | Aïcha | 0.0000 |')
     expect(rendreResultats('Évals', 'simulé', [r('A')], 0.5)).not.toContain('Fuite')
-  })
-})
-
-describe('la ronde (PLAN-RONDE.md § 5.4)', () => {
-  const attendue = {
-    sorte: 'factorisation' as const,
-    intentions: ['agents_sans_carte', 'cartes_expirees'],
-    echappees: ['E-1', 'E-2', 'E-3'],
-  }
-  const proposee = (x: Partial<MissionProposee> = {}): MissionProposee => ({
-    id: 'cartes',
-    sorte: 'factorisation',
-    intentions: ['agents_sans_carte', 'cartes_expirees', 'autre'],
-    echappees: [],
-    ...x,
-  })
-  const ECHECS = ['ronde échouée']
-
-  it('trouvée par sorte et intentions, ou par deux échappées ; jamais par une autre sorte', () => {
-    expect(trouvee(attendue, proposee())).toBe(true)
-    expect(
-      trouvee(attendue, proposee({ intentions: ['agents_sans_carte'], echappees: ['E-1', 'E-3'] })),
-    ).toBe(true)
-    expect(
-      trouvee(attendue, proposee({ intentions: ['agents_sans_carte'], echappees: ['E-1'] })),
-    ).toBe(false)
-    expect(trouvee(attendue, proposee({ sorte: 'geste_code' }))).toBe(false)
-  })
-
-  it('précision et rappel : une juste, une en trop, une attendue manquée', () => {
-    const autre = { sorte: 'geste_code' as const, intentions: ['simuler_absence'], echappees: [] }
-    const b = ecartsRonde(
-      { rien_a_signaler: false, missions: [attendue, autre] },
-      'faite',
-      [proposee(), proposee({ id: 'x', sorte: 'intention_nouvelle', intentions: ['paie'] })],
-      ECHECS,
-    )
-    expect(b).toMatchObject({ attendues: 2, trouvees: 1, proposees: 2, justes: 1 })
-    expect(b.ecarts).toEqual([
-      'attendue non trouvée : geste_code (simuler_absence)',
-      'en trop : x (intention_nouvelle ; paie)',
-    ])
-  })
-
-  it('rien à signaler : juste sans mission ; une ronde échouée est un écart', () => {
-    expect(
-      ecartsRonde({ rien_a_signaler: true, missions: [] }, 'rien à signaler', [], ECHECS).ecarts,
-    ).toEqual([])
-    expect(
-      ecartsRonde({ rien_a_signaler: true, missions: [] }, 'faite', [proposee()], ECHECS).ecarts[0],
-    ).toMatch(/rien à signaler attendu/)
-    expect(
-      ecartsRonde({ rien_a_signaler: true, missions: [] }, 'ronde échouée', [], ECHECS).ecarts,
-    ).toEqual(['ronde : ronde échouée'])
-  })
-
-  it('le tableau dit « brouillon, pas une mesure » tant que les étiquettes sont un brouillon', () => {
-    const cas = [
-      {
-        id: 'R-1',
-        ecarts: [],
-        coutUsd: 0.25,
-        strict: false,
-        fuite: [],
-        estime: true,
-        bilan: { ecarts: [], attendues: 1, trouvees: 1, proposees: 1, justes: 1 },
-      },
-    ]
-    const brouillon = rendreRonde('t', 'm', 'brouillon', cas)
-    expect(brouillon).toContain('brouillon, pas une mesure')
-    expect(brouillon).toContain('estimé par le binaire')
-    expect(brouillon).toContain('Précision : 100 %')
-    expect(rendreRonde('t', 'm', 'lionel', cas)).not.toContain('brouillon')
-  })
-
-  it('le rondes.yaml de chaque métier (PLAN-METIER-2.md M8) et ses journaux fixés, restés dans evals/, se lisent', () => {
-    const depot = fileURLToPath(new URL('../../../', import.meta.url))
-    const racine = join(depot, 'evals')
-    const metiers = readdirSync(join(depot, 'metiers')).filter((m) =>
-      existsSync(join(depot, evalsDuMetier(m), 'rondes.yaml')),
-    )
-    expect(metiers.length).toBeGreaterThan(0)
-    for (const m of metiers) {
-      const fichier = FichierRondes.parse(
-        parse(readFileSync(join(depot, evalsDuMetier(m), 'rondes.yaml'), 'utf8')),
-      )
-      expect(fichier.cas.some((c) => c.attendu.rien_a_signaler)).toBe(true)
-      expect(fichier.cas.length).toBeGreaterThanOrEqual(3)
-      for (const nom of Object.values(fichier.journaux)) {
-        const lignes = z
-          .array(LigneFixee)
-          .parse(JSON.parse(readFileSync(join(racine, nom), 'utf8')))
-        // Aucun résultat de requête dans un journal fixé.
-        expect(lignes.every((l) => l.type !== 'outil_echappee')).toBe(true)
-      }
-    }
   })
 })

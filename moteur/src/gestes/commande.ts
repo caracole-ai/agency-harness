@@ -4,7 +4,6 @@ import { type Identite, IdentiteSchema } from '../conversation/roles'
 import type { Demande } from '../conversation/traduire'
 import type { Journal, Ligne } from '../journal/journal'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { ErreurAtelier } from './atelier'
 
 // Les demandes sans geste et leur commande (REFLEXIONS.md, décidé le
 // 2026-10-15) : ce que l'outil n'a pas su faire (les lignes `consigne` /
@@ -12,6 +11,9 @@ import { ErreurAtelier } from './atelier'
 // revient ; et sa commande, « Créer ce geste », une ligne au journal, sans
 // modèle. Le geste se construit ensuite comme tout code, et un humain l'active.
 // Aucune devinette : pas de seuil, pas de fabrication ; le patron décide.
+
+/** Un refus de commande : la demande ne peut pas être satisfaite telle quelle (un 400 dans l'interface). */
+export class ErreurCommande extends Error {}
 
 export const TYPE_GESTE_COMMANDE = 'geste commandé'
 /** Combien de résumés distincts une demande sans geste montre, du plus récent au plus ancien. */
@@ -96,12 +98,12 @@ export function demandesSansGeste(lignes: Ligne[]): DemandeSansGeste[] {
 /** La demande sans geste qu'une commande vise ; lève si l'intention est mal formée, sans demande, ou déjà commandée. */
 export function demandeACommander(lignes: Ligne[], intention: string): DemandeSansGeste {
   if (!FORMAT_INTENTION.test(intention)) {
-    throw new ErreurAtelier('intention attendue : le mot-clé de la demande, en snake_case')
+    throw new ErreurCommande('intention attendue : le mot-clé de la demande, en snake_case')
   }
   const demande = demandesSansGeste(lignes).find((d) => d.intention === intention)
-  if (!demande) throw new ErreurAtelier(`${intention} : aucune demande sans geste sous ce mot`)
+  if (!demande) throw new ErreurCommande(`${intention} : aucune demande sans geste sous ce mot`)
   if (demande.commande) {
-    throw new ErreurAtelier(`${intention} : déjà commandé le ${demande.commande.le}`)
+    throw new ErreurCommande(`${intention} : déjà commandé le ${demande.commande.le}`)
   }
   return demande
 }

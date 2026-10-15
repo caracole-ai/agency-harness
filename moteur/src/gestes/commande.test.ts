@@ -5,8 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { TYPE_CONSIGNE } from '../conversation/conversation'
 import { type Evenement, Journal } from '../journal/journal'
 import { Temporal } from '../temps/temporal'
-import { ErreurAtelier } from './atelier'
-import { commanderGeste, demandesSansGeste, TYPE_GESTE_COMMANDE } from './commande'
+import { commanderGeste, demandesSansGeste, ErreurCommande, TYPE_GESTE_COMMANDE } from './commande'
 
 // Les demandes sans geste (REFLEXIONS.md, décidé le 2026-10-15) : les lignes
 // `consigne`/`nouvelle` groupées par intention ; la commande du patron, une
@@ -126,7 +125,7 @@ describe('commanderGeste', () => {
       commande: { par: PATRON, le: '2026-10-10' },
     })
     expect(() => commanderGeste(j, CLIENT, 'liberer_un_jour', PATRON, MAINTENANT)).toThrow(
-      ErreurAtelier,
+      ErreurCommande,
     )
     expect(() => commanderGeste(j, CLIENT, 'liberer_un_jour', PATRON, MAINTENANT)).toThrow(
       'déjà commandé le 2026-10-10',
