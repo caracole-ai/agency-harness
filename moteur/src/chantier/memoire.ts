@@ -158,7 +158,7 @@ export interface RondeMemoire {
     /** Texte du modèle : nettoyé avant d'entrer. */
     titre: string
     intentions: string[]
-    /** `à faire`, `promotion en cours`, `écartée`, `question pour l'atelier`… */
+    /** `à faire`, `écartée`, `question pour l'atelier`… */
     statut: string
     /** Écrite par le code. */
     raison?: string

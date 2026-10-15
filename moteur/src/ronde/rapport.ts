@@ -4,7 +4,7 @@ import { interdits, type MissionRetiree } from '../chantier/memoire'
 import { FORMAT_INTENTION, schemaJson } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
 import { type Domaine, motifPourTester } from '../conversation/domaine'
-import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, type Resume } from './resume'
+import type { Catalogue, Resume } from './resume'
 
 // Le rapport de la ronde (PLAN-RONDE.md § 5.2, R3) : un schéma strict, l'outil
 // (ou la sortie structurée du binaire, § 0.a) et la revalidation en code. Une
@@ -12,8 +12,7 @@ import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, type Resume } from './
 // consigne-type qui porte un identifiant ou un nom, un rapport incohérent) fait
 // refuser tout le rapport : il est écrit quand même, sans mission. L'état du
 // catalogue (un geste actif, une mission déjà ouverte ou retirée) écarte une
-// mission, en le disant ; une intention au seuil de promotion la marque
-// « promotion en cours » (§ 0.b) : aucun chantier.
+// mission, en le disant.
 
 export const OUTIL_RAPPORT = 'rapport_de_ronde'
 
@@ -98,7 +97,6 @@ export const memesIntentions = (a: string[], b: string[]) =>
 /** Ce que devient une mission revalidée. */
 export const STATUTS_MISSION = {
   a_faire: 'à faire',
-  promotion: PROMOTION_EN_COURS,
   question: "question pour l'atelier",
   ecartee: 'écartée',
 } as const
@@ -192,24 +190,7 @@ export function revalider(
     }
     if (m.sorte === 'question_pour_l_atelier')
       return { mission: m, statut: STATUTS_MISSION.question }
-    // Les intentions du catalogue au seuil, sans échec de fabrication : la promotion les prend (§ 0.b, R3).
-    // Une factorisation dont une intention seulement est au seuil reste un chantier.
-    const enCours = m.intentions.filter((i) => intentions.get(i)?.promotion === PROMOTION_EN_COURS)
-    if (enCours.length > 0 && enCours.length === m.intentions.length) {
-      return {
-        mission: m,
-        statut: STATUTS_MISSION.promotion,
-        raison: `${enCours.join(', ')} : au seuil de promotion, pnpm promotions la prend`,
-      }
-    }
-    const atelier = m.intentions.filter((i) => intentions.get(i)?.promotion === A_L_ATELIER)
-    return {
-      mission: m,
-      statut: STATUTS_MISSION.a_faire,
-      ...(atelier.length > 0
-        ? { raison: `${atelier.join(', ')} : fabrication échouée, à coder à l'atelier` }
-        : {}),
-    }
+    return { mission: m, statut: STATUTS_MISSION.a_faire }
   })
   return { sorte: 'accepte', missions }
 }

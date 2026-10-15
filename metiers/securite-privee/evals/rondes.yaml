@@ -19,8 +19,8 @@
 #
 # Une mission attendue est trouvée si sa sorte et toutes ses intentions sont
 # dans une mission retenue (statut « à faire » ou « question pour l'atelier »),
-# ou au moins deux de ses échappées. Une mission « promotion en cours » ou
-# « écartée » par le code n'est pas comptée : le code l'a neutralisée.
+# ou au moins deux de ses échappées. Une mission « écartée » par le code
+# n'est pas comptée : le code l'a neutralisée.
 etiquettes: brouillon
 
 journaux:
@@ -36,11 +36,11 @@ cas:
     attendu:
       rien_a_signaler: true
 
-  # Le 10 : heures_par_agent (5 en 30 jours) et simuler_absence (3) sont au
-  # seuil de promotion : « promotion en cours », pas de mission. Deux
-  # intentions de lecture voisines (cartes non renseignées, cartes expirées),
-  # posées à la suite, puis le geste des échéances trois fois : une
-  # factorisation. compter_vacations (2) n'est pas encore au seuil.
+  # Le 10 : heures_par_agent (5 en 30 jours) et simuler_absence (3) reviennent,
+  # mais un geste nouveau se construit sur commande du patron : aucune mission
+  # geste_code (la ronde ne les écrit plus). Deux intentions de lecture
+  # voisines (cartes non renseignées, cartes expirées), posées à la suite, puis
+  # le geste des échéances trois fois : une factorisation.
   - id: R-2
     journal: a
     date: "2026-10-10"

@@ -18,7 +18,7 @@ exécute le geste, et répond. Tout ce qui se passe est écrit dans un
 
 | Bande | Ce qu'elle contient | Où | Qui y écrit |
 |---|---|---|---|
-| **Le moteur** | la conversation, la traduction, l'échappée, la promotion, le journal, les contrôles, le calendrier juridique, l'accès aux modèles | `moteur/` | l'agence, à la main ; **jamais un modèle** |
+| **Le moteur** | la conversation, la traduction, l'échappée, le journal, les contrôles, le calendrier juridique, l'accès aux modèles | `moteur/` | l'agence, à la main ; **jamais un modèle** |
 | **La méthode** | les règles communes à tous les métiers, les archétypes, cette carte | `methode/` | l'agence |
 | **Le métier** | les interdits et leurs contrôles (`regles.yaml`, codés `I-01`…`I-20`), les gestes codés, les intentions connues, le vocabulaire, la fiche | `metiers/<métier>/` | l'agence ; le **chantier** n'y écrit que les gestes, les intentions, leurs tests et la fiche, jamais une règle |
 | **Le client** | ses données, ses réglages (`config.yaml`), son registre d'accès, son journal, ses gestes appris | son dossier, jamais versionné | le harnais en service et le patron ; **jamais le chantier** |
@@ -44,15 +44,14 @@ n'écrit jamais lui-même dans le planning.
 1. **Le geste appris** : une donnée (un fichier YAML chez le client), pas du
    code. Des paramètres d'une liste fermée, des requêtes SQL paramétrées sur
    une copie en lecture seule, un gabarit de réponse rendu par le code ; ou,
-   pour une écriture, des réaffectations proposées. Fabriqué par le modèle du
-   quotidien depuis trois échappées validées, vérifié en code par rejeu,
-   activé par le patron. C'est le chemin court, pour une intention du
-   catalogue qui revient (`pnpm promotions`).
+   pour une écriture, des réaffectations proposées. Vérifié en code par
+   rejeu, activé par le patron. Plus rien ne le fabrique : ceux qui existent
+   restent, aucun nouveau n'apparaît sans une main humaine.
 2. **Le geste codé** : du TypeScript dans la bande métier, comme les gestes
    d'origine. Écrit par le chantier pour ce que l'étage 1 ne sait pas dire :
    une simulation qui demande les règles, une intention nouvelle, plusieurs
-   demandes à factoriser, une fabrication qui a échoué (« à coder à
-   l'atelier »).
+   demandes à factoriser. Un geste nouveau pour une intention du catalogue
+   ne se construit que sur commande du patron.
 
 ## Les trois espaces d'une demande
 
@@ -62,8 +61,8 @@ n'écrit jamais lui-même dans le planning.
    modèle du quotidien interroge une copie jetable des données, en lecture
    seule, à l'échelle du rôle, avec des identifiants à la place des noms ; sa
    réponse passe les contrôles avant d'être montrée.
-3. **La promotion** : une demande nouvelle qui revient (trois fois en trente
-   jours) devient un geste appris.
+3. **La commande** : une demande nouvelle qui revient est montrée au patron ;
+   un geste n'en naît que s'il le commande, jamais parce qu'elle revient.
 
 ## Ce qu'un modèle ne fait jamais
 
@@ -81,8 +80,8 @@ n'écrit jamais lui-même dans le planning.
 
 - une demande nouvelle qui revient sans intention commune (plusieurs
   consignes qui se ressemblent sous des mots-clés différents) ;
-- une intention du catalogue qu'un geste appris ne peut pas exprimer (une
-  simulation, une règle à appliquer), ou dont la fabrication a échoué ;
+- une intention que le patron a commandée : un geste codé (`geste_code`),
+  et seulement celle-là ;
 - des abandons ou des « je ne sais pas faire » qui se ressemblent ;
 - une demande coûteuse (beaucoup de tours, beaucoup de dollars) qui revient ;
 - plusieurs intentions de lecture proches, qu'un seul geste servirait
@@ -91,8 +90,8 @@ n'écrit jamais lui-même dans le planning.
 Ce qui n'en mérite pas :
 
 - une demande vue une seule fois ;
-- une intention du catalogue au seuil de promotion : `pnpm promotions` la
-  prend déjà (« promotion en cours ») ;
+- une intention du catalogue qui revient sans que le patron l'ait commandée :
+  elle lui est montrée, il décide ;
 - une intention qui a déjà un geste actif ;
 - une mission déjà ouverte, ou retirée (la mémoire le dit).
 

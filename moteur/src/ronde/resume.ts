@@ -328,10 +328,6 @@ export function resumerJournal(
   }
 }
 
-/** L'état d'une intention du catalogue vis-à-vis de la promotion (PLAN-RONDE.md § 0.b, R3). */
-export const PROMOTION_EN_COURS = 'promotion en cours'
-export const A_L_ATELIER = "à coder à l'atelier"
-
 /** Ce que la ronde sait du catalogue (R2) : des identifiants et des descriptions, aucune donnée. */
 export interface Catalogue {
   gestes: { id: string; description: string; ecrit: boolean; roles: Role[] }[]
@@ -340,8 +336,6 @@ export interface Catalogue {
     id: string
     description: string
     ecrit: boolean
-    /** `promotion en cours` (au seuil, sans échec de fabrication), ou `à coder à l'atelier`. */
-    promotion?: typeof PROMOTION_EN_COURS | typeof A_L_ATELIER
     /** Un geste appris actif porte cette intention. */
     geste_actif?: true
   }[]

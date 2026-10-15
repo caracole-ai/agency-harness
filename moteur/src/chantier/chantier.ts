@@ -39,8 +39,7 @@ import {
 import { type Decision, decider, lireMission, type Mission, missionPourModele } from './mission'
 
 // Le chantier d'une mission (PLAN-RONDE.md § 6.3, R5 ; PLAN-GENERAL.md G1) :
-// décider en code (§ 0.b : promotion en cours, question pour l'atelier,
-// écartée), puis, dans un arbre de travail du clone de la nuit, le plan
+// décider en code (§ 0.b : question pour l'atelier, écartée), puis, dans un arbre de travail du clone de la nuit, le plan
 // (modèle `chantier.plan`, lecture seule, sortie structurée), l'implémentation
 // (`chantier.implementation`, bornée par la config), la garde du diff,
 // `pnpm check` rejoué par le code, la relecture (`chantier.revue`, lecture
@@ -204,17 +203,10 @@ export async function faireChantier<S>(
 
   const s = m.ouvrir(dossierClient)
   try {
-    const config = m.config(s)
     const journal = m.journal(s)
     const client = m.client(s)
     const personnes: Designable[] = m.noms(s)
-    const catalogue = construireCatalogue(
-      m,
-      dossierClient,
-      journal,
-      config.promotion,
-      maintenant.toPlainDate(),
-    )
+    const catalogue = construireCatalogue(m, dossierClient)
     const retirees = existsSync(depot) ? missionsRetirees(depot) : []
     const decision = decider(mission, catalogue, retirees)
     const journaliser = (issue: string, donnees: Record<string, unknown>) =>
@@ -799,7 +791,7 @@ function sectionsMemoire(x: {
 
 const sec = (ms: number) => `${Math.round(ms / 1000)} s`
 
-/** Le dossier d'une mission qui ne lance rien (promotion en cours, question, écartée). */
+/** Le dossier d'une mission qui ne lance rien (question, écartée). */
 function rendreDecision(
   mission: Mission,
   decision: Decision,

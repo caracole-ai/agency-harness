@@ -60,8 +60,8 @@ describe('écrire et relire la mémoire', () => {
             sorte: 'intention_nouvelle',
             titre: 'Les heures cumulées par <agent>',
             intentions: ['heures_par_agent'],
-            statut: 'promotion en cours',
-            raison: 'au seuil de promotion',
+            statut: 'écartée',
+            raison: 'un geste actif existe déjà',
           },
           {
             id: 'x',

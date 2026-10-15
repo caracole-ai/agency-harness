@@ -5,17 +5,15 @@ import { z } from 'zod'
 import { type Domaine, motifPourMasquer } from '../conversation/domaine'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
 import { MissionRonde, memesIntentions, STATUTS_MISSION } from '../ronde/rapport'
-import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS } from '../ronde/resume'
+import type { Catalogue } from '../ronde/resume'
 import { DOSSIER_RONDES } from '../ronde/ronde'
 import type { MissionRetiree } from './memoire'
 
 // La mission d'un chantier (PLAN-RONDE.md § 6.1, amendé § 0.b) : celle que la
 // ronde a écrite chez le client (`rondes/<date>/<id>.yaml`), relue par un
-// schéma strict, puis la décision prise en code avant tout appel : une mission
-// dont toutes les intentions sont au seuil de promotion (sans dossier d'échec
-// de fabrication) « attend » — promotion en cours, aucun appel, qu'elle écrive
-// ou non ; une question pour l'atelier ne lance rien ; une mission écartée,
-// retirée ou dont une intention a déjà un geste actif non plus. Ce qui part au
+// schéma strict, puis la décision prise en code avant tout appel : une question
+// pour l'atelier ne lance rien ; une mission écartée, retirée ou dont une
+// intention a déjà un geste actif non plus. Ce qui part au
 // modèle du chantier n'est jamais la mission entière : ni ses échappées ni le
 // client, des types seulement (R3).
 
@@ -54,8 +52,6 @@ export function lireMission(chemin: string): MissionLue {
 
 export type Decision =
   | { sorte: 'chantier'; raison?: string }
-  /** Promotion en cours (§ 0.b) : aucun appel, `pnpm promotions` la prend. */
-  | { sorte: 'attend'; motif: string }
   | { sorte: 'question'; motif: string }
   | { sorte: 'ecartee'; motif: string }
 
@@ -78,14 +74,7 @@ export function decider(m: Mission, catalogue: Catalogue, retirees: MissionRetir
   if (avecGeste.length > 0) {
     return { sorte: 'ecartee', motif: `${avecGeste.join(', ')} : un geste actif existe déjà` }
   }
-  const enCours = m.intentions.filter((i) => intentions.get(i)?.promotion === PROMOTION_EN_COURS)
-  if (enCours.length > 0 && enCours.length === m.intentions.length) {
-    return { sorte: 'attend', motif: PROMOTION_EN_COURS }
-  }
-  const atelier = m.intentions.filter((i) => intentions.get(i)?.promotion === A_L_ATELIER)
-  return atelier.length > 0
-    ? { sorte: 'chantier', raison: `${atelier.join(', ')} : ${A_L_ATELIER}` }
-    : { sorte: 'chantier' }
+  return { sorte: 'chantier' }
 }
 
 /** Les identifiants d'échappée, de conversation ou de personne (le motif du métier) qu'un texte de la ronde citerait : remplacés par un type. */

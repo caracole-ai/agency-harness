@@ -20,15 +20,11 @@ import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import type { Domaine } from '../conversation/domaine'
 import { FRONTIERE } from '../conversation/traduire'
-import { CONTROLE_OK } from '../echappee/boucle'
-import { TYPE_ECHAPPEE } from '../echappee/echappee'
 import { fuites } from '../echappee/pseudonymes'
 import { lireFichiersGestes } from '../gestes/charger'
 import { ecritDe, gesteDe } from '../gestes/geste-appris'
-import type { Journal, Ligne } from '../journal/journal'
 import { modeleAnthropic } from '../modele/anthropic'
 import { cout, dollars } from '../modele/modele'
-import { TYPE_PROMOTION } from '../promotion/promotion'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   type MissionRevalidee,
@@ -42,15 +38,7 @@ import {
   schemaJsonRapport,
   schemaRapport,
 } from './rapport'
-import {
-  A_L_ATELIER,
-  type Catalogue,
-  jourDe,
-  PROMOTION_EN_COURS,
-  type Resume,
-  resumerJournal,
-  suiteDe,
-} from './resume'
+import { type Catalogue, type Resume, resumerJournal } from './resume'
 
 // La ronde de nuit (PLAN-RONDE.md § 5.3, R2 à R4 ; § 0.a) : un appel par
 // nuit et par client, au modèle `ronde` d'`agence.yaml`, qui lit le résumé du
@@ -75,14 +63,6 @@ export const ISSUES_RONDE = {
   echouee: 'ronde échouée',
   fuite: 'refusée avant tout appel : un nom partirait',
 } as const
-
-const donnees = (l: Ligne): Record<string, unknown> => {
-  if (!l.donnees) return {}
-  const d: unknown = JSON.parse(l.donnees)
-  return typeof d === 'object' && d !== null && !Array.isArray(d)
-    ? (d as Record<string, unknown>)
-    : {}
-}
 
 /** Une mission écrite par une ronde (`rondes/<date>/<id>.yaml`), telle que le catalogue la relit. */
 const MissionEcrite = z.looseObject({
@@ -120,39 +100,11 @@ function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes']
 }
 
 /**
- * Le catalogue (R2) : gestes codés, gestes appris, intentions avec leur état
- * de promotion (§ 0.b) au jour `au`, missions déjà ouvertes. L'état se lit dans
- * le journal jusqu'à `au` inclus : au seuil (échappées finies proprement sur
- * la fenêtre de la promotion) ou déjà proposée, « promotion en cours » ; la
- * dernière fabrication échouée ou écartée, « à coder à l'atelier ».
+ * Le catalogue (R2) : gestes codés, gestes appris, intentions connues, missions
+ * déjà ouvertes. Aucun état de promotion : un geste nouveau se construit sur
+ * commande du patron, pas parce qu'une demande revient.
  */
-export function construireCatalogue<S>(
-  m: MetierConversation<S>,
-  dossierClient: string,
-  journal: Journal,
-  promotion: { occurrences: number; jours: number },
-  au: Temporal.PlainDate,
-): Catalogue {
-  const lignes = journal
-    .lire()
-    .filter((l) => Temporal.PlainDate.compare(jourDe(l.horodatage), au) <= 0)
-  const debut = au.subtract({ days: promotion.jours - 1 })
-  const propres = new Map<string, number>()
-  for (const l of lignes) {
-    if (l.type !== TYPE_ECHAPPEE || l.objet === null) continue
-    if (Temporal.PlainDate.compare(jourDe(l.horodatage), debut) < 0) continue
-    const d = donnees(l)
-    if (typeof d.intention !== 'string') continue
-    const propre =
-      l.issue === 'reponse'
-        ? d.controle_reponse === undefined || d.controle_reponse === CONTROLE_OK
-        : l.issue === 'proposition' && suiteDe(lignes, l.objet) !== 'non validée'
-    if (propre) propres.set(d.intention, (propres.get(d.intention) ?? 0) + 1)
-  }
-  const derniere = new Map<string, Record<string, unknown>>()
-  for (const l of lignes) {
-    if (l.type === TYPE_PROMOTION && l.objet !== null) derniere.set(l.objet, donnees(l))
-  }
+export function construireCatalogue<S>(m: MetierConversation<S>, dossierClient: string): Catalogue {
   const appris = lireFichiersGestes(dossierClient).flatMap((f) =>
     f.contenu
       ? [
@@ -174,26 +126,12 @@ export function construireCatalogue<S>(
       roles: a.roles,
     })),
     appris,
-    intentions: m.intentions.map((i) => {
-      const fabrication = derniere.get(i.id)?.fabrication as
-        | { sorte?: unknown; injoignable?: unknown }
-        | undefined
-      const echouee =
-        (fabrication?.sorte === 'echec' && fabrication.injoignable !== true) ||
-        fabrication?.sorte === 'ecarts'
-      const auSeuil = (propres.get(i.id) ?? 0) >= promotion.occurrences || derniere.has(i.id)
-      return {
-        id: i.id,
-        description: i.description,
-        ecrit: i.ecrit,
-        ...(echouee
-          ? { promotion: A_L_ATELIER }
-          : auSeuil
-            ? { promotion: PROMOTION_EN_COURS }
-            : {}),
-        ...(actifs.has(i.id) ? { geste_actif: true as const } : {}),
-      }
-    }),
+    intentions: m.intentions.map((i) => ({
+      id: i.id,
+      description: i.description,
+      ecrit: i.ecrit,
+      ...(actifs.has(i.id) ? { geste_actif: true as const } : {}),
+    })),
     missions_ouvertes: missionsOuvertes(dossierClient),
   }
 }
@@ -218,7 +156,7 @@ export function systemeRonde(
     '',
     `Rends un seul rapport (\`${OUTIL_RAPPORT}\`), au schéma donné, et rien d'autre. Au plus ${missionsMax} missions. Si rien ne mérite une mission, \`rien_a_signaler\` vrai et aucune mission.`,
     `Une mission cite les identifiants d'échappées (E-…) du résumé qui la justifient, les intentions concernées (du catalogue, ou un slug neuf), et des consignes-types écrites avec des places entre chevrons (${domaine.places.join(', ')}) : jamais un identifiant ni un nom.`,
-    "N'écris aucune mission pour une intention marquée « promotion en cours » ou qui a un geste actif, ni une mission déjà ouverte ou retirée. Une intention « à coder à l'atelier » mérite une mission `geste_code`.",
+    "N'écris aucune mission pour une intention qui a un geste actif, ni une mission déjà ouverte ou retirée. N'écris aucune mission `geste_code` : un geste nouveau se construit sur commande du patron, jamais parce qu'une demande revient.",
     '',
     FRONTIERE,
     '',
@@ -242,7 +180,7 @@ export function systemeRonde(
       'Intentions connues (demandes nouvelles)',
       catalogue.intentions,
       (i) =>
-        `\`${i.id}\`${i.ecrit ? ' (écrit)' : ''} : ${i.description}${i.promotion ? ` — ${i.promotion}` : ''}${i.geste_actif ? ' — geste actif' : ''}`,
+        `\`${i.id}\`${i.ecrit ? ' (écrit)' : ''} : ${i.description}${i.geste_actif ? ' — geste actif' : ''}`,
     ),
     ...liste(
       'Missions déjà ouvertes',
@@ -479,8 +417,7 @@ function rendreMd(
     '## Le catalogue',
     '',
     ...catalogue.intentions.map(
-      (i) =>
-        `- intention \`${i.id}\`${i.promotion ? ` : ${i.promotion}` : ''}${i.geste_actif ? ' : geste actif' : ''}`,
+      (i) => `- intention \`${i.id}\`${i.geste_actif ? ' : geste actif' : ''}`,
     ),
     ...catalogue.appris.map((a) => `- geste appris \`${a.id}\` : ${a.statut}`),
     ...catalogue.missions_ouvertes.map(
@@ -537,13 +474,13 @@ export async function faireRonde<S>(
     })
     mkdirSync(dossier, { recursive: true })
     if (o.sansModele) {
-      const catalogue = construireCatalogue(m, o.dossierClient, journal, config.promotion, o.date)
+      const catalogue = construireCatalogue(m, o.dossierClient)
       writeFileSync(fichier, rendreMd(date, resume, catalogue))
       return { sorte: 'sans_modele', fichier, resume, catalogue }
     }
     const dossierMissions = join(dossier, date)
     if (o.refaire) rmSync(dossierMissions, { recursive: true, force: true })
-    const catalogue = construireCatalogue(m, o.dossierClient, journal, config.promotion, o.date)
+    const catalogue = construireCatalogue(m, o.dossierClient)
 
     const missionsMax = o.agence.ronde.missions_max
     // Sans mémoire (les évals), rien n'est lu non plus : une éval ne dépend que de son journal fixé.

@@ -583,22 +583,6 @@ describe('R11 : fusion.ts refuse hors du clone de la nuit', () => {
 })
 
 describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
-  it('une mission au seuil de promotion : « promotion en cours », aucun appel, aucun git', async () => {
-    const { issue, appels, emises, dossier } = await lancer({
-      mission: { ...MISSION_ESSAI, id: 'heures', intentions: ['heures_par_agent'] },
-    })
-    expect(issue).toMatchObject({
-      sorte: 'decision',
-      decision: { sorte: 'attend', motif: 'promotion en cours' },
-    })
-    expect(appels()).toEqual([])
-    expect(emises.filter((x) => x.commande === 'git')).toEqual([])
-    expect(readFileSync(join(dossier, 'chantiers', 'heures.md'), 'utf8')).toContain(
-      'promotion en cours',
-    )
-    expect(lignesChantier(dossier).map((l) => l.issue)).toEqual(['promotion en cours'])
-  })
-
   it('le plan dit « hors de la bande » : question pour l’atelier, aucune implémentation', async () => {
     const { issue, appels } = await lancer({
       scenario: { plan: { faisable: false, raison: 'il faut toucher le moteur', plan: '-' } },

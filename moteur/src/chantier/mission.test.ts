@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { stringify } from 'yaml'
 import { DOMAINE_ESSAI } from '../ronde/essai.test.fixture'
-import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS } from '../ronde/resume'
+import type { Catalogue } from '../ronde/resume'
 import { MISSION_ESSAI } from './essai.test.fixture'
 import { decider, lireMission, type Mission, missionPourModele } from './mission'
 
@@ -15,9 +15,9 @@ const CATALOGUE: Catalogue = {
   gestes: [],
   appris: [],
   intentions: [
-    { id: 'heures_par_agent', description: 'heures', ecrit: false, promotion: PROMOTION_EN_COURS },
-    { id: 'liberer_un_jour', description: 'libérer', ecrit: true, promotion: PROMOTION_EN_COURS },
-    { id: 'simuler_absence', description: 'simuler', ecrit: false, promotion: A_L_ATELIER },
+    { id: 'heures_par_agent', description: 'heures', ecrit: false },
+    { id: 'liberer_un_jour', description: 'libérer', ecrit: true },
+    { id: 'simuler_absence', description: 'simuler', ecrit: false },
     { id: 'agents_sans_carte', description: 'sans carte', ecrit: false },
     { id: 'cartes_expirees', description: 'expirées', ecrit: false, geste_actif: true },
   ],
@@ -51,24 +51,16 @@ describe('lireMission', () => {
 })
 
 describe('decider (§ 0.b)', () => {
-  it('toutes les intentions au seuil, qu’elle lise ou écrive : promotion en cours', () => {
-    expect(decider(mission({ intentions: ['heures_par_agent'] }), CATALOGUE, [])).toEqual({
-      sorte: 'attend',
-      motif: PROMOTION_EN_COURS,
-    })
+  it('une mission ordinaire, qu’elle lise ou écrive : le chantier, sans raison', () => {
+    expect(decider(mission(), CATALOGUE, [])).toEqual({ sorte: 'chantier' })
     expect(
       decider(
         mission({ id: 'liberer', intentions: ['liberer_un_jour'], ecrit: true }),
         CATALOGUE,
         [],
       ),
-    ).toEqual({ sorte: 'attend', motif: PROMOTION_EN_COURS })
-  })
-
-  it('une fabrication échouée : le chantier, en le disant ; une factorisation à moitié au seuil : le chantier', () => {
-    expect(decider(mission(), CATALOGUE, [])).toEqual({
+    ).toEqual({
       sorte: 'chantier',
-      raison: `simuler_absence : ${A_L_ATELIER}`,
     })
     expect(
       decider(mission({ intentions: ['heures_par_agent', 'agents_sans_carte'] }), CATALOGUE, [])
