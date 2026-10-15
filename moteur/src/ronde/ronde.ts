@@ -22,7 +22,9 @@ import type { Domaine } from '../conversation/domaine'
 import { FRONTIERE } from '../conversation/traduire'
 import { fuites } from '../echappee/pseudonymes'
 import { lireFichiersGestes } from '../gestes/charger'
+import { TYPE_GESTE_COMMANDE } from '../gestes/commande'
 import { ecritDe, gesteDe } from '../gestes/geste-appris'
+import type { Journal } from '../journal/journal'
 import { modeleAnthropic } from '../modele/anthropic'
 import { cout, dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -99,12 +101,27 @@ function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes']
     )
 }
 
+/** La description d'une intention commandée par le patron que le métier ne déclare pas. */
+const HORS_VOCABULAIRE = 'commandée par le patron, hors du vocabulaire du métier'
+
 /**
  * Le catalogue (R2) : gestes codés, gestes appris, intentions connues, missions
- * déjà ouvertes. Aucun état de promotion : un geste nouveau se construit sur
- * commande du patron, pas parce qu'une demande revient.
+ * déjà ouvertes. Une intention que le patron a commandée (ligne `geste
+ * commandé` au journal) est marquée « commandée » : la seule qui mérite une
+ * mission `geste_code` ; aucune autre devinette, un geste nouveau ne naît
+ * jamais parce qu'une demande revient.
  */
-export function construireCatalogue<S>(m: MetierConversation<S>, dossierClient: string): Catalogue {
+export function construireCatalogue<S>(
+  m: MetierConversation<S>,
+  dossierClient: string,
+  journal: Journal,
+): Catalogue {
+  const commandees = new Set(
+    journal
+      .lire()
+      .filter((l) => l.type === TYPE_GESTE_COMMANDE && l.objet !== null)
+      .map((l) => l.objet as string),
+  )
   const appris = lireFichiersGestes(dossierClient).flatMap((f) =>
     f.contenu
       ? [
@@ -126,12 +143,23 @@ export function construireCatalogue<S>(m: MetierConversation<S>, dossierClient: 
       roles: a.roles,
     })),
     appris,
-    intentions: m.intentions.map((i) => ({
-      id: i.id,
-      description: i.description,
-      ecrit: i.ecrit,
-      ...(actifs.has(i.id) ? { geste_actif: true as const } : {}),
-    })),
+    intentions: [
+      ...m.intentions.map((i) => ({
+        id: i.id,
+        description: i.description,
+        ecrit: i.ecrit,
+        ...(commandees.has(i.id) ? { commande: true as const } : {}),
+        ...(actifs.has(i.id) ? { geste_actif: true as const } : {}),
+      })),
+      ...[...commandees]
+        .filter((id) => !m.intentions.some((i) => i.id === id))
+        .map((id) => ({
+          id,
+          description: HORS_VOCABULAIRE,
+          ecrit: false,
+          commande: true as const,
+        })),
+    ],
     missions_ouvertes: missionsOuvertes(dossierClient),
   }
 }
@@ -156,7 +184,7 @@ export function systemeRonde(
     '',
     `Rends un seul rapport (\`${OUTIL_RAPPORT}\`), au schéma donné, et rien d'autre. Au plus ${missionsMax} missions. Si rien ne mérite une mission, \`rien_a_signaler\` vrai et aucune mission.`,
     `Une mission cite les identifiants d'échappées (E-…) du résumé qui la justifient, les intentions concernées (du catalogue, ou un slug neuf), et des consignes-types écrites avec des places entre chevrons (${domaine.places.join(', ')}) : jamais un identifiant ni un nom.`,
-    "N'écris aucune mission pour une intention qui a un geste actif, ni une mission déjà ouverte ou retirée. N'écris aucune mission `geste_code` : un geste nouveau se construit sur commande du patron, jamais parce qu'une demande revient.",
+    "N'écris aucune mission pour une intention qui a un geste actif, ni une mission déjà ouverte ou retirée. N'écris aucune mission `geste_code`, sauf pour une intention marquée « commandée par le patron » : un geste nouveau se construit sur sa commande, jamais parce qu'une demande revient.",
     '',
     FRONTIERE,
     '',
@@ -180,7 +208,7 @@ export function systemeRonde(
       'Intentions connues (demandes nouvelles)',
       catalogue.intentions,
       (i) =>
-        `\`${i.id}\`${i.ecrit ? ' (écrit)' : ''} : ${i.description}${i.geste_actif ? ' — geste actif' : ''}`,
+        `\`${i.id}\`${i.ecrit ? ' (écrit)' : ''} : ${i.description}${i.commande ? ' — commandée par le patron' : ''}${i.geste_actif ? ' — geste actif' : ''}`,
     ),
     ...liste(
       'Missions déjà ouvertes',
@@ -417,7 +445,8 @@ function rendreMd(
     '## Le catalogue',
     '',
     ...catalogue.intentions.map(
-      (i) => `- intention \`${i.id}\`${i.geste_actif ? ' : geste actif' : ''}`,
+      (i) =>
+        `- intention \`${i.id}\`${i.commande ? ' : commandée' : ''}${i.geste_actif ? ' : geste actif' : ''}`,
     ),
     ...catalogue.appris.map((a) => `- geste appris \`${a.id}\` : ${a.statut}`),
     ...catalogue.missions_ouvertes.map(
@@ -474,13 +503,13 @@ export async function faireRonde<S>(
     })
     mkdirSync(dossier, { recursive: true })
     if (o.sansModele) {
-      const catalogue = construireCatalogue(m, o.dossierClient)
+      const catalogue = construireCatalogue(m, o.dossierClient, journal)
       writeFileSync(fichier, rendreMd(date, resume, catalogue))
       return { sorte: 'sans_modele', fichier, resume, catalogue }
     }
     const dossierMissions = join(dossier, date)
     if (o.refaire) rmSync(dossierMissions, { recursive: true, force: true })
-    const catalogue = construireCatalogue(m, o.dossierClient)
+    const catalogue = construireCatalogue(m, o.dossierClient, journal)
 
     const missionsMax = o.agence.ronde.missions_max
     // Sans mémoire (les évals), rien n'est lu non plus : une éval ne dépend que de son journal fixé.

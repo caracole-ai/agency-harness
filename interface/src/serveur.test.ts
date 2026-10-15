@@ -23,8 +23,11 @@ import {
   type Scripte,
   type Tableau,
   TYPE_ACCES_REFUSE,
+  TYPE_APPEL,
   TYPE_CONFIRMATION_ATTENDUE,
+  TYPE_CONSIGNE,
   TYPE_GESTE_APPRIS,
+  TYPE_GESTE_COMMANDE,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
@@ -471,6 +474,145 @@ describe('ce que l’outil a appris : /api/gestes, activer, retirer (PLAN-PROMOT
   })
   it('la page a l’onglet « Appris »', async () => {
     expect(await (await app().request('/')).text()).toContain("Ce que l'outil a appris")
+  })
+})
+
+describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2026-10-15)', () => {
+  const CLIENT = 'client fictif (sécurité privée)'
+  const nouvelle = (conversation: string, intention: string, resume: string, consigne: string) => ({
+    type: TYPE_CONSIGNE,
+    client: CLIENT,
+    objet: conversation,
+    issue: 'nouvelle',
+    motif: consigne,
+    donnees: { identite: PATRON, demande: { sorte: 'nouvelle', intention, resume } },
+  })
+  /** Une copie avec trois demandes sans geste sous deux intentions, une inconnue et une nouvelle sans résumé. */
+  function copieAvecDemandes(): string {
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [nouvelle('C-1', 'liberer_un_jour', 'libérer Julien samedi', 'Libère Julien samedi.')],
+      '2026-10-08T08:00:00Z',
+    )
+    j.ecrire(
+      [
+        nouvelle(
+          'C-2',
+          'heures_par_agent',
+          'les heures de Karim',
+          'Combien d’heures a fait Karim ?',
+        ),
+      ],
+      '2026-10-09T08:00:00Z',
+    )
+    j.ecrire(
+      [
+        nouvelle(
+          'C-3',
+          'liberer_un_jour',
+          'libérer Sophie dimanche',
+          'Donne son dimanche à Sophie.',
+        ),
+      ],
+      '2026-10-09T09:00:00Z',
+    )
+    j.ecrire(
+      [
+        {
+          type: TYPE_CONSIGNE,
+          client: CLIENT,
+          objet: 'C-4',
+          issue: 'inconnue',
+          motif: 'Fais la paie.',
+          donnees: { identite: PATRON, demande: { sorte: 'inconnue', raison: 'x' } },
+        },
+        {
+          type: TYPE_CONSIGNE,
+          client: CLIENT,
+          objet: 'C-5',
+          issue: 'nouvelle',
+          motif: 'Encore Julien.',
+          donnees: { identite: PATRON },
+        },
+      ],
+      '2026-10-09T10:00:00Z',
+    )
+    j.fermer()
+    return dossier
+  }
+
+  it('la liste est au patron seul : par intention, les plus fréquentes d’abord, avec les résumés et la dernière date', async () => {
+    const a = app([], copieAvecDemandes())
+    expect((await lire(a, '/api/sans-geste', { role: 'agent', agent: 'A-2' })).status).toBe(403)
+    const r = await lire(a, '/api/sans-geste')
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual([
+      {
+        intention: 'liberer_un_jour',
+        compte: 2,
+        exemples: ['libérer Sophie dimanche', 'libérer Julien samedi'],
+        derniere: '2026-10-09',
+      },
+      {
+        intention: 'heures_par_agent',
+        compte: 1,
+        exemples: ['les heures de Karim'],
+        derniere: '2026-10-09',
+      },
+    ])
+  })
+  it('commander : le patron seul, « par » est son identité vérifiée ; la ligne est au journal, sans appel ; une seconde fois, 400', async () => {
+    const dossier = copieAvecDemandes()
+    const a = app([], dossier)
+    expect(
+      (
+        await poster(a, '/api/sans-geste/commander', {
+          identite: { role: 'agent', agent: 'A-2' },
+          intention: 'liberer_un_jour',
+        })
+      ).status,
+    ).toBe(403)
+    expect((await poster(a, '/api/sans-geste/commander', { identite: PATRON })).status).toBe(400)
+    const inconnue = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'inventaire_cles',
+    })
+    expect(inconnue.status).toBe(400)
+    expect(((await inconnue.json()) as { erreur: string }).erreur).toBe(
+      'inventaire_cles : aucune demande sans geste sous ce mot',
+    )
+    const r = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'liberer_un_jour',
+    })
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual({ intention: 'liberer_un_jour', le: '2026-10-10' })
+    const commande = journalDe(dossier).find((l) => l.type === TYPE_GESTE_COMMANDE)
+    expect(commande).toMatchObject({
+      objet: 'liberer_un_jour',
+      motif: 'libérer Sophie dimanche',
+      horodatage: '2026-10-10T19:40:00Z',
+    })
+    expect(JSON.parse(commande?.donnees ?? '{}')).toEqual({
+      par: { role: 'patron' },
+      exemples: ['libérer Sophie dimanche', 'libérer Julien samedi'],
+      compte: 2,
+    })
+    expect(journalDe(dossier).filter((l) => l.type === TYPE_APPEL)).toEqual([])
+    const encore = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'liberer_un_jour',
+    })
+    expect(encore.status).toBe(400)
+    expect(((await encore.json()) as { erreur: string }).erreur).toBe(
+      'liberer_un_jour : déjà commandé le 2026-10-10',
+    )
+    const [d] = (await (await lire(a, '/api/sans-geste')).json()) as { commande?: unknown }[]
+    expect(d).toMatchObject({
+      intention: 'liberer_un_jour',
+      commande: { par: { role: 'patron' }, le: '2026-10-10' },
+    })
   })
 })
 

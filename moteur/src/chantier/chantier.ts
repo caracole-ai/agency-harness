@@ -206,7 +206,7 @@ export async function faireChantier<S>(
     const journal = m.journal(s)
     const client = m.client(s)
     const personnes: Designable[] = m.noms(s)
-    const catalogue = construireCatalogue(m, dossierClient)
+    const catalogue = construireCatalogue(m, dossierClient, journal)
     const retirees = existsSync(depot) ? missionsRetirees(depot) : []
     const decision = decider(mission, catalogue, retirees)
     const journaliser = (issue: string, donnees: Record<string, unknown>) =>

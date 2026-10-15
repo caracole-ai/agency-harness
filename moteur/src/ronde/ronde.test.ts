@@ -15,6 +15,7 @@ import { chargerAgence } from '../agence/config'
 import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
 import { ajouterConvention, ecrireRetrait, lireIndex } from '../chantier/memoire'
 import { fuites } from '../echappee/pseudonymes'
+import { TYPE_GESTE_COMMANDE } from '../gestes/commande'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   DOMAINE_ESSAI,
@@ -26,6 +27,7 @@ import {
 import type { MissionRonde, RapportDeRonde } from './rapport'
 import {
   type AppelRonde,
+  construireCatalogue,
   FICHIER_CARTE,
   faireRonde,
   ISSUES_RONDE,
@@ -326,5 +328,49 @@ describe('faireRonde', () => {
     const r = await faireRonde(METIER_ESSAI, o)
     expect(r).toMatchObject({ issue: ISSUES_RONDE.echouee })
     expect(r.sorte === 'faite' && r.raison).toMatch(/ANTHROPIC_API_KEY/)
+  })
+})
+
+describe('construireCatalogue', () => {
+  it('marque « commandée » une intention que le patron a commandée, déclarée par le métier ou non ; rien d’autre', () => {
+    const dossier = dossierEssai()
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      s.journal.ecrire(
+        [
+          {
+            type: TYPE_GESTE_COMMANDE,
+            client: 'client essai',
+            objet: 'heures_par_agent',
+            donnees: { par: { role: 'patron' } },
+          },
+          {
+            type: TYPE_GESTE_COMMANDE,
+            client: 'client essai',
+            objet: 'inventaire_cles',
+            donnees: { par: { role: 'patron' } },
+          },
+        ],
+        '2026-10-10T20:00:00Z',
+      )
+      const c = construireCatalogue(METIER_ESSAI, dossier, s.journal)
+      expect(c.intentions.find((i) => i.id === 'heures_par_agent')).toMatchObject({
+        commande: true,
+      })
+      expect(c.intentions.find((i) => i.id === 'inventaire_cles')).toMatchObject({
+        commande: true,
+        ecrit: false,
+        description: expect.stringContaining('commandée par le patron'),
+      })
+      expect(c.intentions.filter((i) => i.commande).map((i) => i.id)).toEqual([
+        'heures_par_agent',
+        'inventaire_cles',
+      ])
+      expect(systemeRonde('carte', c, 3, DOMAINE_ESSAI)).toContain(
+        '`heures_par_agent` : les heures faites par un agent — commandée par le patron',
+      )
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
   })
 })
