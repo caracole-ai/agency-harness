@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -10,7 +10,6 @@ import {
   TYPE_ECHAPPEE,
   TYPE_OUTIL_ECHAPPEE,
 } from '../echappee/echappee'
-import { DOSSIER_GESTES } from '../gestes/geste-appris'
 import { OPERATION_EXEMPLE, reaffectationValidee } from '../gestes/geste-appris.test.fixture'
 import { type Evenement, Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
@@ -22,7 +21,6 @@ import {
   ecrireDossier,
   type IntentionComptee,
   intentions,
-  purgerInstantanes,
   resumeCout,
   TYPE_PROMOTION,
 } from './promotion'
@@ -492,43 +490,6 @@ describe('aProposer et ecrireDossier', () => {
     )
     expect(md).toContain('Aucune proposition validée.')
     expect(md).toContain('Aucune requête.')
-    journal.fermer()
-  })
-})
-
-describe('purgerInstantanes', () => {
-  it('supprime les instantanés d’avant `avant` qu’aucun geste ne cite ; laisse les autres et ce que le journal ignore', () => {
-    const dossier = mkdtempSync(join(tmpdir(), 'promotion-'))
-    const journal = new Journal(join(dossier, 'journal.sqlite'))
-    mkdirSync(join(dossier, DOSSIER_ECHAPPEES))
-    const fichier = (id: string) => join(dossier, cheminInstantane(id))
-    for (const id of ['E-0', 'E-1', 'E-2', 'E-3']) writeFileSync(fichier(id), '{}')
-    journal.ecrire(
-      [echappee('C-1', 'E-1', INTENTION, 'reponse', CONSIGNE_1, ok)],
-      '2026-07-01T08:00:00Z',
-    )
-    journal.ecrire(
-      [echappee('C-2', 'E-2', INTENTION, 'reponse', CONSIGNE_2, ok)],
-      '2026-07-02T08:00:00Z',
-    )
-    journal.ecrire(
-      [echappee('C-3', 'E-3', INTENTION, 'reponse', CONSIGNE_3, ok)],
-      '2026-10-07T08:00:00Z',
-    )
-    mkdirSync(join(dossier, DOSSIER_GESTES))
-    writeFileSync(
-      join(dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'),
-      `id: liberer_un_jour\ntests:\n  - echappee: E-2\n    instantane: ${cheminInstantane('E-2')}\n`,
-    )
-
-    const avant = Temporal.PlainDate.from('2026-10-10').subtract({ days: 90 })
-    expect(purgerInstantanes(dossier, journal, avant)).toEqual([cheminInstantane('E-1')])
-    expect(existsSync(fichier('E-1'))).toBe(false)
-    expect(existsSync(fichier('E-2'))).toBe(true)
-    expect(existsSync(fichier('E-3'))).toBe(true)
-    expect(existsSync(fichier('E-0'))).toBe(true)
-    // Une seconde purge ne trouve plus rien.
-    expect(purgerInstantanes(dossier, journal, avant)).toEqual([])
     journal.fermer()
   })
 })

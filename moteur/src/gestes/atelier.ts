@@ -7,7 +7,10 @@ import type { TableCopie } from '../echappee/copie'
 import type { Instantane } from '../echappee/echappee'
 import { SEUILS } from '../evals/evals'
 import type { BilanTraduction } from '../evals/traduction'
-import { ISSUE_GESTE, lireFichiersGestes, TYPE_GESTE_APPRIS } from '../gestes/charger'
+import type { Evenement, Journal } from '../journal/journal'
+import { TYPE_APPEL } from '../modele/compteur'
+import type { Temporal } from '../temps/temporal'
+import { ISSUE_GESTE, lireFichiersGestes, TYPE_GESTE_APPRIS } from './charger'
 import {
   DOSSIER_GESTES,
   empreinteGeste,
@@ -15,11 +18,8 @@ import {
   type GesteAppris,
   gesteDe,
   type StatutGeste,
-} from '../gestes/geste-appris'
-import type { Evenement, Journal } from '../journal/journal'
-import { TYPE_APPEL } from '../modele/compteur'
-import type { Temporal } from '../temps/temporal'
-import { type EcartGeste, type Rejeu, verifierGeste } from './fabriquer'
+} from './geste-appris'
+import { type EcartGeste, type Rejeu, verifierGeste } from './verifier'
 
 // L'atelier et qui administre devant un geste appris (PLAN-PROMOTION.md § 7.1,
 // § 7.2) : lister, vérifier, activer, retirer. Activer exige une ligne

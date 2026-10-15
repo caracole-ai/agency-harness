@@ -21,6 +21,7 @@ import {
   OPERATION_EXEMPLE,
   reaffectationValidee,
 } from '../gestes/geste-appris.test.fixture'
+import { rejouerTest } from '../gestes/verifier'
 import { Journal } from '../journal/journal'
 import { modeleSimule, type Scripte } from '../modele/simule'
 import {
@@ -34,10 +35,8 @@ import {
   type GestePropose,
   messageFabriquer,
   OUTIL_PROPOSER_GESTE,
-  rejouerTest,
   systemeFabriquer,
   type ValideesDe,
-  verifierGeste,
 } from './fabriquer'
 import type { EchappeeJournalisee } from './promotion'
 
@@ -444,154 +443,6 @@ describe('completerGeste', () => {
   })
 })
 
-describe('verifierGeste et rejouerTest', () => {
-  const geste = (): GesteAppris => {
-    const { geste: g } = completerGeste(
-      PROPOSE,
-      INTENTION.id,
-      ECHAPPEES,
-      PERSONNES,
-      ORIGINE,
-      DECLARATIONS_EXEMPLE,
-      SANS_VALIDEES,
-    )
-    if (!g) throw new Error('fixture')
-    return g
-  }
-  const contexte = (dossierClient: string) => ({
-    dossierClient,
-    copieVide: COPIE_VIDE,
-    consignes: ECHAPPEES.map((e) => e.consigne),
-    personnes: PERSONNES,
-    declarations: DECLARATIONS_EXEMPLE,
-    gestesExistants: GESTES_EXISTANTS,
-  })
-  it('un geste juste : zéro écart, rejeu 3/3', async () => {
-    const dossier = dossierAvecInstantanes()
-    expect(await verifierGeste(geste(), contexte(dossier))).toEqual({
-      ecarts: [],
-      rejeu: { ok: 3, total: 3 },
-    })
-  })
-  it('le rejeu rend le texte et ce qui y manque ; un instantané absent est une erreur', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = geste()
-    const [t1, , t3] = g.tests
-    if (!t1 || !t3) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
-      texte: 'Karim Haddad : 24 heures du 2026-10-05 au 2026-10-11.',
-      manque: [],
-      enTrop: [],
-    })
-    expect(
-      await rejouerTest(g, { ...t1, contient: ['24', '99'] }, dossier, DECLARATIONS_EXEMPLE),
-    ).toMatchObject({
-      manque: ['99'],
-    })
-    // L'agent : sa copie n'a que ses lignes, et c'est lui qui est lié (D4).
-    expect(
-      await rejouerTest(
-        g,
-        { ...t3, params: { ...t3.params, agent: 'A-1' } },
-        dossier,
-        DECLARATIONS_EXEMPLE,
-      ),
-    ).toEqual({
-      texte: 'Sophie Marchand : 12 heures du 2026-10-05 au 2026-10-11.',
-      manque: [],
-      enTrop: [],
-    })
-    expect(
-      await rejouerTest(
-        g,
-        { ...t1, instantane: 'echappees/E-0.json' },
-        dossier,
-        DECLARATIONS_EXEMPLE,
-      ),
-    ).toEqual({
-      erreur: 'instantané absent : echappees/E-0.json',
-    })
-  })
-  it('un rejeu qui ne contient pas « 16 » : écart 3, sans erreur (ne relance pas)', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = geste()
-    const faux = {
-      ...g,
-      requetes: [{ nom: 'heures', sql: SQL_OK.replace('SUM(v.heures)', 'COUNT(v.id)') }],
-    }
-    const { ecarts, rejeu } = await verifierGeste(faux, contexte(dossier))
-    expect(rejeu).toEqual({ ok: 0, total: 3 })
-    expect(ecarts.map((e) => e.texte)).toEqual([
-      'E-1 : le rejeu ne contient pas « 24 » (rendu : « Karim Haddad : 2 heures du 2026-10-05 au 2026-10-11. »)',
-      'E-2 : le rejeu ne contient pas « 16 » (rendu : « Julien Lefèvre : 2 heures du 2026-10-05 au 2026-10-11. »)',
-      'E-3 : le rejeu ne contient pas « 12 » (rendu : « Sophie Marchand : 1 heures du 2026-10-05 au 2026-10-11. »)',
-    ])
-    expect(ecarts.every((e) => e.erreur === undefined)).toBe(true)
-  })
-  it('une valeur en dur venue d’une consigne, une date, une personne : écart 4', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = geste()
-    const { ecarts } = await verifierGeste(
-      {
-        ...g,
-        requetes: [
-          {
-            nom: 'heures',
-            sql: `${SQL_OK} HAVING a.nom LIKE '%Karim%' OR a.id = 'A-2' OR v.jour = '2026-10-05' OR a.nom <> 'semaine' OR a.nom <> 'x'`,
-          },
-        ],
-      },
-      contexte(dossier),
-    )
-    const textes = ecarts.map((e) => e.texte)
-    expect(textes).toContain(
-      "la requête « heures » code une valeur venue d'une consigne : 'semaine'",
-    )
-    expect(textes).toContain("la requête « heures » code une personne en dur : 'A-2'")
-    expect(textes).toContain("la requête « heures » code une date en dur : '2026-10-05'")
-    expect(textes.filter((t) => t.includes("'x'"))).toEqual([])
-  })
-  it('une requête qui lève sur la copie vide : un seul écart, avec l’erreur (relance), rien d’autre vérifié', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = geste()
-    const { ecarts, rejeu } = await verifierGeste(
-      {
-        ...g,
-        requetes: [{ nom: 'heures', sql: 'SELECT nom, total FROM absente WHERE id = :agent' }],
-      },
-      contexte(dossier),
-    )
-    expect(rejeu).toEqual({ ok: 0, total: 3 })
-    expect(ecarts).toHaveLength(1)
-    expect(ecarts[0]).toMatchObject({
-      requete: 'heures',
-      erreur: expect.stringMatching(/no such table/),
-    })
-  })
-  it('une colonne que la requête ne rend pas : écart de gabarit, lu sur la copie vide', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = geste()
-    const { ecarts } = await verifierGeste(
-      { ...g, reponse: { ...g.reponse, ligne: '{{heures.total}} heures' } },
-      contexte(dossier),
-    )
-    expect(ecarts.map((e) => e.texte)).toContain(
-      'la ligne cite une colonne que « heures » ne rend pas : total',
-    )
-  })
-  it('une description qui ressemble à un geste existant : écart 5', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = geste()
-    const { ecarts } = await verifierGeste(
-      { ...g, description: 'le planning d’un agent ou de tous, sur une période.' },
-      contexte(dossier),
-    )
-    expect(ecarts.map((e) => e.texte)).toEqual([
-      expect.stringMatching(/^la description ressemble à celle de voir_planning/),
-    ])
-  })
-})
-
 describe('ecrireGeste', () => {
   it('écrit gestes/<id>.yaml au statut proposé, sans validation, relisible ; un second du même id prend la date', () => {
     const dossier = mkdtempSync(join(tmpdir(), 'fabriquer-'))
@@ -812,90 +663,6 @@ describe('fabriquerGeste', () => {
     })
     expect(c.modele.appels).toHaveLength(0)
     expect(existsSync(join(dossier, 'gestes'))).toBe(false)
-  })
-})
-
-describe('le rejeu d’un geste qui écrit (PLAN-PROMOTION.md § 10)', () => {
-  const sql = (agent: string) =>
-    `SELECT v.id AS vacation, '${agent}' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date`
-  const test = (echappee: string, date: string, vacation: string, agent: string) => ({
-    echappee,
-    consigne: 'Libère Karim.',
-    role: 'patron' as const,
-    agent: null,
-    params: { agent: 'A-1', date },
-    instantane: `echappees/${echappee}.json`,
-    contient: [],
-    modifications: [{ vacation, agent }],
-  })
-  // Le patron a validé V-01 pour Julien (A-2) puis pour Sophie (A-3) : les deux lui conviennent.
-  const ecrit = (agent: string): GesteAppris => ({
-    id: 'liberer_un_jour',
-    description: 'libérer un agent de ses vacations d’un jour',
-    roles: ['patron'],
-    parametres: {
-      agent: { type: 'agent', description: "l'agent" },
-      date: { type: 'date', description: 'le jour' },
-    },
-    requetes: [{ nom: 'liberer', sql: sql(agent) }],
-    modifications: { pour_chaque: 'liberer', reaffecter: { vacation: 'vacation', agent: 'agent' } },
-    reponse: { ligne: null, tableau: 'liberer', vide: 'Rien.' },
-    tests: [
-      test('E-1', '2026-10-07', 'V-01', 'A-2'),
-      test('E-2', '2026-10-07', 'V-01', 'A-3'),
-      test('E-2', '2026-10-09', 'V-02', 'A-2'),
-    ],
-    origine: ORIGINE,
-  })
-  it('un agent que le patron a validé pour cette vacation, dans ce test ou un autre : rien ne manque, rien de trop', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = ecrit('A-3')
-    const [t1, t2] = g.tests
-    if (!t1 || !t2) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
-      texte: 'V-01 → A-3',
-      manque: [],
-      enTrop: [],
-    })
-    expect(await rejouerTest(g, t2, dossier, DECLARATIONS_EXEMPLE)).toMatchObject({
-      manque: [],
-      enTrop: [],
-    })
-  })
-  it('un agent jamais validé pour cette vacation, une vacation absente : écarts, et la vérification le dit', async () => {
-    const dossier = dossierAvecInstantanes()
-    const g = ecrit('A-1')
-    const [t1, , t3] = g.tests
-    if (!t1 || !t3) throw new Error('fixture')
-    expect(await rejouerTest(g, t1, dossier, DECLARATIONS_EXEMPLE)).toEqual({
-      texte: 'V-01 → A-1',
-      manque: [],
-      enTrop: ['V-01 → A-1'],
-    })
-    expect(
-      await rejouerTest(
-        g,
-        { ...t3, params: { agent: 'A-1', date: '2026-10-20' } },
-        dossier,
-        DECLARATIONS_EXEMPLE,
-      ),
-    ).toEqual({
-      texte: 'aucune modification',
-      manque: ['V-02'],
-      enTrop: [],
-    })
-    const { ecarts, rejeu } = await verifierGeste(g, {
-      dossierClient: dossier,
-      copieVide: COPIE_VIDE,
-      consignes: [],
-      personnes: PERSONNES,
-      declarations: DECLARATIONS_EXEMPLE,
-      gestesExistants: GESTES_EXISTANTS,
-    })
-    expect(rejeu).toEqual({ ok: 0, total: 3 })
-    expect(ecarts.map((e) => e.texte)).toContain(
-      'E-1 : le rejeu propose « V-01 → A-1 », jamais validé (rendu : « V-01 → A-1 »)',
-    )
   })
 })
 

@@ -8,15 +8,6 @@ import type { ConfigConversation } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
 import type { TableCopie } from '../echappee/copie'
 import { ecrireInstantane } from '../echappee/echappee'
-import { chargerGestesAppris, ISSUE_GESTE, TYPE_GESTE_APPRIS } from '../gestes/charger'
-import { DOSSIER_GESTES, empreinteGeste, type FichierGeste } from '../gestes/geste-appris'
-import {
-  DECLARATIONS_EXEMPLE,
-  DOMAINE_EXEMPLE,
-  GESTE_EXEMPLE as GESTE,
-  OPERATION_EXEMPLE,
-  TYPES_EXEMPLE,
-} from '../gestes/geste-appris.test.fixture'
 import { Journal } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -30,6 +21,15 @@ import {
   trouverGeste,
   verifierGesteAppris,
 } from './atelier'
+import { chargerGestesAppris, ISSUE_GESTE, TYPE_GESTE_APPRIS } from './charger'
+import { DOSSIER_GESTES, empreinteGeste, type FichierGeste } from './geste-appris'
+import {
+  DECLARATIONS_EXEMPLE,
+  DOMAINE_EXEMPLE,
+  GESTE_EXEMPLE as GESTE,
+  OPERATION_EXEMPLE,
+  TYPES_EXEMPLE,
+} from './geste-appris.test.fixture'
 
 // L'atelier et le patron devant un geste appris (PLAN-PROMOTION.md § 7.1) :
 // lister dit ce que le journal sait et si le geste est activable ; activer

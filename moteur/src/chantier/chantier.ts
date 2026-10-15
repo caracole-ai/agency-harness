@@ -13,7 +13,7 @@ import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import type { Domaine } from '../conversation/domaine'
-import { dollars } from '../promotion/promotion'
+import { dollars } from '../modele/modele'
 import { construireCatalogue } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cout, type PrixModele, USAGE_NUL } from './modele'
+import { cout, dollars, type PrixModele, USAGE_NUL } from './modele'
 import { modeleSimule } from './simule'
 
 // Le coût d'un appel et l'adaptateur simulé (PLAN-ESPACES.md § 4.7).
@@ -72,5 +72,13 @@ describe('modeleSimule', () => {
     await m.appeler(appel('premier système'))
     await m.appeler(appel('second système'))
     expect(m.appels.map((a) => a.systeme)).toEqual(['premier système', 'second système'])
+  })
+})
+
+describe('dollars', () => {
+  it('deux décimales, virgule française', () => {
+    expect(dollars(1.234)).toBe('1,23')
+    expect(dollars(0)).toBe('0,00')
+    expect(dollars(30)).toBe('30,00')
   })
 })

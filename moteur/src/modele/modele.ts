@@ -45,6 +45,9 @@ export function cout(usage: UsageModele, prix: PrixModele): number {
   return Math.round(usd * 1_000_000) / 1_000_000
 }
 
+/** Un montant en dollars, deux décimales, virgule française : `1,23`. */
+export const dollars = (usd: number) => usd.toFixed(2).replace('.', ',')
+
 export interface AppelModele {
   /** Le bloc système, mis en cache par l'adaptateur (`cache_control: ephemeral`). */
   systeme: string

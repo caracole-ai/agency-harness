@@ -2,12 +2,12 @@ import { stringify } from 'yaml'
 import { plafondFabrication, prixDe } from '../conversation/config'
 import type { MetierConversation } from '../conversation/conversation'
 import type { BilanTraduction } from '../evals/traduction'
+import { copieVideDe, journaliserVerification } from '../gestes/atelier'
 import { ISSUE_GESTE, lireFichiersGestes, TYPE_GESTE_APPRIS } from '../gestes/charger'
 import { empreinteGeste, type GesteAppris } from '../gestes/geste-appris'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import { cout, type Modele } from '../modele/modele'
 import type { Temporal } from '../temps/temporal'
-import { copieVideDe, journaliserVerification } from './atelier'
 import { APRES_RELANCE, ecrireGeste, fabriquerGeste } from './fabriquer'
 import {
   debutFenetre,

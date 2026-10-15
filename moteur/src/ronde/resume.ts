@@ -1,3 +1,4 @@
+import { VALIDEE } from '../approbation/jeton'
 import type { Role } from '../conversation/actions'
 import { TYPE_CONSIGNE, TYPE_PRECISION_ATTENDUE } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
@@ -6,7 +7,6 @@ import { TYPE_ECHAPPEE } from '../echappee/echappee'
 import { fuites, masquerConsigne } from '../echappee/pseudonymes'
 import type { Journal, Ligne } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
-import { suiteDe } from '../promotion/promotion'
 import { FUSEAU, Temporal } from '../temps/temporal'
 
 // Le résumé du journal pour la ronde de nuit, fait en code, sans modèle
@@ -100,6 +100,23 @@ const donnees = (l: Ligne): Record<string, unknown> => {
 }
 
 /** Le jour d'un horodatage, heure de Paris. */
+/** Le statut d'une proposition écrite dans les données (remplacement, réaffectation). */
+export const ECRITE = 'écrite'
+export const SUITE_NON_VALIDEE = 'non validée'
+
+/** La suite donnée à la proposition d'une conversation : lue sur les objets (`R-…`) qui la citent. */
+export function suiteDe(lignes: Ligne[], conversation: string): string {
+  const objets = new Set(
+    lignes
+      .filter((l) => l.objet !== null && donnees(l).conversation === conversation)
+      .map((l) => l.objet),
+  )
+  const issues = lignes.filter((l) => objets.has(l.objet)).map((l) => l.issue)
+  if (issues.includes(ECRITE)) return ECRITE
+  if (issues.includes(VALIDEE)) return VALIDEE
+  return SUITE_NON_VALIDEE
+}
+
 export const jourDe = (horodatage: string) =>
   Temporal.Instant.from(horodatage).toZonedDateTimeISO(FUSEAU).toPlainDate()
 

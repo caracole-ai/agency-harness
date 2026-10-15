@@ -27,8 +27,8 @@ import { lireFichiersGestes } from '../gestes/charger'
 import { ecritDe, gesteDe } from '../gestes/geste-appris'
 import type { Journal, Ligne } from '../journal/journal'
 import { modeleAnthropic } from '../modele/anthropic'
-import { cout } from '../modele/modele'
-import { dollars, suiteDe, TYPE_PROMOTION } from '../promotion/promotion'
+import { cout, dollars } from '../modele/modele'
+import { TYPE_PROMOTION } from '../promotion/promotion'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   type MissionRevalidee,
@@ -49,6 +49,7 @@ import {
   PROMOTION_EN_COURS,
   type Resume,
   resumerJournal,
+  suiteDe,
 } from './resume'
 
 // La ronde de nuit (PLAN-RONDE.md § 5.3, R2 à R4 ; § 0.a) : un appel par

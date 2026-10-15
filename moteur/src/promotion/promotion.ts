@@ -1,16 +1,15 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { parse } from 'yaml'
-import { VALIDEE } from '../approbation/jeton'
 import type { Role } from '../conversation/actions'
 import { personneLue } from '../conversation/roles'
 import { CONTROLE_OK, type IssueEchappee, OUTIL_REQUETE, OUTIL_VERIFIER } from '../echappee/boucle'
 import { TYPE_ECHAPPEE, TYPE_OUTIL_ECHAPPEE } from '../echappee/echappee'
-import { DOSSIER_GESTES } from '../gestes/geste-appris'
 import type { OperationApprise } from '../gestes/operation'
 import type { Journal, Ligne } from '../journal/journal'
 import { TYPE_APPEL } from '../modele/compteur'
+import { dollars } from '../modele/modele'
 import type { Constat } from '../regles/verdict'
+import { SUITE_NON_VALIDEE, suiteDe } from '../ronde/resume'
 import { dateFr, FUSEAU, Temporal } from '../temps/temporal'
 
 // Le compteur des demandes nouvelles et la promotion (espace 3) : ce qui
@@ -58,9 +57,6 @@ export interface Fabrication {
   /** `echec` : le modèle n'a pas répondu (panne de transport) ; rien n'est inscrit, le prochain `pnpm promotions` réessaie. */
   injoignable?: true
 }
-
-/** Le statut d'une proposition écrite dans les données (remplacement, réaffectation). */
-export const ECRITE = 'écrite'
 
 export interface IntentionComptee {
   intention: string
@@ -119,8 +115,6 @@ const ISSUES: Record<IssueEchappee['sorte'], string> = {
   proposition: 'proposition',
   abandon: 'abandon',
 }
-
-const SUITE_NON_VALIDEE = 'non validée'
 
 const AVERTISSEMENT_CAS = 'À vérifier et écrire à la main, jamais recopié tel quel.'
 
@@ -218,13 +212,7 @@ function donneesDe(l: Ligne): Record<string, unknown> {
 
 const arrondi6 = (x: number) => Math.round(x * 1_000_000) / 1_000_000
 
-/** Un montant en dollars, deux décimales, virgule française : `1,23`. */
-export const dollars = (usd: number) => usd.toFixed(2).replace('.', ',')
-
 const instant = (horodatage: string) => Temporal.Instant.from(horodatage)
-
-/** Le jour d'un horodatage, en heure de Paris. */
-const jourDe = (horodatage: string) => instant(horodatage).toZonedDateTimeISO(FUSEAU).toPlainDate()
 
 /** `05/10/2026 à 09:12`, en heure de Paris. */
 function quand(horodatage: string): string {
@@ -241,19 +229,6 @@ export const debutFenetre = (maintenant: Temporal.ZonedDateTime, jours: number) 
 
 /** Le métier n'est pas connu ici : un rôle est une chaîne non vide (PLAN-METIER-2.md M1). */
 const estRole = (r: unknown): r is Role => typeof r === 'string' && r.length > 0
-
-/** La suite donnée à la proposition d'une conversation : lue sur les objets (`R-…`) qui la citent. */
-export function suiteDe(lignes: Ligne[], conversation: string): string {
-  const objets = new Set(
-    lignes
-      .filter((l) => l.objet !== null && donneesDe(l).conversation === conversation)
-      .map((l) => l.objet),
-  )
-  const issues = lignes.filter((l) => objets.has(l.objet)).map((l) => l.issue)
-  if (issues.includes(ECRITE)) return ECRITE
-  if (issues.includes(VALIDEE)) return VALIDEE
-  return SUITE_NON_VALIDEE
-}
 
 /** Une proposition validée qui n'est pas exactement celle de l'échappée : le patron l'a corrigée ; elle n'apprend rien, le dossier la compte (PLAN-CHOIX.md C3). */
 interface Corrigee {
@@ -582,51 +557,6 @@ export function ecrireDossier(
     maintenant.toInstant().toString(),
   )
   return chemin
-}
-
-/** Les instantanés que les tests des gestes appris du dossier (`gestes/*.yaml`) citent : ils restent tant que le geste existe. */
-function instantanesCites(dossierClient: string): Set<string> {
-  const dossier = join(dossierClient, DOSSIER_GESTES)
-  const cites = new Set<string>()
-  if (!existsSync(dossier)) return cites
-  for (const fichier of readdirSync(dossier).filter((f) => f.endsWith('.yaml'))) {
-    const geste: unknown = parse(readFileSync(join(dossier, fichier), 'utf8'))
-    const tests = (geste as { tests?: unknown } | null)?.tests
-    if (!Array.isArray(tests)) continue
-    for (const t of tests) {
-      const i = (t as { instantane?: unknown } | null)?.instantane
-      if (typeof i === 'string') cites.add(i)
-    }
-  }
-  return cites
-}
-
-/**
- * Supprime les instantanés (`echappees/<id>.json`) des échappées d'avant
- * `avant` (exclu) qu'aucun geste appris ne cite, et rend leurs chemins. Les
- * dates sont celles du journal ; un fichier que le journal ne connaît pas
- * n'est pas touché.
- */
-export function purgerInstantanes(
-  dossierClient: string,
-  journal: Journal,
-  avant: Temporal.PlainDate,
-): string[] {
-  const cites = instantanesCites(dossierClient)
-  const supprimes = new Set<string>()
-  for (const l of journal.lire()) {
-    if (l.type !== TYPE_ECHAPPEE) continue
-    const { instantane } = donneesDe(l) as DonneesEchappee
-    if (typeof instantane !== 'string' || cites.has(instantane) || supprimes.has(instantane)) {
-      continue
-    }
-    if (Temporal.PlainDate.compare(jourDe(l.horodatage), avant) >= 0) continue
-    const absolu = join(dossierClient, instantane)
-    if (!existsSync(absolu)) continue
-    rmSync(absolu)
-    supprimes.add(instantane)
-  }
-  return [...supprimes]
 }
 
 /** « Coût de l'IA ce mois : 1,23 $ sur un plafond de 30,00 $ (12 appels) » : deux décimales, virgule française. */

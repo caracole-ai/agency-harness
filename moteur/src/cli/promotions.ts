@@ -19,16 +19,15 @@ import { parse } from 'yaml'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { evalsDuMetier, FichierTraduire } from '../evals/evals'
 import { type BilanTraduction, passeTraduction } from '../evals/traduction'
+import { purgerInstantanes } from '../gestes/instantanes'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import { coutDuMois } from '../modele/compteur'
-import type { Modele } from '../modele/modele'
+import { dollars, type Modele } from '../modele/modele'
 import {
   aProposer,
   debutFenetre,
-  dollars,
   type Fabrication,
   intentions,
-  purgerInstantanes,
   resumeCout,
 } from '../promotion/promotion'
 import { compterFabrications, promouvoir } from '../promotion/promouvoir'
