@@ -8,7 +8,7 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 ## Où on en est
 
 `main` = `origin/main` = la fusion de `general/masquer-remplacees` (8106d79).
-**`general/retrait-promotion` n'est pas fusionnée** (13 commits devant `main`,
+**`general/retrait-promotion` n'est pas fusionnée** (14 commits devant `main`,
 non poussée) : à fusionner après relecture de Lionel et une passe
 `pnpm evals ronde --client exemples/client-fictif` sur Sonnet (le prompt de la
 ronde et la carte ont changé ; l'attendu de R-1..R-3 est le même par
@@ -33,20 +33,18 @@ moteur 603, interface 33, sécurité 144, agence web 263.
   n'écrase jamais une mission déjà écrite. La carte suit : mission écrite →
   chantier du … → disponible (un geste du métier porte ce nom). Vérifié sans
   modèle sur une copie, vu à 1280 et 390 px.
-- **Mesure avec modèle, 1re passe (2026-10-15, `heures_par_agent`)** :
-  trois demandes réelles sur Sonnet (0,09 $), commande par l'interface (yaml
-  sans nom), `pnpm chantier` : **refusé, `pnpm check` rouge** (6,58 $,
-  836 s ; plan Fable 4,23 $, implémentation Opus 2,35 $). Cause : un test de
-  l'interface (lot 3) prenait `heures_par_agent` comme intention sans geste ;
-  corrigé (4ef5f19). Avec ce correctif, la branche `chantier/heures_par_agent`
-  du clone est verte (sécurité 151 tests). Le geste porte bien l'identifiant
-  de la mission. **À Lionel** : le chantier a réécrit le geste appris d'éval
-  `heures_par_agent` de `evals/gestes.yaml` (devenu `compter_vacations`,
-  attendus changés), forcé par le moteur (un geste appris au nom d'un geste
-  codé est écarté) ; la garde ne surveille pas `gestes.yaml`. Relance :
-  mettre le correctif dans `main` du dépôt nu `~/harnais-nuit-origine.git`,
-  puis `pnpm chantier --mission
-  ~/harnais-mesure/client/rondes/2026-10-15/heures_par_agent.yaml --refaire`.
+- **Mesure avec modèle (2026-10-15, `heures_par_agent`) : la chaîne entière
+  marche.** Trois demandes réelles (Sonnet) → « Créer ce geste » → `pnpm
+  chantier` : **fusionné** dans `main` du clone (`~/harnais-nuit`, poussé
+  vers `~/harnais-nuit-origine.git`, étiquette `chantier/heures_par_agent`),
+  huit conditions vertes, 7 cas de traduction, `evals traduire` 73/73, 0
+  bloquant, 308 lignes, 1 512 s, 7,89 $ équivalent API (abonnement). La
+  carte dit « disponible » sur le code fusionné ; la même question passe par
+  le geste (`action`, sans échappée). Trois passes avant : refus sur un test
+  de l'interface couplé au métier (corrigé, 4ef5f19), `--refaire` qui rouvre
+  la branche telle quelle au lieu de repartir de `main` (supprimer la branche
+  du clone pour repartir), un plan coupé par la limite d'usage. Le geste
+  n'est pas dans ce dépôt : le tirer du dépôt nu est à Lionel.
 - **La nuit** (`PLAN-RONDE.md`, `PLAN-GENERAL.md`) : ronde, chantier, fusion
   sous conditions ; tout sur l'abonnement (binaire `claude`, Sonnet 5.5 au
   quotidien).
@@ -84,10 +82,13 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
-- Après la mesure : lire `chantiers/<id>.md`, les huit conditions, le nom du
-  geste (s'il ne porte pas l'identifiant de la mission, la carte reste à
-  « fusionné, disponible à la prochaine mise à jour » : alors seulement, une
-  porte), les cas d'évals ajoutés (Lionel les relit).
+- À Lionel, sur le geste fusionné : relire le remplacement du geste appris
+  d'éval `heures_par_agent` → `compter_vacations` (`evals/gestes.yaml`, que
+  la garde ne surveille pas) et les 7 cas ajoutés ; « fuite 1 » à `evals
+  traduire` non lue (l'arbre est supprimé après fusion ; peut-être la fuite
+  comptée à tort sur exception) ; remarques de relecture : E-01/E-02 de
+  `echappees.yaml` gardent l'intention `heures_par_agent`, arrondi des heures
+  recopié de `remplacement.ts`, description de fixture trompeuse.
 - Non tranché : la priorité d'une mission commandée dans la nuit
   (`missions_max_par_nuit: 1`, ordre par date : elle peut attendre) ; la
   mise à jour à distance (« disponible » chez un client en dépend) ; le
