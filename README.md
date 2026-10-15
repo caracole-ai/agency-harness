@@ -81,6 +81,16 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   mesure en code à chaque passe (seuil 0). Quatre lots. Reste hors du plan :
   la traduction, qui reçoit la phrase telle qu'écrite, et son niveau 2
   (`designer`), qui montre au modèle jusqu'à trois noms proches à départager.
+- `PLAN-LIVRAISON.md` — **le plan de la livraison** (2026-10-15 ; remplace
+  les phases E et H de `PLAN-GENERAL.md`, retire G3, remplace G8) : le
+  chantier se lance au clic du patron, à l'agence (`pnpm agence`, une file
+  git de missions masquées par client), sans nuit ni clone réservé (arbres
+  de travail depuis `origin/main`, fusion dans un arbre détaché) ; chaque
+  fusion émet une étiquette git signée (SSH) ; le harnais du client
+  (`pnpm harnais`) la tire, vérifie la signature, installe à côté, rejoue
+  `pnpm check`, bascule à un moment calme, revient en arrière si le
+  redémarrage échoue. Douze décisions L1 à L12, cinq lots. Lot 0 (le plan)
+  fait ; lots 1 à 5 à faire.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
