@@ -80,8 +80,6 @@ n'écrit jamais lui-même dans le planning.
 
 - une demande nouvelle qui revient sans intention commune (plusieurs
   consignes qui se ressemblent sous des mots-clés différents) ;
-- une intention que le patron a commandée : un geste codé (`geste_code`),
-  et seulement celle-là ;
 - des abandons ou des « je ne sais pas faire » qui se ressemblent ;
 - une demande coûteuse (beaucoup de tours, beaucoup de dollars) qui revient ;
 - plusieurs intentions de lecture proches, qu'un seul geste servirait
@@ -93,11 +91,15 @@ Ce qui n'en mérite pas :
 - une intention du catalogue qui revient sans que le patron l'ait commandée :
   elle lui est montrée, il décide ;
 - une intention qui a déjà un geste actif ;
-- une mission déjà ouverte, ou retirée (la mémoire le dit).
+- une mission déjà ouverte, ou retirée (la mémoire le dit) ;
+- un geste codé : il naît d'une commande du patron, et le code écrit sa
+  mission (`geste_code`) ; une intention commandée a déjà la sienne parmi les
+  missions ouvertes.
 
-Les sortes de mission : `geste_code`, `intention_nouvelle`, `factorisation`,
+Les sortes de mission de la ronde : `intention_nouvelle`, `factorisation`,
 et `question_pour_l_atelier` (ce qui ne tient pas dans la bande métier, ou
-qu'il faut découper : rien ne se lance). Une mission désigne par
+qu'il faut découper : rien ne se lance) ; `geste_code` est la sorte d'une
+mission commandée, écrite par le code. Une mission désigne par
 identifiants (échappées, intentions) et décrit par types : ses consignes-types
 ont des places (« combien d'heures a fait <agent> entre <du> et <au> »),
 jamais un identifiant ni un nom.

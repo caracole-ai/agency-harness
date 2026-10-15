@@ -4,6 +4,11 @@
 > n'écrit aucune mission `geste_code` pour une intention que le patron n'a
 > pas commandée ; plus d'état « promotion en cours » (§ 0.b) ni de décision
 > « attend » ; la nuit enchaîne purge des instantanés → ronde → chantier.
+> **Puis** (même jour, plan « commande → geste codé ») : la ronde ne peut plus
+> écrire `geste_code` (hors de son schéma, `SORTES_RONDE`) ; la mission d'un
+> geste commandé est écrite par le code à la commande (`commanderMission`,
+> `moteur/src/chantier/mission.ts`), sans `estimation`, et la nuit la prend
+> comme les autres.
 
 Écrit le 2026-10-10, sur deux décisions de Lionel du même jour
 (`REFLEXIONS.md`, « Décidé ») :

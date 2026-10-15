@@ -1,4 +1,4 @@
-# Handoff — 2026-10-14
+# Handoff — 2026-10-15
 
 Pour reprendre dans une session neuve : deux pages, l'état et la suite. Les
 décisions et leur fil sont dans `REFLEXIONS.md`, les plans dans `PLAN-*.md`,
@@ -8,50 +8,48 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 ## Où on en est
 
 `main` = `origin/main` = la fusion de `general/masquer-remplacees` (8106d79).
-`pnpm check` vert : moteur 644, interface 29, sécurité 145, agence web 263.
+**`general/retrait-promotion` n'est pas fusionnée** (12 commits devant `main`,
+non poussée) : à fusionner après relecture de Lionel et une passe
+`pnpm evals ronde --client exemples/client-fictif` sur Sonnet (le prompt de la
+ronde et la carte ont changé ; l'attendu de R-1..R-3 est le même par
+construction : aucun n'attend `geste_code`). `pnpm check` vert sur la branche :
+moteur 603, interface 33, sécurité 144, agence web 263.
 
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
 - **Les trois espaces** (`PLAN-ESPACES.md`) : la traduction vers un geste
   codé, l'échappée (SQL en lecture sur une copie, pseudonymes, contrôle « pas
-  un chiffre ni un nom hors des données »), et la **commande** à la place de
-  la promotion : la promotion automatique est **retirée** (Lionel,
-  2026-10-15, branche `general/retrait-promotion`, ci-dessous) ; un geste
-  nouveau se construit sur commande du patron, jamais parce qu'une demande
-  revient.
+  un chiffre ni un nom hors des données »), et **la commande** : la promotion
+  automatique est retirée (Lionel, 2026-10-15) ; un geste nouveau se construit
+  sur commande du patron, jamais parce qu'une demande revient.
+- **La commande devient un geste codé** (plan
+  `~/.claude/plans/adaptive-twirling-tome.md`, commits « Commande → geste
+  codé ») : « Créer ce geste » fait écrire par le code, sans modèle, la
+  mission `geste_code` (`rondes/<date>/<intention>.yaml`, consignes des
+  échappées masquées, sans nom ni `estimation`), puis la ligne `geste
+  commandé` ; sinon 400 (aucune consigne utilisable, nom déjà pris, déjà
+  commandé). La nuit la prend ; la ronde ne peut plus écrire `geste_code` et
+  n'écrase jamais une mission déjà écrite. La carte suit : mission écrite →
+  chantier du … → disponible (un geste du métier porte ce nom). Vérifié sans
+  modèle sur une copie, vu à 1280 et 390 px.
+- **La mesure avec modèle est préparée, pas lancée** (attend le « go » de
+  Lionel) : dépôt nu `~/harnais-nuit-origine.git` (cloné depuis ce dépôt, son
+  `main` = la tête de `general/retrait-promotion`, pour que le chantier lise
+  la convention du nom), clone de la nuit `~/harnais-nuit` (`depot_nuit`
+  d'`agence.yaml`), copie du client `~/harnais-mesure/client`. Reste : trois
+  demandes réelles d'une intention sans geste (`pnpm parler`, Sonnet), la
+  commande par l'interface, `pnpm chantier --mission
+  ~/harnais-mesure/client/rondes/<date>/<intention>.yaml`. Plafond 10 $ par
+  mission + `pnpm evals traduire` (≈ 1 à 2 $) : au plus ≈ 12 $ équivalents.
+  La fusion du geste reste sur la machine (`main` du clone → dépôt nu).
 - **La nuit** (`PLAN-RONDE.md`, `PLAN-GENERAL.md`) : ronde, chantier, fusion
-  automatique sous conditions, sur l'abonnement par le binaire `claude`.
-- **Le modèle : Sonnet 5.5 par l'abonnement** (`acces: { binaire: claude }`,
-  `moteur/src/modele/abonnement.ts`). GLM-5.3 chez GMI n'est plus utilisé.
-- **S9 fusionnée en entier** (`PLAN-CHOIX.md`) : le patron change un agent
-  dans une proposition, en mots (`changer_remplacant`) ou par un bouton
-  « Prendre X pour V-03 » (`PropositionMetier.choix`, `traiterGeste`,
-  `/api/geste`, sans modèle). Une proposition corrigée n'apprend rien ; la
-  nouvelle R-… se rattache à la conversation d'origine par le champ générique
-  `corrige`. Deux R-… en attente : « laquelle ? ».
-- **`general/retrait-promotion`, non fusionnée** (la fusion de la session
-  a été celle de `masquer-remplacees`) : le retrait de la promotion en cinq
-  commits (couplage défait, nuit/ronde/chantier, évals, config et
-  suppression, docs), puis **« Demandes sans geste »** (deux commits) :
-  l'onglet « Appris » montre les demandes nouvelles groupées par intention
-  (`/api/sans-geste`), « Créer ce geste » écrit une ligne `geste commandé`
-  (`/api/sans-geste/commander`, capacité `administre`, aucun modèle), et le
-  catalogue de la ronde marque l'intention « commandée », la seule qui
-  mérite une mission `geste_code`. Vu à 1280 et 390 px. `pnpm check` vert :
-  moteur 592, interface 31, sécurité 144, agence 263 (les tests de la
-  promotion partis avec elle, huit tests neufs).
-  La ronde n'écrit plus de mission `geste_code` sans commande ; la nuit
-  purge les instantanés (90 jours) à la place de `pnpm promotions` ;
-  `citations` et `PropositionMetier.criteres` restent (lus par des tests).
-  À fusionner après relecture ; avant, une passe `pnpm evals ronde` sur
-  Sonnet (le prompt de la ronde a changé ; l'attendu de R-1..R-3 est le
-  même par construction).
+  sous conditions ; tout sur l'abonnement (binaire `claude`, Sonnet 5.5 au
+  quotidien).
 - **Dernières mesures (Sonnet, `evals/resultats/apparie-2026-10-14-s9-*`)** :
   traduction 120 contre 119 sur les cas communs, cas neufs 12/12,
   `liberer_un_jour` 3/3, gestes 6/6, échappée de la sécurité 18/18 ; agence
-  16 et 17/24, sous son seuil parce que ses étiquettes sont des brouillons.
-  Fuite : R-2 seule, des deux côtés (voir « Ouvert »).
+  16 et 17/24 (étiquettes en brouillon). Fuite : R-2 seule, des deux côtés.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 
@@ -82,6 +80,15 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
+- Après la mesure : lire `chantiers/<id>.md`, les huit conditions, le nom du
+  geste (s'il ne porte pas l'identifiant de la mission, la carte reste à
+  « fusionné, disponible à la prochaine mise à jour » : alors seulement, une
+  porte), les cas d'évals ajoutés (Lionel les relit).
+- Non tranché : la priorité d'une mission commandée dans la nuit
+  (`missions_max_par_nuit: 1`, ordre par date : elle peut attendre) ; la
+  mise à jour à distance (« disponible » chez un client en dépend) ; le
+  dossier d'une mission commandée dit encore « Mission de la ronde du … »
+  (`rendreDecision`, `chantier.ts`).
 - À Lionel : le sort des gestes appris (`gestes/`, atelier, onglet « Appris »,
   `pnpm gestes`, `evals gestes`, ≈ 2 500 lignes) : plus aucun producteur
   depuis le retrait ; garder dormants ou retirer.

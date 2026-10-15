@@ -317,9 +317,14 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   **demandes sans geste** (`/api/sans-geste` : les `consigne`/`nouvelle` du
   journal groupées par intention, les plus fréquentes d'abord, avec leurs
   derniers résumés) ; « Créer ce geste » les commande
-  (`/api/sans-geste/commander` : une ligne `geste commandé`, aucun modèle),
-  l'agence code le geste, un humain l'active ; la ronde ne propose une
-  mission `geste_code` que pour une intention commandée.
+  (`/api/sans-geste/commander`, aucun modèle) : le code écrit la mission
+  `geste_code` chez le client (`rondes/<date>/<intention>.yaml`, depuis les
+  consignes version modèle des échappées de l'intention, sans nom), puis une
+  ligne `geste commandé` ; la nuit la prend, le chantier code le geste sous
+  ses portes. La carte dit où en est la commande : mission écrite, chantier
+  du … (fusionné : disponible à la prochaine mise à jour de l'outil), puis
+  disponible quand le métier chargé porte le geste. La ronde n'écrit jamais
+  de mission `geste_code`.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -474,7 +479,10 @@ pnpm ronde --verifier-modeles
                          # ou retirée) ; écrit rondes/<date>.md, .json, une
                          # mission par fichier rondes/<date>/<id>.yaml, la ligne « ronde » au
                          # journal (des comptes), et memoire/. Une seconde fois pour la même date :
-                         # rien, sauf --refaire. --sans-modele : le résumé seul, aucun appel.
+                         # rien, sauf --refaire (qui efface rondes/<date>/, une mission commandée
+                         # ce jour-là comprise : un drapeau de laboratoire). Une mission déjà
+                         # écrite (commandée le jour même) n'est jamais écrasée.
+                         # --sans-modele : le résumé seul, aucun appel.
                          # Sous acces: claude (le laboratoire), l'abonnement par le binaire
                          # `claude` : ANTHROPIC_API_KEY doit être absente, le coût est « estimé
                          # par le binaire » (≈ 0,2 à 0,4 $ par ronde sur Fable 5.1).
