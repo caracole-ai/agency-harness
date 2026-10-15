@@ -18,6 +18,7 @@
     "remplacer": "pnpm --filter @harnais/securite-privee remplacer",
     "parler": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/parler.ts",
     "chantier": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/chantier.ts",
+    "versionner": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/versionner.ts",
     "evals": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/evals.ts",
     "interface": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx interface/src/serveur.ts",
     "rapport:html": "tsx moteur/src/cli/rapport-html.ts"

@@ -5,12 +5,14 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
 import { fuites } from '../echappee/pseudonymes'
+import { VARIABLE_CLE_SIGNATURE, verifierEtiquette } from '../livraison/version'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { type Commande, commandeSync, DOSSIER_ARBRES } from './arbre'
 import { AUCUN_CLIENT_EVALS, faireChantier, type OptionsChantier } from './chantier'
 import {
   agenceEssai,
   binaireSimule,
+  CLE_ESSAI,
   CLIENT_EVALS_ESSAI,
   clientAvecCommande,
   clientAvecMission,
@@ -26,7 +28,14 @@ import {
   refuserPush,
   type Scenario,
 } from './essai.test.fixture'
-import { type Condition, conclure, type IdCondition, refEtiquette, retirerFusion } from './fusion'
+import {
+  type Condition,
+  conclure,
+  type IdCondition,
+  refEtiquette,
+  retirerFusion,
+  versionner,
+} from './fusion'
 import { fichierConsignes } from './garde'
 import { ecrireChantier, ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
 import { METIER_ESSAI, PERSONNES_ESSAI } from './metier-essai.test.fixture'
@@ -96,6 +105,7 @@ const retirer = (racine: string, commande: Commande = commandeSync) =>
     racine,
     id: 'simuler_absence',
     motif: 'doublon',
+    version: { cle: CLE_ESSAI.privee, jour: '2026-10-12' },
     ecrireRetrait: (arbre) =>
       ecrireRetrait(
         arbre,
@@ -179,9 +189,24 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     expect(statut(sortie)).toEqual({
       statut: 'fusionné',
       issue: 'fusionné',
+      version: 'v2026-10-11-1',
       cout_usd: 1.5,
       le: '2026-10-11T01:00:00Z',
     })
+    // La version (L4) : sur la fusion, signée par la clé de l'agence, le manifeste en clair.
+    expect(issue.fusion).toMatchObject({ sorte: 'fusionne', version: 'v2026-10-11-1' })
+    expect(git(depots.origine, 'rev-parse', 'v2026-10-11-1^{commit}')).toBe(fusion)
+    expect(verifierEtiquette(commandeSync, distant, 'v2026-10-11-1', CLE_ESSAI.signataires)).toBe(
+      undefined,
+    )
+    expect(git(depots.origine, 'cat-file', 'tag', 'v2026-10-11-1')).toContain(
+      `sorte: chantier\nchantier: simuler_absence\nclient: ${CLIENT}\ngeste: simuler_absence (ajouté)\ncommit: ${fusion}`,
+    )
+    // La clé n'est jamais dans l'environnement d'un modèle, ni du code qu'il a écrit (§ 0.4).
+    expect(appels().map((a) => a.cle)).toEqual([false, false, false])
+    const variables = emises.flatMap((x) => x.variables ?? [])
+    expect(variables).toContain('PATH')
+    expect(variables).not.toContain(VARIABLE_CLE_SIGNATURE)
   })
 
   it('ce qui part au modèle : la mission par types, ni échappée ni nom ; le chantier sous les réglages du projet', async () => {
@@ -218,6 +243,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
     // Aucune fusion, aucune étiquette ; la mémoire du refus est commise et poussée.
     expect(r.emises.some((x) => x.commande === 'git' && x.args[0] === 'merge')).toBe(false)
     expect(git(r.depots.origine, 'tag', '--list')).toBe('')
+    expect(statut(r.sortie)?.version).toBeUndefined()
     expect(lireIndex(cloneDuDistant(r.depots.origine)).at(-1)).toMatchObject({
       sorte: 'refus',
       id: 'simuler_absence',
@@ -418,6 +444,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
         ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
       ).map(verte),
       personnes: PERSONNES_ESSAI,
+      version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
       ecrireEntree: (arbre, sorte) => {
         essais++
         ecrireRetrait(
@@ -454,6 +481,15 @@ describe('G2 : le retrait défait la fusion', () => {
       'simulation.ts',
     )
     expect(git(depots.origine, 'rev-parse', 'main')).toBe(r.revert)
+    // Le retrait pose sa version, sur le commit du retrait ; le client est celui de la fusion.
+    expect(r.version).toBe('v2026-10-12-1')
+    expect(git(depots.origine, 'rev-parse', 'v2026-10-12-1^{commit}')).toBe(r.revert)
+    expect(verifierEtiquette(commandeSync, distant, 'v2026-10-12-1', CLE_ESSAI.signataires)).toBe(
+      undefined,
+    )
+    expect(git(depots.origine, 'cat-file', 'tag', 'v2026-10-12-1')).toContain(
+      `sorte: retrait\nchantier: simuler_absence\nclient: ${CLIENT}\ngeste: simuler_absence (retiré)`,
+    )
     // La mémoire de la fusion reste ; le retrait s'ajoute, intentions comprises.
     expect(existsSync(join(distant, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md'))).toBe(
       true,
@@ -554,6 +590,7 @@ describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
       titre: 'x',
       conditions: vertes,
       personnes: PERSONNES_ESSAI,
+      version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
       ecrireEntree: entree('x'),
     })
     expect(r.sorte === 'echec' && r.raison).toMatch(/^fusion impossible/)
@@ -575,13 +612,16 @@ describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
       titre: 'x',
       conditions: vertes,
       personnes: PERSONNES_ESSAI,
+      version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
       ecrireEntree: entree('simuler_absence'),
     })
     expect(r).toEqual({
       sorte: 'fusionne',
       fusion,
+      version: 'v2026-10-11-1',
       memoire: 'memoire/chantiers/2026-10-11-simuler_absence.md',
     })
+    expect(git(e.depots.origine, 'tag', '--list', 'v*')).toBe('v2026-10-11-1')
     expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(tete)
     expect(arbresRestants(e.depots.racine)).toEqual([])
   })
@@ -734,6 +774,27 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     expect(statut(sortie)).toMatchObject({ statut: 'écartée' })
   })
 
+  it('sans clé de signature : refusé avant tout appel et tout git (L4)', async () => {
+    const depots = creerDepots()
+    const { binaire, appels } = binaireSimule({ plan: PLAN_VERT })
+    const { commande, emises } = commandeSimulee()
+    await expect(
+      faireChantier(METIER_ESSAI, {
+        racine: depots.racine,
+        agence: agenceEssai(binaire),
+        mission: clientAvecMission().fichier,
+        client: CLIENT,
+        personnes: PERSONNES_ESSAI,
+        sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
+        env: { PATH: process.env.PATH },
+        maintenant: MAINTENANT,
+        commande,
+      }),
+    ).rejects.toThrow(new RegExp(`${VARIABLE_CLE_SIGNATURE} absente`))
+    expect(appels()).toEqual([])
+    expect(emises).toEqual([])
+  })
+
   it('sous acces: claude, une ANTHROPIC_API_KEY présente refuse avant tout appel et toute branche', async () => {
     const depots = creerDepots()
     const { binaire, appels } = binaireSimule({ plan: PLAN_VERT })
@@ -786,4 +847,54 @@ describe('aucun merge ni push hors de fusion.ts', () => {
 
 it('les évals au seuil simulées tiennent la forme de pnpm evals traduire', () => {
   expect(EVALS_AU_SEUIL.sortie).toMatch(/\d+\/\d+ \(\d+ %, seuil \d+ %\), fuite \d+ cas/)
+})
+
+describe('pnpm versionner (L4) : origin/main tel quel', () => {
+  it('une version signée, l’étiquette seule poussée ; deux fois sur le même commit, rien de plus ; un commit plus loin, la suivante', () => {
+    const depots = creerDepots()
+    const humain = etatHumain(depots.racine)
+    const tete = git(depots.origine, 'rev-parse', 'main')
+    const v = { cle: CLE_ESSAI.privee, jour: '2026-10-15' }
+    const r = versionner({ commande: commandeSync, racine: depots.racine, version: v })
+    expect(r).toEqual({ sorte: 'posee', version: 'v2026-10-15-1', commit: tete })
+    expect(git(depots.origine, 'rev-parse', 'v2026-10-15-1^{commit}')).toBe(tete)
+    expect(git(depots.origine, 'rev-parse', 'main')).toBe(tete)
+    expect(
+      verifierEtiquette(
+        commandeSync,
+        cloneDuDistant(depots.origine),
+        'v2026-10-15-1',
+        CLE_ESSAI.signataires,
+      ),
+    ).toBeUndefined()
+    expect(versionner({ commande: commandeSync, racine: depots.racine, version: v })).toEqual({
+      sorte: 'deja',
+      version: 'v2026-10-15-1',
+      commit: tete,
+    })
+    const autre = cloneDuDistant(depots.origine)
+    spawnSync(
+      'git',
+      [
+        '-c',
+        'user.name=a',
+        '-c',
+        'user.email=a@b',
+        'commit',
+        '-q',
+        '--allow-empty',
+        '-m',
+        'moteur',
+      ],
+      {
+        cwd: autre,
+      },
+    )
+    git(autre, 'push', '-q', 'origin', 'main')
+    expect(versionner({ commande: commandeSync, racine: depots.racine, version: v }).version).toBe(
+      'v2026-10-15-2',
+    )
+    expect(etatHumain(depots.racine)).toEqual(humain)
+    expect(arbresRestants(depots.racine)).toEqual([])
+  })
 })

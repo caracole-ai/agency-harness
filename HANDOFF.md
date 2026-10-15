@@ -15,9 +15,14 @@ fusion émet une **version signée** que le harnais du client **tire** et
 installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
 interface 29, sécurité 133, agence web 259.
 
-**Prochaine session : lots 2 (la version signée) et 3 (la file des
-missions)**, indépendants : deux sous-agents en arbres de travail, ou deux
-sessions ; puis le lot 4.
+**`general/l2-version`, non fusionnée : le lot 2 (la version signée)**,
+`pnpm check` vert (moteur 490). Chaque fusion et chaque retrait posent
+`v<AAAA-MM-JJ>-<n>`, signée SSH (`AGENCE_CLE_SIGNATURE`, hors du dépôt,
+retirée de l'environnement des modèles), poussée avec eux tout ou rien ;
+`pnpm versionner` étiquette `origin/main` tel quel. **Prochaine session :
+fusionner `general/l2-version`, puis le lot 3** (la file des missions) ;
+puis le lot 4. Avant la première fusion réelle, Lionel crée la clé de
+l'agence (`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte.
 
 - **Le lot 1** : `pnpm chantier --mission <fichier> [--sortie <dossier>]`
   travaille dans `.claude/worktrees/chantier-<id>` du dépôt de l'agence,
@@ -148,4 +153,5 @@ pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
 pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [--sans-modele]   # --refaire rouvre la branche telle quelle
 pnpm chantier retirer <id> --motif "<texte>"
+pnpm versionner            # AGENCE_CLE_SIGNATURE=<clé privée hors du dépôt>
 ```

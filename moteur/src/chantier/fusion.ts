@@ -2,6 +2,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import type { Designable } from '../conversation/designation'
 import {
+  lireVersion,
+  type Manifeste,
+  prochaineEtiquette,
+  rendreManifeste,
+  signerEtiquette,
+} from '../livraison/version'
+import {
   BRANCHE_PRINCIPALE,
   branche,
   brancheExiste,
@@ -19,6 +26,7 @@ import {
   DOSSIER_MEMOIRE,
   interdits,
   lireIndex,
+  missionFusionnee,
   missionsRetirees,
 } from './memoire'
 
@@ -33,6 +41,10 @@ import {
 // (quelqu'un a poussé entre-temps) : une reprise depuis un `origin/main`
 // refetché, pas deux. Le retrait défait la fusion, pousse, et la mémoire
 // garde le motif et les intentions (le même travail n'est jamais refait).
+// Une fusion et un retrait posent chacun une version signée
+// (PLAN-LIVRAISON.md L4), poussée avec eux, tout ou rien ; `versionner`
+// étiquette `origin/main` tel quel. Un refus n'en pose pas : rien n'a changé
+// dans le code.
 
 /** Les huit conditions de G1, dans l'ordre du plan. */
 export const CONDITIONS = {
@@ -58,9 +70,12 @@ export interface Condition {
 /** Le préfixe des étiquettes posées sur une fusion (G1). */
 export const refEtiquette = (id: string) => `refs/tags/chantier/${id}`
 
-/** `memoire` : le chemin de l'entrée dans le dépôt (`memoire/chantiers/<date>-<id>.md`). */
+/**
+ * `memoire` : le chemin de l'entrée dans le dépôt (`memoire/chantiers/<date>-<id>.md`) ;
+ * `version` : l'étiquette signée posée sur la fusion (absente d'une fusion d'avant les versions).
+ */
 export type IssueFusion =
-  | { sorte: 'fusionne'; fusion: string; memoire: string }
+  | { sorte: 'fusionne'; fusion: string; memoire: string; version?: string }
   | { sorte: 'refuse'; rouges: Condition[]; memoire: string }
   | { sorte: 'echec'; raison: string }
 
@@ -82,22 +97,51 @@ function oublierMemoire(c: Commande, arbre: string): void {
   git(c, arbre, ['clean', '-f', '-d', '-q', '--', DOSSIER_MEMOIRE])
 }
 
+/** HEAD de l'arbre détaché sur `main` du distant. */
+const SUR_MAIN = `HEAD:refs/heads/${BRANCHE_PRINCIPALE}`
+const refTag = (tag: string) => `refs/tags/${tag}`
+
 /**
- * Pousse HEAD de l'arbre détaché sur `main` du distant, avec ces étiquettes,
- * tout ou rien (`--atomic` : une étiquette ne part jamais sans sa fusion) ;
- * rend l'erreur si le distant refuse.
+ * Pousse ces refs sur le distant, tout ou rien (`--atomic` : une étiquette ne
+ * part jamais sans sa fusion, ni une fusion sans sa version) ; rend l'erreur
+ * si le distant refuse.
  */
-function pousser(c: Commande, arbre: string, etiquettes: string[]): string | undefined {
-  const r = c(arbre, 'git', [
-    'push',
-    '--atomic',
-    '--quiet',
-    DISTANT,
-    `HEAD:refs/heads/${BRANCHE_PRINCIPALE}`,
-    ...etiquettes,
-  ])
+function pousser(c: Commande, arbre: string, refs: string[]): string | undefined {
+  const r = c(arbre, 'git', ['push', '--atomic', '--quiet', DISTANT, ...refs])
   return r.code === 0 ? undefined : (r.erreur || r.sortie).trim().slice(0, 300)
 }
+
+/** De quoi poser une version (L4) : la clé privée de l'agence (un chemin hors du dépôt), le jour (AAAA-MM-JJ). */
+export interface OptionsVersion {
+  cle: string
+  jour: string
+}
+
+/** Pose dans l'arbre la prochaine version du jour, signée, sur `commit` ; rend son nom. */
+function poserVersion(
+  c: Commande,
+  arbre: string,
+  commit: string,
+  v: OptionsVersion,
+  m: Omit<Manifeste, 'commit'>,
+): string {
+  const tag = prochaineEtiquette(c, arbre, v.jour)
+  signerEtiquette(c, arbre, tag, commit, rendreManifeste(tag, { ...m, commit }), v.cle)
+  return tag
+}
+
+/** Les étiquettes locales posées par une tentative qui ne part pas : la reprise les reposera. */
+const oterEtiquettes = (c: Commande, arbre: string, tags: (string | undefined)[]) => {
+  for (const t of tags) if (t) c(arbre, 'git', ['tag', '-d', t])
+}
+
+/** La version déjà posée sur ce commit, s'il y en a une. */
+const versionDe = (c: Commande, arbre: string, commit: string): string | undefined =>
+  git(c, arbre, ['tag', '--points-at', commit, '--list', 'v*'])
+    .split('\n')
+    .map((t) => t.trim())
+    .filter((t) => lireVersion(t) !== undefined)
+    .at(-1)
 
 /** Une tentative dans un arbre détaché : finie, ou son push refusé par le distant. */
 type Tentative<T> = { fini: T } | { pushRefuse: string }
@@ -162,6 +206,8 @@ export function conclure(o: {
   /** Écrit l'entrée de mémoire dans cet arbre avec cette sorte et cette issue ; rend son chemin, lève si elle porterait un nom. */
   ecrireEntree: (arbre: string, sorte: 'fusion' | 'refus', issue: string) => string
   personnes: Designable[]
+  /** La version que pose une fusion, et le client (slug) que son manifeste nomme. */
+  version: OptionsVersion & { client: string }
 }): IssueFusion {
   const c = o.commande
   if (!brancheExiste(c, o.racine, o.id)) {
@@ -180,7 +226,7 @@ export function conclure(o: {
     const rougesToutes = toutes.filter((x) => !x.ok)
     const memoire = o.ecrireEntree(arbre, 'refus', raisonRefus(rougesToutes))
     commettreMemoire(c, arbre, `Mémoire : chantier ${o.id} refusé`)
-    const refus = pousser(c, arbre, [])
+    const refus = pousser(c, arbre, [SUR_MAIN])
     return refus === undefined
       ? { fini: { sorte: 'refuse', rouges: rougesToutes, memoire: relative(arbre, memoire) } }
       : { pushRefuse: refus }
@@ -234,10 +280,12 @@ export function conclure(o: {
           entree &&
           c(arbre, 'git', ['merge-base', '--is-ancestor', posee.sortie.trim(), 'HEAD']).code === 0
         ) {
+          const version = versionDe(c, arbre, posee.sortie.trim())
           return {
             fini: {
               sorte: 'fusionne',
               fusion: posee.sortie.trim(),
+              ...(version ? { version } : {}),
               memoire: join(
                 DOSSIER_MEMOIRE,
                 DOSSIER_CHANTIERS_MEMOIRE,
@@ -263,6 +311,7 @@ export function conclure(o: {
           },
         }
       }
+      let version: string | undefined
       try {
         const sha = git(c, arbre, ['rev-parse', 'HEAD']).trim()
         if (
@@ -271,16 +320,23 @@ export function conclure(o: {
           return { fini: { sorte: 'echec', raison: "la fusion n'a pas fait de commit de fusion" } }
         }
         git(c, arbre, ['tag', etiquette, sha])
+        version = poserVersion(c, arbre, sha, o.version, {
+          sorte: 'chantier',
+          chantier: o.id,
+          client: o.version.client,
+        })
         commettreMemoire(c, arbre, `Mémoire : chantier ${o.id} fusionné`)
-        const refus = pousser(c, arbre, [refEtiquette(o.id)])
+        const refus = pousser(c, arbre, [SUR_MAIN, refEtiquette(o.id), refTag(version)])
         if (refus === undefined) {
-          return { fini: { sorte: 'fusionne', fusion: sha, memoire: relative(arbre, memoire) } }
+          return {
+            fini: { sorte: 'fusionne', fusion: sha, memoire: relative(arbre, memoire), version },
+          }
         }
-        // L'étiquette n'existe que si la fusion est sur le distant : la reprise la reposera.
-        c(arbre, 'git', ['tag', '-d', etiquette])
+        // Les étiquettes n'existent que si la fusion est sur le distant : la reprise les reposera.
+        oterEtiquettes(c, arbre, [etiquette, version])
         return { pushRefuse: refus }
       } catch (erreur) {
-        c(arbre, 'git', ['tag', '-d', etiquette])
+        oterEtiquettes(c, arbre, [etiquette, version])
         return {
           fini: {
             sorte: 'echec',
@@ -296,8 +352,8 @@ export function conclure(o: {
 /**
  * Le retrait (G2), dans un arbre détaché sur `origin/main` : `git revert -m
  * 1` de la fusion étiquetée `chantier/<id>`, la ligne `retrait` de la mémoire
- * (écrite par `ecrireRetrait` dans cet arbre) dans le même commit, puis `git
- * push` sur `main` du distant. Lève si la mission n'a pas été fusionnée, si
+ * (écrite par `ecrireRetrait` dans cet arbre) dans le même commit, sa version
+ * signée, puis `git push` sur `main` du distant. Lève si la mission n'a pas été fusionnée, si
  * elle a déjà été retirée (la mémoire d'`origin/main` le dit), ou si le
  * retrait n'a pas pu être poussé : alors rien n'est retiré.
  */
@@ -308,13 +364,14 @@ export function retirerFusion(o: {
   id: string
   motif: string
   ecrireRetrait: (arbre: string) => void
-}): { revert: string } {
+  version: OptionsVersion
+}): { revert: string; version: string } {
   const c = o.commande
   return avecReprise(
     c,
     o.racine,
     `retrait-${o.id}`,
-    (arbre): Tentative<{ revert: string }> => {
+    (arbre): Tentative<{ revert: string; version: string }> => {
       if (missionsRetirees(arbre).some((x) => x.id === o.id)) {
         throw new Error(`${o.id} : déjà retirée (mémoire)`)
       }
@@ -348,11 +405,51 @@ export function retirerFusion(o: {
         throw new Error(`${o.id} : retrait défait (${(erreur as Error).message.slice(0, 300)})`)
       }
       const revert = git(c, arbre, ['rev-parse', 'HEAD']).trim()
-      const refus = pousser(c, arbre, [])
-      return refus === undefined ? { fini: { revert } } : { pushRefuse: refus }
+      const client = missionFusionnee(arbre, o.id)?.client
+      const version = poserVersion(c, arbre, revert, o.version, {
+        sorte: 'retrait',
+        chantier: o.id,
+        ...(client ? { client } : {}),
+      })
+      const refus = pousser(c, arbre, [SUR_MAIN, refTag(version)])
+      if (refus === undefined) return { fini: { revert, version } }
+      oterEtiquettes(c, arbre, [version])
+      return { pushRefuse: refus }
     },
     (raison) => {
       throw new Error(`${o.id} : retrait défait (push refusé deux fois : ${raison})`)
+    },
+  )
+}
+
+/**
+ * `pnpm versionner` (L4) : une version signée sur `origin/main` tel quel,
+ * pour livrer un changement du moteur sans chantier ; seule l'étiquette est
+ * poussée. Un `origin/main` qui porte déjà une version : rien n'est posé.
+ */
+export function versionner(o: {
+  commande: Commande
+  /** Le dépôt de base (L2). */
+  racine: string
+  version: OptionsVersion
+}): { sorte: 'posee' | 'deja'; version: string; commit: string } {
+  const c = o.commande
+  return avecReprise(
+    c,
+    o.racine,
+    'version',
+    (arbre): Tentative<{ sorte: 'posee' | 'deja'; version: string; commit: string }> => {
+      const commit = git(c, arbre, ['rev-parse', 'HEAD']).trim()
+      const deja = versionDe(c, arbre, commit)
+      if (deja) return { fini: { sorte: 'deja', version: deja, commit } }
+      const version = poserVersion(c, arbre, commit, o.version, { sorte: 'manuelle' })
+      const refus = pousser(c, arbre, [refTag(version)])
+      if (refus === undefined) return { fini: { sorte: 'posee', version, commit } }
+      oterEtiquettes(c, arbre, [version])
+      return { pushRefuse: refus }
+    },
+    (raison) => {
+      throw new Error(`version non poussée (push refusé deux fois : ${raison})`)
     },
   )
 }

@@ -6,6 +6,7 @@ import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import type { Domaine } from '../conversation/domaine'
+import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
@@ -218,11 +219,12 @@ export async function faireChantier<S>(
   const missionTexte = missionPourModele(mission, m.domaine)
 
   /** Le statut que lira le client (L7) ; sans modèle, aucun : rien n'a été tenté. */
-  const statuer = (statut: StatutChantier, issue: string, cout: number) => {
+  const statuer = (statut: StatutChantier, issue: string, cout: number, version?: string) => {
     if (o.sansModele) return
     ecrireStatut(o.sortie, mission.id, {
       statut,
       issue,
+      ...(version ? { version } : {}),
       cout_usd: round(cout),
       le: maintenant.toInstant().toString(),
     })
@@ -308,6 +310,8 @@ export async function faireChantier<S>(
       )
   }
   preflight('claude', o.agence, o.env, executer)
+  // La clé de signature (L4) : une fusion pose sa version ; sans clé, rien ne commence.
+  const cle = preflightSignature(o.env, o.racine, executer)
   verifierBase(c, o.racine)
   const arbre = ouvrirArbre(c, o.racine, mission.id, o.refaire === true)
   if (arbre.sorte === 'deja_tentee') return { sorte: 'deja_tentee', dossier }
@@ -619,6 +623,7 @@ export async function faireChantier<S>(
       titre,
       conditions,
       personnes,
+      version: { cle, jour, client: o.client },
       ecrireEntree: (arbreFusion, sorte, issueMemoire) =>
         ecrireChantier(
           arbreFusion,
@@ -694,6 +699,7 @@ export async function faireChantier<S>(
         : ISSUES_CHANTIER.echoue,
     issue,
     cout(),
+    fusion?.sorte === 'fusionne' ? fusion.version : undefined,
   )
   return {
     sorte: 'fait',
@@ -899,7 +905,7 @@ function rendreDossier(x: {
       : ['Non tentée.']),
     '',
     x.fusion?.sorte === 'fusionne'
-      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`, poussé.`
+      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`${x.fusion.version ? `, version \`${x.fusion.version}\`` : ''}, poussé.`
       : x.fusion?.sorte === 'refuse'
         ? 'Non fusionné : la branche reste.'
         : x.fusion

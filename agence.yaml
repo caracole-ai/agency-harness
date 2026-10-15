@@ -30,6 +30,10 @@ prix_par_million_usd:
 claude:
   binaire: claude
 
+# Chaque fusion et chaque retrait posent une version : une étiquette git
+# signée avec la clé SSH de l'agence, désignée par la variable
+# AGENCE_CLE_SIGNATURE (un chemin hors du dépôt, jamais ici ; L4).
+#
 # Le chantier tourne à l'agence, au clic du patron (PLAN-LIVRAISON.md L1, L2) :
 # dans des arbres de travail de ce dépôt partis d'`origin/main`
 # (`.claude/worktrees/`), la fusion dans un arbre détaché, poussée sur `main`

@@ -91,7 +91,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `pnpm check`, bascule à un moment calme, revient en arrière si le
   redémarrage échoue. Douze décisions L1 à L12, cinq lots. Lot 0 (le plan)
   et lot 1 (le chantier sans clone ni dossier client, la nuit retirée) faits
-  le 2026-10-15 ; lots 2 à 5 à faire.
+  le 2026-10-15 ; lot 2 (la version signée, `pnpm versionner`) fait sur
+  `general/l2-version`, à fusionner ; lots 3 à 5 à faire.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -261,8 +262,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   nouveaux), `fusion.ts` (les huit conditions de G1, `git merge --no-ff`
   dans un arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
   `main` du distant, une reprise si le push est refusé, la mémoire commise à
-  part ; le retrait par `git revert -m 1`, de même ; le seul module qui
-  fusionne ou pousse), `chantier.ts` (plan → implémentation → garde → `pnpm
+  part ; le retrait par `git revert -m 1`, de même ; une version signée
+  après chaque fusion et chaque retrait, poussée avec eux, et `versionner` ;
+  le seul module qui fusionne ou pousse), `chantier.ts` (plan → implémentation → garde → `pnpm
   check` → relecture → une reprise au plus → honnêteté → dossier → mémoire →
   fusion → statut ; aucun dossier client lu : les noms contrôlés sont ceux
   du client fictif du métier).
@@ -448,7 +450,18 @@ pnpm chantier retirer <id> --motif "<texte>"
                          # G2 : git revert -m 1 de la fusion dans un arbre détaché sur
                          # origin/main, push sur main du distant, la mémoire (motif, et le
                          # client, le titre et les intentions que garde la mémoire de la fusion :
-                         # jamais refaite, même sous un autre nom).
+                         # jamais refaite, même sous un autre nom), et sa version signée.
+pnpm versionner          # une version signée sur origin/main tel quel, pour livrer le moteur
+                         # sans chantier (PLAN-LIVRAISON.md L4) : l'étiquette v<AAAA-MM-JJ>-<n>,
+                         # son message le manifeste en clair, l'étiquette seule poussée. Pas
+                         # « pnpm version » : pnpm en a une à lui, qui masquerait le script.
+                         # La signature, pour pnpm chantier, retirer et versionner :
+                         # AGENCE_CLE_SIGNATURE = le chemin de la clé privée SSH de l'agence,
+                         # hors du dépôt (ssh-keygen -t ed25519 ; OpenSSH 8.2 au moins), jamais
+                         # dans l'environnement d'un modèle ni de pnpm check (envEnfant la
+                         # retire). Chaque client reçoit avec son dossier un fichier
+                         # `signataires` : « agence <clé publique> » ; chez lui, git -c
+                         # gpg.ssh.allowedSignersFile=signataires verify-tag <version> la vérifie.
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,

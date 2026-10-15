@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Executer } from '../agence/config'
+import { VARIABLE_CLE_SIGNATURE } from '../livraison/version'
 import {
   argumentsClaude,
   envEnfant,
@@ -183,5 +184,11 @@ describe('envEnfant', () => {
     expect(
       envEnfant({ PATH: '/bin', npm_config_loglevel: 'silent', npm_lifecycle_event: 'chantier' }),
     ).toEqual({ PATH: '/bin' })
+  })
+
+  it('retire la clé de signature de l’agence (PLAN-LIVRAISON.md § 0.4)', () => {
+    expect(envEnfant({ PATH: '/bin', [VARIABLE_CLE_SIGNATURE]: '/cles/agence' })).toEqual({
+      PATH: '/bin',
+    })
   })
 })

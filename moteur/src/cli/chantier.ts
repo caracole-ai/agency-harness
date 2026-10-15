@@ -32,6 +32,7 @@ import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import type { Designable } from '../conversation/designation'
+import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { conversationDuMetier } from './metier'
@@ -68,12 +69,14 @@ try {
     }
     const motif = values.motif
     const maintenant = Temporal.Now.zonedDateTimeISO(FUSEAU)
+    const cle = preflightSignature(process.env, RACINE)
     const personnes = await nomsFictifs(Object.keys(agence.chantier.evals_clients))
     const r = retirerFusion({
       commande: commandeSync,
       racine: RACINE,
       id,
       motif,
+      version: { cle, jour: maintenant.toPlainDate().toString() },
       ecrireRetrait: (arbre) => {
         const fusion = missionFusionnee(arbre, id)
         if (!fusion) throw new Error(`aucune fusion de ${id} dans la mémoire d'origin/main`)
@@ -91,7 +94,9 @@ try {
         )
       },
     })
-    console.log(`${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, poussé.`)
+    console.log(
+      `${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, version ${r.version}, poussé.`,
+    )
   } else {
     if (!values.mission) {
       console.error(USAGE)

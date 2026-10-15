@@ -238,6 +238,16 @@ condition 4 refuse de toute façon) ; le slug du client entre dans
 
 ### Lot 2 — La version signée (`general/l2-version`, une session ; indépendant du lot 3)
 
+**Fait le 2026-10-15, sur `general/l2-version`, à fusionner.** Écarts : la
+commande s'appelle **`pnpm versionner`** (`pnpm version` est une commande de
+pnpm, qui masquerait le script) ; `versionner` vit dans `fusion.ts`, le seul
+module qui pousse ; le manifeste est en lignes `clé: valeur` (`sorte`,
+`chantier`, `client`, `geste`, `commit`) ; `pnpm chantier` exige aussi la
+clé (une fusion sans version ne partirait chez personne) ; la version d'un
+retrait nomme le client que garde la mémoire de la fusion ; une fusion déjà
+sur `origin/main` rend la version déjà posée ; `preflightSignature` refuse
+une clé rangée dans le dépôt.
+
 - `moteur/src/livraison/version.ts` : `prochaineEtiquette(c, racine,
   date)`, `signerEtiquette(c, arbre, tag, message, cle)`,
   `verifierEtiquette(c, depot, tag, signataires)`, `etiquettesCandidates(c,
