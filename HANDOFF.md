@@ -11,9 +11,10 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 **`general/commande-seule`, non fusionnée** (Lionel, 2026-10-15 : « les gestes
 sont codés par le harnais lui-même quand la demande explicite est faite par
 le patron ; on arrête avec la détection de récurrence ») : la ronde et les
-gestes appris sont retirés (≈ 8 000 lignes). `pnpm check` vert : moteur
-476, interface 29, sécurité 127, agence web 263 → 259 (les tests des deux
-sous-systèmes partis avec eux). À fusionner à la session suivante (une
+gestes appris sont retirés (≈ 8 000 lignes), puis le geste `heures_par_agent`
+codé par le harnais est repris (110f503). `pnpm check` vert : moteur 476,
+interface 29, sécurité 133, agence web 259 (les tests des deux
+sous-systèmes partis avec eux). Onglet « Gestes » vu à 1280 et 390 px. À fusionner à la session suivante (une
 fusion par session ; celle-ci a fusionné `retrait-promotion`).
 
 - **Une seule chaîne pour un geste nouveau.** L'outil ne sait pas faire une
@@ -31,7 +32,7 @@ fusion par session ; celle-ci a fusionné `retrait-promotion`).
   (le code de la chaîne n'a pas changé depuis) : fusionné dans le clone de
   mesure (`~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`), huit
   conditions vertes, `evals traduire` 73/73 ; la même question passe ensuite
-  par le geste, sans échappée. Le geste n'est pas encore dans ce dépôt.
+  par le geste, sans échappée. Le geste est repris dans cette branche.
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
@@ -72,10 +73,11 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
-- Rapatrier le geste `heures_par_agent` (commit `bf32ec5` du dépôt nu) :
-  sa partie `gestes.yaml` et la fixture de geste appris tombent avec le
-  retrait ; restent le geste, ses 7 cas, N-1/N-2 réétiquetés (l'exception
-  prévue par la garde). « fuite 1 » de sa passe `evals traduire` non lue.
+- À Lionel, sur `heures_par_agent` : relire ses 7 cas de traduction et
+  N-1/N-2 réétiquetés (l'exception prévue par la garde) ; E-01/E-02 de
+  `echappees.yaml` gardent l'intention `heures_par_agent` (une étiquette) ;
+  « fuite 1 » de sa passe `evals traduire` non lue ; l'arrondi des heures
+  recopié de `remplacement.ts`.
 - Non tranché : la priorité d'une mission commandée dans la nuit
   (`missions_max_par_nuit: 1`, par date : elle peut attendre) ; la mise à
   jour à distance (« disponible » chez un client en dépend).
