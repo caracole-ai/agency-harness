@@ -24,17 +24,25 @@ export const SORTES_MISSION = [
 ] as const
 export type SorteMission = (typeof SORTES_MISSION)[number]
 
+/** Les sortes qu'une ronde peut écrire : jamais `geste_code`, dont la mission naît d'une commande du patron (`commanderMission`). */
+export const SORTES_RONDE = SORTES_MISSION.filter(
+  (s): s is Exclude<SorteMission, 'geste_code'> => s !== 'geste_code',
+)
+
 export const ESTIMATIONS = ['petite', 'moyenne', 'grande'] as const
 
 export const OBSERVATIONS_MAX = 10
 export const OBSERVATION_LONGUEUR_MAX = 300
+export const ECHAPPEES_MAX = 20
+export const CONSIGNES_TYPES_MAX = 5
+export const CONSIGNE_TYPE_LONGUEUR_MAX = 200
 
 export const MissionRonde = z.strictObject({
   id: z
     .string()
     .regex(FORMAT_INTENTION)
     .describe('un slug en snake_case ASCII, le nom du geste ou de la mission'),
-  sorte: z.enum(SORTES_MISSION),
+  sorte: z.enum(SORTES_RONDE),
   titre: z.string().min(1).max(120).describe('la mission en une phrase courte'),
   pourquoi: z
     .string()
@@ -43,13 +51,16 @@ export const MissionRonde = z.strictObject({
     .describe('pourquoi elle mérite un chantier, avec les comptes du résumé'),
   echappees: z
     .array(z.string())
-    .max(20)
+    .max(ECHAPPEES_MAX)
     .describe('les identifiants E-… des échappées de la fenêtre qui la justifient'),
   intentions: z
     .array(z.string().regex(FORMAT_INTENTION))
     .max(10)
     .describe('les intentions du catalogue concernées, ou un slug neuf'),
-  consignes_types: z.array(z.string().min(1).max(200)).min(1).max(5),
+  consignes_types: z
+    .array(z.string().min(1).max(CONSIGNE_TYPE_LONGUEUR_MAX))
+    .min(1)
+    .max(CONSIGNES_TYPES_MAX),
   ecrit: z.boolean().describe('vrai si la demande modifie les données'),
   estimation: z.enum(ESTIMATIONS),
 })

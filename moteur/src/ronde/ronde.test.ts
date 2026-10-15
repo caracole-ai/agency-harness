@@ -54,7 +54,7 @@ function racine(): string {
 
 const MISSION: MissionRonde = {
   id: 'simuler_absence',
-  sorte: 'geste_code',
+  sorte: 'intention_nouvelle',
   titre: 'Coder la simulation d’absence',
   pourquoi: 'deux échappées le même jour',
   echappees: ['E-20261010T0900-0005', 'E-20261010T1000-0006'],
@@ -268,6 +268,23 @@ describe('faireRonde', () => {
     // La mission de la première passe a été effacée : elle n'est pas « déjà ouverte ».
     expect(refaite).toMatchObject({ sorte: 'faite', missions: [{ statut: 'à faire' }] })
     expect(lignesRonde(o.dossierClient)).toHaveLength(2)
+  })
+
+  it('une mission commandée le jour même (un fichier déjà là) : écartée, jamais écrasée', async () => {
+    const o = options({ appel: simule(RAPPORT) })
+    const d = join(o.dossierClient, 'rondes', '2026-10-10')
+    mkdirSync(d, { recursive: true })
+    const commandee = stringify({
+      ...MISSION,
+      sorte: 'geste_code',
+      date: '2026-10-10',
+      metier: 'essai',
+      statut: 'à faire',
+    })
+    writeFileSync(join(d, 'simuler_absence.yaml'), commandee)
+    const r = await faireRonde(METIER_ESSAI, o)
+    expect(r).toMatchObject({ missions: [{ statut: 'écartée' }] })
+    expect(readFileSync(join(d, 'simuler_absence.yaml'), 'utf8')).toBe(commandee)
   })
 
   it('une mission déjà ouverte le jour d’avant : écartée le lendemain', async () => {

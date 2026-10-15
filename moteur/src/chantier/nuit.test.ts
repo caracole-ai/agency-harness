@@ -26,8 +26,10 @@ import { faireNuit, type OptionsNuit } from './nuit'
 const git = (cwd: string, ...args: string[]) =>
   spawnSync('git', args, { cwd, encoding: 'utf8' }).stdout.trim()
 
-const { id, sorte, titre, pourquoi, echappees, intentions, consignes_types, ecrit, estimation } =
+const { id, titre, pourquoi, echappees, intentions, consignes_types, ecrit, estimation } =
   MISSION_ESSAI
+// Une ronde n'écrit jamais `geste_code` : sa mission naît d'une commande du patron.
+const sorte = 'intention_nouvelle'
 const RAPPORT = {
   observations: ['deux simulations'],
   missions: [

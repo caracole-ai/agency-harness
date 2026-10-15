@@ -45,7 +45,7 @@ const CATALOGUE: Catalogue = {
 
 const mission = (m: Partial<MissionRonde> = {}): MissionRonde => ({
   id: 'simuler_absence',
-  sorte: 'geste_code',
+  sorte: 'intention_nouvelle',
   titre: 'Coder la simulation d’absence',
   pourquoi: 'deux échappées, fabrication échouée',
   echappees: ['E-20261010T0900-0005', 'E-20261010T1000-0006'],
@@ -160,6 +160,13 @@ describe('le schéma du rapport', () => {
     expect(schema.safeParse({ ...rapport([mission()]), autre: 1 }).success).toBe(false)
     expect(schema.safeParse(rapport([mission({ id: 'Pas un slug' })])).success).toBe(false)
     expect(schema.safeParse(rapport([mission()])).success).toBe(true)
+  })
+
+  it('la ronde n’écrit pas de mission `geste_code` : elle naît d’une commande du patron, le code l’écrit', () => {
+    const schema = schemaRapport(3, DOMAINE_ESSAI.places)
+    const geste = { ...rapport([mission()]), missions: [{ ...mission(), sorte: 'geste_code' }] }
+    expect(schema.safeParse(geste).success).toBe(false)
+    expect(JSON.stringify(schemaJsonRapport(3, DOMAINE_ESSAI.places))).not.toContain('geste_code')
   })
 
   it('l’outil et le schéma JSON du binaire disent la même chose', () => {

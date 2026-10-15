@@ -93,6 +93,19 @@ export function demandesSansGeste(lignes: Ligne[]): DemandeSansGeste[] {
     .sort((a, b) => b.compte - a.compte || a.intention.localeCompare(b.intention))
 }
 
+/** La demande sans geste qu'une commande vise ; lève si l'intention est mal formée, sans demande, ou déjà commandée. */
+export function demandeACommander(lignes: Ligne[], intention: string): DemandeSansGeste {
+  if (!FORMAT_INTENTION.test(intention)) {
+    throw new ErreurAtelier('intention attendue : le mot-clé de la demande, en snake_case')
+  }
+  const demande = demandesSansGeste(lignes).find((d) => d.intention === intention)
+  if (!demande) throw new ErreurAtelier(`${intention} : aucune demande sans geste sous ce mot`)
+  if (demande.commande) {
+    throw new ErreurAtelier(`${intention} : déjà commandé le ${demande.commande.le}`)
+  }
+  return demande
+}
+
 /**
  * Le patron commande le geste d'une intention : une ligne `geste commandé`
  * (l'intention en objet, le dernier résumé en motif, qui et les exemples en
@@ -106,14 +119,7 @@ export function commanderGeste(
   par: Identite,
   maintenant: Temporal.ZonedDateTime,
 ): { intention: string; le: string } {
-  if (!FORMAT_INTENTION.test(intention)) {
-    throw new ErreurAtelier('intention attendue : le mot-clé de la demande, en snake_case')
-  }
-  const demande = demandesSansGeste(journal.lire()).find((d) => d.intention === intention)
-  if (!demande) throw new ErreurAtelier(`${intention} : aucune demande sans geste sous ce mot`)
-  if (demande.commande) {
-    throw new ErreurAtelier(`${intention} : déjà commandé le ${demande.commande.le}`)
-  }
+  const demande = demandeACommander(journal.lire(), intention)
   journal.ecrire(
     [
       {

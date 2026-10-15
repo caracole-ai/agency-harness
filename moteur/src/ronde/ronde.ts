@@ -102,14 +102,14 @@ function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes']
 }
 
 /** La description d'une intention commandée par le patron que le métier ne déclare pas. */
-const HORS_VOCABULAIRE = 'commandée par le patron, hors du vocabulaire du métier'
+export const HORS_VOCABULAIRE = 'commandée par le patron, hors du vocabulaire du métier'
 
 /**
  * Le catalogue (R2) : gestes codés, gestes appris, intentions connues, missions
  * déjà ouvertes. Une intention que le patron a commandée (ligne `geste
- * commandé` au journal) est marquée « commandée » : la seule qui mérite une
- * mission `geste_code` ; aucune autre devinette, un geste nouveau ne naît
- * jamais parce qu'une demande revient.
+ * commandé` au journal) est marquée « commandée » : sa mission `geste_code`,
+ * le code l'a écrite à la commande (`commanderMission`) ; la ronde le lit, elle
+ * n'en écrit aucune. Un geste nouveau ne naît jamais parce qu'une demande revient.
  */
 export function construireCatalogue<S>(
   m: MetierConversation<S>,
@@ -184,7 +184,7 @@ export function systemeRonde(
     '',
     `Rends un seul rapport (\`${OUTIL_RAPPORT}\`), au schéma donné, et rien d'autre. Au plus ${missionsMax} missions. Si rien ne mérite une mission, \`rien_a_signaler\` vrai et aucune mission.`,
     `Une mission cite les identifiants d'échappées (E-…) du résumé qui la justifient, les intentions concernées (du catalogue, ou un slug neuf), et des consignes-types écrites avec des places entre chevrons (${domaine.places.join(', ')}) : jamais un identifiant ni un nom.`,
-    "N'écris aucune mission pour une intention qui a un geste actif, ni une mission déjà ouverte ou retirée. N'écris aucune mission `geste_code`, sauf pour une intention marquée « commandée par le patron » : un geste nouveau se construit sur sa commande, jamais parce qu'une demande revient.",
+    "N'écris aucune mission pour une intention qui a un geste actif, ni une mission déjà ouverte ou retirée. N'écris aucune mission pour un geste codé : il naît d'une commande du patron et le code écrit sa mission ; une intention « commandée par le patron » a déjà la sienne parmi les missions ouvertes.",
     '',
     FRONTIERE,
     '',
@@ -602,8 +602,11 @@ export async function faireRonde<S>(
     if (missions.length > 0) {
       mkdirSync(dossierMissions, { recursive: true })
       for (const mr of missions) {
+        const chemin = join(dossierMissions, `${mr.mission.id}.yaml`)
+        // Un fichier déjà là vient d'une commande du patron (`commanderMission`) : jamais écrasé.
+        if (existsSync(chemin)) continue
         writeFileSync(
-          join(dossierMissions, `${mr.mission.id}.yaml`),
+          chemin,
           stringify({
             ...mr.mission,
             date,

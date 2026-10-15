@@ -336,7 +336,7 @@ export interface Catalogue {
     id: string
     description: string
     ecrit: boolean
-    /** Le patron a commandé le geste de cette intention (`geste commandé` au journal) : la seule qui mérite une mission `geste_code`. */
+    /** Le patron a commandé le geste de cette intention (`geste commandé` au journal) : sa mission `geste_code` est écrite par le code, à la commande. */
     commande?: true
     /** Un geste appris actif porte cette intention. */
     geste_actif?: true
