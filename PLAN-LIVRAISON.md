@@ -372,6 +372,42 @@ versions de `main` ; un nom pris sur le distant hors de `main` (une
 étiquette refusée chez les clients) bloquait toute version suivante →
 l'agence tire toutes les étiquettes `v*` avant de nommer.
 
+Relecture indépendante du lot 4, corrigé : l'interface sortait pour la
+bascule en pleine requête (un appel au modèle dure jusqu'à 7 min) → les
+requêtes en cours comptent ; un `retirer` à la main était défait par le
+rattrapage suivant → le marqueur de retour exclut la version tout de suite,
+et l'arbre de `courant` et de `precedent` n'est jamais touché ; deux
+préparations pouvaient se croiser → un verrou sur l'installation (bascule et
+retour l'attendent) ; une étiquette réécrite (même étrangère aux versions)
+bloquait tout sans un mot → seules les `v*` se tirent, une panne se dit
+(`erreur`) sans rien exclure ; une panne passagère (réseau, config) excluait
+une version pour toujours → seul un refus définitif (signature, lignée,
+`pnpm check` rouge) exclut ; « faite » s'écrivait avant la sonde → le
+lanceur pose un marqueur de bascule une fois la sonde passée, l'interface
+l'écrit au journal, la ligne avant d'ôter le marqueur ; trois plantages
+juste après une bascule arrêtaient le lanceur sans revenir → retour arrière
+(dans la fenêtre de dix minutes), et l'arrêt voulu sort en 0 (launchd et
+systemd ne le relancent pas) ; une interface lancée hors du lanceur sortait
+sans être relancée → seule celle du lanceur sort ; le lanceur retirait
+l'agent SSH du client (ses clés de déploiement) → il le garde ; le journal
+SQLite n'attendait pas un autre processus → `busy_timeout`.
+
+Rejoué pour de vrai le 2026-10-15, sans modèle, sur une machine : un dépôt
+nu du produit (cette branche), deux versions signées par une clé engendrée,
+une copie du client fictif livrée. `pnpm mise-a-jour` : signature vérifiée,
+`pnpm install` et `pnpm check` verts dans `versions/v…-1` (52 s), devenue
+la courante ; `pnpm harnais -- --modele simule` : l'interface sert depuis
+l'arbre de la version, « mise à jour : faite (v…-1) » ; la v…-2 publiée et
+préparée à côté (54 s) sans rien toucher de ce qui tourne ; au calme,
+l'interface sort (75), le lanceur bascule, la sonde répond, « faite (v…-2) »,
+`/api/version` le dit, `precedent` garde la v…-1. Rejoué après les
+corrections de la relecture (`19dee55`) : première installation sans ligne
+au journal ; bascule v…-3 → v…-4 au calme, sonde, puis « faite » écrite par
+l'interface qui tourne ; `pnpm mise-a-jour retirer` (v…-4 → v…-3), un
+rattrapage qui ne reprépare pas la v…-4, l'interface tuée, relancée par le
+lanceur sur la v…-3, « retour arrière (…, retirée à la main) » au journal.
+Le retour arrière sur sonde muette n'est joué qu'en test.
+
 - `moteur/src/livraison/mise-a-jour.ts` : `preparer(dossier)` (L8 : fetch,
   candidates, vérification, worktree, install, check, `.prete`,
   `courant.suivant`, `VERSION`), `elaguer` (deux versions gardées),

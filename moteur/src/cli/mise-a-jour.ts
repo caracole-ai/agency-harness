@@ -17,6 +17,7 @@ import {
   installerPremiere,
   LIENS,
   rattraper,
+  verrouInstallation,
   versionDeLArbre,
 } from '../livraison/mise-a-jour'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -40,7 +41,13 @@ try {
     const courante = versionDeLArbre(cible(l.installation, LIENS.courant))
     const precedente = versionDeLArbre(cible(l.installation, LIENS.precedent))
     if (!courante || !precedente) throw new Error('aucune version précédente où revenir')
-    revenir(l.installation, courante, precedente, 'retirée à la main')
+    const rendre = verrouInstallation(l.installation)
+    if (!rendre) throw new Error('une préparation tient l’installation : réessayer dans un instant')
+    try {
+      revenir(l.installation, courante, precedente, 'retirée à la main')
+    } finally {
+      rendre()
+    }
     console.log(
       `${courante} → ${precedente} : à redémarrer (le lanceur relance sur la précédente).`,
     )
@@ -52,7 +59,12 @@ try {
       for (const p of r.statuts.problemes) console.log(`file : ${p}`)
       if (r.statuts.nouveaux > 0)
         console.log(`${r.statuts.nouveaux} statut(s) nouveau(x) au journal`)
+      if (r.erreur) {
+        console.log(`préparation impossible : ${r.erreur}`)
+        process.exitCode = 1
+      }
       const p = r.preparation
+      if (p?.occupee) console.log('une autre préparation tient l’installation : rien à ce passage')
       for (const x of p?.refusees ?? []) console.log(`${x.version} refusée : ${x.raison}`)
       if (p?.prete && !p.prete.deja)
         console.log(`${p.prete.version} prête : bascule au prochain moment calme`)
@@ -60,7 +72,7 @@ try {
       if (p?.prete && !cible(l.installation, LIENS.courant)) {
         console.log(`${installerPremiere(l)} installée : la première version courante`)
       }
-      if ((p?.refusees.length ?? 0) > 0) process.exitCode = 1
+      if (p?.refusees.some((x) => x.definitif)) process.exitCode = 1
     } finally {
       m.fermer(s)
     }

@@ -11,7 +11,7 @@
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { envEnfant, harnais, lireLivraison } from '@harnais/moteur'
+import { harnais, lireLivraison, sansNpm, VARIABLE_LANCEUR } from '@harnais/moteur'
 import { HOTE, PORT } from './app'
 
 /** Le délai de la sonde après une bascule, et son pas. */
@@ -62,7 +62,7 @@ const arret = await harnais({
     const enfant = spawn(
       'pnpm',
       ['interface', '--client', dossier, '--port', port, ...positionals],
-      { cwd: arbre, stdio: 'inherit', env: envEnfant(process.env) },
+      { cwd: arbre, stdio: 'inherit', env: { ...sansNpm(process.env), [VARIABLE_LANCEUR]: '1' } },
     )
     return {
       fin: new Promise((r) => enfant.on('exit', (code) => r(code))),
@@ -74,5 +74,6 @@ const arret = await harnais({
   maintenant: () => Date.now(),
   dire: (m) => console.log(`harnais : ${m}`),
 })
+// Un arrêt voulu (un humain doit regarder) sort en 0 : launchd (KeepAlive SuccessfulExit = false)
+// et systemd (Restart=on-failure) ne le relancent pas ; un plantage du lanceur lui-même, si.
 console.error(`harnais arrêté : ${arret.raison}`)
-process.exitCode = 1

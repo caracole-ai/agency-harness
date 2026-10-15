@@ -89,7 +89,11 @@ const RETENUES = new Set([VARIABLE_CLE_SIGNATURE, 'SSH_AUTH_SOCK'])
  * lot 2).
  */
 export const envEnfant = (env: Record<string, string | undefined>) =>
-  Object.fromEntries(Object.entries(env).filter(([k]) => !/^npm_/i.test(k) && !RETENUES.has(k)))
+  Object.fromEntries(Object.entries(sansNpm(env)).filter(([k]) => !RETENUES.has(k)))
+
+/** L'environnement sans les variables `npm_*` du script qui tourne : pour un processus du harnais lui-même (l'interface, le rattrapage d'un client, qui garde son agent SSH pour ses clés de déploiement). */
+export const sansNpm = (env: Record<string, string | undefined>) =>
+  Object.fromEntries(Object.entries(env).filter(([k]) => !/^npm_/i.test(k)))
 
 /** Lance le binaire avec ses arguments et son entrée ; rend code, sorties, ou `delai` si le délai mural a tué le processus. */
 export type Lancer = (

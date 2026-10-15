@@ -45,11 +45,16 @@ CREATE TRIGGER IF NOT EXISTS journal_sans_suppression BEFORE DELETE ON journal
 BEGIN SELECT RAISE(ABORT, 'journal en ajout seul : aucune suppression'); END;
 `
 
+/** Combien de temps une écriture attend qu'un autre processus libère la base. */
+const ATTENTE_VERROU_MS = 5000
+
 export class Journal {
   private readonly db: DatabaseSync
 
   constructor(chemin: string) {
     this.db = new DatabaseSync(chemin)
+    // Deux processus écrivent le même journal (l'interface, `pnpm mise-a-jour`) : l'un attend l'autre au lieu d'échouer.
+    this.db.exec(`PRAGMA busy_timeout = ${ATTENTE_VERROU_MS}`)
     this.db.exec(SCHEMA)
   }
 

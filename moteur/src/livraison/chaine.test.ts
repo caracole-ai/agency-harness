@@ -30,7 +30,7 @@ import { TYPE_CONSIGNE } from '../conversation/conversation'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { tourAgence } from './agence'
 import { FICHIER_LIVRAISON, type Livraison } from './config'
-import { harnais, type Lance } from './harnais'
+import { FENETRE_PLANTAGES_MS, harnais, type Lance } from './harnais'
 import {
   CODE_RELANCE,
   cible,
@@ -38,7 +38,7 @@ import {
   ISSUES_MISE_A_JOUR,
   installerPremiere,
   LIENS,
-  noterDemarrage,
+  noterLivraison,
   rattraper,
   TYPE_MISE_A_JOUR,
   versionDeLArbre,
@@ -66,6 +66,12 @@ const git = (cwd: string, ...args: string[]) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8' })
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} : ${r.stderr}`)
   return r.stdout.trim()
+}
+
+/** L'horloge du lanceur : la bascule à 0, puis des plantages groupés bien après sa fenêtre (un arrêt, pas un retour arrière). */
+const horloge = () => {
+  let n = 0
+  return () => (n++ === 0 ? 0 : 100 * FENETRE_PLANTAGES_MS + n)
 }
 
 /** L'interface du client jouée par le lanceur : chaque lancement rend un code, ou tourne (`vit`). */
@@ -207,17 +213,11 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
         lancer: x.lancer,
         sonder: async () => true,
         attendre: async () => undefined,
-        maintenant: () => 0,
+        maintenant: horloge(),
       })
       expect(versionDeLArbre(cible(l.installation, LIENS.courant))).toBe(`v${JOUR}-2`)
-      // L'interface qui redémarre sur la version : la ligne de démarrage.
-      noterDemarrage(
-        METIER_ESSAI,
-        s,
-        l,
-        versionDeLArbre(cible(l.installation, LIENS.courant)),
-        quand('10:30'),
-      )
+      // L'interface qui tourne lit le marqueur que le lanceur a posé après la sonde : « faite ».
+      expect(noterLivraison(METIER_ESSAI, s, l, quand('10:30'))).toEqual([`faite (v${JOUR}-2)`])
       expect(
         journal()
           .filter((y) => y.type === TYPE_MISE_A_JOUR)
@@ -287,10 +287,13 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
         lancer: interfaces([CODE_RELANCE, 'vit', 1, 1, 1]).lancer,
         sonder: async () => false,
         attendre: async () => undefined,
-        maintenant: () => 0,
+        maintenant: horloge(),
       })
       expect(versionDeLArbre(cible(l.installation, LIENS.courant))).toBe(`v${JOUR}-2`)
-      noterDemarrage(METIER_ESSAI, s, l, `v${JOUR}-2`, quand('12:10'))
+      // La précédente, relancée : le retour arrière au journal ; aucune « faite » de plus.
+      expect(noterLivraison(METIER_ESSAI, s, l, quand('12:10'))).toEqual([
+        `retour arrière (${v3.version} → v${JOUR}-2)`,
+      ])
       expect(
         journal()
           .filter((y) => y.type === TYPE_MISE_A_JOUR)
@@ -346,7 +349,7 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
         lancer: interfaces([CODE_RELANCE, 1, 1, 1]).lancer,
         sonder: async () => true,
         attendre: async () => undefined,
-        maintenant: () => 0,
+        maintenant: horloge(),
       })
       const courant = cible(l.installation, LIENS.courant) ?? ''
       expect(readFileSync(join(courant, FICHIER_VERSION), 'utf8').trim()).toBe(retrait.version)

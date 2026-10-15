@@ -487,13 +487,18 @@ pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
                          # l'installation (cd <installation>/courant), qui lance pnpm interface
                          # depuis la version courante, bascule sur la version prête quand
                          # l'interface sort au calme (code 75), la sonde (POST /api/roles, 30 s),
-                         # revient en arrière si elle ne répond pas ; trois plantages en dix
-                         # minutes : arrêt. Il tourne avec le code de la version qui l'a lancé
-                         # jusqu'à son redémarrage à la main. À installer une fois, par exemple
-                         # launchd (macOS) : ProgramArguments = /bin/sh -c "cd <installation>/courant
-                         # && pnpm harnais --client <dossier>", KeepAlive = true ; systemd :
-                         # WorkingDirectory=<installation>/courant, ExecStart=pnpm harnais
-                         # --client <dossier>, Restart=on-failure.
+                         # revient en arrière si elle ne répond pas, ou plante trois fois dans les
+                         # dix minutes qui suivent ; trois plantages hors de cette fenêtre : arrêt
+                         # (code 0 : un humain regarde). Bascule et retour attendent qu'aucune
+                         # préparation ne tienne l'installation. Il tourne avec le code de la
+                         # version qui l'a lancé jusqu'à son redémarrage à la main. À installer
+                         # une fois, par exemple launchd (macOS) : ProgramArguments = /bin/sh -c
+                         # "cd <installation>/courant && pnpm harnais --client <dossier>",
+                         # KeepAlive = { SuccessfulExit = false } (l'arrêt voulu n'est pas
+                         # relancé) ; systemd : WorkingDirectory=<installation>/courant,
+                         # ExecStart=pnpm harnais --client <dossier>, Restart=on-failure.
+                         # L'interface lancée à la main (pnpm interface) d'un client livré ne
+                         # sort jamais pour une bascule : seule celle que le lanceur a lancée.
                          # Ce que le client voit : l'onglet « Gestes » dit « Version v…, mise à
                          # jour le … » et, pour chaque commande, en attente de l'agence →
                          # chantier en cours → fusionné (v…), mise à jour en préparation →

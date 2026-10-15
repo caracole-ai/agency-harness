@@ -1,4 +1,3 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { type Agence, type Executer, executerSync, preflight } from '../agence/config'
 import { type Commande, commandeSync, exclure } from '../chantier/arbre'
@@ -23,6 +22,7 @@ import {
   publier,
   statuerEnFile,
 } from './missions'
+import { poserVerrou, tenantDe } from './verrou'
 import { preflightSignature } from './version'
 
 // Un tour de `pnpm agence` (PLAN-LIVRAISON.md L1) : la file de chaque client
@@ -171,33 +171,12 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
   return tour
 }
 
-/** Le verrou de `pnpm agence` : le pid de qui tourne, posé d'un seul geste (`wx`) ; un verrou dont le pid est mort est levé. Rend de quoi le rendre. */
+/** Le verrou de `pnpm agence` : le pid de qui tourne, posé d'un seul geste ; un verrou dont le pid est mort est levé. Rend de quoi le rendre. */
 export function prendreVerrou(c: Commande, racine: string): () => void {
   exclure(c, racine, DOSSIER_FILES)
-  const dossier = join(racine, DOSSIER_FILES)
-  const chemin = join(dossier, FICHIER_VERROU)
-  mkdirSync(dossier, { recursive: true })
-  if (existsSync(chemin)) {
-    const pid = Number(readFileSync(chemin, 'utf8').trim())
-    if (Number.isInteger(pid) && pid > 0 && vivant(pid)) {
-      throw new Error(`pnpm agence tourne déjà (pid ${pid}, ${chemin})`)
-    }
-    rmSync(chemin, { force: true })
-  }
-  try {
-    writeFileSync(chemin, `${process.pid}\n`, { flag: 'wx' })
-  } catch {
-    throw new Error(`pnpm agence tourne déjà (${chemin} posé à l'instant par un autre)`)
-  }
-  return () => rmSync(chemin, { force: true })
-}
-
-function vivant(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (erreur) {
-    // EPERM : le processus existe, il n'est pas à nous.
-    return (erreur as NodeJS.ErrnoException).code === 'EPERM'
-  }
+  const chemin = join(racine, DOSSIER_FILES, FICHIER_VERROU)
+  const rendre = poserVerrou(chemin)
+  if (!rendre)
+    throw new Error(`pnpm agence tourne déjà (pid ${tenantDe(chemin) ?? '?'}, ${chemin})`)
+  return rendre
 }

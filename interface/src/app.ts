@@ -231,8 +231,8 @@ export function creerApp(options: {
   metier: Metier
   /** L'étiquette de la version qui tourne (son fichier `VERSION`), pour `/api/version`. */
   version?: string
-  /** Chaque requête (PLAN-LIVRAISON.md L8 : le moment calme se mesure ici). */
-  surRequete?: () => void
+  /** Le début et la fin de chaque requête (PLAN-LIVRAISON.md L8 : le moment calme se mesure ici, requêtes en cours comprises). */
+  activite?: { debut: () => void; fin: () => void }
   /** Après le rattrapage des statuts : combien de nouveaux (un statut nouveau peut porter une version). */
   apresStatuts?: (nouveaux: number) => void
 }): Hono {
@@ -289,8 +289,12 @@ export function creerApp(options: {
   // (hono/csrf), et un nom d'hôte local (un site tiers ne peut pas lire le
   // journal par un nom à lui qui pointe sur cette machine).
   app.use('*', async (_c, next) => {
-    options.surRequete?.()
-    await next()
+    options.activite?.debut()
+    try {
+      await next()
+    } finally {
+      options.activite?.fin()
+    }
   })
   app.use('/api/*', csrf())
   app.use('/api/*', async (c, next) => {

@@ -8,11 +8,13 @@ import {
   CODE_RELANCE,
   cible,
   DOSSIER_VERSIONS,
+  FICHIER_BASCULE,
   FICHIER_PRETE,
   FICHIER_RETOUR,
   FICHIER_VERSION,
   LIENS,
   lier,
+  verrouInstallation,
 } from './mise-a-jour'
 
 // PLAN-LIVRAISON.md L9 et la mesure du lot 4 : le lanceur, l'interface
@@ -54,9 +56,9 @@ const versionDe = (d: string, lien: string) =>
   readFileSync(join(cible(d, lien) ?? '', FICHIER_VERSION), 'utf8').trim()
 
 describe('le lanceur (L9)', () => {
-  it('bascule sur CODE_RELANCE et une version prête, la sonde répond ; puis trois plantages en dix minutes : arrêt', async () => {
+  it('bascule sur CODE_RELANCE et une version prête, la sonde répond (le marqueur de la bascule) ; trois plantages juste après : retour arrière ; trois encore : arrêt', async () => {
     const d = installation()
-    const { lancer, lancees } = interfaces([CODE_RELANCE, 1, 1, 1])
+    const { lancer, lancees } = interfaces([CODE_RELANCE, 1, 1, 1, 1, 1, 1])
     let t = 0
     const arret = await harnais({
       installation: d,
@@ -66,16 +68,46 @@ describe('le lanceur (L9)', () => {
       maintenant: () => (t += 1000),
     })
     expect(arret.raison).toMatch(/^3 sorties en 10 min/)
-    expect(versionDe(d, LIENS.courant)).toBe('v2026-10-15-1')
-    expect(versionDe(d, LIENS.precedent)).toBe('v2026-10-14-1')
+    expect(parse(readFileSync(join(d, FICHIER_BASCULE), 'utf8'))).toEqual({
+      de: 'v2026-10-14-1',
+      vers: 'v2026-10-15-1',
+    })
+    expect(parse(readFileSync(join(d, FICHIER_RETOUR), 'utf8'))).toEqual({
+      de: 'v2026-10-15-1',
+      vers: 'v2026-10-14-1',
+      raison: '3 sorties après la bascule',
+    })
+    expect(versionDe(d, LIENS.courant)).toBe('v2026-10-14-1')
     expect(cible(d, LIENS.suivant)).toBeUndefined()
     expect(lancees.map((a) => a.split('/').at(-1))).toEqual([
       'v2026-10-14-1',
       'v2026-10-15-1',
       'v2026-10-15-1',
       'v2026-10-15-1',
+      'v2026-10-14-1',
+      'v2026-10-14-1',
+      'v2026-10-14-1',
     ])
-    expect(existsSync(join(d, FICHIER_RETOUR))).toBe(false)
+  })
+
+  it('une préparation tient l’installation au moment de basculer : relance sans basculer', async () => {
+    const d = installation()
+    const rendre = verrouInstallation(d)
+    const { lancer, lancees } = interfaces([CODE_RELANCE, 1, 1, 1])
+    try {
+      await harnais({
+        installation: d,
+        lancer,
+        sonder: async () => true,
+        attendre: async () => undefined,
+        maintenant: () => 0,
+      })
+    } finally {
+      rendre?.()
+    }
+    expect(versionDe(d, LIENS.courant)).toBe('v2026-10-14-1')
+    expect(lancees.every((a) => a.endsWith('v2026-10-14-1'))).toBe(true)
+    expect(cible(d, LIENS.suivant)).toBeDefined()
   })
 
   it('la sonde ne répond pas au redémarrage : retour arrière sur la précédente, le marqueur pour le journal', async () => {

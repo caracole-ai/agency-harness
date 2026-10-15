@@ -4,23 +4,23 @@
 // `--script` (un tableau de `Scripte`), sans clé ni réseau : c'est ce qui
 // permet une démo et des captures. Travailler sur une copie du client
 // fictif, jamais sur `exemples/`.
-// Un client livré (`livraison.yaml`, PLAN-LIVRAISON.md L8, L9) : au
-// démarrage, la ligne `mise à jour` (faite, ou le retour arrière que le
-// lanceur a marqué) ; toutes les `intervalle_minutes`, et dès qu'un statut
-// nouveau arrive, le rattrapage dans un processus à part (`pnpm mise-a-jour`)
-// pour que l'interface continue de répondre ; une version prête et un moment
-// calme (aucune requête depuis `CALME_SECONDES`, aucun rattrapage en cours) :
-// sortie `CODE_RELANCE`, le lanceur (`pnpm harnais`) bascule.
+// Un client livré (`livraison.yaml`, PLAN-LIVRAISON.md L8, L9) : les lignes
+// `mise à jour` (faite, retour arrière) que le lanceur a marquées ; toutes
+// les `intervalle_minutes`, et dès qu'un statut nouveau arrive, le
+// rattrapage dans un processus à part (`pnpm mise-a-jour`) pour que
+// l'interface continue de répondre ; lancée par le lanceur, une version
+// prête et un moment calme (aucune requête en cours ni depuis
+// `CALME_SECONDES`, aucun rattrapage en cours) : sortie `CODE_RELANCE`, le
+// lanceur (`pnpm harnais`) bascule.
 import { type ChildProcess, spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
-  CALME_SECONDES,
   CODE_RELANCE,
   cible,
-  envEnfant,
+  doitRelancer,
   FICHIER_PRETE,
   FUSEAU,
   LIENS,
@@ -31,9 +31,11 @@ import {
   metierDe,
   modeleDepuisConfig,
   modeleSimule,
-  noterDemarrage,
+  noterLivraison,
   type Scripte,
+  sansNpm,
   Temporal,
+  VARIABLE_LANCEUR,
   versionDeLArbre,
 } from '@harnais/moteur'
 import { serve } from '@hono/node-server'
@@ -86,15 +88,29 @@ function modele(m: MetierConversation<unknown>): Modele {
   }
 }
 
-/** La livraison d'un client livré (L8, L9) : la ligne de démarrage, la minuterie du rattrapage, la sortie au calme. */
-function livrer(m: MetierConversation<unknown>, l: Livraison, version: string | undefined) {
-  const s = m.ouvrir(dossier)
-  try {
-    const ligne = noterDemarrage(m, s, l, version, Temporal.Now.zonedDateTimeISO(FUSEAU))
-    if (ligne) console.log(`Mise à jour : ${ligne}${version ? ` (${version})` : ''}`)
-  } finally {
-    m.fermer(s)
+/**
+ * La livraison d'un client livré (L8, L9) : ce que le lanceur a laissé
+ * (bascule faite, retour arrière) écrit au journal au démarrage puis à chaque
+ * pas ; le rattrapage dans un processus à part, toutes les
+ * `intervalle_minutes` et dès qu'un statut arrive ; la sortie au calme, si
+ * c'est le lanceur qui l'a lancée (sinon personne ne la relancerait).
+ */
+function livrer(m: MetierConversation<unknown>, l: Livraison) {
+  const noter = () => {
+    const s = m.ouvrir(dossier)
+    try {
+      for (const ligne of noterLivraison(m, s, l, Temporal.Now.zonedDateTimeISO(FUSEAU))) {
+        console.log(`Mise à jour : ${ligne}`)
+      }
+    } catch (erreur) {
+      console.error(`journal de la mise à jour : ${(erreur as Error).message}`)
+    } finally {
+      m.fermer(s)
+    }
   }
+  noter()
+  const lanceeParLeLanceur = process.env[VARIABLE_LANCEUR] === '1'
+  let enCours = 0
   let derniere = Date.now()
   let rattrapage: ChildProcess | undefined
   const rattraper = () => {
@@ -102,7 +118,7 @@ function livrer(m: MetierConversation<unknown>, l: Livraison, version: string | 
     rattrapage = spawn('pnpm', ['mise-a-jour', '--client', dossier], {
       cwd: RACINE_CODE,
       stdio: 'inherit',
-      env: envEnfant(process.env),
+      env: sansNpm(process.env),
     })
     rattrapage.on('exit', () => {
       rattrapage = undefined
@@ -110,17 +126,39 @@ function livrer(m: MetierConversation<unknown>, l: Livraison, version: string | 
   }
   setInterval(rattraper, l.intervalle_minutes * 60_000)
   setInterval(() => {
+    noter()
     const suivant = cible(l.installation, LIENS.suivant)
-    const calme = Date.now() - derniere > CALME_SECONDES * 1000
-    if (!rattrapage && calme && suivant && existsSync(join(suivant, FICHIER_PRETE))) {
+    const suivantePrete = suivant !== undefined && existsSync(join(suivant, FICHIER_PRETE))
+    if (
+      doitRelancer({
+        lanceeParLeLanceur,
+        suivantePrete,
+        requetesEnCours: enCours,
+        derniereActiviteMs: derniere,
+        maintenantMs: Date.now(),
+        rattrapageEnCours: rattrapage !== undefined,
+      })
+    ) {
       console.log(`Version prête (${versionDeLArbre(suivant) ?? suivant}), moment calme : relance`)
       process.exit(CODE_RELANCE)
     }
   }, PAS_CALME_MS)
+  if (!lanceeParLeLanceur) {
+    console.log(
+      'Lancée hors de pnpm harnais : une version prête attendra un redémarrage par le lanceur.',
+    )
+  }
   rattraper()
   return {
-    surRequete: () => {
-      derniere = Date.now()
+    activite: {
+      debut: () => {
+        enCours++
+        derniere = Date.now()
+      },
+      fin: () => {
+        enCours--
+        derniere = Date.now()
+      },
     },
     apresStatuts: (nouveaux: number) => {
       if (nouveaux > 0) rattraper()
@@ -139,7 +177,7 @@ try {
     modele: modele(metier),
     ...(values.maintenant ? { maintenant: values.maintenant } : {}),
     ...(version ? { version } : {}),
-    ...(l ? livrer(metier, l, version) : {}),
+    ...(l ? livrer(metier, l) : {}),
   })
   serve({ fetch: app.fetch, hostname: HOTE, port }, (info) => {
     console.log(`Interface : http://${HOTE}:${info.port} (client ${dossier})`)

@@ -6,12 +6,14 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { stringify } from 'yaml'
+import type { Commande } from '../chantier/arbre'
 import {
   CLE_ESSAI,
   cleEssai,
@@ -22,21 +24,28 @@ import {
 import { dossierEssai, METIER_ESSAI } from '../chantier/metier-essai.test.fixture'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { FICHIER_LIVRAISON, type Livraison } from './config'
+import { basculer, revenir } from './harnais'
 import {
+  CALME_SECONDES,
   cible,
   DOSSIER_VERSIONS,
+  doitRelancer,
   elaguer,
+  FICHIER_BASCULE,
   FICHIER_PRETE,
+  FICHIER_RETOUR,
   FICHIER_VERSION,
   ISSUES_MISE_A_JOUR,
   installerPremiere,
   LIENS,
   lier,
+  marquerBascule,
   marquerRetour,
-  noterDemarrage,
+  noterLivraison,
   preparer,
   rattraper,
   TYPE_MISE_A_JOUR,
+  verrouInstallation,
 } from './mise-a-jour'
 import { FICHIER_SIGNATAIRES, VARIABLE_CLE_SIGNATURE } from './version'
 
@@ -185,7 +194,9 @@ describe('préparer une version (L8, mesure du lot 4)', () => {
     )
     git(pr.agence, 'push', '-q', 'origin', 'HEAD:autre', 'refs/tags/v2026-10-20-1')
     expect(preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande)).toEqual({
-      refusees: [{ version: 'v2026-10-20-1', raison: 'ne descend pas de v2026-10-14-1' }],
+      refusees: [
+        { version: 'v2026-10-20-1', raison: 'ne descend pas de v2026-10-14-1', definitif: true },
+      ],
     })
   })
 
@@ -229,7 +240,7 @@ describe('préparer une version (L8, mesure du lot 4)', () => {
 })
 
 describe('le journal de la mise à jour (L8, L9)', () => {
-  it('une version refusée est dite une fois et jamais reprise ; au démarrage, une version nouvelle est « faite » une fois ; un retour arrière se dit et le marqueur s’ôte', () => {
+  it('un refus définitif est dit une fois et jamais repris ; ce que le lanceur marque (bascule, retour arrière) est écrit puis ôté ; sans marque, rien', () => {
     const { pr, dossier, l } = installe()
     pr.version('v2026-10-15-1', cleEssai('intrus').privee)
     const s = METIER_ESSAI.ouvrir(dossier)
@@ -240,24 +251,172 @@ describe('le journal de la mise à jour (L8, L9)', () => {
       expect(lignes().map((x) => [x.objet, x.issue])).toEqual([
         ['v2026-10-15-1', ISSUES_MISE_A_JOUR.refusee],
       ])
-      expect(noterDemarrage(METIER_ESSAI, s, l, 'v2026-10-14-1', MAINTENANT)).toBe('faite')
-      expect(noterDemarrage(METIER_ESSAI, s, l, 'v2026-10-14-1', MAINTENANT)).toBeUndefined()
+      // Un redémarrage ordinaire, ou la première installation : rien au journal.
+      expect(noterLivraison(METIER_ESSAI, s, l, MAINTENANT)).toEqual([])
+      marquerBascule(l.installation, { de: 'v2026-10-14-1', vers: 'v2026-10-15-2' })
+      expect(noterLivraison(METIER_ESSAI, s, l, MAINTENANT)).toEqual(['faite (v2026-10-15-2)'])
+      expect(noterLivraison(METIER_ESSAI, s, l, MAINTENANT)).toEqual([])
       marquerRetour(l.installation, {
         de: 'v2026-10-15-2',
         vers: 'v2026-10-14-1',
         raison: 'ne répond pas au redémarrage',
       })
-      expect(noterDemarrage(METIER_ESSAI, s, l, 'v2026-10-14-1', MAINTENANT)).toBe(
-        ISSUES_MISE_A_JOUR.retour,
-      )
+      expect(noterLivraison(METIER_ESSAI, s, l, MAINTENANT)).toEqual([
+        'retour arrière (v2026-10-15-2 → v2026-10-14-1)',
+      ])
       expect(lignes().at(-1)).toMatchObject({
         objet: 'v2026-10-15-2',
         issue: ISSUES_MISE_A_JOUR.retour,
         motif: 'v2026-10-15-2 → v2026-10-14-1 : ne répond pas au redémarrage',
       })
-      expect(existsSync(join(l.installation, 'retour-arriere.yaml'))).toBe(false)
+      expect(existsSync(join(l.installation, FICHIER_RETOUR))).toBe(false)
+      expect(existsSync(join(l.installation, FICHIER_BASCULE))).toBe(false)
     } finally {
       METIER_ESSAI.fermer(s)
     }
+  })
+
+  it('une panne (pnpm install rouge) est dite une fois par raison et se retente : la version passe dès que l’install passe', () => {
+    const { pr, dossier, l } = installe()
+    pr.version('v2026-10-15-1')
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      const enPanne: Commande = (cwd, nom, args, env) =>
+        nom === 'pnpm' && args[0] === 'install'
+          ? { code: 1, sortie: '', erreur: 'ERR_PNPM_FETCH réseau injoignable' }
+          : commandeSimulee().commande(cwd, nom, args, env)
+      const a = rattraper(METIER_ESSAI, s, dossier, MAINTENANT, ENV_ESSAI, enPanne)
+      expect(a.preparation?.refusees).toMatchObject([
+        { version: 'v2026-10-15-1', definitif: false },
+      ])
+      rattraper(METIER_ESSAI, s, dossier, MAINTENANT, ENV_ESSAI, enPanne)
+      expect(s.journal.lire().filter((x) => x.type === TYPE_MISE_A_JOUR)).toHaveLength(1)
+      const b = rattraper(
+        METIER_ESSAI,
+        s,
+        dossier,
+        MAINTENANT,
+        ENV_ESSAI,
+        commandeSimulee().commande,
+      )
+      expect(b.preparation?.prete).toEqual({ version: 'v2026-10-15-1', deja: false })
+      expect(l.installation).toBeTruthy()
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
+  })
+})
+
+describe('les pannes et les gardes de la préparation (relecture du lot 4)', () => {
+  it('un retour arrière à la main, pas encore au journal : la version n’est ni reprise ni touchée', () => {
+    const { pr, dossier, l } = installe()
+    pr.version('v2026-10-15-1')
+    preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande)
+    basculer(l.installation)
+    revenir(l.installation, 'v2026-10-15-1', 'v2026-10-14-1', 'retirée à la main')
+    const arbre = realpathSync(join(l.installation, DOSSIER_VERSIONS, 'v2026-10-15-1'))
+    writeFileSync(join(arbre, 'temoin'), 'là\n')
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      const r = rattraper(
+        METIER_ESSAI,
+        s,
+        dossier,
+        MAINTENANT,
+        ENV_ESSAI,
+        commandeSimulee().commande,
+      )
+      expect(r.preparation).toEqual({ refusees: [] })
+      expect(readFileSync(join(arbre, 'temoin'), 'utf8')).toBe('là\n')
+      expect(cible(l.installation, LIENS.suivant)).toBeUndefined()
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
+  })
+
+  it('une autre préparation tient l’installation : rien n’est fait', () => {
+    const { pr, dossier, l } = installe()
+    pr.version('v2026-10-15-1')
+    const rendre = verrouInstallation(l.installation)
+    try {
+      expect(preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande)).toEqual({
+        refusees: [],
+        occupee: true,
+      })
+    } finally {
+      rendre?.()
+    }
+    expect(preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande).prete?.version).toBe(
+      'v2026-10-15-1',
+    )
+  })
+
+  it('une étiquette qui n’est pas une version, réécrite, ne bloque rien ; une version réécrite est dite comme une panne ; sans signataires, de même', () => {
+    const { pr, dossier, l } = installe()
+    git(pr.agence, 'tag', 'travail')
+    git(pr.agence, 'push', '-q', 'origin', 'refs/tags/travail')
+    preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande)
+    git(pr.agence, 'commit', '-q', '--allow-empty', '-m', 'ailleurs')
+    git(pr.agence, 'tag', '-f', 'travail')
+    git(pr.agence, 'push', '-q', '-f', 'origin', 'refs/tags/travail')
+    pr.version('v2026-10-15-1')
+    expect(preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande).prete?.version).toBe(
+      'v2026-10-15-1',
+    )
+    // La version, réécrite sous le même nom sur le produit : le fetch refuse, la panne est dite.
+    git(pr.agence, 'commit', '-q', '--allow-empty', '-m', 'réécrite')
+    git(
+      pr.agence,
+      '-c',
+      'gpg.format=ssh',
+      '-c',
+      `user.signingkey=${CLE_ESSAI.privee}`,
+      'tag',
+      '-f',
+      '-s',
+      '-m',
+      'x',
+      'v2026-10-15-1',
+    )
+    git(pr.agence, 'push', '-q', '-f', 'origin', 'refs/tags/v2026-10-15-1')
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      const r = rattraper(
+        METIER_ESSAI,
+        s,
+        dossier,
+        MAINTENANT,
+        ENV_ESSAI,
+        commandeSimulee().commande,
+      )
+      expect(r.erreur).toMatch(/v2026-10-15-1/)
+      expect(s.journal.lire().filter((x) => x.type === TYPE_MISE_A_JOUR)).toEqual([])
+      rmSync(join(dossier, FICHIER_SIGNATAIRES))
+      expect(
+        rattraper(METIER_ESSAI, s, dossier, MAINTENANT, ENV_ESSAI, commandeSimulee().commande)
+          .erreur,
+      ).toMatch(/signataires absent/)
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
+  })
+})
+
+describe('le moment calme (L8)', () => {
+  const calme = {
+    lanceeParLeLanceur: true,
+    suivantePrete: true,
+    requetesEnCours: 0,
+    derniereActiviteMs: 0,
+    maintenantMs: CALME_SECONDES * 1000 + 1,
+    rattrapageEnCours: false,
+  }
+  it('seulement lancée par le lanceur, une version prête, aucune requête en cours ni récente, aucun rattrapage', () => {
+    expect(doitRelancer(calme)).toBe(true)
+    expect(doitRelancer({ ...calme, lanceeParLeLanceur: false })).toBe(false)
+    expect(doitRelancer({ ...calme, suivantePrete: false })).toBe(false)
+    expect(doitRelancer({ ...calme, requetesEnCours: 1 })).toBe(false)
+    expect(doitRelancer({ ...calme, rattrapageEnCours: true })).toBe(false)
+    expect(doitRelancer({ ...calme, maintenantMs: CALME_SECONDES * 1000 })).toBe(false)
   })
 })
