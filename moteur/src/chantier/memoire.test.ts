@@ -6,18 +6,18 @@ import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fict
 import {
   ajouterConvention,
   ajouterIndex,
-  ajouterMesure,
   chantiersCitant,
   DOSSIER_MEMOIRE,
   ecrireChantier,
   ecrireRetrait,
   interdits,
   lireIndex,
+  missionFusionnee,
   missionsRetirees,
   nettoyer,
 } from './memoire'
 
-// PLAN-RONDE.md R10 : la mémoire de la nuit, écrite par le code, sans nom ni
+// PLAN-RONDE.md R10 : la mémoire des chantiers, écrite par le code, sans nom ni
 // identifiant ; et le test de fuite sur tout `memoire/` du dépôt.
 
 const personnes = [
@@ -88,9 +88,6 @@ describe('écrire et relire la mémoire', () => {
     ).toThrow(/rien n'est écrit/)
     expect(lireIndex(r)).toEqual([])
     expect(() => ajouterConvention(r, 'demander à Octave', personnes)).toThrow(/rien n'est écrit/)
-    expect(() =>
-      ajouterMesure(r, '2026-10-12', CLIENT, { echappee: 'E-20261012T0900-3fa2' }, personnes),
-    ).toThrow()
   })
 
   it('un retrait se lit : la mission n’est jamais refaite', () => {
@@ -108,6 +105,41 @@ describe('écrire et relire la mémoire', () => {
       personnes,
     )
     expect(missionsRetirees(r)).toEqual([{ id: 'heures_cumulees', intentions: [] }])
+  })
+
+  it('une fusion se relit pour son retrait : client, titre, intentions de son entrée ; sans fusion, rien', () => {
+    const r = racine()
+    const entree = (sorte: 'fusion' | 'refus', date: string, intentions: string) =>
+      ecrireChantier(
+        r,
+        {
+          date,
+          client: 'client-essai',
+          id: 'simuler_absence',
+          titre: 'Simuler une absence',
+          sections: [
+            {
+              titre: 'La mission',
+              texte: `- identifiant : \`simuler_absence\` ; sorte : geste_code\n- intentions : ${intentions}\n- consignes-types :\n  - « - intentions : \`piege\` »`,
+            },
+          ],
+          appris: '',
+          sorte,
+          issue: sorte === 'fusion' ? 'fusionné' : 'refusé',
+        },
+        personnes,
+      )
+    expect(missionFusionnee(r, 'simuler_absence')).toBeUndefined()
+    entree('refus', '2026-10-12', '`simuler_absence`')
+    expect(missionFusionnee(r, 'simuler_absence')).toBeUndefined()
+    entree('fusion', '2026-10-13', '`simuler_absence`, `absence_longue`')
+    expect(missionFusionnee(r, 'simuler_absence')).toEqual({
+      date: '2026-10-13',
+      client: 'client-essai',
+      titre: 'Simuler une absence',
+      intentions: ['simuler_absence', 'absence_longue'],
+    })
+    expect(missionFusionnee(r, 'autre')).toBeUndefined()
   })
 
   it('un retrait garde ses intentions : le même travail sous un autre nom n’est pas refait', () => {

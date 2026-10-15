@@ -1,46 +1,46 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
 import { fuites } from '../echappee/pseudonymes'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { commandeSync } from './arbre'
-import { AUCUN_CLIENT_EVALS, faireChantier, type OptionsChantier, TYPE_CHANTIER } from './chantier'
+import { type Commande, commandeSync, DOSSIER_ARBRES } from './arbre'
+import { AUCUN_CLIENT_EVALS, faireChantier, type OptionsChantier } from './chantier'
 import {
   agenceEssai,
   binaireSimule,
   CLIENT_EVALS_ESSAI,
   clientAvecCommande,
   clientAvecMission,
+  cloneDuDistant,
   commandeSimulee,
   creerDepots,
   ENV_ESSAI,
   EVALS_AU_SEUIL,
+  etatHumain,
   gesteVert,
   MISSION_ESSAI,
   type PnpmSimule,
+  refuserPush,
   type Scenario,
 } from './essai.test.fixture'
-import {
-  type Condition,
-  conclure,
-  type IdCondition,
-  publierMemoire,
-  refEtiquette,
-  retirerFusion,
-} from './fusion'
+import { type Condition, conclure, type IdCondition, refEtiquette, retirerFusion } from './fusion'
 import { fichierConsignes } from './garde'
-import { ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
+import { ecrireChantier, ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
 import { METIER_ESSAI, PERSONNES_ESSAI } from './metier-essai.test.fixture'
-import { DOSSIER_MISSIONS, type Mission } from './mission'
+import { lireStatut, type Mission } from './mission'
 
-// PLAN-RONDE.md § 6.4 et PLAN-GENERAL.md G1, G2, G3, en simulé : le binaire
-// `claude` est un script qui écrit un diff connu et rend un JSON ; `pnpm` est
-// simulé ; git tourne pour de vrai, sur trois dépôts jetables. Une fusion
-// sous huit conditions vertes ; un refus pour chaque condition rouge ; un
-// retrait qui défait ; aucun merge ni push hors de `fusion.ts` ; `fusion.ts`
-// refuse hors du clone de la nuit.
+// PLAN-RONDE.md § 6.4, PLAN-GENERAL.md G1, G2 et PLAN-LIVRAISON.md L2, L3, en
+// simulé : le binaire `claude` est un script qui écrit un diff connu et rend
+// un JSON ; `pnpm` est simulé ; git tourne pour de vrai, sur un dépôt nu
+// (`origin`) et le dépôt de l'agence, arbre d'un humain. Une fusion sous huit
+// conditions vertes, poussée sur `main` du distant sans que l'arbre de
+// l'humain ni son `main` ne bougent ; un refus pour chaque condition rouge ;
+// un retrait qui défait ; un push refusé repris une fois ; aucun merge ni
+// push hors de `fusion.ts`. Le chantier ne lit aucun dossier client : il
+// écrit son dossier et son statut dans un dossier de sortie.
 
 const MAINTENANT = Temporal.ZonedDateTime.from(`2026-10-11T03:00[${FUSEAU}]`)
 const PLAN_VERT: Scenario['plan'] = {
@@ -48,6 +48,7 @@ const PLAN_VERT: Scenario['plan'] = {
   raison: 'un geste dans la bande métier',
   plan: '- metiers/essai/code/src/simulation.ts\n- trois cas',
 }
+const CLIENT = 'client-essai'
 
 const git = (cwd: string, ...args: string[]) =>
   spawnSync('git', args, { cwd, encoding: 'utf8' }).stdout.trim()
@@ -56,45 +57,67 @@ interface Essai {
   scenario?: Scenario
   pnpm?: PnpmSimule
   mission?: Mission
-  chantier?: Parameters<typeof agenceEssai>[2]
+  chantier?: Parameters<typeof agenceEssai>[1]
   options?: Partial<OptionsChantier>
 }
 
-/** Un chantier simulé de bout en bout ; rend l'issue, les appels au binaire, les commandes émises, les dépôts. */
+/** Un chantier simulé de bout en bout ; rend l'issue, les appels au binaire, les commandes émises, les dépôts, l'état de l'humain avant. */
 async function lancer(e: Essai = {}) {
   const depots = creerDepots()
+  const humain = etatHumain(depots.racine)
   const { binaire, appels } = binaireSimule({
     plan: PLAN_VERT,
     implementations: [{ ecrire: gesteVert() }],
     ...e.scenario,
   })
   const { commande, emises } = commandeSimulee(e.pnpm)
-  const { dossier, fichier } = clientAvecMission(e.mission)
+  const { fichier } = clientAvecMission(e.mission)
+  const sortie = mkdtempSync(join(tmpdir(), 'sortie-'))
   const options: OptionsChantier = {
     racine: depots.racine,
-    agence: agenceEssai(binaire, depots.depot, e.chantier),
+    agence: agenceEssai(binaire, e.chantier),
     mission: fichier,
+    client: CLIENT,
+    personnes: PERSONNES_ESSAI,
+    sortie,
     env: ENV_ESSAI,
     maintenant: MAINTENANT,
     commande,
     ...e.options,
   }
   const issue = await faireChantier(METIER_ESSAI, options)
-  return { issue, appels, emises, depots, dossier, fichier, options }
+  return { issue, appels, emises, depots, humain, sortie, fichier, options }
 }
 
-const lignesChantier = (dossier: string) => {
-  const s = METIER_ESSAI.ouvrir(dossier)
-  try {
-    return s.journal.lire().filter((l) => l.type === TYPE_CHANTIER)
-  } finally {
-    METIER_ESSAI.fermer(s)
-  }
-}
+/** Le retrait de `simuler_absence` par le dépôt de l'agence, sa mémoire écrite dans l'arbre détaché. */
+const retirer = (racine: string, commande: Commande = commandeSync) =>
+  retirerFusion({
+    commande,
+    racine,
+    id: 'simuler_absence',
+    motif: 'doublon',
+    ecrireRetrait: (arbre) =>
+      ecrireRetrait(
+        arbre,
+        {
+          date: '2026-10-12',
+          client: CLIENT,
+          id: 'simuler_absence',
+          titre: MISSION_ESSAI.titre,
+          intentions: MISSION_ESSAI.intentions,
+          motif: 'doublon',
+        },
+        PERSONNES_ESSAI,
+      ),
+  })
+
+const statut = (sortie: string) => lireStatut(join(sortie, 'simuler_absence.statut.yaml'))
+const arbresRestants = (racine: string) =>
+  existsSync(join(racine, DOSSIER_ARBRES)) ? readdirSync(join(racine, DOSSIER_ARBRES)) : []
 
 describe('G1 : huit conditions vertes, la fusion', () => {
-  it('fusionne --no-ff dans main du clone, pose l’étiquette, pousse, écrit la mémoire à part et le journal', async () => {
-    const { issue, appels, emises, depots, dossier } = await lancer()
+  it('fusionne --no-ff sur main du distant, pose l’étiquette, pousse, la mémoire à part ; ni l’arbre de l’humain ni son main ne bougent', async () => {
+    const { issue, appels, emises, depots, humain, sortie } = await lancer()
     expect(issue.sorte).toBe('fait')
     if (issue.sorte !== 'fait') return
     expect(issue.issue).toBe('fusionné')
@@ -119,37 +142,46 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     expect(appels().map((a) => a.role)).toEqual(['plan', 'implementation', 'relecture'])
     expect(issue.cout).toBeCloseTo(1.5)
     expect(issue.conditions.find((k) => k.id === 'honnetete')?.mesure).toMatch(/en écart : R-2$/)
-    // La fusion est une fusion (deux parents), étiquetée, poussée ; la mémoire est le commit d'après.
-    const fusion = git(depots.depot, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
-    expect(git(depots.depot, 'rev-list', '--parents', '-n', '1', fusion).split(' ')).toHaveLength(3)
-    expect(git(depots.depot, 'log', '-1', '--format=%s', 'main')).toMatch(/^Mémoire : chantier/)
-    expect(git(depots.origine, 'rev-parse', 'main')).toBe(git(depots.depot, 'rev-parse', 'main'))
-    expect(git(depots.origine, 'rev-parse', refEtiquette('simuler_absence'))).not.toBe('')
-    // L'arbre humain n'a pas bougé ; l'arbre de travail est retiré, la branche reste.
-    expect(git(depots.racine, 'log', '--oneline').split('\n')).toHaveLength(1)
-    expect(existsSync(join(depots.depot, '.claude', 'worktrees', 'chantier-simuler_absence'))).toBe(
-      false,
+    expect(issue.conditions.find((k) => k.id === 'memoire')?.mesure).toBe(
+      'écrite : memoire/chantiers/2026-10-11-simuler_absence.md',
     )
-    expect(git(depots.depot, 'branch', '--list', 'chantier/simuler_absence')).toContain('chantier/')
-    expect(git(depots.depot, 'status', '--porcelain')).toBe('')
-    // La mémoire : l'entrée et sa ligne d'index, sans nom ni identifiant d'échappée.
-    const index = lireIndex(depots.depot)
-    expect(index.at(-1)).toMatchObject({
+    // Sur le distant : une fusion (deux parents), étiquetée ; la mémoire est le commit d'après.
+    const fusion = git(depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    expect(git(depots.origine, 'rev-list', '--parents', '-n', '1', fusion).split(' ')).toHaveLength(
+      3,
+    )
+    expect(git(depots.origine, 'log', '-1', '--format=%s', 'main')).toMatch(/^Mémoire : chantier/)
+    // L'humain : ni sa tête, ni sa branche, ni son main, ni son arbre ; aucun arbre de travail ne reste, la branche reste.
+    expect(etatHumain(depots.racine)).toEqual(humain)
+    expect(arbresRestants(depots.racine)).toEqual([])
+    expect(git(depots.racine, 'branch', '--list', 'chantier/simuler_absence')).toContain(
+      'chantier/',
+    )
+    // La mémoire du distant : l'entrée et sa ligne d'index, le client en slug, sans nom ni identifiant d'échappée.
+    const distant = cloneDuDistant(depots.origine)
+    expect(lireIndex(distant).at(-1)).toMatchObject({
+      client: CLIENT,
       sorte: 'fusion',
       id: 'simuler_absence',
       issue: 'fusionné',
     })
     const entree = readFileSync(
-      join(depots.depot, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md'),
+      join(distant, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md'),
       'utf8',
     )
     expect(entree).toContain('un geste nouveau a ses trois cas dès sa naissance')
     expect(entree).not.toMatch(/E-2026/)
-    // Le dossier et le journal du client.
-    expect(readFileSync(join(dossier, 'chantiers', 'simuler_absence.md'), 'utf8')).toMatch(
+    expect(readdirSync(join(distant, 'metiers', 'essai', 'code', 'src'))).toContain('simulation.ts')
+    // Le dossier et le statut, dans la sortie (L7).
+    expect(readFileSync(join(sortie, 'simuler_absence.chantier.md'), 'utf8')).toMatch(
       /Issue : \*\*fusionné\*\*/,
     )
-    expect(lignesChantier(dossier).map((l) => l.issue)).toEqual(['fusionné'])
+    expect(statut(sortie)).toEqual({
+      statut: 'fusionné',
+      issue: 'fusionné',
+      cout_usd: 1.5,
+      le: '2026-10-11T01:00:00Z',
+    })
   })
 
   it('ce qui part au modèle : la mission par types, ni échappée ni nom ; le chantier sous les réglages du projet', async () => {
@@ -167,6 +199,7 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     const [plan, impl, relecture] = appels()
     // Les cas de traduction s'écrivent dans les consignes du métier de la mission (PLAN-METIER-2.md M8).
     expect(impl?.entree).toContain(`\`${fichierConsignes(MISSION_ESSAI.metier)}\``)
+    expect(relecture?.entree).toContain('`git diff origin/main...HEAD`')
     expect(plan?.args).not.toContain('Edit(./**)')
     expect(relecture?.args).not.toContain('Write(./**)')
     expect(impl?.args).toContain('Write(./**)')
@@ -184,16 +217,14 @@ describe('G1 : une condition rouge, aucun merge', () => {
     expect(r.issue.conditions.map((k) => k.id)).toContain('memoire')
     // Aucune fusion, aucune étiquette ; la mémoire du refus est commise et poussée.
     expect(r.emises.some((x) => x.commande === 'git' && x.args[0] === 'merge')).toBe(false)
-    expect(git(r.depots.depot, 'tag', '--list')).toBe('')
-    expect(lireIndex(r.depots.depot).at(-1)).toMatchObject({
+    expect(git(r.depots.origine, 'tag', '--list')).toBe('')
+    expect(lireIndex(cloneDuDistant(r.depots.origine)).at(-1)).toMatchObject({
       sorte: 'refus',
       id: 'simuler_absence',
     })
-    expect(git(r.depots.origine, 'rev-parse', 'main')).toBe(
-      git(r.depots.depot, 'rev-parse', 'main'),
-    )
-    expect(lignesChantier(r.dossier).map((l) => l.issue)).toEqual(['refusé'])
-    expect(readFileSync(join(r.dossier, 'chantiers', 'simuler_absence.md'), 'utf8')).toContain(
+    expect(etatHumain(r.depots.racine)).toEqual(r.humain)
+    expect(statut(r.sortie)).toMatchObject({ statut: 'refusé', issue: r.issue.issue })
+    expect(readFileSync(join(r.sortie, 'simuler_absence.chantier.md'), 'utf8')).toContain(
       'Non fusionné : la branche reste.',
     )
     return r
@@ -210,7 +241,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
       },
       'chemins',
     )
-    expect(git(r.depots.depot, 'branch', '--list', 'chantier/simuler_absence')).toContain(
+    expect(git(r.depots.racine, 'branch', '--list', 'chantier/simuler_absence')).toContain(
       'chantier/',
     )
     // Pas de relecture d'un diff hors bande : rien n'est dépensé de plus.
@@ -274,14 +305,6 @@ describe('G1 : une condition rouge, aucun merge', () => {
       mesure: `${AUCUN_CLIENT_EVALS} (${MISSION_ESSAI.metier})`,
     })
     expect(r.emises.some((x) => x.commande === 'pnpm' && x.args[0] === 'evals')).toBe(false)
-  })
-
-  it('une mission d’un autre métier que celui du client lève avant tout appel (PLAN-METIER-2.md M9)', async () => {
-    await expect(
-      lancer({ mission: { ...MISSION_ESSAI, metier: 'securite-privee' } }),
-    ).rejects.toThrow(
-      `mission ${MISSION_ESSAI.id} du métier securite-privee, client du métier essai`,
-    )
   })
 
   it('1. un fichier d’un autre métier que celui de la mission : refusé (PLAN-METIER-2.md M9)', async () => {
@@ -380,228 +403,297 @@ describe('G1 : une condition rouge, aucun merge', () => {
     await refuse({ chantier: { lignes_max: 3 } }, 'lignes')
   })
 
-  it('8. une entrée de mémoire qui porterait un nom : refusé, rien de fusionné', () => {
+  it('8. une entrée de mémoire qui porterait un nom : refusé, rien de fusionné, l’entrée à moitié écrite ne part pas', () => {
     const depots = creerDepots()
-    git(depots.depot, 'checkout', '-q', '-b', 'chantier/x')
-    git(depots.depot, 'commit', '-q', '--allow-empty', '-m', 'x')
-    git(depots.depot, 'checkout', '-q', 'main')
+    git(depots.racine, 'branch', 'chantier/x')
+    const humain = etatHumain(depots.racine)
     const verte = (id: IdCondition): Condition => ({ id, ok: true, mesure: 'vert' })
     let essais = 0
     const r = conclure({
       commande: commandeSync,
-      depot: depots.depot,
-      racineCourante: depots.racine,
+      racine: depots.racine,
       id: 'x',
       titre: 'x',
       conditions: (
         ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
       ).map(verte),
       personnes: PERSONNES_ESSAI,
-      ecrireEntree: (sorte) => {
+      ecrireEntree: (arbre, sorte) => {
         essais++
-        if (sorte === 'fusion') throw new Error('mémoire : le chantier porterait 1 nom(s)')
         ecrireRetrait(
-          depots.depot,
-          { date: '2026-10-11', client: 'c', id: 'x', titre: 'x', intentions: [], motif: 'm' },
+          arbre,
+          {
+            date: '2026-10-11',
+            client: 'c',
+            id: `x-${sorte}`,
+            titre: 'x',
+            intentions: [],
+            motif: 'm',
+          },
           PERSONNES_ESSAI,
         )
-        return join(depots.depot, 'memoire', 'INDEX.md')
+        if (sorte === 'fusion') throw new Error('mémoire : le chantier porterait 1 nom(s)')
+        return join(arbre, 'memoire', 'INDEX.md')
       },
     })
     expect(r.sorte).toBe('refuse')
     expect(r.sorte === 'refuse' && r.rouges.map((k) => k.id)).toEqual(['memoire'])
     expect(essais).toBe(2)
-    expect(git(depots.depot, 'log', '--merges', '--oneline')).toBe('')
+    expect(git(depots.origine, 'log', '--merges', '--oneline', 'main')).toBe('')
+    expect(lireIndex(cloneDuDistant(depots.origine)).map((e) => e.id)).toEqual(['x-refus'])
+    expect(etatHumain(depots.racine)).toEqual(humain)
   })
 })
 
 describe('G2 : le retrait défait la fusion', () => {
-  it('revert -m 1 sur main du clone, poussé ; la mémoire garde motif et intentions ; une seconde fois refusée', async () => {
-    const { depots, dossier } = await lancer()
-    const avant = readdirSync(join(depots.depot, 'metiers', 'essai', 'code', 'src'))
-    expect(avant).toContain('simulation.ts')
-    const retirer = () =>
-      retirerFusion({
-        commande: commandeSync,
-        depot: depots.depot,
-        racineCourante: depots.racine,
-        id: 'simuler_absence',
-        motif: 'doublon',
-        dejaRetiree: missionsRetirees(depots.depot).some((x) => x.id === 'simuler_absence'),
-        ecrireRetrait: () =>
-          ecrireRetrait(
-            depots.depot,
-            {
-              date: '2026-10-12',
-              client: 'client essai',
-              id: 'simuler_absence',
-              titre: MISSION_ESSAI.titre,
-              intentions: MISSION_ESSAI.intentions,
-              motif: 'doublon',
-            },
-            PERSONNES_ESSAI,
-          ),
-      })
-    const r = retirer()
-    expect(readdirSync(join(depots.depot, 'metiers', 'essai', 'code', 'src'))).not.toContain(
+  it('revert -m 1 sur main du distant, poussé ; la mémoire garde motif et intentions ; une seconde fois refusée ; l’humain n’a pas bougé', async () => {
+    const { depots, humain } = await lancer()
+    const r = retirer(depots.racine)
+    const distant = cloneDuDistant(depots.origine)
+    expect(readdirSync(join(distant, 'metiers', 'essai', 'code', 'src'))).not.toContain(
       'simulation.ts',
     )
     expect(git(depots.origine, 'rev-parse', 'main')).toBe(r.revert)
     // La mémoire de la fusion reste ; le retrait s'ajoute, intentions comprises.
-    expect(
-      existsSync(join(depots.depot, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md')),
-    ).toBe(true)
-    expect(missionsRetirees(depots.depot)).toEqual([
+    expect(existsSync(join(distant, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md'))).toBe(
+      true,
+    )
+    expect(missionsRetirees(distant)).toEqual([
       { id: 'simuler_absence', intentions: ['simuler_absence'] },
     ])
-    expect(retirer).toThrow(/déjà retirée/)
-    // Relancé, le chantier de la même mission ne refait rien : écartée, retirée.
-    const s = await faireChantier(METIER_ESSAI, {
-      racine: depots.racine,
-      agence: agenceEssai('claude-absent', depots.depot),
-      mission: join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'simuler_absence.yaml'),
-      env: ENV_ESSAI,
-      maintenant: MAINTENANT,
-    })
-    expect(s).toMatchObject({ sorte: 'decision', decision: { sorte: 'ecartee' } })
+    expect(() => retirer(depots.racine)).toThrow(/déjà retirée/)
+    expect(etatHumain(depots.racine)).toEqual(humain)
+    expect(arbresRestants(depots.racine)).toEqual([])
   })
 
-  it('un push refusé au retrait : rien n’est retiré, le clone reste propre et revient d’où il partait', async () => {
-    // Le dépôt nu disparaît : tout push échoue.
-    const essai = await lancer({ options: {} })
-    expect(essai.issue.sorte === 'fait' && essai.issue.issue).toBe('fusionné')
-    const tete = git(essai.depots.depot, 'rev-parse', 'HEAD')
-    spawnSync('git', ['remote', 'set-url', 'origin', join(essai.depots.depot, 'nulle-part.git')], {
-      cwd: essai.depots.depot,
-    })
-    expect(() =>
-      retirerFusion({
-        commande: commandeSync,
-        depot: essai.depots.depot,
-        racineCourante: essai.depots.racine,
-        id: 'simuler_absence',
-        motif: 'doublon',
-        dejaRetiree: false,
-        ecrireRetrait: () =>
-          ecrireRetrait(
-            essai.depots.depot,
-            {
-              date: '2026-10-12',
-              client: 'c',
-              id: 'simuler_absence',
-              titre: 't',
-              intentions: [],
-              motif: 'm',
-            },
-            PERSONNES_ESSAI,
-          ),
-      }),
-    ).toThrow(/retrait défait/)
-    expect(git(essai.depots.depot, 'rev-parse', 'HEAD')).toBe(tete)
-    expect(git(essai.depots.depot, 'status', '--porcelain')).toBe('')
-    expect(missionsRetirees(essai.depots.depot)).toEqual([])
+  it('après le retrait, la même mission ne se refait pas ; sous un autre nom, écartée sur la mémoire d’origin/main que la racine n’a pas', async () => {
+    const e = await lancer()
+    retirer(e.depots.racine)
+    // La racine (l'arbre de l'humain) n'a pas tiré le retrait : seule la mémoire d'origin/main le sait.
+    expect(missionsRetirees(e.depots.racine)).toEqual([])
+    const encore = await faireChantier(METIER_ESSAI, e.options)
+    expect(encore.sorte).toBe('deja_tentee')
+    const bis = clientAvecMission({ ...MISSION_ESSAI, id: 'simuler_absence_bis' })
+    const s = await faireChantier(METIER_ESSAI, { ...e.options, mission: bis.fichier })
+    expect(s).toMatchObject({ sorte: 'decision', decision: { sorte: 'ecartee' } })
+    expect(s.sorte === 'decision' && s.decision.sorte === 'ecartee' && s.decision.motif).toMatch(
+      /mission retirée \(simuler_absence\)/,
+    )
+    expect(lireStatut(join(e.sortie, 'simuler_absence_bis.statut.yaml'))?.statut).toBe('écartée')
+    expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
+    // Écartée avant que la branche existe : rien ne reste, et la relancer l'écarte encore.
+    expect(git(e.depots.racine, 'branch', '--list', 'chantier/simuler_absence_bis')).toBe('')
+    expect(arbresRestants(e.depots.racine)).toEqual([])
+    expect((await faireChantier(METIER_ESSAI, { ...e.options, mission: bis.fichier })).sorte).toBe(
+      'decision',
+    )
+  })
+
+  it('un push toujours refusé au retrait : rien n’est retiré, ni sur le distant ni chez l’humain', async () => {
+    const e = await lancer()
+    const tete = git(e.depots.origine, 'rev-parse', 'main')
+    refuserPush(e.depots.origine)
+    expect(() => retirer(e.depots.racine)).toThrow(/retrait défait \(push refusé deux fois/)
+    expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(tete)
+    expect(missionsRetirees(cloneDuDistant(e.depots.origine))).toEqual([])
+    expect(etatHumain(e.depots.racine)).toEqual(e.humain)
+    expect(arbresRestants(e.depots.racine)).toEqual([])
   })
 
   it('rien à retirer sans fusion étiquetée', async () => {
     const { depots } = await lancer({ pnpm: { check: [1] } })
-    expect(() =>
-      retirerFusion({
-        commande: commandeSync,
-        depot: depots.depot,
-        racineCourante: depots.racine,
-        id: 'simuler_absence',
-        motif: 'm',
-        dejaRetiree: false,
-        ecrireRetrait: () => undefined,
-      }),
-    ).toThrow(/aucune fusion/)
+    expect(() => retirer(depots.racine)).toThrow(/aucune fusion/)
   })
 })
 
-describe('une fusion dont le push échoue', () => {
-  it('est défaite : ni fusion, ni étiquette, ni mémoire en plan ; le clone reste propre', async () => {
-    const depots = creerDepots()
-    spawnSync('git', ['remote', 'set-url', 'origin', join(depots.depot, 'nulle-part.git')], {
-      cwd: depots.depot,
-    })
-    const { binaire } = binaireSimule({
-      plan: PLAN_VERT,
-      implementations: [{ ecrire: gesteVert() }],
-    })
-    const tete = git(depots.depot, 'rev-parse', 'HEAD')
-    const r = await faireChantier(METIER_ESSAI, {
-      racine: depots.racine,
-      agence: agenceEssai(binaire, depots.depot),
-      mission: clientAvecMission().fichier,
-      env: ENV_ESSAI,
-      maintenant: MAINTENANT,
-      commande: commandeSimulee().commande,
-    })
-    expect(r.sorte === 'fait' && r.issue).toMatch(/^échoué : fusion défaite/)
-    expect(git(depots.depot, 'rev-parse', 'HEAD')).toBe(tete)
-    expect(git(depots.depot, 'tag', '--list')).toBe('')
-    expect(git(depots.depot, 'status', '--porcelain')).toBe('')
-  })
-})
-
-describe('R11 : fusion.ts refuse hors du clone de la nuit', () => {
+describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
   const vertes = (
     ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
-  ).map((id) => ({ id, ok: true, mesure: 'vert' }))
-  const essayer = (depot: string, racine: string) =>
-    conclure({
+  ).map((id): Condition => ({ id, ok: true, mesure: 'vert' }))
+  const entree =
+    (id: string) =>
+    (arbre: string, sorte: 'fusion' | 'refus', issue: string): string =>
+      ecrireChantier(
+        arbre,
+        {
+          date: '2026-10-11',
+          client: CLIENT,
+          id,
+          titre: id,
+          sections: [],
+          appris: '',
+          sorte,
+          issue,
+        },
+        PERSONNES_ESSAI,
+      )
+
+  it('en conflit avec origin/main : échoué, ni fusion ni étiquette ni mémoire poussées, rien ne reste', () => {
+    const depots = creerDepots()
+    const fichier = 'metiers/essai/code/src/actions.ts'
+    git(depots.racine, 'checkout', '-q', '-b', 'chantier/x')
+    spawnSync('sh', ['-c', `echo "export const A = 1" > ${fichier}`], { cwd: depots.racine })
+    git(depots.racine, 'commit', '-q', '-am', 'x')
+    git(depots.racine, 'checkout', '-q', 'main')
+    const autre = cloneDuDistant(depots.origine)
+    spawnSync('sh', ['-c', `echo "export const A = 2" > ${fichier}`], { cwd: autre })
+    spawnSync(
+      'git',
+      ['-c', 'user.name=a', '-c', 'user.email=a@b', 'commit', '-q', '-am', 'autre'],
+      {
+        cwd: autre,
+      },
+    )
+    git(autre, 'push', '-q', 'origin', 'main')
+    const tete = git(depots.origine, 'rev-parse', 'main')
+    const humain = etatHumain(depots.racine)
+    const r = conclure({
       commande: commandeSync,
-      depot,
-      racineCourante: racine,
+      racine: depots.racine,
       id: 'x',
       titre: 'x',
       conditions: vertes,
       personnes: PERSONNES_ESSAI,
-      ecrireEntree: () => {
-        throw new Error('jamais appelée')
-      },
+      ecrireEntree: entree('x'),
     })
+    expect(r.sorte === 'echec' && r.raison).toMatch(/^fusion impossible/)
+    expect(git(depots.origine, 'rev-parse', 'main')).toBe(tete)
+    expect(git(depots.origine, 'tag', '--list')).toBe('')
+    expect(git(depots.racine, 'tag', '--list')).toBe('')
+    expect(etatHumain(depots.racine)).toEqual(humain)
+    expect(arbresRestants(depots.racine)).toEqual([])
+  })
 
-  it("l'arbre courant, un arbre du même dépôt, un clone sale, un clone hors de main", () => {
-    const d = creerDepots()
-    expect(() => essayer(d.racine, d.racine)).toThrow(/arbre courant/)
-    git(d.racine, 'worktree', 'add', '-q', join(d.racine, '..', 'arbre-humain'), '-b', 'autre')
-    expect(() => essayer(join(d.racine, '..', 'arbre-humain'), d.racine)).toThrow(/arbre courant/)
-    spawnSync('sh', ['-c', 'echo x > sale.txt'], { cwd: d.depot })
-    expect(() => essayer(d.depot, d.racine)).toThrow(/pas propre/)
-    expect(() =>
-      publierMemoire({
-        commande: commandeSync,
-        depot: d.depot,
-        racineCourante: d.racine,
-        message: 'm',
-      }),
-    ).toThrow(/pas propre/)
-    spawnSync('rm', ['sale.txt'], { cwd: d.depot })
-    git(d.depot, 'checkout', '-q', '-b', 'ailleurs')
-    expect(() => essayer(d.depot, d.racine)).toThrow(/pas sur main/)
+  it('déjà sur origin/main (la réponse d’un push perdue) : fusionné, la même fusion, rien de plus poussé', async () => {
+    const e = await lancer()
+    const tete = git(e.depots.origine, 'rev-parse', 'main')
+    const fusion = git(e.depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    const r = conclure({
+      commande: commandeSync,
+      racine: e.depots.racine,
+      id: 'simuler_absence',
+      titre: 'x',
+      conditions: vertes,
+      personnes: PERSONNES_ESSAI,
+      ecrireEntree: entree('simuler_absence'),
+    })
+    expect(r).toEqual({
+      sorte: 'fusionne',
+      fusion,
+      memoire: 'memoire/chantiers/2026-10-11-simuler_absence.md',
+    })
+    expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(tete)
+    expect(arbresRestants(e.depots.racine)).toEqual([])
+  })
+})
+
+describe('un push refusé à la fusion', () => {
+  it('toujours : échoué, ni fusion ni étiquette, ici ou sur le distant ; la branche reste', async () => {
+    const depots = creerDepots()
+    refuserPush(depots.origine)
+    const humain = etatHumain(depots.racine)
+    const { binaire } = binaireSimule({
+      plan: PLAN_VERT,
+      implementations: [{ ecrire: gesteVert() }],
+    })
+    const r = await faireChantier(METIER_ESSAI, {
+      racine: depots.racine,
+      agence: agenceEssai(binaire),
+      mission: clientAvecMission().fichier,
+      client: CLIENT,
+      personnes: PERSONNES_ESSAI,
+      sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
+      env: ENV_ESSAI,
+      maintenant: MAINTENANT,
+      commande: commandeSimulee().commande,
+    })
+    expect(r.sorte === 'fait' && r.issue).toMatch(
+      /^échoué : fusion défaite : push refusé deux fois/,
+    )
+    expect(git(depots.origine, 'log', '--oneline', 'main').split('\n')).toHaveLength(1)
+    expect(git(depots.origine, 'tag', '--list')).toBe('')
+    expect(git(depots.racine, 'tag', '--list')).toBe('')
+    expect(git(depots.racine, 'branch', '--list', 'chantier/simuler_absence')).toContain(
+      'chantier/',
+    )
+    expect(etatHumain(depots.racine)).toEqual(humain)
+    expect(arbresRestants(depots.racine)).toEqual([])
+  })
+
+  it('une fois, parce que quelqu’un a poussé entre-temps : une reprise depuis le nouvel origin/main, fusionné', async () => {
+    // Au premier push de la fusion, un autre pousse sur main du distant : le push devient refusé (non fast-forward).
+    let pousse = false
+    const autre = (origine: string) => {
+      const d = cloneDuDistant(origine)
+      git(d, 'config', 'user.email', 'autre@exemple.invalid')
+      git(d, 'config', 'user.name', 'autre')
+      git(d, 'commit', '-q', '--allow-empty', '-m', 'poussé entre-temps')
+      git(d, 'push', '-q', 'origin', 'main')
+    }
+    let origine = ''
+    const { commande: simulee } = commandeSimulee()
+    const commande: Commande = (cwd, nom, args, env) => {
+      if (!pousse && nom === 'git' && args[0] === 'push' && /fusion-/.test(cwd)) {
+        pousse = true
+        autre(origine)
+      }
+      return simulee(cwd, nom, args, env)
+    }
+    const depots = creerDepots()
+    origine = depots.origine
+    const { binaire } = binaireSimule({
+      plan: PLAN_VERT,
+      implementations: [{ ecrire: gesteVert() }],
+    })
+    const r = await faireChantier(METIER_ESSAI, {
+      racine: depots.racine,
+      agence: agenceEssai(binaire),
+      mission: clientAvecMission().fichier,
+      client: CLIENT,
+      personnes: PERSONNES_ESSAI,
+      sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
+      env: ENV_ESSAI,
+      maintenant: MAINTENANT,
+      commande,
+    })
+    expect(pousse).toBe(true)
+    expect(r.sorte === 'fait' && r.issue).toBe('fusionné')
+    const fusion = git(depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    // La fusion part du commit poussé entre-temps : rien de ce qu'il a apporté n'est perdu.
+    expect(git(depots.origine, 'log', '-1', '--format=%s', `${fusion}^1`)).toBe(
+      'poussé entre-temps',
+    )
+    expect(git(depots.origine, 'log', '-1', '--format=%s', 'main')).toMatch(/^Mémoire : chantier/)
   })
 })
 
 describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
   it('le plan dit « hors de la bande » : question pour l’atelier, aucune implémentation', async () => {
-    const { issue, appels } = await lancer({
+    const { issue, appels, sortie } = await lancer({
       scenario: { plan: { faisable: false, raison: 'il faut toucher le moteur', plan: '-' } },
     })
     expect(issue.sorte === 'fait' && issue.issue).toMatch(/^question pour l'atelier/)
     expect(appels().map((a) => a.role)).toEqual(['plan'])
+    expect(statut(sortie)).toMatchObject({ statut: 'écartée', cout_usd: 0.5 })
   })
 
-  it('deux lancements : « déjà tentée » ; --sans-modele : aucun appel, aucun git', async () => {
+  it('deux lancements : « déjà tentée » ; --sans-modele : aucun appel, aucun git, aucun statut', async () => {
     const r = await lancer({ pnpm: { check: [1] } })
     const encore = await faireChantier(METIER_ESSAI, r.options)
     expect(encore.sorte).toBe('deja_tentee')
     expect(r.appels()).toHaveLength(2)
     const { commande, emises } = commandeSimulee()
-    const sans = await faireChantier(METIER_ESSAI, { ...r.options, commande, sansModele: true })
+    const sortie = mkdtempSync(join(tmpdir(), 'sortie-'))
+    const sans = await faireChantier(METIER_ESSAI, {
+      ...r.options,
+      commande,
+      sortie,
+      sansModele: true,
+    })
     expect(sans.sorte).toBe('sans_modele')
     expect(emises).toEqual([])
     expect(r.appels()).toHaveLength(2)
+    expect(readdirSync(sortie)).toEqual(['simuler_absence.sans-modele.chantier.md'])
   })
 
   it('--sans-modele sur une mission commandée par le patron : le chantier, des consignes sans identifiant', async () => {
@@ -611,8 +703,11 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     const { fichier } = clientAvecCommande()
     const r = await faireChantier(METIER_ESSAI, {
       racine: depots.racine,
-      agence: agenceEssai(binaire, depots.depot),
+      agence: agenceEssai(binaire),
       mission: fichier,
+      client: CLIENT,
+      personnes: PERSONNES_ESSAI,
+      sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
       env: ENV_ESSAI,
       maintenant: MAINTENANT,
       commande,
@@ -623,17 +718,20 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     expect(dossier).toContain('Décision : **chantier**')
     expect(dossier).toContain('sorte : geste_code ; métier : essai ; écrit : oui')
     expect(dossier).toContain('  - « Libère le mardi 13 de <personne>. »')
+    expect(dossier).toContain('## La mémoire des chantiers')
     expect(dossier).not.toMatch(/A-\d|E-2026|Rosalie/)
     expect(appels()).toEqual([])
     expect(emises).toEqual([])
   })
 
-  it('une consigne-type qui nommerait quelqu’un : refusée avant tout appel', async () => {
-    const { issue, appels } = await lancer({
+  it('une consigne-type qui nommerait quelqu’un : refusée avant tout appel et tout git', async () => {
+    const { issue, appels, emises, sortie } = await lancer({
       mission: { ...MISSION_ESSAI, consignes_types: ['les heures de Rosalie'] },
     })
     expect(issue.sorte).toBe('fuite')
     expect(appels()).toEqual([])
+    expect(emises).toEqual([])
+    expect(statut(sortie)).toMatchObject({ statut: 'écartée' })
   })
 
   it('sous acces: claude, une ANTHROPIC_API_KEY présente refuse avant tout appel et toute branche', async () => {
@@ -643,8 +741,11 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     await expect(
       faireChantier(METIER_ESSAI, {
         racine: depots.racine,
-        agence: agenceEssai(binaire, depots.depot),
+        agence: agenceEssai(binaire),
         mission: clientAvecMission().fichier,
+        client: CLIENT,
+        personnes: PERSONNES_ESSAI,
+        sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
         env: { ANTHROPIC_API_KEY: 'x' },
         maintenant: MAINTENANT,
         commande,
@@ -673,12 +774,12 @@ describe('aucun merge ni push hors de fusion.ts', () => {
     expect(fautifs).toEqual([])
   })
 
-  it('un chantier refusé n’émet aucun merge ; son seul push est celui de la mémoire, par fusion.ts', async () => {
+  it('un chantier refusé n’émet aucun merge ; son seul push est celui de la mémoire, sur main du distant', async () => {
     const r = await lancer({ pnpm: { check: [1] }, scenario: {} })
     const git = r.emises.filter((x) => x.commande === 'git')
     expect(git.filter((x) => x.args[0] === 'merge')).toEqual([])
     expect(git.filter((x) => x.args[0] === 'push').map((x) => x.args)).toEqual([
-      ['push', 'origin', 'main'],
+      ['push', '--atomic', '--quiet', 'origin', 'HEAD:refs/heads/main'],
     ])
   })
 })

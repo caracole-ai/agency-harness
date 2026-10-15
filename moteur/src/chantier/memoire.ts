@@ -11,18 +11,18 @@ import type { Designable } from '../conversation/designation'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
 import { fuites } from '../echappee/pseudonymes'
 
-// La mémoire de la nuit, dans le dépôt (PLAN-RONDE.md R10, PLAN-GENERAL.md
+// La mémoire des chantiers, dans le dépôt (PLAN-RONDE.md R10, PLAN-GENERAL.md
 // décision 2) : `memoire/INDEX.md` (une ligne par événement),
-// `chantiers/`, `CONVENTIONS.md` (on y ajoute, on n'en retire jamais),
-// `MESURES.md` (une ligne par nuit). Écrite par le code ; le texte libre d'un
-// modèle y passe nettoyé. Rien n'y entre qui porte un nom de salarié, un
-// identifiant de personne, de conversation ou d'échappée : ceux-là restent
-// chez le client. Une écriture qui en porterait un lève, rien n'est écrit.
+// `chantiers/`, `CONVENTIONS.md` (on y ajoute, on n'en retire jamais).
+// Écrite par le code, dans l'arbre détaché de la fusion ou du retrait
+// (PLAN-LIVRAISON.md L2) ; le texte libre d'un modèle y passe nettoyé. Rien
+// n'y entre qui porte un nom de salarié, un identifiant de personne, de
+// conversation ou d'échappée : ceux-là restent chez le client. Une écriture
+// qui en porterait un lève, rien n'est écrit.
 
 export const DOSSIER_MEMOIRE = 'memoire'
 export const FICHIER_INDEX = 'INDEX.md'
 export const FICHIER_CONVENTIONS = 'CONVENTIONS.md'
-export const FICHIER_MESURES = 'MESURES.md'
 export const DOSSIER_CHANTIERS_MEMOIRE = 'chantiers'
 
 /** Ce que la mémoire raconte (R10). */
@@ -208,34 +208,6 @@ export function ajouterConvention(
   ajouter(dossier(racine, FICHIER_CONVENTIONS), ligne)
 }
 
-/** Ajoute la ligne d'une nuit à `MESURES.md` : des comptes, écrits par le code. */
-export function ajouterMesure(
-  racine: string,
-  date: string,
-  client: string,
-  comptes: Record<string, number | string>,
-  personnes: Designable[],
-): void {
-  const ligne = `- ${date}${SEP}${colonne(client)}${SEP}${Object.entries(comptes)
-    .map(([k, v]) => `${k} ${v}`)
-    .join(', ')}`
-  exigerPropre(ligne, personnes, 'la mesure')
-  ajouter(dossier(racine, FICHIER_MESURES), ligne)
-}
-
-/** Les lignes de `MESURES.md` : la date et le client de chaque nuit. */
-export function lireMesures(racine: string): { date: string; client: string }[] {
-  const chemin = dossier(racine, FICHIER_MESURES)
-  if (!existsSync(chemin)) return []
-  return readFileSync(chemin, 'utf8')
-    .split('\n')
-    .filter((l) => l.startsWith('- ') && l.includes(SEP))
-    .map((l) => {
-      const [date = '', client = ''] = l.slice(2).split(SEP)
-      return { date, client }
-    })
-}
-
 /** `CONVENTIONS.md`, tel quel (vide s'il n'existe pas). */
 export function lireConventions(racine: string): string {
   const chemin = dossier(racine, FICHIER_CONVENTIONS)
@@ -289,6 +261,35 @@ export const missionsRetirees = (racine: string): MissionRetiree[] =>
         .map((i) => i.trim())
         .filter((i) => i.length > 0),
     }))
+
+/** La ligne de la mission dans la section « La mission » d'une entrée (`missionPourModele`). */
+const INTENTIONS_MISSION = /^- intentions : (.*)$/m
+
+/**
+ * Ce que la mémoire garde d'une mission fusionnée, pour son retrait (G2) :
+ * la dernière ligne `fusion` de l'index (date, client, titre) et les
+ * intentions de son entrée ; undefined si la mémoire n'en a pas.
+ */
+export function missionFusionnee(
+  racine: string,
+  id: string,
+): { date: string; client: string; titre: string; intentions: string[] } | undefined {
+  const e = lireIndex(racine)
+    .filter((x) => x.sorte === 'fusion' && x.id === id)
+    .at(-1)
+  if (!e) return undefined
+  const chemin = dossier(racine, DOSSIER_CHANTIERS_MEMOIRE, `${e.date}-${id}.md`)
+  const ligne = existsSync(chemin)
+    ? INTENTIONS_MISSION.exec(readFileSync(chemin, 'utf8'))?.[1]
+    : undefined
+  if (ligne === undefined) return undefined
+  return {
+    date: e.date,
+    client: e.client,
+    titre: e.titre,
+    intentions: [...ligne.matchAll(/`([^`]+)`/g)].flatMap((x) => (x[1] ? [x[1]] : [])),
+  }
+}
 
 /** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du client, les conventions, les chantiers qui citent ses intentions. */
 export function pourChantier(

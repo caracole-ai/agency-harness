@@ -81,6 +81,17 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   mesure en code à chaque passe (seuil 0). Quatre lots. Reste hors du plan :
   la traduction, qui reçoit la phrase telle qu'écrite, et son niveau 2
   (`designer`), qui montre au modèle jusqu'à trois noms proches à départager.
+- `PLAN-LIVRAISON.md` — **le plan de la livraison** (2026-10-15 ; remplace
+  les phases E et H de `PLAN-GENERAL.md`, retire G3, remplace G8) : le
+  chantier se lance au clic du patron, à l'agence (`pnpm agence`, une file
+  git de missions masquées par client), sans nuit ni clone réservé (arbres
+  de travail depuis `origin/main`, fusion dans un arbre détaché) ; chaque
+  fusion émet une étiquette git signée (SSH) ; le harnais du client
+  (`pnpm harnais`) la tire, vérifie la signature, installe à côté, rejoue
+  `pnpm check`, bascule à un moment calme, revient en arrière si le
+  redémarrage échoue. Douze décisions L1 à L12, cinq lots. Lot 0 (le plan)
+  et lot 1 (le chantier sans clone ni dossier client, la nuit retirée) faits
+  le 2026-10-15 ; lots 2 à 5 à faire.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -106,15 +117,18 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   secret) : le modèle de chaque rôle du chantier (plan, implémentation, relecture)
   et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
   `anthropic` : la clé d'API, avant la finalisation), les prix relus dans la
-  doc d'Anthropic, les bornes du chantier, le clone de la nuit
-  (`depot_nuit`, `PLAN-GENERAL.md` G3), les règles d'outils (bornées à
+  doc d'Anthropic, les bornes du chantier, `agence` (`pnpm agence`,
+  `PLAN-LIVRAISON.md` L1 : la borne du jour, le pas de la boucle, la file de
+  chaque client ; lu au lot 3), les règles d'outils (bornées à
   l'arbre de travail : `Write(./**)`) et les chemins autorisés au chantier,
   écrits avec `${metier}` et résolus avec le métier de la mission ;
   `evals_clients` donne, par métier, le client fictif de la condition 4
   (`PLAN-METIER-2.md` M9).
-- `memoire/` — la mémoire de la nuit (`PLAN-RONDE.md` R10), écrite par le
-  code : `INDEX.md` (une ligne par événement), `chantiers/`,
-  `CONVENTIONS.md` (on y ajoute, on n'en retire jamais), `MESURES.md`. Aucun
+- `memoire/` — la mémoire des chantiers (`PLAN-RONDE.md` R10), écrite par
+  le code dans l'arbre de la fusion ou du retrait, poussée avec eux :
+  `INDEX.md` (une ligne par événement), `chantiers/`, `CONVENTIONS.md` (on y
+  ajoute, on n'en retire jamais) ; `MESURES.md` ne garde que des tables
+  écrites à la main. Aucun
   nom ni identifiant de personne, de conversation ou d'échappée : un test de
   `pnpm check` relit tout le dossier.
 - `metiers/<métier>/evals/` — les cas d'évals du métier (`consignes`,
@@ -230,21 +244,28 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   conversation sous l'abonnement s'en sert isolée (`--setting-sources ""`),
   le chantier avec les réglages de l'arbre seulement
   (`--setting-sources project` : ni les hooks ni le `CLAUDE.md` de
-  l'utilisateur). Le chantier (`PLAN-RONDE.md` § 6, `PLAN-GENERAL.md` G1 à
-  G3) : `mission.ts` (la mission d'un geste commandé : écrite par le code à la
-  commande depuis le journal, sans nom, `missions/<date>/<id>.yaml` chez le
-  client ; la décision en code, retirée ou geste déjà codé ; ce qui part au
-  modèle, par types ; l'état d'une commande pour l'interface), `arbre.ts` (le clone de la nuit vérifié, un
-  `git worktree` par mission, le commit ; jamais merge ni push), `garde.ts`
-  (le diff dans la bande, la mémoire en ajout seul aux conventions, aucun
-  test retiré ni tu, `lignes_max`, les cas de traduction des gestes
+  l'utilisateur). Le chantier (`PLAN-RONDE.md` § 6, `PLAN-GENERAL.md` G1,
+  G2, `PLAN-LIVRAISON.md` L2, L3), à l'agence : `mission.ts` (la mission
+  d'un geste commandé : écrite par le code à la commande depuis le journal,
+  sans nom, relue entière contre les noms avant d'être écrite,
+  `missions/<date>/<id>.yaml` chez le client ; la décision en code, retirée
+  ou geste déjà codé ; ce qui part au modèle, par types ; le statut
+  `<id>.statut.yaml` que le chantier rend, lu par un schéma strict ; l'état
+  d'une commande pour l'interface), `arbre.ts` (le dépôt de l'agence comme
+  base, `origin/main` frais, un `git worktree` par mission depuis
+  `origin/main`, un arbre détaché pour la fusion, le commit ; sur la base,
+  seulement `fetch`, `worktree`, `rev-parse` : l'arbre d'un humain et son
+  `main` ne bougent pas ; jamais merge ni push), `garde.ts` (le diff depuis
+  `origin/main` dans la bande, la mémoire en ajout seul aux conventions,
+  aucun test retiré ni tu, `lignes_max`, les cas de traduction des gestes
   nouveaux), `fusion.ts` (les huit conditions de G1, `git merge --no-ff`
-  dans `main` du clone, l'étiquette, le push, la mémoire commise à part ; le
-  retrait par `git revert -m 1` ; le seul module qui fusionne ou pousse),
-  `chantier.ts` (plan → implémentation → garde → `pnpm check` → relecture →
-  une reprise au plus → honnêteté → dossier → mémoire → fusion), `nuit.ts`
-  (le clone remis à `origin/main` → chantier des missions commandées, la ligne de
-  la nuit ; idempotente).
+  dans un arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
+  `main` du distant, une reprise si le push est refusé, la mémoire commise à
+  part ; le retrait par `git revert -m 1`, de même ; le seul module qui
+  fusionne ou pousse), `chantier.ts` (plan → implémentation → garde → `pnpm
+  check` → relecture → une reprise au plus → honnêteté → dossier → mémoire →
+  fusion → statut ; aucun dossier client lu : les noms contrôlés sont ceux
+  du client fictif du métier).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `metiers/<métier>/evals/`
   (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches.
@@ -272,8 +293,9 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   (`/api/sans-geste/commander`, aucun modèle) : le code écrit la mission
   `geste_code` chez le client (`missions/<date>/<intention>.yaml`, depuis les
   consignes version modèle des échappées de l'intention, sans nom), puis une
-  ligne `geste commandé` ; la nuit la prend, le chantier code le geste sous
-  ses portes. La carte dit où en est la commande : mission écrite, chantier
+  ligne `geste commandé` ; le chantier, à l'agence, code le geste sous ses
+  portes (`PLAN-LIVRAISON.md` : la file des missions et la mise à jour
+  tirée, lots 3 et 4). La carte dit où en est la commande : mission écrite, chantier
   du … (fusionné : disponible à la prochaine mise à jour de l'outil), puis
   disponible quand le métier chargé porte le geste. « par » est l'identité
   vérifiée, jamais un champ du corps.
@@ -403,35 +425,30 @@ pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]
                          # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
                          # traces dans evals/traces/<horodatage>-<métier>-<quoi>/ (non versionné),
                          # tableau dans evals/resultats/<horodatage>-<métier>-<quoi>.md
-pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sans-modele] [--refaire]
-                         # le chantier d'une mission commandée (PLAN-RONDE.md § 6) : décidé en
-                         # code (retirée, geste déjà codé : aucun appel),
-                         # puis, dans un arbre de travail du clone de la nuit (agence.yaml :
-                         # depot_nuit, jamais l'arbre courant ni un arbre sale), Fable planifie,
-                         # Opus code dans la bande métier, le code garde le diff et rejoue
-                         # pnpm check, Fable relit (une reprise au plus sur un bloquant), le
-                         # code mesure l'honnêteté (trois cas par geste nouveau, pnpm evals
-                         # traduire avec le modèle du quotidien : exige sa clé) ; dossier
-                         # <copie>/chantiers/<id>.md, memoire/ du clone, et fusion --no-ff dans
-                         # main du clone + étiquette chantier/<id> + push si les huit conditions
-                         # de G1 sont vertes. Déjà tentée : rien, sauf --refaire (qui rouvre la
-                         # branche telle quelle : pour repartir de main, supprimer la branche
-                         # chantier/<id> du clone). --sans-modele :
-                         # la décision et ce que le plan recevrait, aucun appel ni git.
-pnpm chantier retirer <id> --motif "<texte>" --client <copie>
-                         # G2 : git revert -m 1 de la fusion sur main du clone, push, la mémoire
-                         # (motif, intentions : jamais refaite, même sous un autre nom), la ligne
-                         # « retiré » au journal du client.
-pnpm nuit --client <copie> [--date 2026-10-10]
-                         # la nuit (PLAN-RONDE.md § 7) : le clone de la nuit remis à origin/main
-                         # (fetch + reset --hard, ce clone seulement ; sale ou arbre courant : la
-                         # nuit s'arrête avant tout appel), puis le chantier de la première
-                         # mission commandée non traitée, au plus
-                         # missions_max_par_nuit → la ligne de la nuit dans
-                         # memoire/MESURES.md. Une étape qui échoue n'arrête pas les suivantes ;
-                         # relancée la même nuit, elle ne refait rien. Rien n'est installé ; au
-                         # cron de l'agence (phase E, pas avant la bascule vers la clé d'API) :
-                         # 0 3 * * * cd <clone d'un humain> && pnpm nuit --client <dossier du client>
+pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier>] [--sans-modele] [--refaire]
+                         # le chantier d'une mission commandée (PLAN-RONDE.md § 6,
+                         # PLAN-LIVRAISON.md L2, L3), à l'agence : décidé en code (retirée,
+                         # geste déjà codé : aucun appel), puis, dans un arbre de travail de
+                         # ce dépôt parti d'origin/main (.claude/worktrees/chantier-<id> ; ni
+                         # l'arbre de qui lance ni son main ne bougent), Fable planifie, Opus
+                         # code dans la bande métier, le code garde le diff et rejoue pnpm check,
+                         # Fable relit (une reprise au plus sur un bloquant), le code mesure
+                         # l'honnêteté (trois cas par geste nouveau, pnpm evals traduire avec le
+                         # modèle du quotidien : exige sa clé) ; la mémoire, et, si les huit
+                         # conditions de G1 sont vertes, fusion --no-ff dans un arbre détaché +
+                         # étiquette chantier/<id> + push sur main du distant. Le dossier
+                         # <id>.chantier.md et le statut <id>.statut.yaml vont dans --sortie (par
+                         # défaut, à côté de la mission). Le métier est celui de la mission ; les
+                         # noms contrôlés, ceux de son client fictif (evals_clients). Déjà
+                         # tentée : rien, sauf --refaire (qui rouvre la branche telle quelle :
+                         # pour repartir d'origin/main, supprimer la branche chantier/<id>).
+                         # --sans-modele : la décision et ce que le plan recevrait, aucun appel
+                         # ni git.
+pnpm chantier retirer <id> --motif "<texte>"
+                         # G2 : git revert -m 1 de la fusion dans un arbre détaché sur
+                         # origin/main, push sur main du distant, la mémoire (motif, et le
+                         # client, le titre et les intentions que garde la mémoire de la fusion :
+                         # jamais refaite, même sous un autre nom).
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,

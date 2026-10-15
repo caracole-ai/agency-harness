@@ -4,6 +4,16 @@
 > (`REFLEXIONS.md`). Les mentions de `pnpm promotions`, de la fabrication,
 > de l'état « promotion en cours » et de `evals promotion` décrivent l'état
 > d'avant ; la phase E n'a plus d'étape `promotions` à retirer.
+>
+> **Amendé le 2026-10-15 au soir** (`PLAN-LIVRAISON.md`) : le chantier se
+> lance **au clic du patron, à l'agence**, sans nuit ni cron ni clone
+> réservé ; la fusion se fait dans un arbre détaché depuis `origin/main` ;
+> chaque fusion émet une **étiquette git signée (SSH)** que le harnais du
+> client tire, vérifie, installe à côté et bascule à un moment calme, avec
+> retour arrière. **G3 est retiré** (plus de clone de la nuit), **G8 est
+> remplacé** par L4 à L9 de ce plan-là, **la phase E** (la nuit au cron) et
+> **la phase H** (G8) sont remplacées par ses lots 1 à 5. G1, G2, G10 et G11
+> restent ; F et G ne bougent pas.
 
 Écrit le 2026-10-10 au soir, sur trois décisions de Lionel du même soir
 (`REFLEXIONS.md`, « Décidé ») :

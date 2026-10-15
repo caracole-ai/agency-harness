@@ -1,14 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { z } from 'zod'
-import {
-  type Agence,
-  cheminDepotNuit,
-  type Executer,
-  executerSync,
-  preflight,
-} from '../agence/config'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
+import { type Agence, type Executer, executerSync, preflight } from '../agence/config'
 import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
@@ -16,12 +9,14 @@ import type { Domaine } from '../conversation/domaine'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
+  brancher,
   type Commande,
   commandeSync,
   commettre,
   fermerArbre,
   ouvrirArbre,
-  verifierDepot,
+  REF_DISTANTE,
+  verifierBase,
 } from './arbre'
 import { envEnfant, type IssueClaude, type Lancer, lancerClaude, lancerProcessus } from './claude'
 import { CONDITIONS, type Condition, conclure, type IssueFusion, raisonRefus } from './fusion'
@@ -39,27 +34,34 @@ import {
   construireCatalogue,
   type Decision,
   decider,
+  ecrireStatut,
   lireMission,
   type Mission,
   missionPourModele,
+  type StatutChantier,
   TYPE_CHANTIER,
 } from './mission'
 
-// Le chantier d'une mission (PLAN-RONDE.md § 6.3, R5 ; PLAN-GENERAL.md G1) :
-// décider en code (§ 0.b : retirée, geste déjà actif), puis, dans un arbre de travail du clone de la nuit, le plan
-// (modèle `chantier.plan`, lecture seule, sortie structurée), l'implémentation
-// (`chantier.implementation`, bornée par la config), la garde du diff,
-// `pnpm check` rejoué par le code, la relecture (`chantier.revue`, lecture
-// seule, constats structurés), une reprise au plus sur un `bloquant`, le test
-// d'honnêteté (les cas de traduction de chaque geste nouveau, et `pnpm evals
-// traduire` avec le modèle du quotidien) ; le dossier chez le client, l'entrée
-// de mémoire, et la fusion par `fusion.ts` si les huit conditions sont vertes.
-// Le modèle ne reçoit aucune donnée du client : la mission par types (R3),
-// la mémoire sans nom ; la fuite se mesure avant tout appel. Les modèles
-// passent par le binaire `claude` (§ 0.a) : coût estimé par le binaire.
+// Le chantier d'une mission (PLAN-RONDE.md § 6.3, R5 ; PLAN-GENERAL.md G1 ;
+// PLAN-LIVRAISON.md L2, L3), à l'agence : décider en code (§ 0.b : retirée,
+// geste déjà actif), puis, dans un arbre de travail parti d'`origin/main`, le
+// plan (modèle `chantier.plan`, lecture seule, sortie structurée),
+// l'implémentation (`chantier.implementation`, bornée par la config), la garde
+// du diff, `pnpm check` rejoué par le code, la relecture (`chantier.revue`,
+// lecture seule, constats structurés), une reprise au plus sur un `bloquant`,
+// le test d'honnêteté (les cas de traduction de chaque geste nouveau, et
+// `pnpm evals traduire` avec le modèle du quotidien) ; l'entrée de mémoire, la
+// fusion par `fusion.ts` si les huit conditions sont vertes, et dans le
+// dossier de sortie `<id>.chantier.md` et `<id>.statut.yaml`. Le chantier ne
+// connaît aucun dossier client : ni son journal, ni ses noms ; il se contrôle
+// contre les noms du client fictif du métier, les seuls connus à l'agence. Le
+// modèle ne reçoit aucune donnée du client : la mission par types (R3), la
+// mémoire sans nom ; la fuite se mesure avant tout appel. Les modèles passent
+// par le binaire `claude` (§ 0.a) : coût estimé par le binaire.
 
 export { TYPE_CHANTIER }
-export const DOSSIER_CHANTIERS = 'chantiers'
+/** Le dossier d'un chantier, dans le dossier de sortie : `<id>.chantier.md`. */
+export const SUFFIXE_DOSSIER = '.chantier.md'
 export const FICHIER_METHODE = join('methode', 'chantier.md')
 /** La carte du harnais : `methode/chantier.md` demande aux modèles du chantier de la lire. */
 export const FICHIER_CARTE = join('methode', 'architecture-pour-modeles.md')
@@ -121,11 +123,17 @@ export interface Etape {
 }
 
 export interface OptionsChantier {
-  /** La racine de l'arbre courant (le code qui tourne) : le clone de la nuit ne doit pas en être un (R11). */
+  /** Le dépôt de l'agence (L2) : la base des arbres de travail ; il peut être l'arbre d'un humain, rien n'y bouge. */
   racine: string
   agence: Agence
   /** `<client>/missions/<date>/<id>.yaml` */
   mission: string
+  /** Le client de la mission, en slug : la mémoire ne cite que lui (L3). */
+  client: string
+  /** Les noms que rien ne doit citer : ceux du client fictif du métier de la mission (L3). */
+  personnes: Designable[]
+  /** Où écrire `<id>.chantier.md` et `<id>.statut.yaml` (L7). */
+  sortie: string
   env: Record<string, string | undefined>
   sansModele?: boolean
   refaire?: boolean
@@ -184,67 +192,62 @@ const fin = (texte: string, n: number) => texte.trim().split('\n').slice(-n).joi
 
 /**
  * Le chantier d'une mission (§ 6.3). Idempotent : une mission déjà tentée (sa
- * branche existe dans le clone) ne se refait pas sans `refaire`.
+ * branche existe dans le dépôt de base) ne se refait pas sans `refaire`.
  */
 export async function faireChantier<S>(
   m: MetierConversation<S>,
   o: OptionsChantier,
 ): Promise<IssueChantier> {
   const debut = Date.now()
-  const { mission, dossierClient } = lireMission(o.mission)
-  // Le métier de la mission décide de la bande et du client d'évals (M9) : il doit être celui du client qui l'a demandée.
-  const { metier } = chargerConfig(join(dossierClient, FICHIER_CONFIG), ConfigBase)
-  if (mission.metier !== metier) {
-    throw new Error(`mission ${mission.id} du métier ${mission.metier}, client du métier ${metier}`)
-  }
+  const { mission } = lireMission(o.mission)
   const c = o.commande ?? commandeSync
   const lancer = o.lancer ?? lancerProcessus
   const executer = o.executer ?? executerSync
   const maintenant = o.maintenant ?? Temporal.Now.zonedDateTimeISO(FUSEAU)
   const jour = maintenant.toPlainDate().toString()
-  const depot = cheminDepotNuit(o.agence, o.racine)
   const ch = o.agence.chantier
   const modeles = o.agence.modeles.chantier
-  const dossierChantiers = join(dossierClient, DOSSIER_CHANTIERS)
+  const personnes = o.personnes
   // Sans modèle, le dossier s'écrit à côté : jamais par-dessus celui d'un chantier fait.
-  const dossier = join(dossierChantiers, `${mission.id}${o.sansModele ? '.sans-modele' : ''}.md`)
-  mkdirSync(dossierChantiers, { recursive: true })
+  const dossier = join(
+    o.sortie,
+    `${mission.id}${o.sansModele ? '.sans-modele' : ''}${SUFFIXE_DOSSIER}`,
+  )
+  mkdirSync(o.sortie, { recursive: true })
+  const catalogue = construireCatalogue(m, [])
+  const missionTexte = missionPourModele(mission, m.domaine)
 
-  const s = m.ouvrir(dossierClient)
-  try {
-    const journal = m.journal(s)
-    const client = m.client(s)
-    const personnes: Designable[] = m.noms(s)
-    const catalogue = construireCatalogue(m, dossierClient)
-    const retirees = existsSync(depot) ? missionsRetirees(depot) : []
-    const decision = decider(mission, catalogue, retirees)
-    const journaliser = (issue: string, donnees: Record<string, unknown>) =>
-      journal.ecrire(
-        [{ type: TYPE_CHANTIER, client, objet: mission.id, issue, donnees }],
-        maintenant.toInstant().toString(),
-      )
-
-    if (decision.sorte !== 'chantier') {
-      // La même décision le même jour : rien de plus au journal (la nuit relancée ne refait rien).
-      const contenu = rendreDecision(mission, decision, jour, m.domaine)
-      const deja = existsSync(dossier) && readFileSync(dossier, 'utf8') === contenu
-      writeFileSync(dossier, contenu)
-      if (!o.sansModele && !deja) {
-        journaliser(decision.motif, { decision: decision.sorte, cout_usd: 0 })
-      }
-      return { sorte: 'decision', decision, dossier }
-    }
-
-    // Ce qui vient du client et part au modèle : la mission par types, la mémoire sans nom.
-    const memoire = existsSync(depot)
-      ? pourChantier(
-          depot,
-          [mission.id, ...mission.intentions],
-          o.agence.chantier.memoire_index_lignes,
-        )
-      : { index: [], conventions: '', chantiers: [] }
-    const missionTexte = missionPourModele(mission, m.domaine)
-    const memoireTexte = [
+  /** Le statut que lira le client (L7) ; sans modèle, aucun : rien n'a été tenté. */
+  const statuer = (statut: StatutChantier, issue: string, cout: number) => {
+    if (o.sansModele) return
+    ecrireStatut(o.sortie, mission.id, {
+      statut,
+      issue,
+      cout_usd: round(cout),
+      le: maintenant.toInstant().toString(),
+    })
+  }
+  const ecarter = (decision: Exclude<Decision, { sorte: 'chantier' }>): IssueChantier => {
+    writeFileSync(dossier, rendreDecision(mission, decision, jour, m.domaine))
+    statuer('écartée', decision.motif, 0)
+    return { sorte: 'decision', decision, dossier }
+  }
+  const refuserFuite = (fuite: string[]): IssueChantier => {
+    writeFileSync(
+      dossier,
+      rendreDecision(mission, { sorte: 'ecartee', motif: ISSUES_CHANTIER.fuite }, jour, m.domaine),
+    )
+    statuer('écartée', ISSUES_CHANTIER.fuite, 0)
+    return { sorte: 'fuite', fuite, dossier }
+  }
+  /** Ce que le plan lit de la mémoire de ce dépôt, et le texte qui part au modèle. */
+  const lireMemoire = (racineMemoire: string) => {
+    const memoire = pourChantier(
+      racineMemoire,
+      [mission.id, ...mission.intentions],
+      ch.memoire_index_lignes,
+    )
+    const texte = [
       '### L’index (les dernières lignes)',
       '',
       ...(memoire.index.length > 0 ? memoire.index.map((l) => `- ${l}`) : ['(vide)']),
@@ -257,214 +260,157 @@ export async function faireChantier<S>(
       '',
       ...(memoire.chantiers.length > 0 ? memoire.chantiers : ['(aucun)']),
     ].join('\n')
-    const fuite = interdits(`${missionTexte}\n${memoireTexte}`, personnes)
-    if (fuite.length > 0) {
-      writeFileSync(
-        dossier,
-        rendreDecision(
-          mission,
-          { sorte: 'ecartee', motif: ISSUES_CHANTIER.fuite },
-          jour,
-          m.domaine,
-        ),
-      )
-      if (!o.sansModele) journaliser(ISSUES_CHANTIER.fuite, { fuite: fuite.length, cout_usd: 0 })
-      return { sorte: 'fuite', fuite, dossier }
-    }
-    const promptPlan = [
+    return { memoire, texte }
+  }
+  const promptPlan = (memoireTexte: string) =>
+    [
       "Planifie ce chantier. Tu lis le dépôt, tu n'écris rien.",
       '',
       '## La mission',
       '',
       missionTexte,
       '',
-      '## La mémoire de la nuit',
+      '## La mémoire des chantiers',
       '',
       memoireTexte,
       '',
       'Rends `faisable`, `raison` et `plan` au schéma donné.',
     ].join('\n')
-    if (o.sansModele) {
-      writeFileSync(
-        dossier,
-        [
-          rendreDecision(mission, decision, jour, m.domaine),
-          '## Ce que le plan recevrait (sans modèle : aucun appel)',
-          '',
-          promptPlan,
-          '',
-        ].join('\n'),
+
+  // Sans git d'abord : la décision sur ce que la racine sait, et la mission relue contre les noms.
+  const premiere = decider(mission, catalogue, missionsRetirees(o.racine))
+  if (premiere.sorte !== 'chantier') return ecarter(premiere)
+  const fuiteMission = interdits(missionTexte, personnes)
+  if (fuiteMission.length > 0) return refuserFuite(fuiteMission)
+
+  if (o.sansModele) {
+    const { texte } = lireMemoire(o.racine)
+    const fuite = interdits(texte, personnes)
+    if (fuite.length > 0) return refuserFuite(fuite)
+    writeFileSync(
+      dossier,
+      [
+        rendreDecision(mission, premiere, jour, m.domaine),
+        '## Ce que le plan recevrait (sans modèle : aucun appel)',
+        '',
+        promptPlan(texte),
+        '',
+      ].join('\n'),
+    )
+    return { sorte: 'sans_modele', decision: premiere, dossier }
+  }
+
+  // Le préflight de l'accès (§ 0.a), puis la base et `origin/main` frais (L2), avant toute branche.
+  for (const r of [modeles.plan, modeles.implementation, modeles.revue]) {
+    if (r.acces !== 'claude')
+      throw new Error(
+        `chantier : ${r.modele} sous acces: ${r.acces}, seul le binaire claude sait coder`,
       )
-      return { sorte: 'sans_modele', decision, dossier }
-    }
+  }
+  preflight('claude', o.agence, o.env, executer)
+  verifierBase(c, o.racine)
+  const arbre = ouvrirArbre(c, o.racine, mission.id, o.refaire === true)
+  if (arbre.sorte === 'deja_tentee') return { sorte: 'deja_tentee', dossier }
+  const cwd = arbre.chemin
 
-    // Le préflight de l'accès (§ 0.a) et le clone de la nuit propre (R11), avant toute branche.
-    for (const r of [modeles.plan, modeles.implementation, modeles.revue]) {
-      if (r.acces !== 'claude')
-        throw new Error(
-          `chantier : ${r.modele} sous acces: ${r.acces}, seul le binaire claude sait coder`,
-        )
-    }
-    preflight('claude', o.agence, o.env, executer)
-    verifierDepot(c, depot, o.racine)
-    const arbre = ouvrirArbre(c, depot, mission.id, o.refaire === true)
-    if (arbre.sorte === 'deja_tentee') return { sorte: 'deja_tentee', dossier }
-    const cwd = arbre.chemin
+  // Les retraits et la mémoire d'`origin/main`, que la racine peut ne pas encore avoir (G2 : jamais
+  // refaite), lus avant que la branche existe : une mission écartée ici ne laisse rien.
+  const decision = decider(mission, catalogue, missionsRetirees(cwd))
+  if (decision.sorte !== 'chantier') {
+    fermerArbre(c, o.racine, mission.id)
+    return ecarter(decision)
+  }
+  const { memoire, texte: memoireTexte } = lireMemoire(cwd)
+  const fuite = interdits(memoireTexte, personnes)
+  if (fuite.length > 0) {
+    fermerArbre(c, o.racine, mission.id)
+    return refuserFuite(fuite)
+  }
 
-    const etapes: Etape[] = []
-    const conditions: Condition[] = []
-    let constats: Constat[] = []
-    let plan: PlanChantier | undefined
-    let texteImplementation = ''
-    let garde: Garde | undefined
-    let check: { ok: boolean; sortie: string } | undefined
-    let honnetete: { ok: boolean; mesure: string } | undefined
-    let fusion: IssueFusion | undefined
-    let derniereLecture: Relecture | undefined
-    let issue: string = ISSUES_CHANTIER.echoue
-    const cout = () => etapes.reduce((t, e) => t + e.cout, 0)
-    const appeler = async (
-      etape: Etape['etape'],
-      role: (typeof modeles)[keyof typeof modeles],
-      prompt: string,
-      outils: string[],
-      schema?: z.ZodType<unknown>,
-    ): Promise<IssueClaude> => {
-      const restant = ch.budget_usd_par_mission - cout()
-      if (restant <= 0) {
-        const r: IssueClaude = {
-          ok: false,
-          texte: '',
-          cout: 0,
-          tours: 0,
-          raison: 'budget de la mission épuisé',
-          dureeMs: 0,
-        }
-        etapes.push({
-          etape,
-          modele: role.modele,
-          ok: false,
-          cout: 0,
-          tours: 0,
-          dureeMs: 0,
-          raison: r.raison,
-        })
-        return r
+  const etapes: Etape[] = []
+  const conditions: Condition[] = []
+  let constats: Constat[] = []
+  let plan: PlanChantier | undefined
+  let texteImplementation = ''
+  let garde: Garde | undefined
+  let check: { ok: boolean; sortie: string } | undefined
+  let honnetete: { ok: boolean; mesure: string } | undefined
+  let fusion: IssueFusion | undefined
+  let derniereLecture: Relecture | undefined
+  let issue: string = ISSUES_CHANTIER.echoue
+  const cout = () => etapes.reduce((t, e) => t + e.cout, 0)
+  const appeler = async (
+    etape: Etape['etape'],
+    role: (typeof modeles)[keyof typeof modeles],
+    prompt: string,
+    outils: string[],
+    schema?: z.ZodType<unknown>,
+  ): Promise<IssueClaude> => {
+    const restant = ch.budget_usd_par_mission - cout()
+    if (restant <= 0) {
+      const r: IssueClaude = {
+        ok: false,
+        texte: '',
+        cout: 0,
+        tours: 0,
+        raison: 'budget de la mission épuisé',
+        dureeMs: 0,
       }
-      const r = await lancerClaude(
-        {
-          modele: role.modele,
-          effort: role.effort,
-          prompt,
-          systemeAjouteFichier: join(cwd, FICHIER_METHODE),
-          outils,
-          permission: PERMISSION,
-          toursMax: ch.tours_max,
-          budgetUsd: Math.round(restant * 100) / 100,
-          cwd,
-          ...(schema ? { schemaJson: schemaJson(schema) } : {}),
-          delaiMs: ch.delai_secondes * 1000,
-          reglages: 'projet',
-        },
-        o.agence,
-        o.env,
-        lancer,
-        executer,
-      )
       etapes.push({
         etape,
         modele: role.modele,
-        ok: r.ok,
-        cout: r.cout,
-        tours: r.tours,
-        dureeMs: r.dureeMs,
-        ...(r.sousType ? { sousType: r.sousType } : {}),
-        ...(r.raison ? { raison: r.raison } : {}),
+        ok: false,
+        cout: 0,
+        tours: 0,
+        dureeMs: 0,
+        raison: r.raison,
       })
       return r
     }
-    const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
-    const verifier = () => {
-      garde = garderDiff(c, cwd, ch, personnes, mission.metier)
-      const r = pnpm(['check'])
-      check = { ok: r.code === 0, sortie: fin(`${r.sortie}\n${r.erreur}`, 15) }
-    }
-    const relire = async (etape: 'relecture' | 'relecture après reprise') => {
-      const r = await appeler(
-        etape,
-        modeles.revue,
-        [
-          "Relis la branche de ce chantier (`git diff main...HEAD`). Tu n'écris rien.",
-          '',
-          '## La mission',
-          '',
-          missionTexte,
-          '',
-          '## Le plan',
-          '',
-          plan?.plan ?? '',
-          '',
-          '## Ce que le code a mesuré',
-          '',
-          `- fichiers : ${(garde?.fichiers ?? []).map((f) => `${f.statut} ${f.chemin}`).join(', ')}`,
-          `- pnpm check : ${check?.ok ? 'vert' : 'rouge'}`,
-          '',
-          '## Les conventions',
-          '',
-          memoire.conventions.trim() || '(aucune)',
-          '',
-          'Rends tes constats au schéma donné.',
-        ].join('\n'),
-        ch.outils_lecture,
-        Relecture,
-      )
-      const lu = r.ok ? Relecture.safeParse(r.sortie) : undefined
-      derniereLecture = lu?.success ? lu.data : undefined
-      if (derniereLecture) constats = [...constats, ...derniereLecture.constats]
-      return derniereLecture
-    }
-
-    try {
-      // L'arbre a ses propres dépendances : `pnpm check` y tourne.
-      const installe = pnpm(['install', '--frozen-lockfile', '--prefer-offline'])
-      if (installe.code !== 0) {
-        throw new Error(`pnpm install dans l'arbre : ${fin(installe.erreur || installe.sortie, 5)}`)
-      }
-
-      const rPlan = await appeler('plan', modeles.plan, promptPlan, ch.outils_lecture, PlanChantier)
-      const luPlan = rPlan.ok ? PlanChantier.safeParse(rPlan.sortie) : undefined
-      if (!luPlan?.success) throw new Error(`plan échoué : ${rPlan.raison ?? 'sortie hors schéma'}`)
-      plan = luPlan.data
-      if (!plan.faisable) {
-        const motif = `question pour l'atelier : ${nettoyer(plan.raison, personnes)}`
-        writeFileSync(
-          dossier,
-          rendreDossier({
-            mission,
-            domaine: m.domaine,
-            jour,
-            plan,
-            etapes,
-            conditions,
-            constats,
-            issue: motif,
-          }),
-        )
-        journaliser(motif, { decision: 'question', cout_usd: round(cout()), cout_estime: true })
-        return {
-          sorte: 'fait',
-          issue: motif,
-          dossier,
-          conditions,
-          etapes,
-          constats,
-          cout: cout(),
-          dureeMs: Date.now() - debut,
-        }
-      }
-
-      const consignesImpl = [
-        'Code ce chantier, en suivant le plan, dans la bande métier seulement.',
+    const r = await lancerClaude(
+      {
+        modele: role.modele,
+        effort: role.effort,
+        prompt,
+        systemeAjouteFichier: join(cwd, FICHIER_METHODE),
+        outils,
+        permission: PERMISSION,
+        toursMax: ch.tours_max,
+        budgetUsd: Math.round(restant * 100) / 100,
+        cwd,
+        ...(schema ? { schemaJson: schemaJson(schema) } : {}),
+        delaiMs: ch.delai_secondes * 1000,
+        reglages: 'projet',
+      },
+      o.agence,
+      o.env,
+      lancer,
+      executer,
+    )
+    etapes.push({
+      etape,
+      modele: role.modele,
+      ok: r.ok,
+      cout: r.cout,
+      tours: r.tours,
+      dureeMs: r.dureeMs,
+      ...(r.sousType ? { sousType: r.sousType } : {}),
+      ...(r.raison ? { raison: r.raison } : {}),
+    })
+    return r
+  }
+  const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
+  const verifier = () => {
+    garde = garderDiff(c, cwd, ch, personnes, mission.metier)
+    const r = pnpm(['check'])
+    check = { ok: r.code === 0, sortie: fin(`${r.sortie}\n${r.erreur}`, 15) }
+  }
+  const relire = async (etape: 'relecture' | 'relecture après reprise') => {
+    const r = await appeler(
+      etape,
+      modeles.revue,
+      [
+        `Relis la branche de ce chantier (\`git diff ${REF_DISTANTE}...HEAD\`). Tu n'écris rien.`,
         '',
         '## La mission',
         '',
@@ -472,237 +418,293 @@ export async function faireChantier<S>(
         '',
         '## Le plan',
         '',
-        plan.plan,
+        plan?.plan ?? '',
+        '',
+        '## Ce que le code a mesuré',
+        '',
+        `- fichiers : ${(garde?.fichiers ?? []).map((f) => `${f.statut} ${f.chemin}`).join(', ')}`,
+        `- pnpm check : ${check?.ok ? 'vert' : 'rouge'}`,
         '',
         '## Les conventions',
         '',
         memoire.conventions.trim() || '(aucune)',
         '',
-        `Pour chaque geste nouveau : trois cas de traduction au moins dans \`${fichierConsignes(mission.metier)}\`, un test par règle d'exécution. Lance \`pnpm check\` jusqu'au vert. Finis par les trois sections : « ## Vérifié », « ## Non vérifié, risque », « ## Ce que j'ai appris ».`,
-      ].join('\n')
-      const rImpl = await appeler(
-        'implémentation',
-        modeles.implementation,
-        consignesImpl,
-        ch.outils_autorises,
+        'Rends tes constats au schéma donné.',
+      ].join('\n'),
+      ch.outils_lecture,
+      Relecture,
+    )
+    const lu = r.ok ? Relecture.safeParse(r.sortie) : undefined
+    derniereLecture = lu?.success ? lu.data : undefined
+    if (derniereLecture) constats = [...constats, ...derniereLecture.constats]
+    return derniereLecture
+  }
+
+  try {
+    if (!arbre.branche) brancher(c, cwd, mission.id)
+    // L'arbre a ses propres dépendances : `pnpm check` y tourne.
+    const installe = pnpm(['install', '--frozen-lockfile', '--prefer-offline'])
+    if (installe.code !== 0) {
+      throw new Error(`pnpm install dans l'arbre : ${fin(installe.erreur || installe.sortie, 5)}`)
+    }
+
+    const rPlan = await appeler(
+      'plan',
+      modeles.plan,
+      promptPlan(memoireTexte),
+      ch.outils_lecture,
+      PlanChantier,
+    )
+    const luPlan = rPlan.ok ? PlanChantier.safeParse(rPlan.sortie) : undefined
+    if (!luPlan?.success) throw new Error(`plan échoué : ${rPlan.raison ?? 'sortie hors schéma'}`)
+    plan = luPlan.data
+    if (!plan.faisable) {
+      const motif = `question pour l'atelier : ${nettoyer(plan.raison, personnes)}`
+      writeFileSync(
+        dossier,
+        rendreDossier({
+          mission,
+          domaine: m.domaine,
+          jour,
+          plan,
+          etapes,
+          conditions,
+          constats,
+          issue: motif,
+        }),
       )
-      texteImplementation = rImpl.texte
-      const titre = nettoyer(mission.titre, personnes)
-      commettre(
-        c,
-        cwd,
-        `Chantier ${mission.id} : ${titre}`,
-        coauteur(modeles.implementation.modele),
-      )
-      verifier()
-      if (rImpl.ok && garde?.chemins.ok && check?.ok) {
-        const lue = await relire('relecture')
-        const bloquants = lue?.constats.filter((k) => k.niveau === 'bloquant') ?? []
-        if (lue && bloquants.length > 0) {
-          // Une reprise au plus (P5), sur les seuls constats bloquants.
-          const rReprise = await appeler(
-            'reprise',
-            modeles.implementation,
-            [
-              consignesImpl,
-              '',
-              '## La relecture a trouvé ces constats bloquants : corrige-les, rien d’autre',
-              '',
-              ...bloquants.map((k) => `- ${k.fichier}:${k.ligne} — ${k.texte}`),
-            ].join('\n'),
-            ch.outils_autorises,
-          )
-          if (rReprise.texte) texteImplementation = rReprise.texte
-          commettre(
-            c,
-            cwd,
-            `Chantier ${mission.id} : reprise après relecture`,
-            coauteur(modeles.implementation.modele),
-          )
-          verifier()
-          if (garde?.chemins.ok && check?.ok) await relire('relecture après reprise')
-        }
+      statuer('écartée', motif, cout())
+      return {
+        sorte: 'fait',
+        issue: motif,
+        dossier,
+        conditions,
+        etapes,
+        constats,
+        cout: cout(),
+        dureeMs: Date.now() - debut,
       }
+    }
 
-      const derniere = etapes.filter((e) => e.etape.startsWith('relecture')).at(-1)
-      const relu = derniere?.ok === true && derniereLecture !== undefined
-      const bloquantsRestants = (derniereLecture?.constats ?? []).filter(
-        (k) => k.niveau === 'bloquant',
-      ).length
-
-      if (garde?.chemins.ok && check?.ok && relu && bloquantsRestants === 0) {
-        honnetete = mesurerHonnetete(
+    const consignesImpl = [
+      'Code ce chantier, en suivant le plan, dans la bande métier seulement.',
+      '',
+      '## La mission',
+      '',
+      missionTexte,
+      '',
+      '## Le plan',
+      '',
+      plan.plan,
+      '',
+      '## Les conventions',
+      '',
+      memoire.conventions.trim() || '(aucune)',
+      '',
+      `Pour chaque geste nouveau : trois cas de traduction au moins dans \`${fichierConsignes(mission.metier)}\`, un test par règle d'exécution. Lance \`pnpm check\` jusqu'au vert. Finis par les trois sections : « ## Vérifié », « ## Non vérifié, risque », « ## Ce que j'ai appris ».`,
+    ].join('\n')
+    const rImpl = await appeler(
+      'implémentation',
+      modeles.implementation,
+      consignesImpl,
+      ch.outils_autorises,
+    )
+    texteImplementation = rImpl.texte
+    const titre = nettoyer(mission.titre, personnes)
+    commettre(c, cwd, `Chantier ${mission.id} : ${titre}`, coauteur(modeles.implementation.modele))
+    verifier()
+    if (rImpl.ok && garde?.chemins.ok && check?.ok) {
+      const lue = await relire('relecture')
+      const bloquants = lue?.constats.filter((k) => k.niveau === 'bloquant') ?? []
+      if (lue && bloquants.length > 0) {
+        // Une reprise au plus (P5), sur les seuls constats bloquants.
+        const rReprise = await appeler(
+          'reprise',
+          modeles.implementation,
+          [
+            consignesImpl,
+            '',
+            '## La relecture a trouvé ces constats bloquants : corrige-les, rien d’autre',
+            '',
+            ...bloquants.map((k) => `- ${k.fichier}:${k.ligne} — ${k.texte}`),
+          ].join('\n'),
+          ch.outils_autorises,
+        )
+        if (rReprise.texte) texteImplementation = rReprise.texte
+        commettre(
           c,
           cwd,
-          o.env,
-          mission.metier,
-          ch.evals_clients[mission.metier],
+          `Chantier ${mission.id} : reprise après relecture`,
+          coauteur(modeles.implementation.modele),
         )
+        verifier()
+        if (garde?.chemins.ok && check?.ok) await relire('relecture après reprise')
       }
-
-      const echecsBornes = etapes.filter(
-        (e) =>
-          e.sousType?.startsWith('error_max') ||
-          e.raison?.startsWith('délai') ||
-          e.raison === 'budget de la mission épuisé',
-      )
-      conditions.push(
-        {
-          id: 'chemins',
-          ok: garde?.chemins.ok === true,
-          mesure: garde
-            ? garde.fichiers.length === 0
-              ? 'aucun fichier changé'
-              : [
-                  ...garde.chemins.horsBande.map((x) => `hors bande : ${x}`),
-                  ...garde.chemins.memoire,
-                ].join(' ; ') || `${garde.fichiers.length} fichier(s), tous dans la bande`
-            : 'non mesurée',
-        },
-        {
-          id: 'tests',
-          ok: garde?.tests.ok === true,
-          mesure: garde
-            ? garde.tests.disparus.join(' ; ') || 'aucun test retiré ni tu'
-            : 'non mesurée',
-        },
-        {
-          id: 'check',
-          ok: check?.ok === true,
-          mesure: check ? (check.ok ? 'vert' : 'rouge') : 'non lancé',
-        },
-        {
-          id: 'honnetete',
-          ok: honnetete?.ok === true,
-          mesure: honnetete?.mesure ?? 'non mesurée (une condition précédente est rouge)',
-        },
-        {
-          id: 'relecture',
-          ok: relu && bloquantsRestants === 0,
-          mesure: derniere
-            ? relu
-              ? `${bloquantsRestants} bloquant(s) après ${etapes.some((e) => e.etape === 'reprise') ? 'une reprise' : 'la relecture'}`
-              : `relecture échouée (${derniere.raison ?? 'sortie hors schéma'})`
-            : 'non faite (une condition précédente est rouge)',
-        },
-        {
-          id: 'bornes',
-          ok: echecsBornes.length === 0 && rImpl.ok && cout() <= ch.budget_usd_par_mission,
-          mesure: `${etapes.reduce((t, e) => t + e.tours, 0)} tour(s) en tout (au plus ${ch.tours_max} par appel), ${coutEcrit({ usd: cout(), estime: true })} sur ${ch.budget_usd_par_mission} $${echecsBornes.length > 0 ? ` ; ${echecsBornes.map((e) => `${e.etape} : ${e.sousType ?? e.raison}`).join(', ')}` : rImpl.ok ? '' : ` ; implémentation : ${rImpl.raison ?? '?'}`}`,
-        },
-        {
-          id: 'lignes',
-          ok: garde?.lignes.ok === true,
-          mesure: garde
-            ? `${garde.lignes.total} ligne(s), au plus ${garde.lignes.max}`
-            : 'non mesurée',
-        },
-      )
-
-      const appris = section(texteImplementation, "Ce que j'ai appris")
-      fusion = conclure({
-        commande: c,
-        depot,
-        racineCourante: o.racine,
-        id: mission.id,
-        titre,
-        conditions,
-        personnes,
-        ecrireEntree: (sorte, issueMemoire) =>
-          ecrireChantier(
-            depot,
-            {
-              date: jour,
-              client,
-              id: mission.id,
-              titre,
-              sorte,
-              issue: issueMemoire,
-              cout: { usd: round(cout()), estime: true },
-              appris,
-              sections: sectionsMemoire({
-                mission: missionTexte,
-                plan: plan?.plan ?? '',
-                garde,
-                check,
-                honnetete,
-                constats,
-                issue: issueMemoire,
-                personnes,
-              }),
-            },
-            personnes,
-          ),
-      })
-      issue =
-        fusion.sorte === 'fusionne'
-          ? ISSUES_CHANTIER.fusionne
-          : fusion.sorte === 'refuse'
-            ? raisonRefus(fusion.rouges)
-            : `${ISSUES_CHANTIER.echoue} : ${fusion.raison}`
-      // La huitième, toujours au dossier : rouge si c'est elle qui refuse, sinon l'entrée écrite.
-      conditions.push(
-        fusion.sorte === 'echec'
-          ? { id: 'memoire', ok: false, mesure: 'non écrite' }
-          : (fusion.sorte === 'refuse' && fusion.rouges.find((r) => r.id === 'memoire')) || {
-              id: 'memoire',
-              ok: true,
-              mesure: `écrite : ${fusion.memoire}`,
-            },
-      )
-    } catch (erreur) {
-      issue = `${ISSUES_CHANTIER.echoue} : ${(erreur as Error).message.slice(0, 300)}`
-    } finally {
-      fermerArbre(c, depot, mission.id)
     }
 
-    const dureeMs = Date.now() - debut
-    writeFileSync(
-      dossier,
-      rendreDossier({
-        mission,
-        domaine: m.domaine,
-        jour,
-        ...(plan ? { plan } : {}),
-        etapes,
-        conditions,
-        constats,
-        issue,
-        ...(garde ? { garde } : {}),
-        ...(check ? { check } : {}),
-        bloc: blocVerifie(texteImplementation),
-        dureeMs,
-        ...(fusion ? { fusion } : {}),
-      }),
+    const derniere = etapes.filter((e) => e.etape.startsWith('relecture')).at(-1)
+    const relu = derniere?.ok === true && derniereLecture !== undefined
+    const bloquantsRestants = (derniereLecture?.constats ?? []).filter(
+      (k) => k.niveau === 'bloquant',
+    ).length
+
+    if (garde?.chemins.ok && check?.ok && relu && bloquantsRestants === 0) {
+      honnetete = mesurerHonnetete(c, cwd, o.env, mission.metier, ch.evals_clients[mission.metier])
+    }
+
+    const echecsBornes = etapes.filter(
+      (e) =>
+        e.sousType?.startsWith('error_max') ||
+        e.raison?.startsWith('délai') ||
+        e.raison === 'budget de la mission épuisé',
     )
-    journaliser(
-      fusion?.sorte === 'fusionne'
-        ? ISSUES_CHANTIER.fusionne
-        : fusion?.sorte === 'refuse'
-          ? ISSUES_CHANTIER.refuse
-          : ISSUES_CHANTIER.echoue,
+    conditions.push(
       {
-        conditions: Object.fromEntries(conditions.map((k) => [k.id, k.ok])),
-        etapes: etapes.length,
-        cout_usd: round(cout()),
-        cout_estime: true,
-        duree_s: Math.round(dureeMs / 1000),
-        fuite: 0,
+        id: 'chemins',
+        ok: garde?.chemins.ok === true,
+        mesure: garde
+          ? garde.fichiers.length === 0
+            ? 'aucun fichier changé'
+            : [
+                ...garde.chemins.horsBande.map((x) => `hors bande : ${x}`),
+                ...garde.chemins.memoire,
+              ].join(' ; ') || `${garde.fichiers.length} fichier(s), tous dans la bande`
+          : 'non mesurée',
+      },
+      {
+        id: 'tests',
+        ok: garde?.tests.ok === true,
+        mesure: garde
+          ? garde.tests.disparus.join(' ; ') || 'aucun test retiré ni tu'
+          : 'non mesurée',
+      },
+      {
+        id: 'check',
+        ok: check?.ok === true,
+        mesure: check ? (check.ok ? 'vert' : 'rouge') : 'non lancé',
+      },
+      {
+        id: 'honnetete',
+        ok: honnetete?.ok === true,
+        mesure: honnetete?.mesure ?? 'non mesurée (une condition précédente est rouge)',
+      },
+      {
+        id: 'relecture',
+        ok: relu && bloquantsRestants === 0,
+        mesure: derniere
+          ? relu
+            ? `${bloquantsRestants} bloquant(s) après ${etapes.some((e) => e.etape === 'reprise') ? 'une reprise' : 'la relecture'}`
+            : `relecture échouée (${derniere.raison ?? 'sortie hors schéma'})`
+          : 'non faite (une condition précédente est rouge)',
+      },
+      {
+        id: 'bornes',
+        ok: echecsBornes.length === 0 && rImpl.ok && cout() <= ch.budget_usd_par_mission,
+        mesure: `${etapes.reduce((t, e) => t + e.tours, 0)} tour(s) en tout (au plus ${ch.tours_max} par appel), ${coutEcrit({ usd: cout(), estime: true })} sur ${ch.budget_usd_par_mission} $${echecsBornes.length > 0 ? ` ; ${echecsBornes.map((e) => `${e.etape} : ${e.sousType ?? e.raison}`).join(', ')}` : rImpl.ok ? '' : ` ; implémentation : ${rImpl.raison ?? '?'}`}`,
+      },
+      {
+        id: 'lignes',
+        ok: garde?.lignes.ok === true,
+        mesure: garde
+          ? `${garde.lignes.total} ligne(s), au plus ${garde.lignes.max}`
+          : 'non mesurée',
       },
     )
-    return {
-      sorte: 'fait',
-      issue,
-      dossier,
+
+    const appris = section(texteImplementation, "Ce que j'ai appris")
+    fusion = conclure({
+      commande: c,
+      racine: o.racine,
+      id: mission.id,
+      titre,
       conditions,
+      personnes,
+      ecrireEntree: (arbreFusion, sorte, issueMemoire) =>
+        ecrireChantier(
+          arbreFusion,
+          {
+            date: jour,
+            client: o.client,
+            id: mission.id,
+            titre,
+            sorte,
+            issue: issueMemoire,
+            cout: { usd: round(cout()), estime: true },
+            appris,
+            sections: sectionsMemoire({
+              mission: missionTexte,
+              plan: plan?.plan ?? '',
+              garde,
+              check,
+              honnetete,
+              constats,
+              issue: issueMemoire,
+              personnes,
+            }),
+          },
+          personnes,
+        ),
+    })
+    issue =
+      fusion.sorte === 'fusionne'
+        ? ISSUES_CHANTIER.fusionne
+        : fusion.sorte === 'refuse'
+          ? raisonRefus(fusion.rouges)
+          : `${ISSUES_CHANTIER.echoue} : ${fusion.raison}`
+    // La huitième, toujours au dossier : rouge si c'est elle qui refuse, sinon l'entrée écrite.
+    conditions.push(
+      fusion.sorte === 'echec'
+        ? { id: 'memoire', ok: false, mesure: 'non écrite' }
+        : (fusion.sorte === 'refuse' && fusion.rouges.find((r) => r.id === 'memoire')) || {
+            id: 'memoire',
+            ok: true,
+            mesure: `écrite : ${fusion.memoire}`,
+          },
+    )
+  } catch (erreur) {
+    issue = `${ISSUES_CHANTIER.echoue} : ${(erreur as Error).message.slice(0, 300)}`
+  } finally {
+    fermerArbre(c, o.racine, mission.id)
+  }
+
+  const dureeMs = Date.now() - debut
+  writeFileSync(
+    dossier,
+    rendreDossier({
+      mission,
+      domaine: m.domaine,
+      jour,
+      ...(plan ? { plan } : {}),
       etapes,
+      conditions,
       constats,
-      cout: cout(),
+      issue,
+      ...(garde ? { garde } : {}),
+      ...(check ? { check } : {}),
+      bloc: blocVerifie(texteImplementation),
       dureeMs,
       ...(fusion ? { fusion } : {}),
-    }
-  } finally {
-    m.fermer(s)
+    }),
+  )
+  statuer(
+    fusion?.sorte === 'fusionne'
+      ? ISSUES_CHANTIER.fusionne
+      : fusion?.sorte === 'refuse'
+        ? ISSUES_CHANTIER.refuse
+        : ISSUES_CHANTIER.echoue,
+    issue,
+    cout(),
+  )
+  return {
+    sorte: 'fait',
+    issue,
+    dossier,
+    conditions,
+    etapes,
+    constats,
+    cout: cout(),
+    dureeMs,
+    ...(fusion ? { fusion } : {}),
   }
 }
 
@@ -821,7 +823,7 @@ function rendreDecision(
   ].join('\n')
 }
 
-/** Le dossier d'un chantier (§ 6.3) : chez le client, pour Lionel. */
+/** Le dossier d'un chantier (§ 6.3) : dans le dossier de sortie, pour Lionel et pour le client (L7). */
 function rendreDossier(x: {
   mission: Mission
   domaine: Domaine
@@ -897,7 +899,7 @@ function rendreDossier(x: {
       : ['Non tentée.']),
     '',
     x.fusion?.sorte === 'fusionne'
-      ? `Fusionné dans \`main\` du clone de la nuit (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`, poussé.`
+      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`, poussé.`
       : x.fusion?.sorte === 'refuse'
         ? 'Non fusionné : la branche reste.'
         : x.fusion

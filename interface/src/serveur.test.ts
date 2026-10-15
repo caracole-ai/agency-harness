@@ -346,7 +346,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
   /**
    * Une copie avec trois demandes sans geste sous deux intentions (une échappée
    * finie en proposition pour `remise_des_cles`), une inconnue et une nouvelle
-   * sans résumé. Des intentions que le métier ne déclare ni ne code : la nuit
+   * sans résumé. Des intentions que le métier ne déclare ni ne code : le chantier
    * peut fusionner un geste du métier sans que ces tests, hors de sa bande, changent.
    */
   function copieAvecDemandes(): string {

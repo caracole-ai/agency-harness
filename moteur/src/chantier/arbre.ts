@@ -2,11 +2,15 @@ import { spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
 
-// L'arbre de travail d'un chantier (PLAN-RONDE.md § 6.2, R11 ; PLAN-GENERAL.md
-// G3) : le clone de la nuit vérifié (jamais l'arbre courant, jamais un arbre
-// sale), remis à `origin/main` au début d'une nuit, un `git worktree` par
-// mission sur la branche `chantier/<id>`, ses dépendances, un commit signé du
-// modèle. Ce module ne fusionne ni ne pousse jamais : c'est `fusion.ts`, seul.
+// Les arbres de travail du chantier (PLAN-LIVRAISON.md L2) : le dépôt de base
+// est celui de l'agence (la racine du code qui tourne), qui peut être l'arbre
+// d'un humain. Le code n'y fait que `fetch`, `worktree add/remove/prune` et
+// `rev-parse` (la fusion pose ses étiquettes et pousse depuis ses arbres) :
+// jamais il n'y extrait, ne remet, ne fusionne ni ne nettoie ; son arbre et
+// sa branche `main` ne bougent pas. Un chantier part d'`origin/main` frais, dans
+// `.claude/worktrees/chantier-<id>` sur la branche `chantier/<id>` ; la fusion
+// et le retrait se font dans un arbre détaché sur `origin/main`, jeté après.
+// Ce module ne fusionne ni ne pousse jamais : c'est `fusion.ts`, seul.
 
 /** Lance une commande, rend son code et ses sorties ; injectable pour les tests (les commandes émises se capturent). */
 export type Commande = (
@@ -36,16 +40,19 @@ export function git(c: Commande, cwd: string, args: string[]): string {
   return r.sortie
 }
 
-/** La branche principale du clone de la nuit, celle où la fusion se fait. */
+/** La branche principale du distant : là où la fusion pousse. */
 export const BRANCHE_PRINCIPALE = 'main'
-/** Le dépôt d'où le clone se remet à jour et où la fusion pousse. */
+/** Le dépôt d'où les arbres partent et où la fusion pousse. */
 export const DISTANT = 'origin'
+/** Le point de départ de tout arbre : `main` du distant, tel que le dernier `fetch` l'a vu. */
+export const REF_DISTANTE = `${DISTANT}/${BRANCHE_PRINCIPALE}`
 export const branche = (id: string) => `chantier/${id}`
 export const refBranche = (id: string) => `refs/heads/${branche(id)}`
-/** Les arbres de chantier, dans le clone de la nuit (R5). */
+/** Les arbres de travail, dans le dépôt de base. */
 export const DOSSIER_ARBRES = join('.claude', 'worktrees')
-export const cheminArbre = (depot: string, id: string) =>
-  join(depot, DOSSIER_ARBRES, `chantier-${id}`)
+/** L'arbre d'un chantier, ou un arbre détaché nommé (`fusion-<id>`, `retrait-<id>`). */
+export const cheminArbre = (racine: string, nom: string) => join(racine, DOSSIER_ARBRES, nom)
+const nomChantier = (id: string) => `chantier-${id}`
 
 const reel = (chemin: string) => realpathSync(chemin)
 
@@ -56,56 +63,32 @@ function dossierCommun(c: Commande, arbre: string): string {
 }
 
 /**
- * Le clone de la nuit, tel que R11 l'exige, avant toute écriture : un dépôt
- * git à sa racine, qui n'est ni l'arbre courant ni un arbre du même dépôt,
- * sur `main`, et propre (`git status` vide ; `saufMemoire` : seul `memoire/`
- * peut avoir changé, la mémoire qu'on s'apprête à commettre). Lève sinon.
+ * Le dépôt de base avant tout arbre (L2) : la racine d'un dépôt git, un
+ * distant `origin` qui répond (`fetch` de `main` : `origin/main` frais), les
+ * arbres disparus oubliés (`worktree prune`). Lève sinon. Rien d'autre n'y
+ * est touché : ni son arbre, ni ses branches.
  */
-export function verifierDepot(
-  c: Commande,
-  depot: string,
-  racineCourante: string,
-  options: { saufMemoire?: boolean } = {},
-): void {
-  if (!existsSync(depot)) throw new Error(`clone de la nuit introuvable : ${depot}`)
-  const haut = git(c, depot, ['rev-parse', '--show-toplevel']).trim()
-  if (reel(haut) !== reel(depot)) {
-    throw new Error(`${depot} n'est pas la racine d'un dépôt git (racine : ${haut})`)
+export function verifierBase(c: Commande, racine: string): void {
+  if (!existsSync(racine)) throw new Error(`dépôt de base introuvable : ${racine}`)
+  const haut = git(c, racine, ['rev-parse', '--show-toplevel']).trim()
+  if (reel(haut) !== reel(racine)) {
+    throw new Error(`${racine} n'est pas la racine d'un dépôt git (racine : ${haut})`)
   }
-  if (dossierCommun(c, depot) === dossierCommun(c, racineCourante)) {
-    throw new Error(
-      `${depot} est l'arbre courant ou un arbre du même dépôt : la nuit a son propre clone (G3)`,
-    )
-  }
-  const tete = git(c, depot, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()
-  if (tete !== BRANCHE_PRINCIPALE) {
-    throw new Error(`le clone de la nuit est sur ${tete}, pas sur ${BRANCHE_PRINCIPALE}`)
-  }
-  const sales = git(c, depot, ['status', '--porcelain', '--untracked-files=all'])
-    .split('\n')
-    .filter((l) => l.trim().length > 0)
-    .filter((l) => !(options.saufMemoire && l.slice(3).startsWith('memoire/')))
-  if (sales.length > 0) {
-    throw new Error(
-      `le clone de la nuit n'est pas propre (${sales.length} fichier(s), dont ${sales[0]?.slice(3)}) : rien n'est fait`,
-    )
-  }
+  git(c, racine, [
+    'fetch',
+    '--quiet',
+    DISTANT,
+    `+refs/heads/${BRANCHE_PRINCIPALE}:refs/remotes/${REF_DISTANTE}`,
+  ])
+  git(c, racine, ['worktree', 'prune'])
 }
 
-/** Le début d'une nuit (R11) : le clone vérifié, puis `fetch` et remis à `origin/main`, ce clone seulement. */
-export function remettreAOrigine(c: Commande, depot: string, racineCourante: string): string {
-  verifierDepot(c, depot, racineCourante)
-  git(c, depot, ['fetch', DISTANT])
-  git(c, depot, ['reset', '--hard', `${DISTANT}/${BRANCHE_PRINCIPALE}`])
-  return git(c, depot, ['rev-parse', 'HEAD']).trim()
-}
+export const brancheExiste = (c: Commande, racine: string, id: string): boolean =>
+  c(racine, 'git', ['rev-parse', '--verify', '--quiet', refBranche(id)]).code === 0
 
-export const brancheExiste = (c: Commande, depot: string, id: string): boolean =>
-  c(depot, 'git', ['rev-parse', '--verify', '--quiet', refBranche(id)]).code === 0
-
-/** Les arbres de chantier ne se voient pas dans `git status` du clone : une exclusion locale, idempotente. */
-function exclureArbres(c: Commande, depot: string): void {
-  const info = join(dossierCommun(c, depot), 'info')
+/** Les arbres de travail ne se voient pas dans `git status` de la base : une exclusion locale, idempotente. */
+function exclureArbres(c: Commande, racine: string): void {
+  const info = join(dossierCommun(c, racine), 'info')
   const exclude = join(info, 'exclude')
   const ligne = `/${DOSSIER_ARBRES}/`
   mkdirSync(info, { recursive: true })
@@ -115,37 +98,58 @@ function exclureArbres(c: Commande, depot: string): void {
   }
 }
 
-export type ArbreOuvert = { sorte: 'ouvert'; chemin: string } | { sorte: 'deja_tentee' }
+/** `branche` : l'arbre est déjà sur `chantier/<id>` (`refaire`) ; sinon il est détaché, et `brancher` crée la branche une fois le chantier décidé. */
+export type ArbreOuvert =
+  | { sorte: 'ouvert'; chemin: string; branche: boolean }
+  | { sorte: 'deja_tentee' }
 
 /**
- * `git worktree add <depot>/.claude/worktrees/chantier-<id> -b chantier/<id>
- * main`. Une branche qui existe : la mission a déjà été tentée, rien n'est
+ * `git worktree add --detach .claude/worktrees/chantier-<id> origin/main`,
+ * après `verifierBase` : la mémoire d'`origin/main` s'y lit avant que la
+ * branche existe (une mission écartée ne laisse rien). Une branche
+ * `chantier/<id>` qui existe : la mission a déjà été tentée, rien n'est
  * fait, sauf `refaire`, qui supprime l'arbre (pas la branche) et le rouvre
  * sur la branche telle qu'elle est.
  */
-export function ouvrirArbre(c: Commande, depot: string, id: string, refaire = false): ArbreOuvert {
-  exclureArbres(c, depot)
-  const chemin = cheminArbre(depot, id)
-  const existe = brancheExiste(c, depot, id)
+export function ouvrirArbre(c: Commande, racine: string, id: string, refaire = false): ArbreOuvert {
+  exclureArbres(c, racine)
+  const chemin = cheminArbre(racine, nomChantier(id))
+  const existe = brancheExiste(c, racine, id)
   if (existe && !refaire) return { sorte: 'deja_tentee' }
-  if (existsSync(chemin)) git(c, depot, ['worktree', 'remove', '--force', chemin])
-  git(c, depot, ['worktree', 'prune'])
+  retirerArbre(c, racine, chemin)
   git(
     c,
-    depot,
+    racine,
     existe
       ? ['worktree', 'add', chemin, branche(id)]
-      : ['worktree', 'add', chemin, '-b', branche(id), BRANCHE_PRINCIPALE],
+      : ['worktree', 'add', '--detach', chemin, REF_DISTANTE],
   )
-  return { sorte: 'ouvert', chemin }
+  return { sorte: 'ouvert', chemin, branche: existe }
 }
 
-/** Retire l'arbre de travail ; la branche reste (elle porte le travail, fusionné ou non). */
-export function fermerArbre(c: Commande, depot: string, id: string): void {
-  const chemin = cheminArbre(depot, id)
-  if (existsSync(chemin)) git(c, depot, ['worktree', 'remove', '--force', chemin])
-  git(c, depot, ['worktree', 'prune'])
+/** Le chantier décidé : la branche `chantier/<id>` créée dans son arbre, là où il est (`origin/main`). */
+export function brancher(c: Commande, arbre: string, id: string): void {
+  git(c, arbre, ['switch', '--quiet', '--no-track', '--create', branche(id)])
 }
+
+/** Un arbre détaché sur `origin/main` (`.claude/worktrees/<nom>`), après `verifierBase` : la fusion et le retrait s'y font, sans qu'aucune branche locale ne bouge. */
+export function ouvrirArbreDetache(c: Commande, racine: string, nom: string): string {
+  exclureArbres(c, racine)
+  const chemin = cheminArbre(racine, nom)
+  retirerArbre(c, racine, chemin)
+  git(c, racine, ['worktree', 'add', '--detach', chemin, REF_DISTANTE])
+  return chemin
+}
+
+/** Retire un arbre de travail s'il est là ; une branche qu'il portait reste. */
+export function retirerArbre(c: Commande, racine: string, chemin: string): void {
+  if (existsSync(chemin)) git(c, racine, ['worktree', 'remove', '--force', chemin])
+  git(c, racine, ['worktree', 'prune'])
+}
+
+/** Retire l'arbre d'un chantier ; la branche reste (elle porte le travail, fusionné ou non). */
+export const fermerArbre = (c: Commande, racine: string, id: string): void =>
+  retirerArbre(c, racine, cheminArbre(racine, nomChantier(id)))
 
 /**
  * Tout ce que l'arbre porte de nouveau, en un commit sur sa branche, avec la

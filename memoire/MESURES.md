@@ -1,6 +1,6 @@
-# Les mesures de la nuit
+# Les mesures
 
-<!-- PLAN-RONDE.md R10, PLAN-GENERAL.md § 4 : une ligne par nuit, écrite par le code (missions proposées, tentées, fusionnées, retirées ; coût ; fuite). -->
+<!-- PLAN-RONDE.md R10, PLAN-GENERAL.md § 4 : des tables écrites à la main. La ligne « par nuit » que le code écrivait est retirée avec la nuit (PLAN-LIVRAISON.md L11) ; l'index garde une ligne par chantier. -->
 
 
 ## Le critère 2 du second métier (PLAN-METIER-2.md § 9.7)

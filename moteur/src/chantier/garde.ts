@@ -1,14 +1,15 @@
 import { parse } from 'yaml'
 import { PLACE_METIER } from '../agence/config'
+import { NOM_METIER } from '../config'
 import type { Designable } from '../conversation/designation'
 import { type CasTraduire, evalsDuMetier, FichierTraduire } from '../evals/evals'
-import { BRANCHE_PRINCIPALE, type Commande, git } from './arbre'
+import { type Commande, git, REF_DISTANTE } from './arbre'
 import { DOSSIER_MEMOIRE, FICHIER_CONVENTIONS, interdits } from './memoire'
 
 // La garde du diff d'un chantier (PLAN-RONDE.md § 6.2, R5 (4) ;
 // PLAN-GENERAL.md G1, conditions 1, 2 et 7) : la hiérarchie de Lionel
 // appliquée par le code, pas promise par un prompt. Le diff de la branche
-// depuis `main` : chaque fichier dans les chemins autorisés d'`agence.yaml`,
+// depuis `origin/main` : chaque fichier dans les chemins autorisés d'`agence.yaml`,
 // résolus avec le métier de la mission (PLAN-METIER-2.md M9 : un chantier ne
 // touche jamais un autre métier),
 // la mémoire touchée seulement par des lignes ajoutées à `CONVENTIONS.md`
@@ -29,8 +30,6 @@ const CONVENTIONS = `${DOSSIER_MEMOIRE}/${FICHIER_CONVENTIONS}`
 /** Les cas de traduction du métier de la mission (PLAN-METIER-2.md M8, M9). */
 export const fichierConsignes = (metier: string): string =>
   `${evalsDuMetier(metier)}/consignes.yaml`
-/** Un nom de métier : rien qu'un motif de chemin lirait autrement (`*`, `/`, `..`). */
-const NOM_METIER = /^[a-z0-9][a-z0-9-]*$/
 
 /** Un motif d'`agence.yaml` avec `${metier}` remplacé par le métier de la mission ; lève sur un nom de métier qui n'en est pas un. */
 export function resoudreMetier(motif: string, metier: string): string {
@@ -76,7 +75,7 @@ const aRevision = (c: Commande, arbre: string, rev: string, chemin: string) => {
   return r.code === 0 ? r.sortie : ''
 }
 
-/** La garde du diff commis de la branche (`main...HEAD`), dans l'arbre de travail, pour une mission de ce métier. */
+/** La garde du diff commis de la branche (`origin/main...HEAD`), dans l'arbre de travail, pour une mission de ce métier. */
 export function garderDiff(
   c: Commande,
   arbre: string,
@@ -84,7 +83,7 @@ export function garderDiff(
   personnes: Designable[],
   metier: string,
 ): Garde {
-  const base = git(c, arbre, ['merge-base', BRANCHE_PRINCIPALE, 'HEAD']).trim()
+  const base = git(c, arbre, ['merge-base', REF_DISTANTE, 'HEAD']).trim()
   const fichiers = git(c, arbre, ['diff', '--name-status', '--no-renames', base, 'HEAD'])
     .split('\n')
     .filter((l) => l.trim().length > 0)
@@ -185,7 +184,7 @@ function casParId(texte: string): Map<string, CasTraduire> {
 }
 
 /**
- * Les cas de traduction de `main` qui ont disparu ou changé sur la branche.
+ * Les cas de traduction d'`origin/main` qui ont disparu ou changé sur la branche.
  * Un seul changement est permis : une demande nouvelle (`sorte: nouvelle`)
  * qui devient un geste nouveau de la branche, sa consigne et son rôle
  * intacts (une factorisation sert désormais la demande).
@@ -231,7 +230,7 @@ function casParAction(texte: string): Map<string, number> {
 
 /**
  * Les gestes nouveaux de la branche (une action attendue par le `consignes.yaml`
- * du métier qui ne l'était pas sur `main`) et leurs cas de traduction : G1 en
+ * du métier qui ne l'était pas sur `origin/main`) et leurs cas de traduction : G1 en
  * exige au moins trois par geste nouveau (condition 4).
  */
 export function casParGesteNouveau(
@@ -239,7 +238,7 @@ export function casParGesteNouveau(
   arbre: string,
   metier: string,
 ): { geste: string; cas: number }[] {
-  const base = git(c, arbre, ['merge-base', BRANCHE_PRINCIPALE, 'HEAD']).trim()
+  const base = git(c, arbre, ['merge-base', REF_DISTANTE, 'HEAD']).trim()
   const avant = casParAction(aRevision(c, arbre, base, fichierConsignes(metier)))
   const apres = casParAction(aRevision(c, arbre, 'HEAD', fichierConsignes(metier)))
   return [...apres].filter(([geste]) => !avant.has(geste)).map(([geste, cas]) => ({ geste, cas }))

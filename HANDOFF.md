@@ -7,32 +7,49 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/retrait-promotion` (bf82764).
-**`general/commande-seule`, non fusionnée** (Lionel, 2026-10-15 : « les gestes
-sont codés par le harnais lui-même quand la demande explicite est faite par
-le patron ; on arrête avec la détection de récurrence ») : la ronde et les
-gestes appris sont retirés (≈ 8 000 lignes), puis le geste `heures_par_agent`
-codé par le harnais est repris (110f503). `pnpm check` vert : moteur 476,
-interface 29, sécurité 133, agence web 259 (les tests des deux
-sous-systèmes partis avec eux). Onglet « Gestes » vu à 1280 et 390 px. À fusionner à la session suivante (une
-fusion par session ; celle-ci a fusionné `retrait-promotion`).
+`main` = `origin/main` = la fusion de `general/l1-chantier` (2026-10-15) :
+le lot 0 de `PLAN-LIVRAISON.md` (le plan) et son **lot 1, le chantier sans
+clone ni dossier client**. Lionel, le soir du 2026-10-15 : le chantier se
+lance **au clic**, **à l'agence**, sans nuit ni clone réservé ; chaque
+fusion émet une **version signée** que le harnais du client **tire** et
+installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
+interface 29, sécurité 133, agence web 259.
 
-- **Une seule chaîne pour un geste nouveau.** L'outil ne sait pas faire une
-  demande → elle s'affiche dans l'onglet « Gestes » (ce que l'outil ne sait
-  pas encore faire), groupée par intention → le patron clique « Créer ce
-  geste » → le code écrit, sans modèle, la mission `geste_code` chez le
-  client (`missions/<date>/<intention>.yaml` : consignes des échappées
-  masquées, sans nom) et la ligne `geste commandé` → la nuit lance le
-  chantier (Fable planifie, Opus code dans la bande métier, garde du diff,
-  `pnpm check`, relecture, mesure de la traduction) → fusion si les huit
-  conditions sont vertes → la carte dit « disponible » quand le métier porte
-  le geste. Aucun modèle ne cherche lui-même ce qui manque ; un geste n'est
-  que du code.
-- **Mesurée en réel le 2026-10-15** sur `heures_par_agent`, avant le retrait
-  (le code de la chaîne n'a pas changé depuis) : fusionné dans le clone de
-  mesure (`~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`), huit
-  conditions vertes, `evals traduire` 73/73 ; la même question passe ensuite
-  par le geste, sans échappée. Le geste est repris dans cette branche.
+**Prochaine session : lots 2 (la version signée) et 3 (la file des
+missions)**, indépendants : deux sous-agents en arbres de travail, ou deux
+sessions ; puis le lot 4.
+
+- **Le lot 1** : `pnpm chantier --mission <fichier> [--sortie <dossier>]`
+  travaille dans `.claude/worktrees/chantier-<id>` du dépôt de l'agence,
+  parti d'`origin/main` frais ; la fusion (et le retrait) dans un arbre
+  détaché, push atomique sur `main` du distant, une reprise si refusé. Sur
+  la base, seulement `fetch`, `worktree`, `rev-parse` (`arbre.test.ts`) :
+  l'arbre de qui lance, même sale et sur une autre branche, et son `main`
+  ne bougent pas. Le chantier ne lit aucun dossier client : il écrit
+  `<id>.chantier.md` et `<id>.statut.yaml` (L7) dans la sortie (par défaut
+  à côté de la mission), contrôle contre les noms du client fictif du
+  métier ; la mission est relue entière contre les vrais noms à la commande.
+  `pnpm nuit`, `depot_nuit`, `MESURES.md` écrit par le code : retirés.
+  Écarts au plan, notés sous son lot 1 (la mémoire lue sur `origin/main`,
+  le push atomique, `retirer` sans `--client`).
+- **En attendant le lot 3, en mode non livré** : plus aucune ligne
+  `chantier` n'arrive au journal du client (c'est le client qui l'écrira en
+  lisant le statut, L7) ; la carte reste « commandé, en attente de
+  l'agence » jusqu'à « disponible ». Le lot 3 doit aussi lire les statuts
+  du dossier `missions/` local quand le client n'est pas livré.
+- **La chaîne visée** (`PLAN-LIVRAISON.md` § 1) : demande sans geste →
+  « Créer ce geste » → la mission masquée, écrite chez le client et poussée
+  dans sa file git `missions-<slug>` → `pnpm agence` la prend dans la
+  minute, chantier dans `.claude/worktrees/chantier-<id>` depuis
+  `origin/main`, fusion dans un arbre détaché, étiquette `v<date>-<n>`
+  signée (SSH), statut dans la file → le harnais du client lit le statut,
+  tire l'étiquette, la vérifie, l'installe à côté, `pnpm check`, bascule à
+  un moment calme (`pnpm harnais`), journal `mise à jour : faite` → la
+  carte dit « disponible ».
+- **Mesurée en réel le 2026-10-15** (avant le lot 1, dans le clone
+  `~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`) : le geste
+  `heures_par_agent`, huit conditions vertes, `evals traduire` 73/73. Ces
+  deux dossiers se suppriment après le lot 5, par Lionel.
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
@@ -78,15 +95,13 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
   `echappees.yaml` gardent l'intention `heures_par_agent` (une étiquette) ;
   « fuite 1 » de sa passe `evals traduire` non lue ; l'arrondi des heures
   recopié de `remplacement.ts`.
-- Non tranché : la priorité d'une mission commandée dans la nuit
-  (`missions_max_par_nuit: 1`, par date : elle peut attendre) ; la mise à
-  jour à distance (« disponible » chez un client en dépend).
 - Le niveau 2 de `designer` envoie au modèle les candidats avec leur nom,
   contre « aucun nom ne part au modèle ».
-- À Lionel : la bascule vers la clé d'API avant un client réel ; la phase E
-  (tâche cron) ; aligner le
+- À Lionel : la bascule vers la clé d'API avant un client réel (après le
+  plan de la livraison) ; aligner le
   départage de `gerer_absence` (par nom) sur celui des propositions (par
-  numéro).
+  numéro) ; les trois arbres `.claude/worktrees/agent-*` d'anciennes
+  sessions (`git worktree remove`).
 - Agence : `facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur),
   17 tests au lieu de 23, le piège `lots.nom`.
 - Une fuite comptée à tort sur exception.
@@ -131,6 +146,6 @@ pnpm veiller --client exemples/client-fictif --date 2026-10-06
 pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…"
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
-pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sans-modele]   # --refaire rouvre la branche telle quelle
-pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # jamais avec `pnpm -s`
+pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [--sans-modele]   # --refaire rouvre la branche telle quelle
+pnpm chantier retirer <id> --motif "<texte>"
 ```
