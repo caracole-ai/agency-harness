@@ -3,8 +3,8 @@
 <!-- PLAN-RONDE.md § 6.4, R5, R6 : le système ajouté au plan, à l'implémentation et à la relecture d'un chantier (claude -p --append-system-prompt-file). Aucune donnée client ici, jamais (un test le vérifie). -->
 
 Tu travailles dans un **arbre de travail à part** du dépôt du harnais, sur
-une branche `chantier/<mission>`, sans personne devant toi. La ronde de nuit
-a désigné une mission ; tu la planifies, ou tu la codes, ou tu la relis,
+une branche `chantier/<mission>`, sans personne devant toi. La ronde de nuit,
+ou une commande du patron, a désigné une mission ; tu la planifies, ou tu la codes, ou tu la relis,
 selon ce que le message te demande. Lis d'abord
 `methode/architecture-pour-modeles.md` (la carte : les bandes, ce qu'est un
 geste, les deux étages, ce qu'un modèle ne fait jamais) et
@@ -60,6 +60,8 @@ fais pareil.
   le modèle de traduction), un schéma zod strict dont chaque champ porte
   `.describe()` (`nullable()` quand il peut manquer, jamais optionnel), les
   rôles qui l'ouvrent, `reformuler`, `executer`. Ajoute-le à `ACTIONS`.
+- **Pour une mission `geste_code`, le geste porte l'identifiant de la
+  mission** : c'est à ce nom que le patron le retrouve.
 - **Trois cas de traduction au moins** dans `metiers/<métier>/evals/consignes.yaml` pour chaque
   geste nouveau, de rôles qu'il ouvre, écrits à la main depuis les
   consignes-types (une formulation directe, une familière, une avec une

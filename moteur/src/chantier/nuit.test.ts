@@ -9,6 +9,7 @@ import { TYPE_CHANTIER } from './chantier'
 import {
   agenceEssai,
   binaireSimule,
+  clientAvecCommande,
   commandeSimulee,
   creerDepots,
   ENV_ESSAI,
@@ -131,6 +132,25 @@ describe('faireNuit', () => {
       appelRonde: async () => ({ ok: true, sortie: deux, cout_usd: 0.2, estime: true }),
     })
     expect(encore.etapes.filter((x) => x.etape === 'chantier')).toEqual([])
+    expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
+  })
+
+  it('une mission commandée par le patron : la nuit la prend telle quelle, la ligne `chantier` porte l’intention', async () => {
+    const e = essai()
+    const { dossier } = clientAvecCommande()
+    const r = await faireNuit(METIER_ESSAI, {
+      ...e.options,
+      dossierClient: dossier,
+      appelRonde: async () => ({
+        ok: true,
+        sortie: { observations: [], missions: [], rien_a_signaler: true },
+        cout_usd: 0.2,
+        estime: true,
+      }),
+    })
+    expect(r.chantiers.map((x) => x.sorte)).toEqual(['fait'])
+    expect(r.etapes.find((x) => x.etape === 'chantier')?.issue).toMatch(/^liberer_un_jour : /)
+    expect(chantiersAuJournal(dossier).map((l) => l.objet)).toEqual(['liberer_un_jour'])
     expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
   })
 

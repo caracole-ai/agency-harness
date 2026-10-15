@@ -5,12 +5,14 @@ import { dirname, join } from 'node:path'
 import { stringify } from 'yaml'
 import { type Agence, chargerAgence } from '../agence/config'
 import { RACINE_DEPOT } from '../agence/fictif'
-import { dossierEssai } from '../ronde/essai.test.fixture'
-import { FICHIER_CARTE } from '../ronde/ronde'
+import { TYPE_CONSIGNE } from '../conversation/conversation'
+import { CLIENT_ESSAI, dossierEssai, METIER_ESSAI } from '../ronde/essai.test.fixture'
+import { DOSSIER_RONDES, FICHIER_CARTE } from '../ronde/ronde'
+import { FUSEAU, Temporal } from '../temps/temporal'
 import { type Commande, commandeSync } from './arbre'
 import { FICHIER_METHODE } from './chantier'
 import { fichierConsignes } from './garde'
-import type { Mission } from './mission'
+import { commanderMission, type Mission } from './mission'
 
 // Pour les tests du chantier (PLAN-RONDE.md § 6.4, PLAN-GENERAL.md G1 à G3) :
 // trois dépôts git réels et jetables (un dépôt nu qui joue `origin`, le clone
@@ -258,6 +260,40 @@ export function clientAvecMission(mission: Mission = MISSION_ESSAI): {
   const fichier = join(d, `${mission.id}.yaml`)
   writeFileSync(fichier, stringify(mission))
   return { dossier, fichier }
+}
+
+/**
+ * Un dossier client d'essai dont le patron a commandé le geste de
+ * `liberer_un_jour` le 2026-10-10 (une demande nouvelle, l'échappée du
+ * dossier d'essai) : la mission écrite par `commanderMission` ; rend son chemin.
+ */
+export function clientAvecCommande(): { dossier: string; fichier: string } {
+  const intention = 'liberer_un_jour'
+  const dossier = dossierEssai()
+  const s = METIER_ESSAI.ouvrir(dossier)
+  try {
+    s.journal.ecrire(
+      [
+        {
+          type: TYPE_CONSIGNE,
+          client: CLIENT_ESSAI,
+          objet: 'C-11',
+          issue: 'nouvelle',
+          motif: 'Libère Rosalie mardi.',
+          donnees: {
+            identite: { role: 'patron' },
+            demande: { sorte: 'nouvelle', intention, resume: 'libérer Rosalie mardi' },
+          },
+        },
+      ],
+      '2026-10-10T11:00:00Z',
+    )
+    const le = Temporal.ZonedDateTime.from(`2026-10-10T15:00[${FUSEAU}]`)
+    commanderMission(METIER_ESSAI, s, dossier, intention, { role: 'patron' }, le)
+  } finally {
+    METIER_ESSAI.fermer(s)
+  }
+  return { dossier, fichier: join(dossier, DOSSIER_RONDES, '2026-10-10', `${intention}.yaml`) }
 }
 
 /** Un geste nouveau, ses trois cas et son test : ce qu'une implémentation verte écrit. */

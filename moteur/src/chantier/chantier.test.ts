@@ -12,6 +12,7 @@ import {
   agenceEssai,
   binaireSimule,
   CLIENT_EVALS_ESSAI,
+  clientAvecCommande,
   clientAvecMission,
   commandeSimulee,
   creerDepots,
@@ -601,6 +602,32 @@ describe('le chantier s’arrête avant tout appel (§ 0.b, § 6.4)', () => {
     expect(sans.sorte).toBe('sans_modele')
     expect(emises).toEqual([])
     expect(r.appels()).toHaveLength(2)
+  })
+
+  it('--sans-modele sur une mission commandée par le patron (sans estimation) : le chantier, « non estimée », des consignes sans identifiant', async () => {
+    const depots = creerDepots()
+    const { binaire, appels } = binaireSimule({ plan: PLAN_VERT })
+    const { commande, emises } = commandeSimulee()
+    const { fichier } = clientAvecCommande()
+    const r = await faireChantier(METIER_ESSAI, {
+      racine: depots.racine,
+      agence: agenceEssai(binaire, depots.depot),
+      mission: fichier,
+      env: ENV_ESSAI,
+      maintenant: MAINTENANT,
+      commande,
+      sansModele: true,
+    })
+    expect(r).toMatchObject({ sorte: 'sans_modele', decision: { sorte: 'chantier' } })
+    const dossier = readFileSync(r.dossier, 'utf8')
+    expect(dossier).toContain('Décision : **chantier**')
+    expect(dossier).toContain(
+      'sorte : geste_code ; métier : essai ; écrit : oui ; estimation : non estimée (mission écrite par le code, sur commande du patron)',
+    )
+    expect(dossier).toContain('  - « Libère le mardi 13 de <personne>. »')
+    expect(dossier).not.toMatch(/A-\d|E-2026|Rosalie/)
+    expect(appels()).toEqual([])
+    expect(emises).toEqual([])
   })
 
   it('une consigne-type qui nommerait quelqu’un : refusée avant tout appel', async () => {
