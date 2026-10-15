@@ -13,12 +13,14 @@ import {
   chantiersDuJour,
   cloneAgence,
   DOSSIER_FILES,
+  ecrireEnFile,
   FICHIER_VERROU,
   lireFile,
   type MissionEnFile,
   nomEnFile,
+  noterChantier,
+  preparerSortie,
   publier,
-  sortieEnFile,
   statuerEnFile,
 } from './missions'
 import { preflightSignature } from './version'
@@ -78,9 +80,14 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
     }
   }
 
+  const { total, parClient } = chantiersDuJour(o.racine, jour)
   // L10 : un geste est du métier de son client ; une mission qui en nomme un autre ne se code pas.
   const prenables: MissionEnFile[] = []
-  for (const x of aPrendre(toutes)) {
+  for (const x of aPrendre(toutes, parClient)) {
+    if (x.mission.date > jour) {
+      tour.problemes.push(`${nomEnFile(x)} : datée de demain ou après (${x.mission.date}), laissée`)
+      continue
+    }
     if (x.mission.metier === x.client.metier) {
       prenables.push(x)
       continue
@@ -97,7 +104,7 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
   if (!x) return tour
 
   const borne = o.agence.agence.chantiers_max_par_jour
-  if (chantiersDuJour(toutes, jour) >= borne) {
+  if (total >= borne) {
     if (x.statut?.statut !== 'en attente') {
       statuerEnFile(c, o.racine, x, {
         statut: 'en attente',
@@ -113,16 +120,30 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
   // Avant tout statut : un préflight qui échoue laisse la mission à prendre, rien n'est écrit.
   preflight('claude', o.agence, o.env, executer)
   preflightSignature(o.env, o.racine, executer)
-  statuerEnFile(c, o.racine, x, { statut: 'en cours', issue: 'chantier en cours', cout_usd: 0, le })
+  const clone = cloneAgence(o.racine, x.client.slug)
+  /** Pousse la file ; un échec n'efface rien : ce qui est commis part au tour suivant. */
+  const pousser = (quoi: string) => {
+    try {
+      publier(c, clone, `Chantier ${x.mission.id} : ${quoi}`)
+    } catch (erreur) {
+      tour.problemes.push(
+        `${nomEnFile(x)} : ${quoi} non poussé (${message(erreur)}) ; au tour suivant`,
+      )
+    }
+  }
+  noterChantier(o.racine, jour, x.client.slug, x.mission.id)
+  ecrireEnFile(o.racine, x, { statut: 'en cours', issue: 'chantier en cours', cout_usd: 0, le })
+  pousser('en cours')
   let fin: { statut: StatutChantier; issue: string }
   try {
+    const sortie = preparerSortie(o.racine, x)
     const r = await faireChantier(await o.metier(x.mission.metier), {
       racine: o.racine,
       agence: o.agence,
       mission: x.chemin,
       client: x.client.slug,
       personnes: await o.personnes(x.mission.metier),
-      sortie: sortieEnFile(o.racine, x),
+      sortie,
       env: o.env,
       maintenant,
       commande: c,
@@ -132,37 +153,42 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
     if (r.sorte === 'deja_tentee') {
       fin = {
         statut: 'échoué',
-        issue: `déjà tentée : la branche chantier/${x.mission.id} existe (pnpm chantier --refaire, à la main)`,
+        issue: `une branche chantier/${x.mission.id} existe déjà à l'agence (cette mission, ou une autre du même nom, peut-être d'un autre client) : à trancher à la main`,
       }
-      statuerEnFile(c, o.racine, x, { ...fin, cout_usd: 0, le })
+      ecrireEnFile(o.racine, x, { ...fin, cout_usd: 0, le })
     } else {
-      // Le chantier a écrit son statut final et son dossier dans la file : les pousser tels quels.
-      const ecrit = lireStatut(join(sortieEnFile(o.racine, x), `${x.mission.id}${SUFFIXE_STATUT}`))
+      // Le chantier a écrit son statut final et son dossier dans la file.
+      const ecrit = lireStatut(join(sortie, `${x.mission.id}${SUFFIXE_STATUT}`))
       if (!ecrit) throw new Error('le chantier n’a écrit aucun statut')
       fin = { statut: ecrit.statut, issue: ecrit.issue }
-      publier(c, cloneAgence(o.racine, x.client.slug), `Chantier ${x.mission.id} : ${fin.statut}`)
     }
   } catch (erreur) {
     fin = { statut: 'échoué', issue: message(erreur) }
-    statuerEnFile(c, o.racine, x, { ...fin, cout_usd: 0, le })
+    ecrireEnFile(o.racine, x, { ...fin, cout_usd: 0, le })
   }
+  pousser(fin.statut)
   tour.prise = { mission: nomEnFile(x), ...fin }
   return tour
 }
 
-/** Le verrou de `pnpm agence` : le pid de qui tourne ; un verrou dont le pid est mort est levé. Rend de quoi le rendre. */
+/** Le verrou de `pnpm agence` : le pid de qui tourne, posé d'un seul geste (`wx`) ; un verrou dont le pid est mort est levé. Rend de quoi le rendre. */
 export function prendreVerrou(c: Commande, racine: string): () => void {
   exclure(c, racine, DOSSIER_FILES)
   const dossier = join(racine, DOSSIER_FILES)
   const chemin = join(dossier, FICHIER_VERROU)
+  mkdirSync(dossier, { recursive: true })
   if (existsSync(chemin)) {
     const pid = Number(readFileSync(chemin, 'utf8').trim())
     if (Number.isInteger(pid) && pid > 0 && vivant(pid)) {
       throw new Error(`pnpm agence tourne déjà (pid ${pid}, ${chemin})`)
     }
+    rmSync(chemin, { force: true })
   }
-  mkdirSync(dossier, { recursive: true })
-  writeFileSync(chemin, `${process.pid}\n`)
+  try {
+    writeFileSync(chemin, `${process.pid}\n`, { flag: 'wx' })
+  } catch {
+    throw new Error(`pnpm agence tourne déjà (${chemin} posé à l'instant par un autre)`)
+  }
   return () => rmSync(chemin, { force: true })
 }
 

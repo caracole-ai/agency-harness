@@ -303,6 +303,28 @@ un arrêt brutal n'est pas repris (la branche existe : `--refaire` à la
 main) ; `commanderEtLivrer` (dans `livraison/missions.ts`) fait la commande
 puis l'aller, `commanderMission` rend aussi le chemin de la mission.
 
+Relecture indépendante du lot 3, corrigé : un lien posé dans une file
+faisait écrire l'agence hors de la file et lire au client n'importe quel
+fichier → aucun lien n'est suivi (dossiers de date, missions, statuts,
+dossiers de chantier), une place occupée par un lien est nettoyée avant
+d'écrire ; la borne se comptait sur des statuts que le client écrit → elle
+se compte au registre de l'agence (`.claude/missions/chantiers.log`, une
+ligne par chantier lancé), et le client qui a eu le moins de chantiers du
+jour passe d'abord ; une mission datée de demain est laissée ; un commit
+dont le push a échoué partait pour poussé → `publier` pousse tout ce que la
+file n'a pas ; un statut que l'agence n'a pas pu pousser restait coincé, ou
+un `fusionné` devenait `échoué` → rien ne s'efface, ce qui est commis part
+au tour suivant ; une commande dont la config était illisible n'était ni
+poussée ni marquée → la marque est posée d'abord ; un `pull --rebase` en
+conflit laissait le clone bloqué → abandonné et dit ; git vers une file
+tournait sans délai (une invite gelait l'interface) → `GIT_TERMINAL_PROMPT=0`,
+ssh en mode lot, délai de 15 s ; le verrou se posait en deux temps → `wx`.
+**Ouvert** : deux clients de métiers différents qui commandent le même
+identifiant partagent la branche `chantier/<id>`, son étiquette et ses
+retraits ; le second finit « échoué » (le message le dit, sans proposer
+`--refaire`). Un espace de noms par métier (`chantier/<métier>/<id>`) est à
+faire avant un second client d'un autre métier.
+
 - `moteur/src/livraison/config.ts` : `livraison.yaml` (schéma strict :
   `depot`, `missions`, `installation`, `intervalle_minutes`), `lireLivraison(dossier)`
   rend `undefined` sans fichier (L5).

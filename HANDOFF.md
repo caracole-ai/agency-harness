@@ -22,7 +22,7 @@ Lot 3 : « Créer ce geste » pousse la mission dans la file git du client
 puis le statut final et le dossier dans la file ; l'onglet « Gestes »
 rattrape les statuts (une ligne `chantier` par statut nouveau) et la carte
 dit en attente / en cours / fusionné (v…) / disponible. Lot 2 :
-relu, corrigé, `pnpm check` vert (moteur 495). Chaque fusion et chaque retrait posent
+relus et corrigés tous deux, `pnpm check` vert (moteur 510). Chaque fusion et chaque retrait posent
 `v<AAAA-MM-JJ>-<n>`, signée SSH (`AGENCE_CLE_SIGNATURE`, hors du dépôt,
 retirée de l'environnement des modèles), poussée avec eux tout ou rien ;
 `pnpm versionner` étiquette `origin/main` tel quel. **Prochaine session :

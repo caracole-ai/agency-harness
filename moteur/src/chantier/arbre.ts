@@ -31,9 +31,14 @@ export const commandeSync: Commande = (cwd, commande, args, env) => {
   return { code: r.status, sortie: r.stdout, erreur: r.stderr }
 }
 
-/** `git <args>` dans `cwd` ; lève avec la sortie d'erreur si le code n'est pas 0. */
-export function git(c: Commande, cwd: string, args: string[]): string {
-  const r = c(cwd, 'git', args)
+/** `git <args>` dans `cwd` (avec cet environnement, s'il est donné) ; lève avec la sortie d'erreur si le code n'est pas 0. */
+export function git(
+  c: Commande,
+  cwd: string,
+  args: string[],
+  env?: Record<string, string | undefined>,
+): string {
+  const r = c(cwd, 'git', args, env)
   if (r.code !== 0) {
     throw new Error(`git ${args.join(' ')} : ${(r.erreur || r.sortie).trim().slice(0, 500)}`)
   }
