@@ -8,7 +8,12 @@
 > écrire `geste_code` (hors de son schéma, `SORTES_RONDE`) ; la mission d'un
 > geste commandé est écrite par le code à la commande (`commanderMission`,
 > `moteur/src/chantier/mission.ts`), sans `estimation`, et la nuit la prend
-> comme les autres.
+> comme les autres. **Enfin, la ronde est retirée** (Lionel, même jour :
+> « on arrête avec la détection de récurrence, c'est trop instable ; c'est
+> le patron qui donne les directives ») : plus aucun modèle ne cherche ce qui
+> manque. Restent de ce plan le chantier (§ 6), la nuit (§ 7, sans ronde),
+> la mémoire (R10) et `agence.yaml` ; les missions vivent dans
+> `<client>/missions/<date>/`.
 
 Écrit le 2026-10-10, sur deux décisions de Lionel du même jour
 (`REFLEXIONS.md`, « Décidé ») :

@@ -3,11 +3,11 @@
 <!-- PLAN-RONDE.md § 6.4, R5, R6 : le système ajouté au plan, à l'implémentation et à la relecture d'un chantier (claude -p --append-system-prompt-file). Aucune donnée client ici, jamais (un test le vérifie). -->
 
 Tu travailles dans un **arbre de travail à part** du dépôt du harnais, sur
-une branche `chantier/<mission>`, sans personne devant toi. La ronde de nuit,
-ou une commande du patron, a désigné une mission ; tu la planifies, ou tu la codes, ou tu la relis,
+une branche `chantier/<mission>`, sans personne devant toi. Le patron a
+commandé un geste ; tu planifies sa mission, ou tu la codes, ou tu la relis,
 selon ce que le message te demande. Lis d'abord
 `methode/architecture-pour-modeles.md` (la carte : les bandes, ce qu'est un
-geste, les deux étages, ce qu'un modèle ne fait jamais) et
+geste, d'où il vient, ce qu'un modèle ne fait jamais) et
 `memoire/CONVENTIONS.md` (ce que les chantiers précédents ont appris).
 
 Tu ne vois aucune donnée d'un client : la mission te parvient par types
@@ -22,8 +22,7 @@ Tu n'écris que dans la **bande métier**, celle du métier de la mission :
 
 - le code du métier : `metiers/<métier>/code/src/` (ses gestes, ses
   intentions, leurs tests) ;
-- les cas de traduction : `metiers/<métier>/evals/consignes.yaml` ; les
-  gestes appris d'éval : `metiers/<métier>/evals/gestes.yaml` ;
+- les cas de traduction : `metiers/<métier>/evals/consignes.yaml` ;
 - la fiche du métier : `metiers/<métier>/fiche.md` ;
 - une ligne **ajoutée** à `memoire/CONVENTIONS.md`, si tu as appris une
   convention qui servira aux chantiers suivants (jamais une ligne retirée ni

@@ -1,10 +1,10 @@
 # Plan — la promotion : une échappée qui revient devient un geste
 
 > **Retirée le 2026-10-15** (Lionel ; `REFLEXIONS.md`, « Décidé ») : plus
-> aucune promotion automatique. Ce plan décrit l'état d'avant. Restent les
-> gestes appris (lots 0, 1 et 3 : le journal, le geste appris, l'atelier),
-> dont le code cite encore ces sections. Un geste nouveau se construit sur
-> commande du patron.
+> aucune promotion automatique. Ce plan décrit l'état d'avant. Les gestes
+> appris, l'atelier et les instantanés sont retirés le même jour : un geste
+> est du code, écrit par le chantier sur commande du patron. Seul l'identifiant
+> d'échappée (lot 0) reste.
 
 Écrit le 2026-10-09, après la décision de Lionel du même jour (`REFLEXIONS.md`,
 « Décidé ») : la promotion est **l'auto-amélioration du harnais**, elle est

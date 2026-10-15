@@ -7,52 +7,41 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/retrait-promotion` (bf82764,
-2026-10-15, après relecture de Lionel). `pnpm evals ronde` (Fable, le modèle
-`ronde`) : R-1 et R-3 ok, fuite 0 ; R-2 manque la factorisation, comme une
-passe sur trois le 2026-10-11 avec l'ancien prompt (la trace : « vues une
-fois chacune : trop tôt ») : l'étiquette de R-2 contredit la carte (une
-demande vue une fois ne mérite pas de mission), question à Lionel.
-`pnpm check` vert :
-moteur 603, interface 33, sécurité 144, agence web 263.
+`main` = `origin/main` = la fusion de `general/retrait-promotion` (bf82764).
+**`general/commande-seule`, non fusionnée** (Lionel, 2026-10-15 : « les gestes
+sont codés par le harnais lui-même quand la demande explicite est faite par
+le patron ; on arrête avec la détection de récurrence ») : la ronde et les
+gestes appris sont retirés (≈ 8 000 lignes). `pnpm check` vert : moteur
+476, interface 29, sécurité 127, agence web 263 → 259 (les tests des deux
+sous-systèmes partis avec eux). À fusionner à la session suivante (une
+fusion par session ; celle-ci a fusionné `retrait-promotion`).
 
+- **Une seule chaîne pour un geste nouveau.** L'outil ne sait pas faire une
+  demande → elle s'affiche dans l'onglet « Gestes » (ce que l'outil ne sait
+  pas encore faire), groupée par intention → le patron clique « Créer ce
+  geste » → le code écrit, sans modèle, la mission `geste_code` chez le
+  client (`missions/<date>/<intention>.yaml` : consignes des échappées
+  masquées, sans nom) et la ligne `geste commandé` → la nuit lance le
+  chantier (Fable planifie, Opus code dans la bande métier, garde du diff,
+  `pnpm check`, relecture, mesure de la traduction) → fusion si les huit
+  conditions sont vertes → la carte dit « disponible » quand le métier porte
+  le geste. Aucun modèle ne cherche lui-même ce qui manque ; un geste n'est
+  que du code.
+- **Mesurée en réel le 2026-10-15** sur `heures_par_agent`, avant le retrait
+  (le code de la chaîne n'a pas changé depuis) : fusionné dans le clone de
+  mesure (`~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`), huit
+  conditions vertes, `evals traduire` 73/73 ; la même question passe ensuite
+  par le geste, sans échappée. Le geste n'est pas encore dans ce dépôt.
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
-- **Les trois espaces** (`PLAN-ESPACES.md`) : la traduction vers un geste
-  codé, l'échappée (SQL en lecture sur une copie, pseudonymes, contrôle « pas
-  un chiffre ni un nom hors des données »), et **la commande** : la promotion
-  automatique est retirée (Lionel, 2026-10-15) ; un geste nouveau se construit
-  sur commande du patron, jamais parce qu'une demande revient.
-- **La commande devient un geste codé** (plan
-  `~/.claude/plans/adaptive-twirling-tome.md`, commits « Commande → geste
-  codé ») : « Créer ce geste » fait écrire par le code, sans modèle, la
-  mission `geste_code` (`rondes/<date>/<intention>.yaml`, consignes des
-  échappées masquées, sans nom ni `estimation`), puis la ligne `geste
-  commandé` ; sinon 400 (aucune consigne utilisable, nom déjà pris, déjà
-  commandé). La nuit la prend ; la ronde ne peut plus écrire `geste_code` et
-  n'écrase jamais une mission déjà écrite. La carte suit : mission écrite →
-  chantier du … → disponible (un geste du métier porte ce nom). Vérifié sans
-  modèle sur une copie, vu à 1280 et 390 px.
-- **Mesure avec modèle (2026-10-15, `heures_par_agent`) : la chaîne entière
-  marche.** Trois demandes réelles (Sonnet) → « Créer ce geste » → `pnpm
-  chantier` : **fusionné** dans `main` du clone (`~/harnais-nuit`, poussé
-  vers `~/harnais-nuit-origine.git`, étiquette `chantier/heures_par_agent`),
-  huit conditions vertes, 7 cas de traduction, `evals traduire` 73/73, 0
-  bloquant, 308 lignes, 1 512 s, 7,89 $ équivalent API (abonnement). La
-  carte dit « disponible » sur le code fusionné ; la même question passe par
-  le geste (`action`, sans échappée). Trois passes avant : refus sur un test
-  de l'interface couplé au métier (corrigé, 4ef5f19), `--refaire` qui rouvre
-  la branche telle quelle au lieu de repartir de `main` (supprimer la branche
-  du clone pour repartir), un plan coupé par la limite d'usage. Le geste
-  n'est pas dans ce dépôt : le tirer du dépôt nu est à Lionel.
-- **La nuit** (`PLAN-RONDE.md`, `PLAN-GENERAL.md`) : ronde, chantier, fusion
-  sous conditions ; tout sur l'abonnement (binaire `claude`, Sonnet 5.5 au
-  quotidien).
-- **Dernières mesures (Sonnet, `evals/resultats/apparie-2026-10-14-s9-*`)** :
-  traduction 120 contre 119 sur les cas communs, cas neufs 12/12,
-  `liberer_un_jour` 3/3, gestes 6/6, échappée de la sécurité 18/18 ; agence
-  16 et 17/24 (étiquettes en brouillon). Fuite : R-2 seule, des deux côtés.
+- **Les trois espaces** : un geste codé (la traduction le choisit, le code
+  l'exécute), l'échappée (SQL en lecture sur une copie masquée, contrôle
+  « pas un chiffre ni un nom hors des données » ; elle n'écrit plus aucune
+  copie des vraies tables sur disque), la commande.
+- **Tout tourne sur l'abonnement** (binaire `claude`, Sonnet 5.5 au
+  quotidien, Fable et Opus au chantier) : les dollars affichés sont des
+  équivalents API, rien n'est facturé ; la contrainte est le quota.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 
@@ -83,30 +72,19 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
-- À Lionel, sur le geste fusionné : relire le remplacement du geste appris
-  d'éval `heures_par_agent` → `compter_vacations` (`evals/gestes.yaml`, que
-  la garde ne surveille pas) et les 7 cas ajoutés ; « fuite 1 » à `evals
-  traduire` non lue (l'arbre est supprimé après fusion ; peut-être la fuite
-  comptée à tort sur exception) ; remarques de relecture : E-01/E-02 de
-  `echappees.yaml` gardent l'intention `heures_par_agent`, arrondi des heures
-  recopié de `remplacement.ts`, description de fixture trompeuse.
+- Rapatrier le geste `heures_par_agent` (commit `bf32ec5` du dépôt nu) :
+  sa partie `gestes.yaml` et la fixture de geste appris tombent avec le
+  retrait ; restent le geste, ses 7 cas, N-1/N-2 réétiquetés (l'exception
+  prévue par la garde). « fuite 1 » de sa passe `evals traduire` non lue.
 - Non tranché : la priorité d'une mission commandée dans la nuit
-  (`missions_max_par_nuit: 1`, ordre par date : elle peut attendre) ; la
-  mise à jour à distance (« disponible » chez un client en dépend) ; le
-  dossier d'une mission commandée dit encore « Mission de la ronde du … »
-  (`rendreDecision`, `chantier.ts`).
-- À Lionel : le sort des gestes appris (`gestes/`, atelier, onglet « Appris »,
-  `pnpm gestes`, `evals gestes`, ≈ 2 500 lignes) : plus aucun producteur
-  depuis le retrait ; garder dormants ou retirer.
-- À Lionel : R-2 (« Aisha ») fuit à chaque passe : le niveau 2 de `designer`
-  envoie au modèle les candidats avec leur nom, contre « aucun nom ne part au
-  modèle ».
-- À Lionel : la bascule vers la clé d'API avant un client réel ; la mise à
-  jour à distance d'un harnais livré ; la phase E (tâche cron) ; aligner le
+  (`missions_max_par_nuit: 1`, par date : elle peut attendre) ; la mise à
+  jour à distance (« disponible » chez un client en dépend).
+- Le niveau 2 de `designer` envoie au modèle les candidats avec leur nom,
+  contre « aucun nom ne part au modèle ».
+- À Lionel : la bascule vers la clé d'API avant un client réel ; la phase E
+  (tâche cron) ; aligner le
   départage de `gerer_absence` (par nom) sur celui des propositions (par
   numéro).
-- Les tableaux d'évals disent « coût réel » sous l'abonnement (une
-  estimation).
 - Agence : `facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur),
   17 tests au lieu de 23, le piège `lots.nom`.
 - Une fuite comptée à tort sur exception.
@@ -150,9 +128,7 @@ pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm veiller --client exemples/client-fictif --date 2026-10-06
 pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…"
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
-pnpm gestes --client <copie> lister | verifier <id> | activer <id> --par <nom> | retirer <id> --motif "…"
-pnpm evals traduire|echappee|gestes|ronde --client exemples/client-fictif [--seulement id,id] [--modele simule]
-pnpm ronde --client <copie> --date AAAA-MM-JJ [--sans-modele]
-pnpm chantier --mission <copie>/rondes/<date>/<id>.yaml
+pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
+pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sans-modele]   # --refaire rouvre la branche telle quelle
 pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # jamais avec `pnpm -s`
 ```
