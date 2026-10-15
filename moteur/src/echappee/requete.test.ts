@@ -3,8 +3,8 @@ import { creerCopie, type TableCopie } from './copie'
 import { executerRequete, LIGNES_MAX, parametresNommes, rendreResultat, SQL_MAX } from './requete'
 
 // L'outil `requete` : les lectures passent, tout le reste revient en erreur,
-// et la copie reste intacte (PLAN-ESPACES.md § 6.8). Les paramètres d'un geste
-// appris sont liés, jamais collés dans le SQL (PLAN-PROMOTION.md § 4.5).
+// et la copie reste intacte (PLAN-ESPACES.md § 6.8). Les paramètres sont
+// liés, jamais collés dans le SQL.
 
 const TABLES: TableCopie[] = [
   {

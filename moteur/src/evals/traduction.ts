@@ -1,35 +1,16 @@
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { type Action, actionsDe, outilsDe, type Role, schemaMontre } from '../conversation/actions'
+import { actionsDe, outilsDe, type Role, schemaMontre } from '../conversation/actions'
 import { type ConfigConversation, prixDe } from '../conversation/config'
 import { avecSession, type MetierConversation, resoudre } from '../conversation/conversation'
-import { aCapacite, roleDe } from '../conversation/roles'
+import { roleDe } from '../conversation/roles'
 import { systemeTraduire, traduire } from '../conversation/traduire'
-import type { Instantane } from '../echappee/echappee'
-import { actionApprise } from '../gestes/action-apprise'
-import { lireFichiersGestes } from '../gestes/charger'
-import {
-  type DeclarationsGeste,
-  type GesteAppris,
-  gesteDe,
-  personneDuTest,
-} from '../gestes/geste-appris'
-import { typeDe } from '../gestes/types-parametre'
 import { cout, type Modele } from '../modele/modele'
 import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
-import { aParis, FUSEAU, Temporal } from '../temps/temporal'
+import { aParis, type Temporal } from '../temps/temporal'
 import {
   type AppelTrace,
-  bilan,
   CATEGORIE_AGENT_PATRON,
   type CasTraduire,
   ecartsTraduction,
@@ -38,21 +19,17 @@ import {
   type IssueTraduction,
   modeleTrace,
   type ResultatCas,
-  rendreResultats,
-  SEUILS,
   textesEnvoyes,
   type Variante,
 } from './evals'
 
 // Jouer des cas d'évals sur des copies fraîches du client (PLAN-ESPACES.md
-// § 9) : ce que `pnpm evals` fait, partagé avec `pnpm gestes verifier
-// --avec-modele`, qui mesure la traduction avec un geste appris chargé avant
-// qu'on puisse l'activer. Chaque cas tourne sur sa
+// § 9) : ce que `pnpm evals` fait. Chaque cas tourne sur sa
 // copie, passe la porte, garde sa trace ; la vérification est en code, la
 // fuite aussi : aucun nom de la copie dans ce qui part au modèle
 // (PLAN-PSEUDONYMES.md § 7).
 
-/** Un cas de traduction prêt à jouer : du fichier `consignes.yaml`, ou des tests d'un geste appris. */
+/** Un cas de traduction prêt à jouer, du fichier `consignes.yaml`. */
 export interface CasTraduction {
   id: string
   strict: boolean
@@ -83,7 +60,7 @@ export function copieClient(source: string, piege?: Variante): string {
   const dossier = mkdtempSync(join(tmpdir(), 'eval-'))
   cpSync(source, dossier, {
     recursive: true,
-    filter: (f) => !/\.sqlite$|rapport-demo|atelier/.test(relative(source, f)),
+    filter: (f) => !/\.sqlite$|rapport-demo/.test(relative(source, f)),
   })
   if (piege) {
     const fichier = join(dossier, piege.fichier)
@@ -204,67 +181,7 @@ export function casDuFichier(fichier: FichierTraduire, seulement?: Set<string>):
 }
 
 /**
- * Les tests d'un geste appris comme cas de traduction (P13) : la consigne
- * d'origine, au moment de l'échappée (lu dans son instantané : « cette
- * semaine » se calcule depuis là), doit choisir le geste avec ses paramètres.
- * Pour un rôle qui ne désigne pas autrui, un paramètre qui désigne une
- * personne vaut toujours celui qui parle (D4, PLAN-METIER-2.md M3, M5) : il
- * n'est pas comparé.
- */
-export function casDuGeste(
-  geste: GesteAppris,
-  dossierClient: string,
-  declarations: DeclarationsGeste,
-): CasTraduction[] {
-  const personnes = Object.entries(geste.parametres)
-    .filter(([, p]) => typeDe(declarations.typesParametre, p.type).sorte === 'personne')
-    .map(([nom]) => nom)
-  return geste.tests.map((t, n) => {
-    const chemin = join(dossierClient, t.instantane)
-    if (!existsSync(chemin)) throw new Error(`${geste.id} : instantané absent : ${t.instantane}`)
-    const { horodatage } = JSON.parse(readFileSync(chemin, 'utf8')) as Instantane
-    const soiMeme = !aCapacite(declarations.roles, { role: t.role }, 'designe_autrui')
-    const params = Object.fromEntries(
-      Object.entries(t.params).filter(([cle]) => !soiMeme || !personnes.includes(cle)),
-    )
-    const personne = personneDuTest(t)
-    return {
-      id: `G-${geste.id}-${n + 1}`,
-      strict: false,
-      role: t.role,
-      ...(personne !== null ? { personne } : {}),
-      quand: Temporal.Instant.from(horodatage).toZonedDateTimeISO(FUSEAU),
-      consigne: t.consigne,
-      attendu: { sorte: 'action', action: geste.id, params },
-    }
-  })
-}
-
-/**
- * Les gestes appris d'un dossier, proposés ou actifs, chargés par leur
- * fichier sans la clé du journal (la copie d'un cas n'en a pas) : la passe
- * mesure la liste que le modèle lira, un geste seulement proposé compris
- * (PLAN-PROMOTION.md § 5.4 et § 7.1). Les fichiers illisibles sont rendus à part.
- */
-export function apprisDuDossier<S>(
-  m: MetierConversation<S>,
-  dossier: string,
-): { appris: Action<S, unknown>[]; erreurs: string[] } {
-  const copie = m.copie
-  if (!copie) return { appris: [], erreurs: [] }
-  const erreurs: string[] = []
-  const appris = lireFichiersGestes(dossier).flatMap((f) => {
-    if (f.erreur !== undefined) erreurs.push(`gestes/${f.fichier} : ${f.erreur}`)
-    return f.contenu && f.contenu.statut !== 'retire'
-      ? [actionApprise(gesteDe(f.contenu), copie, m)]
-      : []
-  })
-  return { appris, erreurs }
-}
-
-/**
- * Joue des cas de traduction, les gestes appris donnés chargés (leur
- * intention sort de la liste, P14) : le circuit de la conversation sans
+ * Joue des cas de traduction : le circuit de la conversation sans
  * l'exécution, la traduction (la phrase seule), puis le dossier, puis la
  * résolution de la personne. `surCas` reçoit chaque résultat et sa trace.
  */
@@ -272,24 +189,20 @@ export async function jouerTraduction<S>(
   m: MetierConversation<S>,
   source: string,
   cas: CasTraduction[],
-  appris: Action<S, unknown>[],
   modeleDe: (config: ConfigConversation) => Modele,
   surCas?: (resultat: ResultatCas, trace: TraceCas, idModele: string) => void,
 ): Promise<ResultatCas[]> {
-  const intentions = m.intentions.filter((i) => !appris.some((a) => a.id === i.id))
-  const apprisIds = appris.map((a) => a.id)
-  const toutes = [...m.actions, ...appris]
   const resultats: ResultatCas[] = []
   for (const c of cas) {
     const joue = await jouerCas(m, source, c, modeleDe, async (dossier, modele, identite) => {
-      const actions = actionsDe(toutes, c.role)
+      const actions = actionsDe(m.actions, c.role)
       const config = configDuDossier(m, dossier)
       const { demande } = await traduire(
         modele,
         config.modele.effort.traduire,
         config.plafonds.par_demande.tokens_sortie,
-        systemeTraduire(roleDe(m.roles, identite), m.domaine, actions, intentions),
-        outilsDe(toutes, c.role, m.domaine),
+        systemeTraduire(roleDe(m.roles, identite), m.domaine, actions, m.intentions),
+        outilsDe(m.actions, c.role, m.domaine),
         c.consigne,
         c.quand,
         new Map(actions.map((a) => [a.id, schemaMontre(a)])),
@@ -313,87 +226,10 @@ export async function jouerTraduction<S>(
                 : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
             })
       // La traduction reçoit la phrase telle qu'écrite : les noms qu'elle porte ne sont pas une fuite.
-      return { ecarts: ecartsTraduction(c.attendu, issue, apprisIds), issue, permis: c.consigne }
+      return { ecarts: ecartsTraduction(c.attendu, issue), issue, permis: c.consigne }
     })
     resultats.push(joue.resultat)
     surCas?.(joue.resultat, joue.trace, joue.idModele)
   }
   return resultats
-}
-
-/** Le bilan d'une passe de traduction avec modèle, le geste chargé (PLAN-PROMOTION.md § 6.3, § 7.1). */
-export interface BilanTraduction {
-  ok: number
-  total: number
-  taux: number
-  coutUsd: number
-  stricts: string[]
-  appels: number
-}
-
-/** Le dossier de l'atelier, dans le dossier du client : la passe de traduction d'un geste appris y laisse son tableau. */
-export const DOSSIER_ATELIER = 'atelier'
-
-/**
- * La passe qui décide « activable » (`pnpm gestes verifier --avec-modele`) :
- * `consignes.yaml`
- * entier et les tests du geste, tous les gestes appris du dossier chargés par
- * leur fichier (celui-ci compris, proposé ou actif). Son tableau s'écrit dans
- * `atelier/<id>-<date>-traduction.md`.
- */
-export async function passeTraduction<S>(
-  m: MetierConversation<S>,
-  dossier: string,
-  geste: GesteAppris,
-  consignes: FichierTraduire,
-  modeleDe: (config: ConfigConversation) => Modele,
-  options: {
-    /** AAAA-MM-JJ, pour le nom du tableau. */
-    date: string
-    surAppris?: (ids: string[], erreurs: string[]) => void
-    surCas?: (resultat: ResultatCas, trace: TraceCas) => void
-  },
-): Promise<BilanTraduction & { idModele: string; tableau: string }> {
-  const { appris, erreurs } = apprisDuDossier(m, dossier)
-  options.surAppris?.(
-    appris.map((a) => a.id),
-    erreurs,
-  )
-  let appels = 0
-  let idModele = ''
-  const resultats = await jouerTraduction(
-    m,
-    dossier,
-    [...casDuFichier(consignes), ...casDuGeste(geste, dossier, m)],
-    appris,
-    modeleDe,
-    (r, trace, id) => {
-      appels += trace.appels.length
-      idModele = id
-      options.surCas?.(r, trace)
-    },
-  )
-  const b = bilan(resultats, SEUILS.traduire)
-  // Le répertoire n'existe pas forcément encore.
-  mkdirSync(join(dossier, DOSSIER_ATELIER), { recursive: true })
-  const tableau = join(dossier, DOSSIER_ATELIER, `${geste.id}-${options.date}-traduction.md`)
-  writeFileSync(
-    tableau,
-    rendreResultats(
-      `Traduction avec le geste ${geste.id} chargé — ${options.date}`,
-      idModele,
-      resultats,
-      SEUILS.traduire,
-    ),
-  )
-  return {
-    ok: b.ok,
-    total: b.total,
-    taux: b.taux,
-    coutUsd: b.coutUsd,
-    stricts: b.stricts,
-    appels,
-    idModele,
-    tableau,
-  }
 }

@@ -3,7 +3,6 @@ import { basename, dirname, join } from 'node:path'
 import { z } from 'zod'
 import { type Agence, cheminDepotNuit, type Executer } from '../agence/config'
 import type { MetierConversation } from '../conversation/conversation'
-import { purgerInstantanes } from '../gestes/instantanes'
 import { FUSEAU, jourDe, Temporal } from '../temps/temporal'
 import { brancheExiste, type Commande, commandeSync, remettreAOrigine } from './arbre'
 import { faireChantier, type IssueChantier, TYPE_CHANTIER } from './chantier'
@@ -13,8 +12,8 @@ import { ajouterMesure, lireMesures } from './memoire'
 import { DOSSIER_MISSIONS, lireMission, STATUTS_MISSION } from './mission'
 
 // La nuit (PLAN-RONDE.md § 7, R8, R11 ; PLAN-GENERAL.md G3) : le clone de la
-// nuit remis à `origin/main` (avant tout appel, propre ou rien), puis la purge
-// des instantanés d'échappée → le chantier de la première mission commandée
+// nuit remis à `origin/main` (avant tout appel, propre ou rien), puis le
+// chantier de la première mission commandée
 // non traitée, tant que `missions_max_par_nuit` n'est pas atteint ; la ligne
 // de la nuit (`MESURES.md`) commise et poussée depuis le clone. Aucun modèle
 // ne cherche ce qui manque : seul le patron commande (REFLEXIONS.md,
@@ -24,9 +23,6 @@ import { DOSSIER_MISSIONS, lireMission, STATUTS_MISSION } from './mission'
 
 /** Ce que les missions d'une nuit peuvent devenir, pour le choix du chantier. */
 const A_TENTER: string[] = [STATUTS_MISSION.a_faire]
-
-/** Un instantané d'échappée que plus aucun geste appris ne cite s'efface passé ce délai (l'ancien `promotion.conservation_jours`). */
-const CONSERVATION_JOURS = 90
 
 export interface OptionsNuit {
   racine: string
@@ -41,7 +37,7 @@ export interface OptionsNuit {
 }
 
 export interface Etapenuit {
-  etape: 'clone' | 'purge' | 'chantier' | 'mémoire'
+  etape: 'clone' | 'chantier' | 'mémoire'
   ok: boolean
   issue: string
 }
@@ -107,28 +103,6 @@ export async function faireNuit<S>(m: MetierConversation<S>, o: OptionsNuit): Pr
   } catch (erreur) {
     etapes.push({ etape: 'clone', ok: false, issue: message(erreur) })
     return { etapes, chantiers }
-  }
-
-  // La purge : les instantanés d'échappée que plus aucun geste appris ne cite, passé le délai.
-  try {
-    const s = m.ouvrir(o.dossierClient)
-    try {
-      const supprimes = purgerInstantanes(
-        o.dossierClient,
-        m.journal(s),
-        o.date.subtract({ days: CONSERVATION_JOURS }),
-      )
-      etapes.push({
-        etape: 'purge',
-        ok: true,
-        issue:
-          supprimes.length > 0 ? `${supprimes.length} instantané(s) supprimé(s)` : 'rien à purger',
-      })
-    } finally {
-      m.fermer(s)
-    }
-  } catch (erreur) {
-    etapes.push({ etape: 'purge', ok: false, issue: message(erreur) })
   }
 
   // Les chantiers déjà tentés cette nuit (une nuit relancée) comptent dans la borne.

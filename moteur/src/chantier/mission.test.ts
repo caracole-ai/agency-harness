@@ -35,18 +35,7 @@ import {
 // La mission lue par un schéma strict, et la décision prise en code avant
 // tout appel (PLAN-RONDE.md § 6.1, § 0.b ; REFLEXIONS.md, 2026-10-15).
 
-const CATALOGUE: Catalogue = {
-  gestes: [],
-  appris: [],
-  intentions: [
-    { id: 'heures_par_agent', description: 'heures', ecrit: false },
-    { id: 'liberer_un_jour', description: 'libérer', ecrit: true },
-    { id: 'simuler_absence', description: 'simuler', ecrit: false },
-    { id: 'agents_sans_carte', description: 'sans carte', ecrit: false },
-    { id: 'cartes_expirees', description: 'expirées', ecrit: false, geste_actif: true },
-  ],
-  missions_ouvertes: [],
-}
+const CATALOGUE: Catalogue = { gestes: [{ id: 'cartes_expirees' }], missions_ouvertes: [] }
 const mission = (m: Partial<Mission> = {}): Mission => ({ ...MISSION_ESSAI, ...m })
 
 function ecrire(m: Mission, nom = `${m.id}.yaml`, date = m.date): string {
@@ -297,7 +286,7 @@ describe('missionCommandee', () => {
     expect(texte).toContain('« Et si <personne> partait ? »')
   })
 
-  it('refusée : un geste codé du même nom, une mission ouverte du même nom, une intention déjà commandée, un geste actif ; une mission du jour sans commande se réécrit', () => {
+  it('refusée : un geste codé du même nom, une mission ouverte du même nom, une intention déjà commandée ; une mission du jour sans commande se réécrit', () => {
     const { dossier, ecrire } = client()
     ecrire('2026-10-09T08:00:00Z', [
       nouvelle('C-1', 'voir_planning'),
@@ -314,13 +303,6 @@ describe('missionCommandee', () => {
     // La même, `geste_code` et du jour : un clic dont la ligne au journal a manqué.
     ecrireMission(dossier, commandee(dossier, 'simuler_absence'))
     expect(commandee(dossier, 'simuler_absence').id).toBe('simuler_absence')
-    const actif: Catalogue = construireCatalogue(METIER_ESSAI, dossier)
-    actif.intentions = actif.intentions.map((i) =>
-      i.id === 'simuler_absence' ? { ...i, geste_actif: true as const } : i,
-    )
-    expect(() => commandee(dossier, 'simuler_absence', { catalogue: actif })).toThrow(
-      /un geste actif existe déjà/,
-    )
     ecrire('2026-10-10T08:00:00Z', [
       { type: TYPE_GESTE_COMMANDE, objet: 'simuler_absence', donnees: { par: PATRON } },
     ])

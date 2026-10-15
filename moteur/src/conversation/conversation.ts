@@ -1,12 +1,7 @@
 import { empreinte } from '../approbation/jeton'
-import type { TableCopie } from '../echappee/copie'
 import type { CriteresProposition, Echappee } from '../echappee/echappee'
 import { masquerConsigne, type Precision } from '../echappee/pseudonymes'
 import { verifierReponse } from '../echappee/reponse'
-import { actionApprise } from '../gestes/action-apprise'
-import { chargerGestesAppris } from '../gestes/charger'
-import type { OperationApprise } from '../gestes/operation'
-import type { TypeParametreDeclare } from '../gestes/types-parametre'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
 import type { Modele } from '../modele/modele'
@@ -30,6 +25,7 @@ import {
   proches,
 } from './designation'
 import type { Domaine } from './domaine'
+import type { Operation } from './operation'
 import { aCapacite, IdentiteSchema, type RoleDeclare, roleDe } from './roles'
 import type { Choix, Tableau } from './tableau'
 import {
@@ -49,9 +45,9 @@ import {
 // lire, après un « oui » à sa reformulation si elle écrit). Chaque sortie
 // laisse sa ligne au journal. Une demande nouvelle d'un rôle qui désigne autrui et nomme
 // quelqu'un d'ambigu reçoit sa question avant tout appel d'échappée : le nom
-// ne part jamais au modèle (PLAN-PSEUDONYMES.md § 5.3, S3). Un geste appris
-// qui écrit calcule ses réaffectations sans modèle, puis elles suivent le
-// chemin d'une proposition d'échappée (PLAN-PROMOTION.md § 10).
+// ne part jamais au modèle (PLAN-PSEUDONYMES.md § 5.3, S3). Un geste codé
+// qui propose calcule ses modifications sans modèle, puis elles suivent le
+// chemin d'une proposition d'échappée.
 
 export const TYPE_CONSIGNE = 'consigne'
 export const TYPE_CONFIRMATION_ATTENDUE = 'confirmation_attendue'
@@ -92,10 +88,8 @@ export interface MetierConversation<Session> {
   vocabulaire(s: Session, identite: Identite): Vocabulaire
   /** Tout nom qui ne part jamais au modèle (PLAN-METIER-2.md § 3.2, M4). */
   noms(s: Session): Designable[]
-  /** Les types de paramètre d'un geste appris que le métier ajoute à ceux du moteur (PLAN-METIER-2.md § 3.3, M5). */
-  typesParametre: TypeParametreDeclare[]
-  /** L'opération d'écriture d'un geste appris ; absente, ce métier n'écrit pas par un geste appris (PLAN-METIER-2.md § 3.4, M6). */
-  operation?: OperationApprise<unknown>
+  /** L'opération d'écriture du métier, que l'éval d'échappée lit ; absente, une proposition n'a pas de modification lisible (PLAN-METIER-2.md § 3.4, M6). */
+  operation?: Operation<unknown>
   /** Le domaine que disent les prompts du moteur (PLAN-METIER-2.md § 3.5, M7). */
   domaine: Domaine
   /**
@@ -108,12 +102,6 @@ export interface MetierConversation<Session> {
   echappee?: Echappee<Session>
   /** Absente, une proposition de l'échappée est montrée sans pouvoir être écrite. */
   proposition?: PropositionMetier<Session>
-  /**
-   * La copie des données à l'échelle du rôle, celle que l'échappée lit : un
-   * geste appris la lit aussi (PLAN-PROMOTION.md § 5.4). Absente, aucun geste
-   * appris n'est chargé.
-   */
-  copie?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => TableCopie[]
   /** Ce que l'interface montre, rendu par le métier (PLAN-METIER-2.md § 3.6, M10). Absent, l'interface n'a ni demandes ni textes du métier. */
   tableau?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => Tableau
   /** Les règles du métier, pour l'onglet Règles de l'interface (PLAN-METIER-2.md § 3.6, M10). Absent, l'onglet est vide. */
@@ -315,7 +303,6 @@ export async function traiterGeste<S>(
     apresLeDossier(m, s, modele, tour, {
       sorte: 'traduite',
       demande: { sorte: 'action', action: choix.action, params: choix.params },
-      appris: [],
     }),
   )
 }
@@ -332,16 +319,11 @@ export async function traiterConsigne<S>(
   return avecSession(m, dossier, tour.identite, (s) => apresLeDossier(m, s, modele, tour, avant))
 }
 
-/** Ce qui se décide sur le journal seul : une réponse déjà, une demande traduite, ou la réponse à une question en attente ; avec les gestes appris chargés pour ce tour. */
-type Avant<S> =
+/** Ce qui se décide sur le journal seul : une réponse déjà, une demande traduite, ou la réponse à une question en attente. */
+type Avant =
   | { sorte: 'reponse'; reponse: Reponse }
-  | { sorte: 'traduite'; demande: Demande; appris: Action<S, unknown>[] }
-  | {
-      sorte: 'precisee'
-      precision: PrecisionAttendue
-      choix: Designable
-      appris: Action<S, unknown>[]
-    }
+  | { sorte: 'traduite'; demande: Demande }
+  | { sorte: 'precisee'; precision: PrecisionAttendue; choix: Designable }
 
 /** La question en attente dans cette conversation, posée à ce demandeur et pas encore suivie d'une autre de ses consignes. */
 function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | undefined {
@@ -369,7 +351,7 @@ async function avantLeDossier<S>(
   dossier: string,
   modele: Modele,
   tour: Tour,
-): Promise<Avant<S>> {
+): Promise<Avant> {
   const { client, journal, config } = m.ouvrirJournal(dossier)
   const ici: Cible = { client, journal }
   try {
@@ -381,34 +363,20 @@ async function avantLeDossier<S>(
       return { sorte: 'reponse', reponse: { sorte: 'refus', texte } }
     }
 
-    // Les gestes appris, relus à chaque consigne (P7) : ils viennent après les
-    // gestes codés dans la liste que le modèle lit, et leur intention sort de
-    // celle des demandes nouvelles (P14).
-    const copie = m.copie
-    const appris: Action<S, unknown>[] = copie
-      ? chargerGestesAppris(
-          dossier,
-          { ...ici, declarations: m, codes: m.actions.map((a) => a.id) },
-          tour.maintenant.toInstant().toString(),
-        ).actifs.map((g) => actionApprise(g, copie, m))
-      : []
-
     const attendue = precisionEnAttente(journal, tour)
     const choix = attendue ? choisirParmi(tour.consigne, attendue.candidats) : undefined
-    if (attendue && choix) return { sorte: 'precisee', precision: attendue, choix, appris }
+    if (attendue && choix) return { sorte: 'precisee', precision: attendue, choix }
 
     const role = tour.identite.role
-    const toutes = [...m.actions, ...appris]
-    const actions = actionsDe(toutes, role)
-    const intentions = m.intentions.filter((i) => !appris.some((a) => a.id === i.id))
+    const actions = actionsDe(m.actions, role)
     let traduite: Awaited<ReturnType<typeof traduire>>
     try {
       traduite = await traduire(
         modele,
         config.modele.effort.traduire,
         config.plafonds.par_demande.tokens_sortie,
-        systemeTraduire(roleDe(m.roles, tour.identite), m.domaine, actions, intentions),
-        outilsDe(toutes, role, m.domaine),
+        systemeTraduire(roleDe(m.roles, tour.identite), m.domaine, actions, m.intentions),
+        outilsDe(m.actions, role, m.domaine),
         tour.consigne,
         tour.maintenant,
         new Map(actions.map((a) => [a.id, schemaMontre(a)])),
@@ -426,7 +394,7 @@ async function avantLeDossier<S>(
     ecrire(ici, tour, [
       evenementAppel(client, tour.conversation, 'traduire', 1, traduite.reponse, prixDe(config)),
     ])
-    return { sorte: 'traduite', demande: traduite.demande, appris }
+    return { sorte: 'traduite', demande: traduite.demande }
   } finally {
     journal.fermer()
   }
@@ -438,7 +406,7 @@ async function apresLeDossier<S>(
   s: S,
   modele: Modele,
   tour: Tour,
-  avant: Exclude<Avant<S>, { sorte: 'reponse' }>,
+  avant: Exclude<Avant, { sorte: 'reponse' }>,
 ): Promise<Reponse> {
   const ici = cibleDe(m, s)
   const refuser = (texte: string, donnees: Record<string, unknown> = {}): Reponse => {
@@ -452,7 +420,7 @@ async function apresLeDossier<S>(
     return refuser(message(erreur))
   }
 
-  const actions = actionsDe([...m.actions, ...avant.appris], tour.identite.role)
+  const actions = actionsDe(m.actions, tour.identite.role)
   if (avant.sorte === 'precisee') {
     const { precision, choix } = avant
     if ('echappee' in precision) {
@@ -574,11 +542,10 @@ async function echapper<S>(
 }
 
 /**
- * Une proposition, de l'échappée ou d'un geste appris qui écrit : le métier
+ * Une proposition, de l'échappée ou d'un geste codé qui propose : le métier
  * l'ouvre (ses contrôles ; un refus est au journal), puis la confirmation
  * attend le « oui » du demandeur, sur l'empreinte de la liste exacte ; ensuite
- * l'écriture du métier (ses accords, sa clé). PLAN-ESPACES.md § 7.2,
- * PLAN-PROMOTION.md § 10.
+ * l'écriture du métier (ses accords, sa clé). PLAN-ESPACES.md § 7.2.
  */
 function ouvrirProposition<S>(
   m: MetierConversation<S>,
@@ -911,7 +878,7 @@ export async function confirmer<S>(
   return r
 }
 
-/** Ce qu'un « oui » déclenche : l'action reformulée (un geste codé : le « oui » d'un geste appris porte sur sa proposition), ou la validation d'une proposition. */
+/** Ce qu'un « oui » déclenche : l'action reformulée (le « oui » d'un geste qui propose porte sur sa proposition), ou la validation d'une proposition. */
 async function executerAttente<S>(
   m: MetierConversation<S>,
   s: S,

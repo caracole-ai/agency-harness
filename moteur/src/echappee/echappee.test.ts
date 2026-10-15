@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs'
+import { mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -13,12 +13,8 @@ import { CONTROLE_OK, CONTROLE_RETIRE } from './boucle'
 import type { TableCopie } from './copie'
 import {
   type CadreEchappee,
-  cheminInstantane,
-  DOSSIER_ECHAPPEES,
   type EchappeeDuMetier,
   echappee,
-  ecrireInstantane,
-  type Instantane,
   systemeEchappee,
   TYPE_ECHAPPEE,
   TYPE_OUTIL_ECHAPPEE,
@@ -27,7 +23,7 @@ import { fuites, type Precision } from './pseudonymes'
 
 // Ce que le journal garde d'une échappée pour le rejeu, avec le modèle
 // simulé et des tables en mémoire : l'identifiant sur chaque ligne, le texte
-// final tel que montré, l'instantané de la copie (PLAN-PROMOTION.md § 4.5) ;
+// final tel que montré ; rien des données n'est écrit hors du journal ;
 // et aucun nom ne part au modèle, ni dans la consigne, ni dans la copie, ni
 // dans une sortie d'outil (PLAN-PSEUDONYMES.md § 5.4).
 
@@ -115,7 +111,6 @@ async function echapper(
   const journal = new Journal(join(dossier, 'journal.sqlite'))
   const cadre: CadreEchappee = {
     client: 'fictif',
-    dossierClient: dossier,
     conversation: 'C-test',
     journal,
     config: CONFIG,
@@ -166,7 +161,7 @@ async function echapper(
 const ID = /^E-\d{8}T\d{4}-[0-9a-f]{4}$/
 
 describe('le journal se souvient de l’échappée', () => {
-  it('chaque ligne porte l’identifiant ; la ligne echappee porte le rôle, le texte montré et l’instantané', async () => {
+  it('chaque ligne porte l’identifiant ; la ligne echappee porte le rôle et le texte montré ; rien des données hors du journal', async () => {
     const { issue, dossier, donnees } = await echapper(PATRON, [
       REQUETE,
       repondre('A-2 : 16 heures.'),
@@ -180,16 +175,10 @@ describe('le journal se souvient de l’échappée', () => {
       intention: 'heures_par_agent',
       role: 'patron',
       texte: 'Julien Lefèvre : 16 heures.',
-      instantane: cheminInstantane(e.echappee),
     })
     expect(e).not.toHaveProperty('personne')
-    const instantane = JSON.parse(readFileSync(join(dossier, e.instantane), 'utf8')) as Instantane
-    expect(instantane).toEqual({
-      echappee: e.echappee,
-      horodatage: maintenant.toInstant().toString(),
-      role: 'patron',
-      tables: [AGENTS, VACATIONS],
-    })
+    expect(e).not.toHaveProperty('instantane')
+    expect(readdirSync(dossier).filter((f) => !f.startsWith('journal'))).toEqual([])
   })
 
   it('un résumé retiré : le texte journalisé est celui rendu, les tableaux', async () => {
@@ -209,42 +198,19 @@ describe('le journal se souvient de l’échappée', () => {
     expect(invente.issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
   })
 
-  it('un agent : l’instantané ne contient que sa ligne, la ligne echappee porte son identifiant', async () => {
-    const { dossier, donnees } = await echapper(JULIEN, [REQUETE, repondre('16 heures.')])
+  it('un agent : la ligne echappee porte son identifiant', async () => {
+    const { donnees } = await echapper(JULIEN, [REQUETE, repondre('16 heures.')])
     const [e] = donnees(TYPE_ECHAPPEE)
     expect(e).toMatchObject({ role: 'agent', personne: 'A-2' })
-    const instantane = JSON.parse(readFileSync(join(dossier, e.instantane), 'utf8')) as Instantane
-    expect(instantane).toMatchObject({ role: 'agent', personne: 'A-2' })
-    expect(instantane.tables.find((t) => t.nom === 'agents')?.lignes).toEqual([
-      { id: 'A-2', nom: 'Julien Lefèvre' },
-    ])
-    expect(instantane.tables.find((t) => t.nom === 'vacations')?.lignes).toHaveLength(2)
   })
 
-  it('un abandon : pas de texte, l’instantané est quand même là', async () => {
-    const { dossier, donnees } = await echapper(PATRON, [
+  it('un abandon : pas de texte', async () => {
+    const { donnees } = await echapper(PATRON, [
       { outil: 'abandonner', entree: { motif: 'rien à lire' } },
     ])
     const [e] = donnees(TYPE_ECHAPPEE)
     expect(e).toMatchObject({ abandon: 'rien à lire', role: 'patron' })
     expect(e).not.toHaveProperty('texte')
-    expect(existsSync(join(dossier, e.instantane))).toBe(true)
-  })
-})
-
-describe('ecrireInstantane', () => {
-  it('écrit echappees/<id>.json, crée le dossier, et refuse d’écraser', () => {
-    const dossier = mkdtempSync(join(tmpdir(), 'instantane-'))
-    const instantane: Instantane = {
-      echappee: 'E-20261010T2140-0001',
-      horodatage: '2026-10-10T19:40:00Z',
-      role: 'patron',
-      tables: [AGENTS],
-    }
-    const chemin = ecrireInstantane(dossier, instantane)
-    expect(chemin).toBe(join(DOSSIER_ECHAPPEES, 'E-20261010T2140-0001.json'))
-    expect(JSON.parse(readFileSync(join(dossier, chemin), 'utf8'))).toEqual(instantane)
-    expect(() => ecrireInstantane(dossier, instantane)).toThrow('déjà écrit')
   })
 })
 
@@ -371,7 +337,6 @@ describe('aucun nom ne part au modèle (PLAN-PSEUDONYMES.md § 5.4)', () => {
     await echappee(
       {
         client: 'fictif',
-        dossierClient: dossier,
         conversation: 'C-int',
         journal,
         config: CONFIG,

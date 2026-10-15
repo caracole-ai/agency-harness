@@ -4,7 +4,7 @@ import type { Temporal } from '../temps/temporal'
 // L'identifiant d'une conversation : sa date, son heure, et quatre chiffres
 // hexadécimaux au hasard. C'est l'objet de ses lignes au journal
 // (PLAN-ESPACES.md § 5.5). Une échappée reçoit le sien, de la même forme,
-// porté dans les `donnees` de ses lignes (PLAN-PROMOTION.md § 4.2).
+// porté dans les `donnees` de ses lignes.
 
 const deux = (n: number) => String(n).padStart(2, '0')
 

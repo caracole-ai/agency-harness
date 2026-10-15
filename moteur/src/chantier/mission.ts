@@ -12,16 +12,14 @@ import type { Identite } from '../conversation/roles'
 import type { IssueEchappee } from '../echappee/boucle'
 import { TYPE_ECHAPPEE } from '../echappee/echappee'
 import { fuites } from '../echappee/pseudonymes'
-import { ErreurAtelier } from '../gestes/atelier'
-import { lireFichiersGestes } from '../gestes/charger'
 import {
   commanderGeste,
   type DemandeSansGeste,
   demandeACommander,
   demandesSansGeste,
+  ErreurCommande,
   TYPE_GESTE_COMMANDE,
 } from '../gestes/commande'
-import { ecritDe, gesteDe } from '../gestes/geste-appris'
 import type { Ligne } from '../journal/journal'
 import { FUSEAU, jourDe, type Temporal } from '../temps/temporal'
 import type { MissionRetiree } from './memoire'
@@ -71,15 +69,8 @@ export const memesIntentions = (a: string[], b: string[]) =>
 
 /** Ce que le code sait du catalogue pour décider d'une mission : des identifiants, aucune donnée. */
 export interface Catalogue {
-  gestes: { id: string; description: string; ecrit: boolean }[]
-  appris: { id: string; description: string; ecrit: boolean; statut: string }[]
-  intentions: {
-    id: string
-    description: string
-    ecrit: boolean
-    /** Un geste appris actif porte cette intention. */
-    geste_actif?: true
-  }[]
+  /** Les gestes codés du métier. */
+  gestes: { id: string }[]
   /** Les missions déjà écrites dans `missions/` du client. */
   missions_ouvertes: {
     id: string
@@ -125,30 +116,10 @@ function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes']
     )
 }
 
-/** Le catalogue d'un client : gestes codés, gestes appris, intentions connues, missions déjà écrites. */
+/** Le catalogue d'un client : ses gestes codés, ses missions déjà écrites. */
 export function construireCatalogue<S>(m: MetierConversation<S>, dossierClient: string): Catalogue {
-  const appris = lireFichiersGestes(dossierClient).flatMap((f) =>
-    f.contenu
-      ? [
-          {
-            id: f.contenu.id,
-            description: f.contenu.description,
-            ecrit: ecritDe(gesteDe(f.contenu)),
-            statut: f.contenu.statut,
-          },
-        ]
-      : [],
-  )
-  const actifs = new Set(appris.filter((a) => a.statut === 'actif').map((a) => a.id))
   return {
-    gestes: m.actions.map((a) => ({ id: a.id, description: a.description, ecrit: a.ecrit })),
-    appris,
-    intentions: m.intentions.map((i) => ({
-      id: i.id,
-      description: i.description,
-      ecrit: i.ecrit,
-      ...(actifs.has(i.id) ? { geste_actif: true as const } : {}),
-    })),
+    gestes: m.actions.map((a) => ({ id: a.id })),
     missions_ouvertes: missionsOuvertes(dossierClient),
   }
 }
@@ -189,10 +160,10 @@ export function decider(m: Mission, catalogue: Catalogue, retirees: MissionRetir
   const retiree = retirees.find((r) => r.id === m.id || memesIntentions(r.intentions, m.intentions))
   if (retiree)
     return { sorte: 'ecartee', motif: `mission retirée (${retiree.id}) : jamais refaite` }
-  const intentions = new Map(catalogue.intentions.map((i) => [i.id, i]))
-  const avecGeste = m.intentions.filter((i) => intentions.get(i)?.geste_actif)
+  const codes = new Set(catalogue.gestes.map((g) => g.id))
+  const avecGeste = m.intentions.filter((i) => codes.has(i))
   if (avecGeste.length > 0) {
-    return { sorte: 'ecartee', motif: `${avecGeste.join(', ')} : un geste actif existe déjà` }
+    return { sorte: 'ecartee', motif: `${avecGeste.join(', ')} : un geste codé existe déjà` }
   }
   return { sorte: 'chantier' }
 }
@@ -244,7 +215,7 @@ export interface ContexteCommande {
  * (toutes issues, les plus récentes d'abord) et leurs consignes version
  * modèle, identifiants remplacés par un type, gardées seulement si aucun nom
  * n'y reste. Jamais `par`, jamais le résumé d'une demande (il peut porter un
- * nom). Lève (`ErreurAtelier`) : une intention sans demande ou déjà commandée,
+ * nom). Lève (`ErreurCommande`) : une intention sans demande ou déjà commandée,
  * un geste codé du même nom, une mission du même nom déjà ouverte, aucune
  * consigne utilisable, une décision du chantier qui ne serait pas `chantier`.
  */
@@ -252,7 +223,7 @@ export function missionCommandee(intention: string, lignes: Ligne[], c: Contexte
   const demande = demandeACommander(lignes, intention)
   const date = c.date.toString()
   if (c.catalogue.gestes.some((g) => g.id === intention)) {
-    throw new ErreurAtelier(`${intention} : un geste codé porte déjà ce nom`)
+    throw new ErreurCommande(`${intention} : un geste codé porte déjà ce nom`)
   }
   // Une mission `geste_code` du jour sous ce nom, sans ligne `geste commandé` : la commande
   // d'un clic dont le journal a échoué ; ce clic-ci la réécrit à l'identique.
@@ -260,7 +231,7 @@ export function missionCommandee(intention: string, lignes: Ligne[], c: Contexte
     (o) => o.id === intention && !(o.sorte === 'geste_code' && o.date === date),
   )
   if (ouverte) {
-    throw new ErreurAtelier(
+    throw new ErreurCommande(
       `${intention} : une mission de ce nom est déjà ouverte (${ouverte.date}, ${ouverte.statut})`,
     )
   }
@@ -287,7 +258,7 @@ export function missionCommandee(intention: string, lignes: Ligne[], c: Contexte
     }
   }
   if (consignes.length === 0) {
-    throw new ErreurAtelier(
+    throw new ErreurCommande(
       `${intention} : aucune consigne utilisable (demandes trop anciennes, ou qui portent un nom) ; rien n'est commandé`,
     )
   }
@@ -305,7 +276,7 @@ export function missionCommandee(intention: string, lignes: Ligne[], c: Contexte
     statut: STATUTS_MISSION.a_faire,
   })
   const decision = decider(mission, c.catalogue, [])
-  if (decision.sorte !== 'chantier') throw new ErreurAtelier(`${intention} : ${decision.motif}`)
+  if (decision.sorte !== 'chantier') throw new ErreurCommande(`${intention} : ${decision.motif}`)
   return mission
 }
 

@@ -103,7 +103,7 @@ describe('verifierReponse', () => {
   })
 })
 
-describe('citations et contient (le rejeu d’un geste appris)', () => {
+describe('citations et contient', () => {
   it('citations : les nombres hors dates tels qu’écrits, les mots de nom connus cités, sans doublon', () => {
     expect(
       citations('Julien Lefèvre : 16 h (16,5 avec la pause) le 11/10 et le 2026-10-12.', NOMS),

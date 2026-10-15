@@ -1,5 +1,3 @@
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
 import type { Identite } from '../conversation/actions'
 import { type ConfigConversation, prixDe } from '../conversation/config'
 import type { Designable } from '../conversation/designation'
@@ -25,9 +23,9 @@ import { executerRequete } from './requete'
 // le système, la boucle, et ce qui en reste au journal (chaque appel, chaque
 // outil, l'issue). La copie est détruite à la fin, quoi qu'il arrive
 // (PLAN-ESPACES.md § 6.5 et § 6.7). Le journal se souvient de chaque échappée
-// pour le rejeu d'un geste appris : son identifiant sur ses lignes, le rôle, le texte final
-// tel que montré, et l'instantané de la copie dans un fichier du dossier
-// client (PLAN-PROMOTION.md § 4.2, P8). Le modèle ne voit aucun nom : la
+// (son identifiant sur ses lignes, le rôle, le texte final tel que montré) :
+// la mission d'un geste commandé en reprend les consignes. Rien des données
+// n'est gardé hors du journal. Le modèle ne voit aucun nom : la
 // consigne, la copie et les sorties d'outils sont masquées (l'identifiant
 // tient lieu de nom), le contrôle se fait dans cet espace, puis le code
 // restitue les noms dans ce qui est montré ; le journal garde les deux
@@ -36,14 +34,9 @@ import { executerRequete } from './requete'
 export const TYPE_OUTIL_ECHAPPEE = 'outil_echappee'
 export const TYPE_ECHAPPEE = 'echappee'
 
-/** Le dossier des instantanés, dans le dossier du client. */
-export const DOSSIER_ECHAPPEES = 'echappees'
-
 /** Où l'échappée tourne : chez quel client, dans quelle conversation, pour qui. */
 export interface CadreEchappee {
   client: string
-  /** Le dossier du client : les instantanés s'y écrivent. */
-  dossierClient: string
   conversation: string
   journal: Journal
   config: ConfigConversation
@@ -80,15 +73,6 @@ export type Echappee<Session> = (
   /** Les réponses déjà données à « vous parlez de qui ? » pour cette consigne (S3). */
   precisions?: Precision[],
 ) => Promise<IssueEchappee>
-
-/** Ce qu'un instantané garde : les tables de la copie avant le masque (S2), pour rejouer un geste appris dessus. */
-export interface Instantane {
-  echappee: string
-  horodatage: string
-  role: Identite['role']
-  personne?: string
-  tables: TableCopie[]
-}
 
 /** Le motif d'une ligne de journal : l'entrée d'un outil, tronquée. */
 export const MOTIF_MAX = 300
@@ -171,23 +155,6 @@ function montrer(issue: IssueEchappee, personnes: Designable[]): IssueEchappee {
 const texteModele = (issue: IssueEchappee) =>
   issue.sorte === 'reponse' ? issue.texte : issue.sorte === 'abandon' ? issue.motif : undefined
 
-/** Le chemin d'un instantané, relatif au dossier du client : `echappees/<id>.json`. */
-export const cheminInstantane = (id: string) => join(DOSSIER_ECHAPPEES, `${id}.json`)
-
-/**
- * Écrit `echappees/<id>.json` dans le dossier du client (créé au besoin) et
- * rend son chemin relatif. Un fichier déjà là pour cet identifiant lève : un
- * instantané ne se remplace pas.
- */
-export function ecrireInstantane(dossierClient: string, instantane: Instantane): string {
-  const chemin = cheminInstantane(instantane.echappee)
-  const absolu = join(dossierClient, chemin)
-  if (existsSync(absolu)) throw new Error(`instantané déjà écrit : ${chemin}`)
-  mkdirSync(join(dossierClient, DOSSIER_ECHAPPEES), { recursive: true })
-  writeFileSync(absolu, JSON.stringify(instantane))
-  return chemin
-}
-
 export async function echappee<Modif>(
   cadre: CadreEchappee,
   metier: EchappeeDuMetier<Modif>,
@@ -231,15 +198,7 @@ export async function echappee<Modif>(
   const intentionModele = masquerTexte(intention, metier.toutes)
   const masquer = (texte: string) => masquerTexte(texte, metier.toutes)
   let copie: ReturnType<typeof creerCopie> | undefined
-  let instantane: string | undefined
   try {
-    // L'instantané d'abord : les vraies tables, celles qu'un geste appris lira ; il ne sort jamais.
-    instantane = ecrireInstantane(cadre.dossierClient, {
-      echappee: id,
-      horodatage,
-      ...qui,
-      tables: metier.tables,
-    })
     copie = creerCopie(masquerTables(metier.tables, metier.toutes))
     const ouverte = copie
     const { plafonds, modele: m } = cadre.config
@@ -311,7 +270,6 @@ export async function echappee<Modif>(
         ...(montree.sorte === 'reponse' ? { controle_reponse: montree.controle } : {}),
         // Le texte final tel que montré, après contrôle (les tableaux si le résumé est retiré) et restitution.
         ...(montree.sorte !== 'abandon' ? { texte: montree.texte } : {}),
-        instantane,
       },
     })
     return montree
@@ -330,7 +288,6 @@ export async function echappee<Modif>(
         usage: USAGE_NUL,
         cout_usd: 0,
         abandon: message(erreur),
-        ...(instantane !== undefined ? { instantane } : {}),
       },
     })
     throw erreur

@@ -12,7 +12,7 @@ import { TYPE_APPEL } from '../modele/compteur'
 
 // Pour les tests de la mission et du chantier : un métier minimal et un
 // journal écrit à la main, qui porte tout ce que le chantier ne doit jamais
-// lire (noms, résultats de requête, textes montrés, instantanés) à côté de ce
+// lire (noms, résultats de requête, textes montrés) à côté de ce
 // qu'une mission en garde (consignes version modèle, identifiants d'échappée).
 
 export const CLIENT_ESSAI = 'client essai'
@@ -24,7 +24,6 @@ export const PERSONNES_ESSAI = [
 export const SECRETS_ESSAI = {
   resultat: 'Rosalie Vernet | 24 | site Bastion',
   texte: 'Rosalie Vernet a fait 24 heures au Bastion.',
-  instantane: 'echappees/E-20261010T0800-aaaa.json',
 }
 
 export const CONFIG_ESSAI: ConfigConversation = {
@@ -96,7 +95,6 @@ export const METIER_ESSAI: MetierConversation<Session> = {
   ],
   vocabulaire: () => ({ noms: PERSONNES_ESSAI }),
   noms: () => PERSONNES_ESSAI,
-  typesParametre: [],
   domaine: DOMAINE_ESSAI,
   verifierIdentite: () => undefined,
 }
@@ -142,7 +140,6 @@ export function echappeeEssai(
         cout_usd: 0.01,
         ...(issue === 'reponse' ? { controle_reponse: 'ok', texte: SECRETS_ESSAI.texte } : {}),
         ...(issue === 'abandon' ? { abandon: 'plafond de tours atteint' } : {}),
-        instantane: SECRETS_ESSAI.instantane,
         ...extra,
       },
     },

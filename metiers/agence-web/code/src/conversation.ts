@@ -25,7 +25,6 @@ import { tablesPour } from './copie'
 import { DOMAINE } from './domaine'
 import type { Contexte } from './modele'
 import { type IdRole, ROLES_DECLARES, vueDe } from './roles'
-import { TYPES_PARAMETRE } from './types-parametre'
 
 // Ce que l'agence web fournit à la conversation (PLAN-METIER-2.md § 7.4) :
 // ouvrir un client (ou son journal seul), ses huit gestes, ses rôles et son
@@ -269,8 +268,6 @@ export const CONVERSATION: MetierConversation<Session> = {
   intentions: INTENTIONS,
   roles: ROLES_DECLARES,
   domaine: DOMAINE,
-  typesParametre: TYPES_PARAMETRE,
-  copie: tablesPour,
   vocabulaire: (s, identite) => ({ noms: designables(s, identite) }),
   noms,
   verifierIdentite: (s, identite) => {
@@ -286,7 +283,6 @@ export const CONVERSATION: MetierConversation<Session> = {
     echappee(
       {
         client: s.config.client,
-        dossierClient: s.dossier,
         conversation,
         journal: s.journal,
         config: configDe(s),

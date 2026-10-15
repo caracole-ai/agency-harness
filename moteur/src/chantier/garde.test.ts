@@ -22,7 +22,6 @@ const CONFIG = {
   chemins_autorises: [
     `metiers/${PLACE_METIER}/code/src/**`,
     `metiers/${PLACE_METIER}/evals/consignes.yaml`,
-    `metiers/${PLACE_METIER}/evals/gestes.yaml`,
     `metiers/${PLACE_METIER}/fiche.md`,
     'memoire/**',
   ],

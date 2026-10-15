@@ -57,16 +57,14 @@ const chantiersAuJournal = (dossier: string) => {
 }
 
 describe('faireNuit', () => {
-  it('purge → une mission → fusion ; la mémoire et la ligne de la nuit poussées depuis le clone', async () => {
+  it('une mission → fusion ; la mémoire et la ligne de la nuit poussées depuis le clone', async () => {
     const e = essai()
     const r = await faireNuit(METIER_ESSAI, e.options)
     expect(r.etapes.map((x) => [x.etape, x.ok])).toEqual([
       ['clone', true],
-      ['purge', true],
       ['chantier', true],
       ['mémoire', true],
     ])
-    expect(r.etapes.find((x) => x.etape === 'purge')?.issue).toBe('rien à purger')
     expect(lireIndex(e.depots.depot).map((l) => l.sorte)).toEqual(['fusion'])
     expect(lireMesures(e.depots.depot)).toEqual([{ date: '2026-10-10', client: 'client essai' }])
     expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(

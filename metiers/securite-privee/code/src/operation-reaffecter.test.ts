@@ -1,106 +1,16 @@
-import { mkdtempSync, readFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import {
-  FichierGestes,
-  Journal,
-  modificationsDe,
-  SansCandidat,
-  TYPE_ECHAPPEE,
-  verifierGabarit,
-} from '@harnais/moteur'
 import { describe, expect, it } from 'vitest'
-import { parse } from 'yaml'
 import { OPERATION_REAFFECTER } from './operation-reaffecter'
-import { STATUT_R, TYPE_REAFFECTATION } from './reaffectation'
-import { ROLES } from './roles'
-import { TYPES_PARAMETRE } from './types-parametre'
 
 // L'opération `reaffecter` de la sécurité privée (PLAN-METIER-2.md § 3.4,
-// M6) : une ligne de `pour_chaque` en fait une, le journal rend les
-// réaffectations validées d'une conversation (celles de sa R-… validée), deux réaffectations sont égales
-// vacation et agent compris ; les gestes de l'éval de rejeu, écrits sous
-// l'ancienne forme, passent le gabarit avec ces déclarations.
-
-const evals = fileURLToPath(new URL('../../evals', import.meta.url))
-const COLONNES = { vacation: 'vacation', agent: 'agent' }
+// M6) : une réaffectation se lit par son schéma strict, son objet est la
+// vacation (l'éval d'échappée compare ainsi les propositions).
 
 describe('OPERATION_REAFFECTER', () => {
-  it('depuisLigne : la vacation et l’agent des colonnes dites ; une cellule vide lève, SansCandidat pour l’agent', () => {
-    const { depuisLigne } = OPERATION_REAFFECTER
-    expect(depuisLigne({ vacation: 'V-03', agent: 'A-9', jour: '2026-10-13' }, COLONNES)).toEqual({
-      vacation: 'V-03',
-      agent: 'A-9',
-    })
-    expect(depuisLigne({ v: 'V-03', a: 'A-9' }, { vacation: 'v', agent: 'a' })).toEqual({
-      vacation: 'V-03',
-      agent: 'A-9',
-    })
-    expect(() => depuisLigne({ vacation: 'V-03', agent: null }, COLONNES)).toThrow(
-      new SansCandidat('aucun agent trouvé pour V-03'),
-    )
-    expect(() => depuisLigne({ vacation: '', agent: 'A-9' }, COLONNES)).toThrow(
-      'n’a pas de vacation',
-    )
-  })
-  it('relire : les réaffectations de la dernière R-… validée de la conversation, telles que reçues, sans le reste de la ligne', () => {
-    const journal = new Journal(join(mkdtempSync(join(tmpdir(), 'reaffecter-')), 'journal.sqlite'))
-    const r = (objet: string, issue: string, donnees: unknown = {}) => ({
-      type: TYPE_REAFFECTATION,
-      client: 'fictif',
-      objet,
-      issue,
-      donnees,
-    })
-    const recue = (objet: string, conversation: string, modifications: unknown) =>
-      r(objet, STATUT_R.recue, { conversation, modifications })
-    journal.ecrire([
-      // C-1 : la proposition de l'échappée, remplacée par le patron, puis la sienne validée.
-      { type: TYPE_ECHAPPEE, client: 'fictif', objet: 'C-1', issue: 'proposition', donnees: {} },
-      recue('R-1', 'C-1', [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-9' }]),
-      r('R-1', STATUT_R.remplacee, { par: 'R-1-2' }),
-      recue('R-1-2', 'C-1', [{ type: 'reaffecter', vacation: 'V-03', agent: 'A-11' }]),
-      r('R-1-2', STATUT_R.validee),
-      // C-2 : validée telle quelle ; C-3 : jamais validée ; C-4 : sans la forme.
-      recue('R-2', 'C-2', [{ type: 'reaffecter', vacation: 'V-07', agent: 'A-11' }]),
-      r('R-2', STATUT_R.validee),
-      recue('R-3', 'C-3', [{ type: 'reaffecter', vacation: 'V-01', agent: 'A-2' }]),
-      recue('R-4', 'C-4', [{ vacation: 'V-07' }]),
-      r('R-4', STATUT_R.validee),
-    ])
-    expect(OPERATION_REAFFECTER.relire(journal, 'C-1')).toEqual([
-      { vacation: 'V-03', agent: 'A-11' },
-    ])
-    expect(OPERATION_REAFFECTER.relire(journal, 'C-2')).toEqual([
-      { vacation: 'V-07', agent: 'A-11' },
-    ])
-    expect(OPERATION_REAFFECTER.relire(journal, 'C-3')).toEqual([])
-    expect(OPERATION_REAFFECTER.relire(journal, 'C-4')).toEqual([])
-    expect(OPERATION_REAFFECTER.relire(journal, 'C-9')).toEqual([])
-    journal.fermer()
-  })
-  it('egal et objet : la vacation et l’agent ; l’objet est la vacation', () => {
-    const { egal, objet } = OPERATION_REAFFECTER
-    expect(egal({ vacation: 'V-03', agent: 'A-9' }, { vacation: 'V-03', agent: 'A-9' })).toBe(true)
-    expect(egal({ vacation: 'V-03', agent: 'A-9' }, { vacation: 'V-03', agent: 'A-2' })).toBe(false)
-    expect(objet({ vacation: 'V-03', agent: 'A-9' })).toBe('V-03')
-  })
-  it('les gestes de l’éval de rejeu (ancienne forme comprise) passent le gabarit ; le moteur fait les réaffectations par l’opération', () => {
-    const { gestes } = FichierGestes.parse(parse(readFileSync(`${evals}/gestes.yaml`, 'utf8')))
-    const declarations = {
-      roles: ROLES,
-      typesParametre: TYPES_PARAMETRE,
-      operation: OPERATION_REAFFECTER,
-    }
-    for (const g of gestes) expect(verifierGabarit(declarations, g)).toEqual([])
-    const liberer = gestes.find((g) => g.modifications !== undefined)
-    if (!liberer) throw new Error('evals/gestes.yaml sans geste qui écrit')
-    const resultats = {
-      liberer: { colonnes: ['vacation', 'agent'], lignes: [['V-03', 'A-11']], tronque: false },
-    }
-    expect(modificationsDe(liberer, resultats, OPERATION_REAFFECTER)).toEqual([
-      { vacation: 'V-03', agent: 'A-11' },
-    ])
+  it('lit une réaffectation (vacation, agent) et refuse une autre forme ; l’objet est la vacation', () => {
+    const { modification, objet } = OPERATION_REAFFECTER
+    const lue = modification.parse({ vacation: 'V-03', agent: 'A-9' })
+    expect(objet(lue)).toBe('V-03')
+    expect(modification.safeParse({ vacation: 'V-03' }).success).toBe(false)
+    expect(modification.safeParse({ vacation: '', agent: 'A-9' }).success).toBe(false)
   })
 })

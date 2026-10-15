@@ -748,7 +748,7 @@ function mesurerHonnetete(
   const [, ok, total, taux, seuil, fuite] = compte
   // Les cas en écart, nommés : les traces partent avec l'arbre, l'analyse d'erreurs en a besoin.
   const ecarts = [...`${r.sortie}`.matchAll(/^(\S+) : écart/gm)].map((x) => x[1])
-  // Au seuil comme « activable » (atelier.ts) : le taux seul décide ; la fuite se dit, elle
+  // Au seuil : le taux seul décide ; la fuite se dit, elle
   // vient du niveau 2 de la désignation, hors du chantier (point laissé à Lionel).
   return {
     ok: Number(total) > 0 && Number(ok) / Number(total) >= Number(seuil) / 100,

@@ -59,8 +59,7 @@ export interface AppelModele {
   unSeulOutil: boolean
   /**
    * true : la réponse arrive en flux (SSE), reconstituée en un message par le
-   * SDK. Pour un appel long (la fabrication d'un geste appris, plusieurs
-   * minutes de réflexion) : une passerelle coupe une réponse non diffusée
+   * SDK. Pour un appel long (plusieurs minutes de réflexion) : une passerelle coupe une réponse non diffusée
    * passé 120 s (GMI, erreur 524, 2026-10-10). Absent : un appel ordinaire.
    */
   flux?: boolean

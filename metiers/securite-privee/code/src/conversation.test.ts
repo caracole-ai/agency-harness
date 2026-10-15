@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,32 +6,21 @@ import {
   accueillir,
   chargerPersonnes,
   confirmer,
-  DOSSIER_GESTES,
-  empreinteGeste,
   FICHIER_PERSONNES,
-  type FichierGeste,
-  FichierGestes,
-  gesteDe,
   type Identite,
   type IdentiteVerifiee,
-  ISSUE_GESTE,
   messageConsigne,
   modeleSimule,
-  REGLE_SANS_HUMAIN,
   recevoir,
   type Scripte,
   TYPE_ACCES_REFUSE,
-  TYPE_ALERTE,
   TYPE_APPEL,
   TYPE_ECHAPPEE,
-  TYPE_GESTE_APPRIS,
   TYPE_PRECISION_ATTENDUE,
   TYPE_PROPOSITION_REFUSEE,
   traiterConsigne,
-  VALIDEE,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
-import { parse } from 'yaml'
 import { ACTIONS } from './actions'
 import { CONVERSATION } from './conversation'
 import {
@@ -39,7 +28,6 @@ import {
   reaffectation,
   STATUT_R,
   statutReaffectation,
-  TYPE_REAFFECTATION,
   validerReaffectation,
 } from './reaffectation'
 import { aParis, type Session } from './remplacement'
@@ -983,306 +971,5 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     expect(echappeeDe(s, conversation).donnees.consigne_modele).toBe(
       "Combien d'heures a fait A-1 cette semaine ?",
     )
-  })
-})
-
-describe('un geste appris, chargé et exécuté (PLAN-PROMOTION.md § 5.5)', async () => {
-  // Semaine du 05/10 au 11/10 : Julien (A-2) 16 h, Sophie (A-3) 12 h.
-  const DU = '2026-10-05'
-  const AU = '2026-10-11'
-  const GESTE: FichierGeste = {
-    id: 'heures_par_agent',
-    description: 'les heures faites par un agent sur une période',
-    roles: ['patron', 'agent'],
-    parametres: {
-      agent: {
-        type: 'agent',
-        description: "l'agent, tel qu'il est écrit dans la consigne ; null pour celui qui parle",
-      },
-      periode: { type: 'periode', description: 'la période demandée' },
-    },
-    requetes: [
-      {
-        nom: 'heures',
-        sql: 'SELECT a.nom AS nom, COALESCE(SUM(v.heures), 0) AS heures FROM agents a LEFT JOIN vacations v ON v.agent = a.id AND v.jour BETWEEN :du AND :au WHERE a.id = :agent GROUP BY a.id',
-      },
-    ],
-    reponse: {
-      ligne: '{{heures.nom}} : {{heures.heures}} heures du {{du}} au {{au}}.',
-      tableau: null,
-      vide: 'Aucune vacation sur cette période.',
-    },
-    tests: [
-      {
-        echappee: 'E-1',
-        consigne: 'Combien d’heures Julien a-t-il fait du 5 au 11 octobre ?',
-        role: 'patron',
-        agent: null,
-        params: { agent: 'A-2', du: DU, au: AU },
-        instantane: 'echappees/E-1.json',
-        contient: ['16'],
-      },
-      {
-        echappee: 'E-2',
-        consigne: 'Combien d’heures a fait Sophie cette semaine ?',
-        role: 'patron',
-        agent: null,
-        params: { agent: 'A-3', du: DU, au: AU },
-        instantane: 'echappees/E-2.json',
-        contient: ['12'],
-      },
-      {
-        echappee: 'E-3',
-        consigne: 'Combien d’heures j’ai fait cette semaine ?',
-        role: 'agent',
-        agent: 'A-3',
-        params: { agent: 'A-3', du: DU, au: AU },
-        instantane: 'echappees/E-3.json',
-        contient: ['12'],
-      },
-    ],
-    origine: { fabrique_le: '2026-10-10', modele: 'simulé', cout_usd: 0, conversations: [] },
-    statut: 'actif',
-  }
-  const jeton = empreinteGeste(gesteDe(GESTE))
-  const fichier = (dossier: string) => join(dossier, DOSSIER_GESTES, 'heures_par_agent.yaml')
-  // YAML lit le JSON : le fichier s'écrit sans dépendre d'un sérialiseur.
-  const ecrireGeste = (dossier: string, g: FichierGeste) =>
-    writeFileSync(fichier(dossier), JSON.stringify(g))
-  const s = session((dossier) => {
-    mkdirSync(join(dossier, DOSSIER_GESTES))
-    ecrireGeste(dossier, { ...GESTE, validation: { par: 'test', le: '2026-10-10', jeton } })
-  })
-  s.journal.ecrire([
-    {
-      type: TYPE_GESTE_APPRIS,
-      client: s.config.client,
-      objet: GESTE.id,
-      issue: ISSUE_GESTE.active,
-      donnees: { jeton, par: 'test' },
-    },
-  ])
-  const demander = (agent: string | null) => outil('heures_par_agent', { agent, du: DU, au: AU })
-  const consigne = 'Combien d’heures Julien a-t-il fait du 5 au 11 octobre ?'
-  const { r, conversation, modele } = await tour(s, PATRON, demander('Julien'), consigne)
-
-  it('le patron obtient « 16 », rendu par le code, avec un seul appel au modèle et sans échappée', () => {
-    expect(r.sorte).toBe('resultat')
-    expect(r.texte).toBe(`Julien Lefèvre : 16 heures du ${DU} au ${AU}.`)
-    const appels = lignes(s, conversation).filter((l) => l.type === TYPE_APPEL)
-    expect(appels).toHaveLength(1)
-    expect(appels[0]?.issue).toBe('traduire')
-    expect(lignes(s, conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toEqual([])
-    const consigneLigne = lignes(s, conversation).find((l) => l.type === 'consigne')
-    expect(JSON.parse(consigneLigne?.donnees ?? '{}').resultat).toEqual({
-      echappee: null,
-      requetes: [{ nom: 'heures', sql: GESTE.requetes[0]?.sql, lignes: 1 }],
-    })
-  })
-  it('le modèle voit le geste comme une action, et plus comme une intention (P14)', () => {
-    const systeme = modele.appels[0]?.systeme ?? ''
-    expect(systeme).toContain(`heures_par_agent : ${GESTE.description}`)
-    expect(systeme).not.toContain('les heures faites par un agent, ou par tous, sur une période')
-    const outilAppris = modele.appels[0]?.outils.find((o) => o.name === 'heures_par_agent')
-    expect(Object.keys(outilAppris?.input_schema.properties ?? {})).toEqual(['agent', 'du', 'au'])
-    // Un seul outil du nom du geste, et la demande nouvelle reste offerte pour le reste.
-    const noms = modele.appels[0]?.outils.map((o) => o.name) ?? []
-    expect(noms.filter((n) => n === 'heures_par_agent')).toHaveLength(1)
-    expect(noms).toContain('demande_nouvelle')
-  })
-  it('un agent ne voit que ses lignes (D4) : ses heures à lui, et personne d’autre', async () => {
-    const sophie = await tour(s, agent('A-3'), demander(null))
-    expect(sophie.r.sorte).toBe('resultat')
-    expect(sophie.r.texte).toBe(`Sophie Marchand : 12 heures du ${DU} au ${AU}.`)
-    const autre = await tour(s, agent('A-3'), demander('Julien'))
-    expect(autre.r.sorte).toBe('refus')
-    expect(autre.r.texte).toMatch(/toi-même/)
-  })
-  it('un octet changé dans le YAML : le geste est écarté, refusé au journal avec une alerte, la consigne repart en échappée', async () => {
-    ecrireGeste(s.dossier, { ...GESTE, description: 'les heures d’un agent' })
-    const apres = await tour(
-      s,
-      PATRON,
-      [
-        {
-          outil: 'demande_nouvelle',
-          entree: { intention: 'heures_par_agent', resume: 'les heures de Julien' },
-        },
-        { outil: 'repondre', entree: { texte: 'Je ne sais pas.' } },
-      ],
-      consigne,
-    )
-    expect(apres.r.sorte).toBe('resultat')
-    expect(lignes(s, apres.conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toHaveLength(1)
-    expect(apres.modele.appels[0]?.systeme).toContain(
-      'heures_par_agent : les heures faites par un agent, ou par tous, sur une période',
-    )
-    expect(apres.modele.appels[0]?.outils.map((o) => o.name)).not.toContain('heures_par_agent')
-    const refus = s.journal
-      .historique(GESTE.id)
-      .filter((l) => l.type === TYPE_GESTE_APPRIS)
-      .at(-1)
-    expect(refus?.issue).toBe(ISSUE_GESTE.refuse)
-    expect(refus?.motif).toBe('empreinte différente')
-    const alerte = s.journal
-      .historique(GESTE.id)
-      .filter((l) => l.type === TYPE_ALERTE)
-      .at(-1)
-    expect(alerte?.regle).toBe(REGLE_SANS_HUMAIN)
-  })
-})
-
-describe('un geste appris qui écrit : la réaffectation groupée en un appel (PLAN-PROMOTION.md § 10, PLAN-GENERAL.md phase C)', async () => {
-  // Le geste écrit à la main de l'éval de rejeu (`evals/gestes.yaml`, calculs
-  // à la main) : le mardi 13 de Karim, V-03, va à Aïcha (A-11).
-  const geste = FichierGestes.parse(
-    parse(readFileSync(fileURLToPath(new URL('../../evals/gestes.yaml', import.meta.url)), 'utf8')),
-  ).gestes.find((g) => g.id === 'liberer_un_jour')
-  if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
-  const jeton = empreinteGeste(geste)
-  const s = session((dossier) => {
-    mkdirSync(join(dossier, DOSSIER_GESTES))
-    const fichier: FichierGeste = {
-      ...geste,
-      statut: 'actif',
-      validation: { par: 'test', le: '2026-10-11', jeton },
-    }
-    writeFileSync(join(dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'), JSON.stringify(fichier))
-  })
-  s.journal.ecrire([
-    {
-      type: TYPE_GESTE_APPRIS,
-      client: s.config.client,
-      objet: geste.id,
-      issue: ISSUE_GESTE.active,
-      donnees: { jeton, par: 'test' },
-    },
-  ])
-  const { r, conversation, modele } = await tour(
-    s,
-    PATRON,
-    outil('liberer_un_jour', { agent: 'Karim', date: '2026-10-13' }),
-    'Libère le mardi 13 de Karim.',
-  )
-  if (r.sorte !== 'proposition') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
-  const id = `R-${conversation.replace(/^C-/, '')}`
-  const reaffectations = () => s.journal.historique(id).filter((l) => l.type === TYPE_REAFFECTATION)
-  const jetonDe = (statut: string) =>
-    JSON.parse(reaffectations().find((l) => l.issue === statut)?.donnees ?? '{}').jeton
-
-  it('un seul appel au modèle, sans échappée : la proposition est rendue par le code', () => {
-    const appels = lignes(s, conversation).filter((l) => l.type === TYPE_APPEL)
-    expect(appels.map((l) => l.issue)).toEqual(['traduire'])
-    expect(lignes(s, conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toEqual([])
-    expect(r.texte).toContain(`Proposition ${id}`)
-    expect(r.texte).toContain('Karim Haddad → Aïcha Traoré')
-    expect(r.texte).toMatch(/Valider \? \(oui \/ non\)$/)
-    expect(JSON.parse(reaffectations()[0]?.donnees ?? '{}').modifications).toEqual([
-      { type: 'reaffecter', vacation: 'V-03', agent: 'A-11' },
-    ])
-  })
-  it('le modèle voit le geste comme une action du patron, plus comme une intention (P14)', () => {
-    const systeme = modele.appels[0]?.systeme ?? ''
-    expect(systeme).toContain(`liberer_un_jour : ${geste.description}`)
-    expect(systeme).not.toContain('libérer un agent de ses vacations d’une journée')
-  })
-  it('le oui du patron valide avec la clé et demande son accord à Aïcha ; rien n’est encore écrit', async () => {
-    const oui = await confirmer(
-      CONVERSATION,
-      s,
-      PATRON,
-      conversation,
-      r.empreinte,
-      true,
-      maintenant,
-    )
-    expect(oui.texte).toMatch(/^Validé\. Message envoyé à 1 agent\(s\) : « Aïcha, peux-tu prendre/)
-    expect(reaffectations().map((l) => l.issue)).toEqual([
-      STATUT_R.recue,
-      VALIDEE,
-      STATUT_R.demandee,
-    ])
-    expect(jetonDe(VALIDEE)).toMatch(/^[0-9a-f]{64}$/)
-    expect(planningDe(s)).toContain('V-03;A-1;')
-  })
-  it('le oui d’Aïcha, confirmé, écrit le planning avec la même clé', async () => {
-    const aicha = await tour(
-      s,
-      agent('A-11'),
-      outil('repondre_reaffectation', { reaffectation: id, accepte: true }),
-    )
-    if (aicha.r.sorte !== 'confirmation') throw new Error(`sorte ${aicha.r.sorte}`)
-    const fin = await confirmer(
-      CONVERSATION,
-      s,
-      agent('A-11'),
-      aicha.conversation,
-      aicha.r.empreinte,
-      true,
-      maintenant,
-    )
-    expect(fin.texte).toMatch(/^C'est confirmé : V-03/)
-    expect(planningDe(s)).toContain('V-03;A-11;')
-    expect(jetonDe(STATUT_R.ecrite)).toBe(jetonDe(VALIDEE))
-  })
-  it('un agent n’a pas ce geste : il n’est offert qu’au patron', async () => {
-    const sophie = await tour(
-      s,
-      agent('A-3'),
-      outil('liberer_un_jour', { agent: null, date: '2026-10-14' }),
-    )
-    expect(sophie.modele.appels[0]?.outils.map((o) => o.name)).not.toContain('liberer_un_jour')
-    expect(sophie.r.sorte).toBe('je_ne_sais_pas')
-  })
-})
-
-describe('un geste appris qui écrit, refusé par les règles : rien n’est ouvert (PLAN-PROMOTION.md § 10)', () => {
-  it('Sophie (carte expirée) pour V-03 : la proposition est refusée par le métier, au journal, sans attente', async () => {
-    const geste = FichierGestes.parse(
-      parse(
-        readFileSync(fileURLToPath(new URL('../../evals/gestes.yaml', import.meta.url)), 'utf8'),
-      ),
-    ).gestes.find((g) => g.id === 'liberer_un_jour')
-    if (!geste) throw new Error('evals/gestes.yaml sans liberer_un_jour')
-    const fautif = {
-      ...geste,
-      requetes: [
-        {
-          nom: 'liberer',
-          sql: "SELECT v.id AS vacation, 'A-3' AS agent FROM vacations v WHERE v.agent = :agent AND v.jour = :date",
-        },
-      ],
-    }
-    const jeton = empreinteGeste(fautif)
-    const s = session((dossier) => {
-      mkdirSync(join(dossier, DOSSIER_GESTES))
-      const fichier: FichierGeste = {
-        ...fautif,
-        statut: 'actif',
-        validation: { par: 'test', le: '2026-10-11', jeton },
-      }
-      writeFileSync(join(dossier, DOSSIER_GESTES, 'liberer_un_jour.yaml'), JSON.stringify(fichier))
-    })
-    s.journal.ecrire([
-      {
-        type: TYPE_GESTE_APPRIS,
-        client: s.config.client,
-        objet: fautif.id,
-        issue: ISSUE_GESTE.active,
-        donnees: { jeton, par: 'test' },
-      },
-    ])
-    const { r, conversation } = await tour(
-      s,
-      PATRON,
-      outil('liberer_un_jour', { agent: 'Karim', date: '2026-10-13' }),
-      'Libère le mardi 13 de Karim.',
-    )
-    expect(r.sorte).toBe('je_ne_sais_pas')
-    expect(r.texte).toMatch(/^la réaffectation enfreint .+ \(I-0\d\)/)
-    const types = lignes(s, conversation).map((l) => l.type)
-    expect(types).toContain(TYPE_PROPOSITION_REFUSEE)
-    expect(types).not.toContain('confirmation_attendue')
-    expect(planningDe(s)).toContain('V-03;A-1;')
   })
 })

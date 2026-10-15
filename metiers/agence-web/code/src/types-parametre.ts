@@ -1,17 +1,16 @@
-import { type Designable, normaliserNom, type TypeParametreDeclare } from '@harnais/moteur'
+import { normaliserNom } from '@harnais/moteur'
 import type { Session } from './conversation'
 import { IDENTIFIANTS } from './modele'
 
-// Les types de paramètre de l'agence web (PLAN-METIER-2.md § 3.3, M5) :
-// `personne` (une personne de l'agence, résolue comme dans les gestes codés)
-// et six entités que le métier résout lui-même. À l'oral on dit le nom du
+// Les entités de l'agence web, que le métier résout lui-même (PLAN-METIER-2.md
+// § 3.3, M5) : six sortes. À l'oral on dit le nom du
 // client (« le site de la boulangerie », entretien § 5, question 24) ; dans
 // les outils, l'identifiant. Une entité se résout donc dans cet ordre :
 // l'identifiant exact ; sinon le nom exact, insensible à la casse et aux
 // accents ; sinon tous les candidats qui partagent le plus de mots avec la
 // mention. Le geste décide : un seul candidat, il le prend ; plusieurs, il
-// répond « lequel ? » avec leurs identifiants. Les mêmes fonctions servent
-// aux gestes codés (`actions.ts`), sur les entités que le rôle voit.
+// répond « lequel ? » avec leurs identifiants. Les gestes codés
+// (`actions.ts`) s'en servent, sur les entités que le rôle voit.
 
 export const SORTES_ENTITE = ['projet', 'client', 'ticket', 'lot', 'facture', 'devis'] as const
 export type SorteEntite = (typeof SORTES_ENTITE)[number]
@@ -123,41 +122,3 @@ export function resoudreEntite(mention: string, parmi: Entite[]): Entite[] {
   const meilleur = Math.max(0, ...scores.map((x) => x.score))
   return meilleur === 0 ? [] : scores.filter((x) => x.score === meilleur).map((x) => x.e)
 }
-
-/** Une entité vue comme un nom que le code connaît : ce n'est pas une personne. */
-const designable = (e: Entite): Designable => ({ id: e.id, nom: e.libelle, sorte: 'organisation' })
-
-const entite = (sorte: SorteEntite, enMots: string): TypeParametreDeclare => ({
-  nom: sorte,
-  enMots,
-  sorte: 'entite',
-  // Le moteur passe la session du métier sans la connaître (PLAN-METIER-2.md § 3.3).
-  resoudre: (mention, s) => resoudreEntite(mention, entites(s as Session, sorte)).map(designable),
-})
-
-export const TYPES_PARAMETRE: TypeParametreDeclare[] = [
-  {
-    nom: 'personne',
-    enMots:
-      "une personne de l'agence nommée dans la demande, ou null pour celui qui parle ; liée par son identifiant (personnes.id)",
-    sorte: 'personne',
-  },
-  entite(
-    'projet',
-    'un projet tel que la demande le nomme (identifiant, nom, ou nom de son client) ; lié par projets.id',
-  ),
-  entite(
-    'client',
-    'un client tel que la demande le nomme (identifiant, nom, secteur) ; lié par clients.id',
-  ),
-  entite(
-    'ticket',
-    'un ticket tel que la demande le nomme (clé TK-…, ou son résumé) ; lié par tickets.cle',
-  ),
-  entite(
-    'lot',
-    'un lot tel que la demande le nomme (identifiant, ou nom et projet) ; lié par lots.id',
-  ),
-  entite('facture', 'une facture (FAC-…, ou le client) ; liée par factures.id'),
-  entite('devis', 'un devis (DEV-…, ou le client) ; lié par devis.id'),
-]

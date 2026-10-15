@@ -1,12 +1,11 @@
 import { z } from 'zod'
 import { type Designable, normaliserNom } from '../conversation/designation'
+import type { Operation } from '../conversation/operation'
 import { avecPersonne, CHAMPS_PERSONNE } from '../conversation/roles'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
 import { fuites } from '../echappee/pseudonymes'
 import { contient } from '../echappee/reponse'
-import { GesteAppris } from '../gestes/geste-appris'
-import type { OperationApprise } from '../gestes/operation'
 import type { AppelModele, Modele, ReponseModele } from '../modele/modele'
 
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : des cas écrits à la
@@ -26,8 +25,8 @@ export const CATEGORIE_AGENT_PATRON = 'agent_patron'
 /** Le dossier des cas d'éval d'un métier, relatif à la racine du dépôt (PLAN-METIER-2.md M8) ; `evals/` garde les résultats, les traces et les journaux fixés. */
 export const evalsDuMetier = (metier: string): string => `metiers/${metier}/evals`
 
-/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %, rejeu des gestes appris 100 %. */
-export const SEUILS = { traduire: 0.95, echappee: 0.8, gestes: 1 } as const
+/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %. */
+export const SEUILS = { traduire: 0.95, echappee: 0.8 } as const
 
 /** Un dossier d'éval dérivé du client : une chaîne remplacée dans un de ses fichiers, sur la copie du cas. */
 export const Variante = z.strictObject({
@@ -105,18 +104,6 @@ export const FichierEchappee = z.strictObject({
 })
 export type FichierEchappee = z.infer<typeof FichierEchappee>
 
-/**
- * `metiers/<métier>/evals/gestes.yaml` (PLAN-PROMOTION.md § 6.4) : des gestes appris écrits à la
- * main, que le lanceur pose dans une copie du client avec, pour chaque test,
- * un instantané pris sur les données de la copie à `maintenant`, pour le rôle
- * du test ; puis chaque geste de la copie est rejoué, sans modèle.
- */
-export const FichierGestes = z.strictObject({
-  maintenant: z.string(),
-  gestes: z.array(GesteAppris).min(1),
-})
-export type FichierGestes = z.infer<typeof FichierGestes>
-
 const egal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /** Ce que l'éval de traduction compare : la demande, ses personnes résolues, ou la question posée et ses candidats. */
@@ -126,21 +113,8 @@ export type IssueTraduction = Demande | { sorte: 'precision'; candidats: string[
 export function ecartsTraduction(
   attendu: CasTraduire['attendu'],
   demande: IssueTraduction,
-  appris: readonly string[] = [],
 ): string[] {
   const sortes = Array.isArray(attendu.sorte) ? attendu.sorte : [attendu.sorte]
-  // Un cas étiqueté « demande nouvelle » d'une intention devenue geste appris
-  // passe quand le modèle choisit ce geste : c'est la même demande, promue
-  // (PLAN-PROMOTION.md § 5.4, P14). Ses paramètres se mesurent par les tests du
-  // geste lui-même (lot 3, § 7.1), pas par cette étiquette.
-  if (
-    demande.sorte === 'action' &&
-    appris.includes(demande.action) &&
-    sortes.includes('nouvelle') &&
-    (attendu.intention === undefined || attendu.intention.includes(demande.action))
-  ) {
-    return []
-  }
   if (!sortes.includes(demande.sorte)) {
     const detail =
       demande.sorte === 'action'
@@ -194,7 +168,7 @@ const texteDe = (issue: IssueEchappee) => (issue.sorte === 'abandon' ? issue.mot
  * erreur si l'opération ne la lit pas.
  */
 function lireModification(
-  operation: OperationApprise<unknown>,
+  operation: Operation<unknown>,
   m: unknown,
 ): { objet: string; valeurs: string[] } | { erreur: string } {
   const schema =
@@ -218,7 +192,7 @@ function lireModification(
 function ecartsModifications(
   attendu: NonNullable<CasEchappee['attendu']['modifications']>,
   issue: IssueEchappee,
-  operation: OperationApprise<unknown> | undefined,
+  operation: Operation<unknown> | undefined,
 ): string[] {
   if (!operation) return ['critère « modifications » chez un métier sans opération déclarée']
   if (issue.sorte !== 'proposition') return []
@@ -251,7 +225,7 @@ function ecartsModifications(
 export function ecartsEchappee(
   attendu: CasEchappee['attendu'],
   issue: IssueEchappee,
-  operation: OperationApprise<unknown> | undefined,
+  operation: Operation<unknown> | undefined,
 ): string[] {
   const ecarts: string[] = []
   if (!attendu.sortes.includes(issue.sorte)) {
