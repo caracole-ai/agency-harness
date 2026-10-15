@@ -15,7 +15,6 @@ import {
   type Identite,
   type IdentiteVerifiee,
   ISSUE_GESTE,
-  intentions,
   messageConsigne,
   modeleSimule,
   REGLE_SANS_HUMAIN,
@@ -35,7 +34,6 @@ import { describe, expect, it, vi } from 'vitest'
 import { parse } from 'yaml'
 import { ACTIONS } from './actions'
 import { CONVERSATION } from './conversation'
-import { OPERATION_REAFFECTER } from './operation-reaffecter'
 import {
   ouvrirReaffectation,
   reaffectation,
@@ -487,15 +485,6 @@ describe('le patron change un agent dans une proposition (PLAN-CHOIX.md, critèr
     expect(oui.texte).toMatch(/^Validé\. Message envoyé à 2 agent\(s\)/)
     expect(oui.texte).toContain('Aïcha, peux-tu prendre')
     expect(oui.texte).toContain('Julien, peux-tu prendre')
-  })
-  it('la promotion ne la compte pas : le patron l’a corrigée', () => {
-    expect(OPERATION_REAFFECTER.relire(s.journal, origine.conversation)).toEqual([
-      { vacation: 'V-03', agent: 'A-11' },
-      { vacation: 'V-07', agent: 'A-2' },
-    ])
-    const depuis = maintenant.toPlainDate()
-    expect(intentions(s.journal, depuis, OPERATION_REAFFECTER)).toEqual([])
-    expect(intentions(s.journal, depuis)[0]?.occurrences).toBe(1)
   })
 })
 

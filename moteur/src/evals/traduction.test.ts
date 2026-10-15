@@ -19,7 +19,7 @@ import {
   casDuFichier,
   casDuGeste,
   copieClient,
-  DOSSIER_PROMOTIONS,
+  DOSSIER_ATELIER,
   passeTraduction,
 } from './traduction'
 
@@ -76,7 +76,7 @@ const METIER: MetierConversation<Session> = {
 }
 
 describe('passeTraduction', () => {
-  it('joue consignes.yaml et les tests du geste, le geste chargé par son fichier, écrit le tableau à côté du dossier de promotion et rend le bilan', async () => {
+  it('joue consignes.yaml et les tests du geste, le geste chargé par son fichier, écrit le tableau dans atelier/ et rend le bilan', async () => {
     const dossier = mkdtempSync(join(tmpdir(), 'passe-'))
     writeFileSync(join(dossier, FICHIER_PERSONNES), 'personnes:\n  - { role: patron }\n')
     mkdirSync(join(dossier, DOSSIER_GESTES))
@@ -135,7 +135,7 @@ describe('passeTraduction', () => {
       idModele: 'simulé',
     })
     expect(passe.tableau).toBe(
-      join(dossier, DOSSIER_PROMOTIONS, 'heures_par_agent-2026-10-11-traduction.md'),
+      join(dossier, DOSSIER_ATELIER, 'heures_par_agent-2026-10-11-traduction.md'),
     )
     expect(existsSync(passe.tableau)).toBe(true)
     expect(readFileSync(passe.tableau, 'utf8')).toContain(
@@ -232,15 +232,15 @@ describe('casDuFichier', () => {
 })
 
 describe('copieClient', () => {
-  it('écarte journal, rapport et promotions du client, pas un dossier source dont le chemin dit « promotions »', () => {
-    const source = join(mkdtempSync(join(tmpdir(), 'promotions-')), 'client')
-    mkdirSync(join(source, DOSSIER_PROMOTIONS), { recursive: true })
+  it('écarte journal, rapport et atelier du client, pas un dossier source dont le chemin dit « atelier »', () => {
+    const source = join(mkdtempSync(join(tmpdir(), 'atelier-')), 'client')
+    mkdirSync(join(source, DOSSIER_ATELIER), { recursive: true })
     writeFileSync(join(source, 'config.yaml'), 'client: x\n')
     writeFileSync(join(source, 'journal.sqlite'), '')
-    writeFileSync(join(source, DOSSIER_PROMOTIONS, 'p.md'), '')
+    writeFileSync(join(source, DOSSIER_ATELIER, 'p.md'), '')
     const copie = copieClient(source)
     expect(existsSync(join(copie, 'config.yaml'))).toBe(true)
     expect(existsSync(join(copie, 'journal.sqlite'))).toBe(false)
-    expect(existsSync(join(copie, DOSSIER_PROMOTIONS))).toBe(false)
+    expect(existsSync(join(copie, DOSSIER_ATELIER))).toBe(false)
   })
 })

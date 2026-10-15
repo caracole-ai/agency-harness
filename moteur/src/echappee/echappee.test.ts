@@ -25,7 +25,7 @@ import {
 } from './echappee'
 import { fuites, type Precision } from './pseudonymes'
 
-// Ce que le journal garde d'une échappée pour la promotion, avec le modèle
+// Ce que le journal garde d'une échappée pour le rejeu, avec le modèle
 // simulé et des tables en mémoire : l'identifiant sur chaque ligne, le texte
 // final tel que montré, l'instantané de la copie (PLAN-PROMOTION.md § 4.5) ;
 // et aucun nom ne part au modèle, ni dans la consigne, ni dans la copie, ni

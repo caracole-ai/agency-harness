@@ -25,7 +25,7 @@ import { executerRequete } from './requete'
 // le système, la boucle, et ce qui en reste au journal (chaque appel, chaque
 // outil, l'issue). La copie est détruite à la fin, quoi qu'il arrive
 // (PLAN-ESPACES.md § 6.5 et § 6.7). Le journal se souvient de chaque échappée
-// pour la promotion : son identifiant sur ses lignes, le rôle, le texte final
+// pour le rejeu d'un geste appris : son identifiant sur ses lignes, le rôle, le texte final
 // tel que montré, et l'instantané de la copie dans un fichier du dossier
 // client (PLAN-PROMOTION.md § 4.2, P8). Le modèle ne voit aucun nom : la
 // consigne, la copie et les sorties d'outils sont masquées (l'identifiant
