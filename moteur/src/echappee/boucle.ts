@@ -35,8 +35,8 @@ export const MOTIF_RETIRE = "le modèle s'est arrêté sans réponse vérifiable
 
 /**
  * Les motifs d'abandon écrits par le code (un préfixe, pour ceux qui portent
- * un détail) : la ronde de nuit les compte par motif sans jamais lire le
- * texte libre d'un modèle (PLAN-RONDE.md R2).
+ * un détail) : ils se comptent par motif sans jamais lire le texte libre
+ * d'un modèle (PLAN-RONDE.md R2).
  */
 export const MOTIFS_ABANDON = {
   tours: 'plafond de tours atteint',

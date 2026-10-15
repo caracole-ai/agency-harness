@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -6,23 +6,25 @@ import { stringify } from 'yaml'
 import { TYPE_CONSIGNE } from '../conversation/conversation'
 import { TYPE_GESTE_COMMANDE } from '../gestes/commande'
 import type { Evenement, Journal } from '../journal/journal'
+import { Temporal } from '../temps/temporal'
+import { MISSION_ESSAI } from './essai.test.fixture'
 import {
   CLIENT_ESSAI,
   DOMAINE_ESSAI,
   echappeeEssai,
   METIER_ESSAI,
   PERSONNES_ESSAI,
-} from '../ronde/essai.test.fixture'
-import type { Catalogue } from '../ronde/resume'
-import { construireCatalogue, HORS_VOCABULAIRE } from '../ronde/ronde'
-import { Temporal } from '../temps/temporal'
-import { MISSION_ESSAI } from './essai.test.fixture'
+} from './metier-essai.test.fixture'
 import {
+  type Catalogue,
   type ContexteCommande,
   commanderMission,
+  construireCatalogue,
+  DOSSIER_MISSIONS,
   decider,
   demandesAvecEtat,
   ecrireMission,
+  HORS_VOCABULAIRE,
   lireMission,
   type Mission,
   missionCommandee,
@@ -30,8 +32,8 @@ import {
   TYPE_CHANTIER,
 } from './mission'
 
-// PLAN-RONDE.md § 6.1 et § 0.b : la mission lue par un schéma strict, et la
-// décision prise en code avant tout appel.
+// La mission lue par un schéma strict, et la décision prise en code avant
+// tout appel (PLAN-RONDE.md § 6.1, § 0.b ; REFLEXIONS.md, 2026-10-15).
 
 const CATALOGUE: Catalogue = {
   gestes: [],
@@ -48,27 +50,27 @@ const CATALOGUE: Catalogue = {
 const mission = (m: Partial<Mission> = {}): Mission => ({ ...MISSION_ESSAI, ...m })
 
 function ecrire(m: Mission, nom = `${m.id}.yaml`, date = m.date): string {
-  const d = join(mkdtempSync(join(tmpdir(), 'mission-')), 'rondes', date)
+  const d = join(mkdtempSync(join(tmpdir(), 'mission-')), DOSSIER_MISSIONS, date)
   mkdirSync(d, { recursive: true })
   writeFileSync(join(d, nom), stringify(m))
   return join(d, nom)
 }
 
 describe('lireMission', () => {
-  it('lit une mission de la ronde ; le client est le dossier au-dessus de rondes/', () => {
+  it('lit une mission ; le client est le dossier au-dessus de missions/', () => {
     const chemin = ecrire(mission())
     const lue = lireMission(chemin)
     expect(lue.mission.id).toBe('simuler_absence')
     expect(lue.dossierClient).toBe(join(chemin, '..', '..', '..'))
   })
 
-  it('refuse un champ inconnu, un nom de fichier ou une date qui ne sont pas les siens, un fichier hors de rondes/', () => {
+  it('refuse un champ inconnu, un nom de fichier ou une date qui ne sont pas les siens, un fichier hors de missions/', () => {
     expect(() => lireMission(ecrire({ ...mission(), inconnu: 1 } as Mission))).toThrow(/invalide/)
     expect(() => lireMission(ecrire(mission(), 'autre.yaml'))).toThrow(/chemin/)
     expect(() => lireMission(ecrire(mission(), undefined, '2026-10-09'))).toThrow(/chemin/)
     const ailleurs = join(mkdtempSync(join(tmpdir(), 'mission-')), 'simuler_absence.yaml')
     writeFileSync(ailleurs, stringify(mission()))
-    expect(() => lireMission(ailleurs)).toThrow(/rondes/)
+    expect(() => lireMission(ailleurs)).toThrow(/missions/)
   })
 })
 
@@ -90,11 +92,7 @@ describe('decider (§ 0.b)', () => {
     ).toBe('chantier')
   })
 
-  it('une question pour l’atelier, une mission écartée par la ronde, retirée (nom ou intentions), ou dont un geste existe : rien', () => {
-    expect(decider(mission({ sorte: 'question_pour_l_atelier' }), CATALOGUE, []).sorte).toBe(
-      'question',
-    )
-    expect(decider(mission({ statut: 'écartée' }), CATALOGUE, []).sorte).toBe('ecartee')
+  it('une mission retirée (nom ou intentions), ou dont un geste existe : rien', () => {
     expect(decider(mission(), CATALOGUE, [{ id: 'simuler_absence', intentions: [] }]).sorte).toBe(
       'ecartee',
     )
@@ -110,7 +108,7 @@ describe('decider (§ 0.b)', () => {
 })
 
 describe('missionPourModele', () => {
-  it('des types : ni échappées ni identifiant d’échappée, même dans le texte de la ronde', () => {
+  it('des types : ni échappées ni identifiant d’échappée, même dans le texte de la mission', () => {
     const texte = missionPourModele(
       mission({ pourquoi: 'A-7 la demande, E-20261010T0900-0005, puis A-8' }),
       DOMAINE_ESSAI,
@@ -175,7 +173,7 @@ function commandee(dossier: string, intention: string, x: Partial<ContexteComman
   try {
     const declaree = METIER_ESSAI.intentions.find((i) => i.id === intention)
     return missionCommandee(intention, s.journal.lire(), {
-      catalogue: construireCatalogue(METIER_ESSAI, dossier, s.journal),
+      catalogue: construireCatalogue(METIER_ESSAI, dossier),
       ...(declaree ? { declaree } : {}),
       personnes: PERSONNES_ESSAI,
       domaine: DOMAINE_ESSAI,
@@ -285,19 +283,18 @@ describe('missionCommandee', () => {
     expect(commandee(dossier, 'rendre_cles').ecrit).toBe(true)
   })
 
-  it('sans estimation : écrite où la nuit la lit, relue par lireMission ; le modèle du chantier lit « non estimée »', () => {
+  it('écrite où la nuit la lit, relue par lireMission ; le modèle du chantier lit des types', () => {
     const { dossier, ecrire } = client()
     ecrire('2026-10-09T08:00:00Z', [
       nouvelle('C-1', 'simuler_absence'),
       ...echappeeEssai('E-20261009T1000-0001', 'C-1', 'simuler_absence', 'Et si A-1 partait ?'),
     ])
     const chemin = ecrireMission(dossier, commandee(dossier, 'simuler_absence'))
-    expect(chemin).toBe(join(dossier, 'rondes', '2026-10-10', 'simuler_absence.yaml'))
+    expect(chemin).toBe(join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'simuler_absence.yaml'))
     const { mission } = lireMission(chemin)
-    expect(mission.estimation).toBeUndefined()
-    expect(missionPourModele(mission, DOMAINE_ESSAI)).toContain(
-      'estimation : non estimée (mission écrite par le code, sur commande du patron)',
-    )
+    const texte = missionPourModele(mission, DOMAINE_ESSAI)
+    expect(texte).toContain('sorte : geste_code')
+    expect(texte).toContain('« Et si <personne> partait ? »')
   })
 
   it('refusée : un geste codé du même nom, une mission ouverte du même nom, une intention déjà commandée, un geste actif ; une mission du jour sans commande se réécrit', () => {
@@ -309,16 +306,15 @@ describe('missionCommandee', () => {
       ...echappeeEssai('E-20261009T1100-0002', 'C-2', 'simuler_absence', 'Et si A-1 partait ?'),
     ])
     expect(() => commandee(dossier, 'voir_planning')).toThrow(/un geste codé porte déjà ce nom/)
-    const ouverte = { ...MISSION_ESSAI, sorte: 'intention_nouvelle' as const, date: '2026-10-09' }
-    const chemin = missionALaMain(dossier, ouverte)
+    const chemin = missionALaMain(dossier, { ...MISSION_ESSAI, date: '2026-10-09' })
     expect(() => commandee(dossier, 'simuler_absence')).toThrow(
       /déjà ouverte \(2026-10-09, à faire\)/,
     )
-    writeFileSync(chemin, stringify({ ...ouverte, statut: 'écartée' }))
+    rmSync(chemin)
     // La même, `geste_code` et du jour : un clic dont la ligne au journal a manqué.
     ecrireMission(dossier, commandee(dossier, 'simuler_absence'))
     expect(commandee(dossier, 'simuler_absence').id).toBe('simuler_absence')
-    const actif = lignes(dossier, (j) => construireCatalogue(METIER_ESSAI, dossier, j)) as Catalogue
+    const actif: Catalogue = construireCatalogue(METIER_ESSAI, dossier)
     actif.intentions = actif.intentions.map((i) =>
       i.id === 'simuler_absence' ? { ...i, geste_actif: true as const } : i,
     )
@@ -345,7 +341,7 @@ describe('missionCommandee', () => {
         intention: 'simuler_absence',
         le: '2026-10-10',
       })
-      const chemin = join(dossier, 'rondes', '2026-10-10', 'simuler_absence.yaml')
+      const chemin = join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'simuler_absence.yaml')
       expect(lireMission(chemin).mission).toMatchObject({ sorte: 'geste_code', statut: 'à faire' })
       expect(s.journal.lire().filter((l) => l.type === TYPE_GESTE_COMMANDE)).toHaveLength(1)
       const avant = readFileSync(chemin, 'utf8')
@@ -357,7 +353,9 @@ describe('missionCommandee', () => {
       expect(() =>
         commanderMission(METIER_ESSAI, s, dossier, 'inventaire_cles', PATRON, MAINTENANT),
       ).toThrow(/aucune demande/)
-      expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'inventaire_cles.yaml'))).toBe(false)
+      expect(
+        existsSync(join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'inventaire_cles.yaml')),
+      ).toBe(false)
       expect(s.journal.lire().filter((l) => l.type === TYPE_GESTE_COMMANDE)).toHaveLength(1)
     } finally {
       METIER_ESSAI.fermer(s)
@@ -398,9 +396,9 @@ describe('demandesAvecEtat', () => {
   })
 })
 
-/** Une mission écrite à la main sous `rondes/<date>/` du client. */
+/** Une mission écrite à la main sous `missions/<date>/` du client. */
 function missionALaMain(dossier: string, m: Mission): string {
-  const d = join(dossier, 'rondes', m.date)
+  const d = join(dossier, DOSSIER_MISSIONS, m.date)
   mkdirSync(d, { recursive: true })
   writeFileSync(join(d, `${m.id}.yaml`), stringify(m))
   return join(d, `${m.id}.yaml`)

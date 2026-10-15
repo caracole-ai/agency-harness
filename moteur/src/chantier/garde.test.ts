@@ -3,7 +3,6 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { PLACE_METIER } from '../agence/config'
-import { PERSONNES_ESSAI } from '../ronde/essai.test.fixture'
 import { commandeSync } from './arbre'
 import { creerDepots, gesteVert, MISSION_ESSAI, TEST_ESSAI } from './essai.test.fixture'
 import {
@@ -13,6 +12,7 @@ import {
   motifChemin,
   resoudreMetier,
 } from './garde'
+import { PERSONNES_ESSAI } from './metier-essai.test.fixture'
 
 // PLAN-RONDE.md § 6.2 (garderDiff) et PLAN-GENERAL.md G1, conditions 1, 2, 4
 // et 7 : sur un vrai dépôt git, une branche qui touche ce qu'elle ne doit pas ;

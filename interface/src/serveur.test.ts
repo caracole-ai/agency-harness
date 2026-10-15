@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 import {
   type Choix,
   DOSSIER_GESTES,
+  DOSSIER_MISSIONS,
   empreinteGeste,
   FICHIER_PERSONNES,
   type FichierGeste,
@@ -628,7 +629,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       compte: 2,
     })
     expect(journalDe(dossier).filter((l) => l.type === TYPE_APPEL)).toEqual([])
-    const chemin = join(dossier, 'rondes', '2026-10-10', 'remise_des_cles.yaml')
+    const chemin = join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'remise_des_cles.yaml')
     const { mission } = lireMission(chemin)
     expect(mission).toMatchObject({
       id: 'remise_des_cles',
@@ -698,9 +699,9 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       /^releve_kilometrique : aucune consigne utilisable/,
     )
     expect(journalDe(dossier).filter((l) => l.type === TYPE_GESTE_COMMANDE)).toEqual([])
-    expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'releve_kilometrique.yaml'))).toBe(
-      false,
-    )
+    expect(
+      existsSync(join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'releve_kilometrique.yaml')),
+    ).toBe(false)
   })
 })
 

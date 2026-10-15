@@ -13,3 +13,7 @@ export const dateFr = (d: { day: number; month: number; year: number }) =>
 
 /** Une heure murale de Paris, `AAAA-MM-JJTHH:MM` (PLAN-METIER-2.md M10 : le moteur la donne à l'interface). */
 export const aParis = (s: string) => Temporal.PlainDateTime.from(s).toZonedDateTime(FUSEAU)
+
+/** Le jour d'un horodatage du journal, en heure de Paris. */
+export const jourDe = (horodatage: string) =>
+  Temporal.Instant.from(horodatage).toZonedDateTimeISO(FUSEAU).toPlainDate()

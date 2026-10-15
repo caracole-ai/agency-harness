@@ -8,7 +8,7 @@ import { copieClient } from '../evals/traduction'
 
 // Pour les tests de fuite (PLAN-RONDE.md § 4.3, R10 ; PLAN-METIER-2.md M9) :
 // les clients fictifs du dépôt, et les noms de chacun que rien ne doit citer
-// (la carte, la mémoire, ce qui part à la ronde et au chantier), lus par son
+// (la carte, la mémoire, ce qui part au chantier), lus par son
 // métier sans le connaître.
 
 export const RACINE_DEPOT = fileURLToPath(new URL('../../..', import.meta.url))

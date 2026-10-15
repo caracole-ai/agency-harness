@@ -1,8 +1,8 @@
-// pnpm chantier --mission <client>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire]
+// pnpm chantier --mission <client>/missions/<date>/<id>.yaml [--sans-modele] [--refaire]
 // pnpm chantier retirer <id> --motif "<texte>" --client <dossier>
-// Le chantier d'une mission de la ronde (PLAN-RONDE.md § 6.3, R5 ;
-// PLAN-GENERAL.md G1, G2, G3) : décidé en code (question pour l'atelier,
-// écartée : aucun appel), puis plan, implémentation, garde,
+// Le chantier d'une mission commandée par le patron (PLAN-RONDE.md § 6.3, R5 ;
+// PLAN-GENERAL.md G1, G2, G3) : décidé en code (retirée, geste déjà actif :
+// aucun appel), puis plan, implémentation, garde,
 // `pnpm check`, relecture, une reprise au plus, honnêteté, dans un arbre de
 // travail du clone de la nuit (`agence.yaml: depot_nuit`) ; le dossier
 // `<client>/chantiers/<id>.md`, la mémoire, et la fusion dans `main` du clone
@@ -10,7 +10,7 @@
 // sans --refaire. --sans-modele : la décision et ce que le plan recevrait,
 // aucun appel, aucun git.
 // `retirer` (G2) : `git revert -m 1` de la fusion, push, la mémoire (motif et
-// intentions : la ronde ne repropose pas la mission), la ligne au journal du
+// intentions : la mission n'est jamais refaite), la ligne au journal du
 // client (`--client` : la mémoire ne garde aucun chemin de client).
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
@@ -24,9 +24,8 @@ import { commandeSync } from '../chantier/arbre'
 import { faireChantier, TYPE_CHANTIER } from '../chantier/chantier'
 import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionsRetirees } from '../chantier/memoire'
-import { lireMission } from '../chantier/mission'
+import { DOSSIER_MISSIONS, lireMission } from '../chantier/mission'
 import { dollars } from '../modele/modele'
-import { DOSSIER_RONDES } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'
 
@@ -43,7 +42,7 @@ const { values, positionals } = parseArgs({
   },
 })
 const USAGE =
-  'usage : pnpm chantier --mission <client>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire] | pnpm chantier retirer <id> --motif "<texte>" --client <dossier>'
+  'usage : pnpm chantier --mission <client>/missions/<date>/<id>.yaml [--sans-modele] [--refaire] | pnpm chantier retirer <id> --motif "<texte>" --client <dossier>'
 
 const agence = chargerAgence(RACINE)
 
@@ -56,15 +55,15 @@ try {
     }
     const dossier = resolve(values.client)
     // La mission, chez le client : son titre et ses intentions vont à la mémoire du retrait.
-    const rondes = join(dossier, DOSSIER_RONDES)
-    const fichier = existsSync(rondes)
-      ? readdirSync(rondes)
-          .map((d) => join(rondes, d, `${id}.yaml`))
+    const missions = join(dossier, DOSSIER_MISSIONS)
+    const fichier = existsSync(missions)
+      ? readdirSync(missions)
+          .map((d) => join(missions, d, `${id}.yaml`))
           .filter((f) => existsSync(f))
           .sort()
           .at(-1)
       : undefined
-    if (!fichier) throw new Error(`${id} : aucune mission de ce nom dans ${rondes}`)
+    if (!fichier) throw new Error(`${id} : aucune mission de ce nom dans ${missions}`)
     const { mission } = lireMission(fichier)
     const m = await metierDe(dossier)
     const depot = cheminDepotNuit(agence, RACINE)

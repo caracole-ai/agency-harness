@@ -14,7 +14,6 @@ import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import type { Domaine } from '../conversation/domaine'
 import { dollars } from '../modele/modele'
-import { construireCatalogue } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   type Commande,
@@ -37,6 +36,7 @@ import {
   pourChantier,
 } from './memoire'
 import {
+  construireCatalogue,
   type Decision,
   decider,
   lireMission,
@@ -46,7 +46,7 @@ import {
 } from './mission'
 
 // Le chantier d'une mission (PLAN-RONDE.md § 6.3, R5 ; PLAN-GENERAL.md G1) :
-// décider en code (§ 0.b : question pour l'atelier, écartée), puis, dans un arbre de travail du clone de la nuit, le plan
+// décider en code (§ 0.b : retirée, geste déjà actif), puis, dans un arbre de travail du clone de la nuit, le plan
 // (modèle `chantier.plan`, lecture seule, sortie structurée), l'implémentation
 // (`chantier.implementation`, bornée par la config), la garde du diff,
 // `pnpm check` rejoué par le code, la relecture (`chantier.revue`, lecture
@@ -61,6 +61,8 @@ import {
 export { TYPE_CHANTIER }
 export const DOSSIER_CHANTIERS = 'chantiers'
 export const FICHIER_METHODE = join('methode', 'chantier.md')
+/** La carte du harnais : `methode/chantier.md` demande aux modèles du chantier de la lire. */
+export const FICHIER_CARTE = join('methode', 'architecture-pour-modeles.md')
 /** Le mode du binaire : tout ce qui n'est pas dans les règles d'outils est refusé, rien n'est demandé. */
 const PERMISSION = 'dontAsk'
 const coauteur = (modele: string) => `${modele} <noreply@anthropic.com>`
@@ -122,7 +124,7 @@ export interface OptionsChantier {
   /** La racine de l'arbre courant (le code qui tourne) : le clone de la nuit ne doit pas en être un (R11). */
   racine: string
   agence: Agence
-  /** `<client>/rondes/<date>/<id>.yaml` */
+  /** `<client>/missions/<date>/<id>.yaml` */
   mission: string
   env: Record<string, string | undefined>
   sansModele?: boolean
@@ -213,7 +215,7 @@ export async function faireChantier<S>(
     const journal = m.journal(s)
     const client = m.client(s)
     const personnes: Designable[] = m.noms(s)
-    const catalogue = construireCatalogue(m, dossierClient, journal)
+    const catalogue = construireCatalogue(m, dossierClient)
     const retirees = existsSync(depot) ? missionsRetirees(depot) : []
     const decision = decider(mission, catalogue, retirees)
     const journaliser = (issue: string, donnees: Record<string, unknown>) =>
@@ -238,7 +240,7 @@ export async function faireChantier<S>(
       ? pourChantier(
           depot,
           [mission.id, ...mission.intentions],
-          o.agence.ronde.memoire.index_lignes,
+          o.agence.chantier.memoire_index_lignes,
         )
       : { index: [], conventions: '', chantiers: [] }
     const missionTexte = missionPourModele(mission, m.domaine)
@@ -798,7 +800,7 @@ function sectionsMemoire(x: {
 
 const sec = (ms: number) => `${Math.round(ms / 1000)} s`
 
-/** Le dossier d'une mission qui ne lance rien (question, écartée). */
+/** Le dossier d'une mission qui ne lance rien (écartée). */
 function rendreDecision(
   mission: Mission,
   decision: Decision,
@@ -808,9 +810,9 @@ function rendreDecision(
   return [
     `# Chantier \`${mission.id}\` — ${jour}`,
     '',
-    `Mission de la ronde du ${mission.date} (${mission.sorte}) : ${mission.titre}`,
+    `Mission commandée le ${mission.date} (${mission.sorte}) : ${mission.titre}`,
     '',
-    `Décision : **${decision.sorte === 'chantier' ? 'chantier' : decision.motif}**${decision.sorte === 'chantier' && decision.raison ? ` (${decision.raison})` : ''}. ${decision.sorte === 'chantier' ? '' : 'Aucun appel.'}`,
+    `Décision : **${decision.sorte === 'chantier' ? 'chantier' : decision.motif}**. ${decision.sorte === 'chantier' ? '' : 'Aucun appel.'}`,
     '',
     '## La mission',
     '',
@@ -843,7 +845,7 @@ function rendreDossier(x: {
     '',
     '## La mission',
     '',
-    `Ronde du ${x.mission.date}, sorte ${x.mission.sorte}.`,
+    `Commandée le ${x.mission.date}, sorte ${x.mission.sorte}.`,
     '',
     missionPourModele(x.mission, x.domaine),
     '',

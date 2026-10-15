@@ -14,7 +14,6 @@ export const DOMAINE: DomainePrompts = {
   cadre: "l'outil de suivi des projets et de la facturation d'une agence web",
   objets: 'les projets, les clients, les tickets, le temps, les devis et les factures',
   modifications: null,
-  places: ['<personne>', '<client>', '<projet>', '<facture>', '<ticket>', '<du>', '<au>'],
   identifiants: /\b(?:M|CT|CLI|ST)-\d+\b/g,
   rienASignaler: 'Aucun constat contraire à une règle.',
   notions: [

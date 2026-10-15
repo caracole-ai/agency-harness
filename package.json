@@ -18,7 +18,6 @@
     "remplacer": "pnpm --filter @harnais/securite-privee remplacer",
     "parler": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/parler.ts",
     "gestes": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/gestes.ts",
-    "ronde": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/ronde.ts",
     "chantier": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/chantier.ts",
     "nuit": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/nuit.ts",
     "evals": "NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx moteur/src/cli/evals.ts",

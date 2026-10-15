@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLIENTS_FICTIFS, personnesFictives, RACINE_DEPOT } from '../agence/fictif'
-import { Temporal } from '../temps/temporal'
 import {
   ajouterConvention,
   ajouterIndex,
@@ -12,13 +11,10 @@ import {
   DOSSIER_MEMOIRE,
   ecrireChantier,
   ecrireRetrait,
-  ecrireRonde,
   interdits,
   lireIndex,
   missionsRetirees,
   nettoyer,
-  pourRonde,
-  slugClient,
 } from './memoire'
 
 // PLAN-RONDE.md R10 : la mémoire de la nuit, écrite par le code, sans nom ni
@@ -47,83 +43,6 @@ describe('interdits et nettoyer', () => {
 })
 
 describe('écrire et relire la mémoire', () => {
-  it('une ronde : son fichier sans nom de client dans ce que la ronde relit, sa ligne d’index', () => {
-    const r = racine()
-    const chemin = ecrireRonde(
-      r,
-      {
-        date: '2026-10-12',
-        client: CLIENT,
-        missions: [
-          {
-            id: 'heures_cumulees',
-            sorte: 'intention_nouvelle',
-            titre: 'Les heures cumulées par <agent>',
-            intentions: ['heures_par_agent'],
-            statut: 'écartée',
-            raison: 'un geste actif existe déjà',
-          },
-          {
-            id: 'x',
-            sorte: 'geste_code',
-            titre: 'Pour A-1 seulement',
-            intentions: [],
-            statut: 'écartée',
-          },
-        ],
-        issue: 'faite',
-        cout: { usd: 0.1234, estime: true },
-      },
-      personnes,
-    )
-    const contenu = readFileSync(chemin, 'utf8')
-    expect(chemin).toContain(`2026-10-12-${slugClient(CLIENT)}.md`)
-    expect(contenu).toContain('texte retiré')
-    expect(contenu).not.toContain('A-1')
-    const index = lireIndex(r)
-    expect(index).toHaveLength(1)
-    expect(index[0]).toMatchObject({ sorte: 'ronde', id: '2026-10-12', issue: 'faite' })
-    expect(readFileSync(join(r, DOSSIER_MEMOIRE, 'INDEX.md'), 'utf8')).toContain(
-      '0,12 $ (estimé par le binaire)',
-    )
-
-    const lu = pourRonde(r, CLIENT, Temporal.PlainDate.from('2026-10-13'), {
-      index_lignes: 60,
-      rondes_jours: 7,
-    })
-    expect(lu.rondes).toHaveLength(1)
-    expect(lu.index).toHaveLength(1)
-    // Le jour même : ni la ronde ni sa ligne d'index (une ronde refaite ne se relit pas).
-    expect(
-      pourRonde(r, CLIENT, Temporal.PlainDate.from('2026-10-12'), {
-        index_lignes: 60,
-        rondes_jours: 7,
-      }).index,
-    ).toHaveLength(0)
-    expect(lu.rondes[0]).not.toContain('client essai')
-    expect(lu.index[0]).not.toContain('client essai')
-    // Le jour même et au-delà de la fenêtre : pas relue.
-    expect(
-      pourRonde(r, CLIENT, Temporal.PlainDate.from('2026-10-12'), {
-        index_lignes: 60,
-        rondes_jours: 7,
-      }).rondes,
-    ).toHaveLength(0)
-    expect(
-      pourRonde(r, CLIENT, Temporal.PlainDate.from('2026-10-30'), {
-        index_lignes: 60,
-        rondes_jours: 7,
-      }).rondes,
-    ).toHaveLength(0)
-    // Un autre client ne voit pas cette ligne.
-    expect(
-      pourRonde(r, 'autre', Temporal.PlainDate.from('2026-10-13'), {
-        index_lignes: 60,
-        rondes_jours: 7,
-      }).index,
-    ).toHaveLength(0)
-  })
-
   it('un chantier : sections, appris borné et nettoyé, ligne d’index', () => {
     const r = racine()
     const appris = Array.from({ length: 30 }, (_, i) =>
@@ -174,7 +93,7 @@ describe('écrire et relire la mémoire', () => {
     ).toThrow()
   })
 
-  it('un retrait se lit : la ronde ne repropose pas la mission', () => {
+  it('un retrait se lit : la mission n’est jamais refaite', () => {
     const r = racine()
     ajouterIndex(
       r,
@@ -191,7 +110,7 @@ describe('écrire et relire la mémoire', () => {
     expect(missionsRetirees(r)).toEqual([{ id: 'heures_cumulees', intentions: [] }])
   })
 
-  it('un retrait garde ses intentions : la ronde ne repropose pas le même travail sous un autre nom', () => {
+  it('un retrait garde ses intentions : le même travail sous un autre nom n’est pas refait', () => {
     const r = racine()
     ecrireRetrait(
       r,
