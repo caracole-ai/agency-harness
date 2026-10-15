@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { basename, dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG, MOTIF_SLUG } from '../config'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG, MOTIF_SLUG, NOM_METIER } from '../config'
 import { FORMAT_INTENTION, type Intention } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
@@ -21,6 +21,7 @@ import {
   TYPE_GESTE_COMMANDE,
 } from '../gestes/commande'
 import type { Ligne } from '../journal/journal'
+import { MOTIF_VERSION } from '../livraison/version'
 import { FUSEAU, jourDe, type Temporal } from '../temps/temporal'
 import { interdits, type MissionRetiree, slugClient } from './memoire'
 
@@ -61,7 +62,7 @@ export const Mission = z.strictObject({
     .max(CONSIGNES_TYPES_MAX),
   ecrit: z.boolean(),
   date: z.iso.date(),
-  metier: z.string().min(1),
+  metier: z.string().regex(NOM_METIER),
   statut: z.string().min(1),
 })
 export type Mission = z.infer<typeof Mission>
@@ -347,7 +348,7 @@ export const Statut = z.strictObject({
   statut: z.enum(STATUTS_CHANTIER),
   issue: z.string().min(1),
   /** L'étiquette de la version qui porte la fusion ou le retrait (PLAN-LIVRAISON.md L4). */
-  version: z.string().min(1).optional(),
+  version: z.string().regex(MOTIF_VERSION).optional(),
   cout_usd: z.number().nonnegative(),
   le: z.iso.datetime(),
 })

@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process'
 import {
+  appendFileSync,
   existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -37,6 +39,7 @@ import {
   demandesAvecEtat,
   ecrireStatut,
   lireStatut,
+  Mission,
   type Statut,
   TYPE_CHANTIER,
 } from '../chantier/mission'
@@ -49,9 +52,11 @@ import {
   commanderEtLivrer,
   DOSSIER_CHANTIERS,
   DOSSIER_FILES,
+  lireFile,
   noterChantier,
   rattraperStatuts,
   SUFFIXE_A_POUSSER,
+  statuerRetrait,
 } from './missions'
 
 // PLAN-LIVRAISON.md L1, L5 à L7 et la mesure du lot 3, avec deux dépôts nus
@@ -169,31 +174,66 @@ const tour = (racine: string, a: ReturnType<typeof agence>, commande: Commande) 
 const PLAN = { faisable: true, raison: 'un geste', plan: '-' }
 
 describe('l’aller : un clic pousse la mission (L6)', () => {
-  it('la mission écrite chez le client, la ligne `geste commandé`, la même mission dans la file ; aucun nom', () => {
+  it('la mission écrite chez le client, la ligne `geste commandé`, la même mission dans la file, rien d’autre ; aucun nom', () => {
     const { dossier, file } = clientLivre()
     expect(cliquer(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
     const local = join(dossier, DOSSIER_MISSIONS, '2026-10-10', `${INTENTION}.yaml`)
-    const distant = join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.yaml`)
+    const vue = cloneDuDistant(file)
+    const distant = join(vue, '2026-10-10', `${INTENTION}.yaml`)
     expect(readFileSync(distant, 'utf8')).toBe(readFileSync(local, 'utf8'))
-    // Ce qui part : des types, ni nom, ni identifiant de personne (fuite 0, mesure du lot 3).
+    // Ce qui part : la mission seule (pas sa marque), des types, ni nom, ni identifiant de personne.
+    expect(git(vue, 'ls-tree', '-r', '--name-only', 'HEAD')).toBe(`2026-10-10/${INTENTION}.yaml`)
     expect(readFileSync(distant, 'utf8')).not.toMatch(/Rosalie|Vernet|Octave|Brunel|A-\d/)
     expect(existsSync(`${local}${SUFFIXE_A_POUSSER}`)).toBe(false)
     expect(rattraper(dossier).commande).toMatchObject({ par: { role: 'patron' } })
     expect(rattraper(dossier).commande?.chantier).toBeUndefined()
   })
 
-  it('une file injoignable au clic : le clic réussit, la mission est marquée, le rattrapage suivant la pousse', () => {
+  it('une file injoignable au clic : le clic réussit, la mission est marquée, le rattrapage suivant la pousse telle que le schéma la lit', () => {
     const { dossier, file } = clientLivre({ missions: '/nulle-part/missions.git' })
     expect(cliquer(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
     const local = join(dossier, DOSSIER_MISSIONS, '2026-10-10', `${INTENTION}.yaml`)
     expect(readFileSync(`${local}${SUFFIXE_A_POUSSER}`, 'utf8')).toMatch(/git/)
+    // Un commentaire ajouté à la main au fichier de la mission ne part pas : seul ce que le schéma lit part.
+    appendFileSync(local, '# Rosalie a demandé\n')
     const l = lireLivraison(dossier)
     writeFileSync(join(dossier, FICHIER_LIVRAISON), stringify({ ...l, missions: file }))
-    // Le clone de la file pointe encore sur l'ancienne adresse : il se refait.
-    spawnSync('rm', ['-rf', join(l?.installation ?? '', 'missions')])
     expect(rattraper(dossier).r).toMatchObject({ poussees: 1, aPousser: 0 })
     expect(existsSync(`${local}${SUFFIXE_A_POUSSER}`)).toBe(false)
-    expect(existsSync(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.yaml`))).toBe(true)
+    const distant = readFileSync(
+      join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.yaml`),
+      'utf8',
+    )
+    expect(distant).toMatch(new RegExp(`^id: ${INTENTION}$`, 'm'))
+    expect(distant).not.toMatch(/Rosalie/)
+  })
+
+  it('une file déplacée (une autre adresse dans livraison.yaml) : le clone la suit, sans être effacé', () => {
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    expect(
+      existsSync(join(lireLivraison(dossier)?.installation ?? '', DOSSIER_MISSIONS, '.git')),
+    ).toBe(true)
+    const deplacee = join(mkdtempSync(join(tmpdir(), 'deplacee-')), `missions-${SLUG}.git`)
+    git(tmpdir(), 'clone', '-q', '--bare', file, deplacee)
+    writeFileSync(
+      join(dossier, FICHIER_LIVRAISON),
+      stringify({ ...lireLivraison(dossier), missions: deplacee }),
+    )
+    // L'agence écrit désormais dans la nouvelle file : le client l'y lit.
+    const agenceEcrit = cloneDuDistant(deplacee)
+    git(agenceEcrit, 'config', 'user.email', 'a@exemple.invalid')
+    git(agenceEcrit, 'config', 'user.name', 'a')
+    ecrireStatut(join(agenceEcrit, '2026-10-10'), INTENTION, {
+      statut: 'en cours',
+      issue: 'chantier en cours',
+      cout_usd: 0,
+      le: '2026-10-10T16:00:00Z',
+    })
+    git(agenceEcrit, 'add', '-A')
+    git(agenceEcrit, 'commit', '-q', '-m', 'en cours')
+    git(agenceEcrit, 'push', '-q', 'origin', 'HEAD:main')
+    expect(rattraper(dossier).commande?.chantier).toMatchObject({ issue: 'en cours' })
   })
 })
 
@@ -575,5 +615,80 @@ describe('ce qui vient d’une file n’est jamais suivi ni cru (relecture du lo
     const t = await tour(depots.racine, a as never, commandeSimulee().commande)
     expect(t.prise?.mission).toBe('second/2026-10-10/aujourdhui.yaml')
     expect(t.problemes.join('\n')).toMatch(/premier\/2026-10-11\/demain\.yaml : datée de demain/)
+  })
+})
+
+describe('les états à moitié faits et les données bornées (audit de la livraison, 2026-10-16)', () => {
+  it('un statut écrit dans le clone de l’agence sans être commis (un arrêt avant le push, un --refaire dont la sortie est la file) : la file se tire encore, le statut part au tour suivant', async () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const atelier = binaireSimule({ plan: { faisable: false, raison: 'hors bande', plan: '-' } })
+    const a = agence(atelier.binaire, file)
+    expect((await tour(depots.racine, a, commandeSimulee().commande)).prise).toMatchObject({
+      statut: 'écartée',
+    })
+    ecrireStatut(join(depots.racine, DOSSIER_FILES, SLUG, '2026-10-10'), INTENTION, {
+      statut: 'échoué',
+      issue: 'à trancher à la main',
+      cout_usd: 0,
+      le: '2026-10-10T15:30:00Z',
+    })
+    const t = await tour(depots.racine, a, commandeSimulee().commande)
+    expect(t.problemes).toEqual([])
+    expect(
+      lireStatut(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`))?.statut,
+    ).toBe('échoué')
+  })
+
+  it('le statut « retiré » ne se perd pas si la file ne répond pas : écrit et commis dans le clone de l’agence, poussé au tour suivant', () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const client = { slug: SLUG, metier: 'essai', missions: file }
+    const c = commandeSimulee().commande
+    lireFile(c, depots.racine, client)
+    const retire: Statut = {
+      statut: 'retiré',
+      issue: 'retiré : doublon',
+      version: 'v2026-10-11-1',
+      cout_usd: 0,
+      le: '2026-10-11T09:00:00Z',
+    }
+    // La file ne répond plus (déplacée le temps du retrait), puis revient.
+    renameSync(file, `${file}.ailleurs`)
+    expect(statuerRetrait(c, depots.racine, [client], SLUG, INTENTION, retire).sorte).toBe(
+      'en attente',
+    )
+    renameSync(`${file}.ailleurs`, file)
+    expect(lireFile(c, depots.racine, client).problemes).toEqual([])
+    expect(
+      lireStatut(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`)),
+    ).toMatchObject({ statut: 'retiré', version: 'v2026-10-11-1' })
+  })
+
+  it('ce qu’un statut ou une mission portent est borné : une version qui n’en est pas une, un métier qui n’est pas un nom, refusés et dits', () => {
+    const dossier = dossierEssai()
+    const date = join(dossier, DOSSIER_MISSIONS, '2026-10-10')
+    mkdirSync(date, { recursive: true })
+    writeFileSync(
+      join(date, 'simuler_absence.statut.yaml'),
+      stringify({
+        statut: 'fusionné',
+        issue: 'fusionné',
+        version: '../../x',
+        cout_usd: 0,
+        le: '2026-10-10T10:00:00Z',
+      }),
+    )
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      const r = rattraperStatuts(METIER_ESSAI, s, dossier, MAINTENANT)
+      expect(r.nouveaux).toBe(0)
+      expect(r.problemes.join('\n')).toMatch(/statut invalide/)
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
+    expect(Mission.safeParse({ ...MISSION_ESSAI, metier: '../agence-web' }).success).toBe(false)
   })
 })

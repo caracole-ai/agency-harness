@@ -341,7 +341,7 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
           cout_usd: 0,
           le: quand('13:00').toInstant().toString(),
         }),
-      ).toBe(true)
+      ).toEqual({ sorte: 'poussé' })
       const tire = rattraper(METIER_ESSAI, s, dossier, quand('13:15'), ENV_ESSAI, commande)
       expect(tire.preparation?.prete?.version).toBe(retrait.version)
       await harnais({

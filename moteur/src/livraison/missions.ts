@@ -10,6 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
+import { stringify } from 'yaml'
 import { z } from 'zod'
 import type { Agence } from '../agence/config'
 import {
@@ -63,11 +64,16 @@ export const SUFFIXE_A_POUSSER = '.a-pousser'
 const SUFFIXE_DOSSIER = '.chantier.md'
 const MOTIF_JOUR = /^\d{4}-\d{2}-\d{2}$/
 
-/** git vers une file distante : jamais d'invite, ssh en mode lot, un délai de connexion. */
-const ENV_FILE = () => ({
+/**
+ * git vers un distant (une file, le dépôt du produit) : jamais d'invite, ssh
+ * en mode lot, un délai de connexion, une connexion figée coupée (une minute
+ * sans réponse) : un distant injoignable ne gèle ni une file ni une mise à jour.
+ */
+export const ENV_DISTANT = () => ({
   ...process.env,
   GIT_TERMINAL_PROMPT: '0',
-  GIT_SSH_COMMAND: 'ssh -o BatchMode=yes -o ConnectTimeout=15',
+  GIT_SSH_COMMAND:
+    'ssh -o BatchMode=yes -o ConnectTimeout=15 -o ServerAliveInterval=15 -o ServerAliveCountMax=4',
 })
 
 /** Ce chemin est un vrai dossier (ou un vrai fichier), pas un lien : ce qui vient d'une file ne s'y lit qu'ainsi. */
@@ -110,13 +116,18 @@ function datesDe(file: string, problemes: string[]): string[] {
     })
 }
 
-/** `git pull --rebase` de `main` ; un conflit est abandonné (le clone reste lisible) et dit. */
+/**
+ * `git pull --rebase` de `main` ; ce que le clone porte sans l'avoir commis
+ * (un statut écrit, puis un arrêt avant `publier`) est mis de côté puis rendu
+ * (`--autostash`) : sans cela la file refuserait de se tirer, pour toujours.
+ * Un conflit est abandonné (le clone reste lisible) et dit.
+ */
 function tirer(c: Commande, clone: string): void {
   const r = c(
     clone,
     'git',
-    ['pull', '--rebase', '--quiet', DISTANT, BRANCHE_PRINCIPALE],
-    ENV_FILE(),
+    ['pull', '--rebase', '--autostash', '--quiet', DISTANT, BRANCHE_PRINCIPALE],
+    ENV_DISTANT(),
   )
   if (r.code !== 0) {
     c(clone, 'git', ['rebase', '--abort'])
@@ -124,21 +135,26 @@ function tirer(c: Commande, clone: string): void {
   }
 }
 
-/** Le clone d'une file, créé au besoin, à jour de `main` du distant s'il en a un. */
+/**
+ * Le clone d'une file, créé au besoin, à jour de `main` du distant s'il en a
+ * un. L'adresse est celle de la config, relue à chaque fois : une file
+ * déplacée se suit sans effacer le clone.
+ */
 export function synchroniser(c: Commande, url: string, clone: string, signe: string): void {
   if (!existsSync(join(clone, '.git'))) {
     mkdirSync(dirname(clone), { recursive: true })
-    git(c, dirname(clone), ['clone', '--quiet', url, clone], ENV_FILE())
+    git(c, dirname(clone), ['clone', '--quiet', url, clone], ENV_DISTANT())
     git(c, clone, ['config', 'user.name', signe])
     git(c, clone, ['config', 'user.email', `${signe}@harnais.invalid`])
     return
   }
+  git(c, clone, ['remote', 'set-url', DISTANT, url])
   // Une file neuve (dépôt nu vide) n'a pas encore de `main` (code 2) : rien à tirer.
   const distant = c(
     clone,
     'git',
     ['ls-remote', '--exit-code', '--heads', DISTANT, BRANCHE_PRINCIPALE],
-    ENV_FILE(),
+    ENV_DISTANT(),
   )
   if (distant.code === 0) tirer(c, clone)
   else if (distant.code !== 2) {
@@ -169,7 +185,7 @@ export function publier(c: Commande, clone: string, message: string): boolean {
       clone,
       'git',
       ['push', '--quiet', DISTANT, `HEAD:refs/heads/${BRANCHE_PRINCIPALE}`],
-      ENV_FILE(),
+      ENV_DISTANT(),
     )
   if (pousser().code === 0) return true
   tirer(c, clone)
@@ -218,10 +234,11 @@ export function statutsDe(file: string): { statuts: StatutEnFile[]; problemes: s
 export const cloneDuClient = (l: Livraison) => join(l.installation, DOSSIER_MISSIONS)
 
 /**
- * L'aller (L6) : la mission, telle qu'elle est écrite chez le client et relue
- * par le schéma strict, copiée dans sa file et poussée. Un échec (réseau)
- * ne fait pas échouer le clic : la mission est marquée `à pousser` (la
- * raison dans la marque) et le prochain rattrapage la pousse.
+ * L'aller (L6) : la mission écrite chez le client, relue par le schéma strict
+ * et réécrite telle que le schéma la lit (rien d'autre ne part, pas même un
+ * commentaire ajouté au fichier), dans sa file, poussée. Un échec (réseau)
+ * laisse la mission marquée `à pousser` (la raison dans la marque) : le
+ * prochain rattrapage la pousse.
  */
 export function pousserMission(
   c: Commande,
@@ -235,7 +252,7 @@ export function pousserMission(
     synchroniser(c, livraison.missions, clone, 'harnais')
     const place = join(dossierDate(clone, mission.date), `${mission.id}.yaml`)
     placeNette(place)
-    copyFileSync(chemin, place)
+    writeFileSync(place, stringify(mission))
     publier(c, clone, `Mission ${mission.id} (${mission.date})`)
     rmSync(marque, { force: true })
     return 'poussee'
@@ -395,7 +412,6 @@ export function lireFile(
   exclure(c, racine, DOSSIER_FILES)
   const clone = cloneAgence(racine, client.slug)
   synchroniser(c, client.missions, clone, 'agence')
-  const missions: MissionEnFile[] = []
   const problemes: string[] = []
   // Ce qu'un tour d'avant n'a pas pu pousser (un statut) part d'abord.
   try {
@@ -403,6 +419,16 @@ export function lireFile(
   } catch (erreur) {
     problemes.push(`${client.slug} : ${(erreur as Error).message.slice(0, 300)}`)
   }
+  return { missions: missionsDuClone(clone, client, problemes), problemes }
+}
+
+/** Les missions que le clone d'une file porte, tel qu'il est, lues par le schéma strict ; une mission mal formée est écartée et dite. */
+function missionsDuClone(
+  clone: string,
+  client: ClientAgence,
+  problemes: string[],
+): MissionEnFile[] {
+  const missions: MissionEnFile[] = []
   for (const date of datesDe(clone, problemes)) {
     for (const f of readdirSync(join(clone, date)).filter(
       (x) => x.endsWith('.yaml') && !x.endsWith(SUFFIXE_STATUT),
@@ -422,7 +448,7 @@ export function lireFile(
       }
     }
   }
-  return { missions, problemes }
+  return missions
 }
 
 /**
@@ -492,8 +518,11 @@ export function statuerEnFile(c: Commande, racine: string, x: MissionEnFile, sta
 /**
  * Le retrait d'une mission (G2) dit à son client, s'il est livré : le statut
  * `retiré` et sa version posés à côté de la mission la plus récente de ce nom
- * dans sa file, poussés. Rend false si le client n'a pas de file à l'agence
- * ou que la mission n'y est pas.
+ * dans sa file. Le retrait est déjà poussé et ne se refait pas : une file
+ * injoignable (ou occupée par `pnpm agence`) n'efface rien, le statut est
+ * écrit dans le clone de l'agence et le prochain tour de `pnpm agence` le
+ * pousse. Rend `poussé`, `en attente` (écrit, pas encore poussé), ou
+ * `absent` (le client n'a pas de file à l'agence, ou la mission n'y est pas).
  */
 export function statuerRetrait(
   c: Commande,
@@ -502,16 +531,29 @@ export function statuerRetrait(
   slug: string,
   id: string,
   statut: Statut,
-): boolean {
+): { sorte: 'poussé' | 'en attente' | 'absent'; raison?: string } {
   const client = clients.find((x) => x.slug === slug)
-  if (!client) return false
-  const x = lireFile(c, racine, client)
-    .missions.filter((m) => m.mission.id === id)
+  if (!client) return { sorte: 'absent' }
+  const clone = cloneAgence(racine, client.slug)
+  let raison: string | undefined
+  try {
+    synchroniser(c, client.missions, clone, 'agence')
+  } catch (erreur) {
+    raison = (erreur as Error).message.slice(0, 300)
+  }
+  if (!existsSync(join(clone, '.git'))) return { sorte: 'absent', ...(raison ? { raison } : {}) }
+  const x = missionsDuClone(clone, client, [])
+    .filter((m) => m.mission.id === id)
     .sort((a, b) => a.mission.date.localeCompare(b.mission.date))
     .at(-1)
-  if (!x) return false
-  statuerEnFile(c, racine, x, statut)
-  return true
+  if (!x) return { sorte: 'absent', ...(raison ? { raison } : {}) }
+  ecrireEnFile(racine, x, statut)
+  try {
+    publier(c, clone, `Chantier ${x.mission.id} : ${statut.statut}`)
+  } catch (erreur) {
+    return { sorte: 'en attente', raison: (erreur as Error).message.slice(0, 300) }
+  }
+  return { sorte: 'poussé' }
 }
 
 /** Le nom d'une mission dans la file, pour les messages. */

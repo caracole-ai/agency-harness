@@ -99,18 +99,21 @@ try {
     )
     // Le client qui l'avait commandé le lit dans sa file (PLAN-LIVRAISON.md L7).
     const dit =
-      client !== undefined &&
-      statuerRetrait(commandeSync, RACINE, agence.agence.clients, client, id, {
-        statut: 'retiré',
-        issue: `retiré : ${motif}`,
-        version: r.version,
-        cout_usd: 0,
-        le: maintenant.toInstant().toString(),
-      })
+      client === undefined
+        ? { sorte: 'absent' as const }
+        : statuerRetrait(commandeSync, RACINE, agence.agence.clients, client, id, {
+            statut: 'retiré',
+            issue: `retiré : ${motif}`,
+            version: r.version,
+            cout_usd: 0,
+            le: maintenant.toInstant().toString(),
+          })
     console.log(
-      dit
+      dit.sorte === 'poussé'
         ? `Statut « retiré » poussé dans la file de ${client}.`
-        : `${client ?? 'Le client'} n'a pas de file à l'agence : rien n'est poussé.`,
+        : dit.sorte === 'en attente'
+          ? `Statut « retiré » écrit dans la file de ${client}, pas encore poussé (${dit.raison}) : le prochain tour de pnpm agence le pousse.`
+          : `${client ?? 'Le client'} n'a pas de file à l'agence, ou la mission n'y est pas : rien n'est poussé.`,
     )
   } else {
     if (!values.mission) {

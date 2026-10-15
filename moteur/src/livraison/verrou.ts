@@ -1,17 +1,20 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { uptime } from 'node:os'
 import { dirname } from 'node:path'
 
 // Un verrou par fichier (PLAN-LIVRAISON.md L1, L8) : le pid de qui le tient,
-// posé d'un seul geste (`wx`) ; un verrou dont le pid est mort est levé.
-// Rend de quoi le rendre, ou undefined s'il est tenu.
+// posé d'un seul geste (`wx`) ; un verrou dont le pid est mort est levé, de
+// même qu'un verrou posé avant le démarrage de la machine (son pid a pu être
+// repris par un autre processus). Rend de quoi le rendre, ou undefined s'il
+// est tenu.
+
+/** Un verrou vide (posé à l'instant, son pid pas encore écrit) est tenu pendant ce délai, puis tenu pour mort. */
+const POSE_MS = 10_000
 
 export function poserVerrou(chemin: string): (() => void) | undefined {
   mkdirSync(dirname(chemin), { recursive: true })
-  if (existsSync(chemin)) {
-    const pid = Number(readFileSync(chemin, 'utf8').trim())
-    if (Number.isInteger(pid) && pid > 0 && vivant(pid)) return undefined
-    rmSync(chemin, { force: true })
-  }
+  if (tenu(chemin)) return undefined
+  rmSync(chemin, { force: true })
   try {
     writeFileSync(chemin, `${process.pid}\n`, { flag: 'wx' })
   } catch {
@@ -22,8 +25,30 @@ export function poserVerrou(chemin: string): (() => void) | undefined {
 }
 
 /** Le pid de qui tient le verrou, s'il en est un. */
-export const tenantDe = (chemin: string): string | undefined =>
-  existsSync(chemin) ? readFileSync(chemin, 'utf8').trim() : undefined
+export function tenantDe(chemin: string): string | undefined {
+  try {
+    return readFileSync(chemin, 'utf8').trim()
+  } catch {
+    return undefined
+  }
+}
+
+/** Le verrou est-il tenu : un pid vivant, posé depuis le démarrage de la machine ; vide, s'il vient d'être posé. */
+function tenu(chemin: string): boolean {
+  let contenu: string
+  let pose: number
+  try {
+    contenu = readFileSync(chemin, 'utf8').trim()
+    pose = statSync(chemin).mtimeMs
+  } catch {
+    // Absent, ou rendu entre-temps.
+    return false
+  }
+  if (pose < Date.now() - uptime() * 1000) return false
+  const pid = Number(contenu)
+  if (!Number.isInteger(pid) || pid <= 0) return Date.now() - pose < POSE_MS
+  return vivant(pid)
+}
 
 function vivant(pid: number): boolean {
   try {

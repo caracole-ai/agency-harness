@@ -125,7 +125,8 @@ describe('préparer une version (L8, mesure du lot 4)', () => {
     pr.version('v2026-10-15-1')
     pr.version('v2026-10-15-2')
     const { commande, emises } = commandeSimulee()
-    expect(preparer(dossier, l, ENV_ESSAI, [], commande)).toEqual({
+    const env = { ...ENV_ESSAI, SSH_AUTH_SOCK: '/tmp/agent.sock' }
+    expect(preparer(dossier, l, env, [], commande)).toEqual({
       prete: { version: 'v2026-10-15-2', deja: false },
       refusees: [],
     })
@@ -141,6 +142,7 @@ describe('préparer une version (L8, mesure du lot 4)', () => {
       [arbre, 'check'],
     ])
     expect(pnpm.flatMap((x) => x.variables ?? [])).not.toContain(VARIABLE_CLE_SIGNATURE)
+    expect(pnpm.flatMap((x) => x.variables ?? [])).not.toContain('SSH_AUTH_SOCK')
     // Ce qui tourne : la courante, intacte.
     expect(versionCourante(l)).toBe('v2026-10-14-1')
     expect(preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande)).toEqual({
@@ -399,6 +401,45 @@ describe('les pannes et les gardes de la préparation (relecture du lot 4)', () 
     } finally {
       METIER_ESSAI.fermer(s)
     }
+  })
+})
+
+describe('le dépôt du produit chez le client (audit de la livraison, 2026-10-16)', () => {
+  it('seules ses versions se tirent, jamais ses branches ni ses autres étiquettes ; git sans invite, une connexion figée coupée ; une adresse changée est suivie', () => {
+    const pr = produit()
+    pr.version('v2026-10-14-1')
+    // Le travail de l'agence, sur le produit : une branche, une étiquette de chantier.
+    git(pr.agence, 'switch', '-q', '-c', 'travail')
+    git(pr.agence, 'commit', '-q', '--allow-empty', '-m', 'travail en cours')
+    git(pr.agence, 'tag', 'chantier/essai')
+    git(pr.agence, 'push', '-q', 'origin', 'travail', 'refs/tags/chantier/essai')
+    git(pr.agence, 'switch', '-q', 'main')
+    const { dossier, l } = client(pr.nu)
+    const envs: Record<string, string | undefined>[] = []
+    const { commande } = commandeSimulee()
+    const espion: Commande = (cwd, nom, args, env) => {
+      if (nom === 'git' && args[0] === 'fetch') envs.push(env ?? {})
+      return commande(cwd, nom, args, env)
+    }
+    expect(preparer(dossier, l, ENV_ESSAI, [], espion).prete?.version).toBe('v2026-10-14-1')
+    installerPremiere(l)
+    expect(git(join(l.installation, 'depot'), 'for-each-ref', '--format=%(refname)')).toBe(
+      'refs/tags/v2026-10-14-1',
+    )
+    expect(envs).toHaveLength(1)
+    expect(envs[0]).toMatchObject({
+      GIT_TERMINAL_PROMPT: '0',
+      GIT_SSH_COMMAND: expect.stringMatching(/BatchMode=yes.*ServerAliveInterval=/),
+    })
+    // Le produit déplacé : la version suivante n'est que sur la nouvelle adresse.
+    const ailleurs = join(mkdtempSync(join(tmpdir(), 'produit-deplace-')), 'produit.git')
+    git(tmpdir(), 'clone', '-q', '--mirror', pr.nu, ailleurs)
+    git(pr.agence, 'remote', 'set-url', 'origin', ailleurs)
+    pr.version('v2026-10-15-1')
+    expect(
+      preparer(dossier, { ...l, depot: ailleurs }, ENV_ESSAI, [], commandeSimulee().commande).prete
+        ?.version,
+    ).toBe('v2026-10-15-1')
   })
 })
 

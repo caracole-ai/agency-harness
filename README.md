@@ -130,12 +130,17 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
 - `<dossier client>/livraison.yaml` — le client livré (`PLAN-LIVRAISON.md`
   L5 ; un exemple commenté : `exemples/livraison.yaml`) : `depot` (le dépôt du produit, en lecture seule), `missions` (sa file
   `missions-<slug>`, en lecture et écriture), `installation` (un chemin
-  absolu hors du dossier client : le clone de la file, puis les versions au
-  lot 4), `intervalle_minutes`. Sans ce fichier, rien ne quitte la machine
-  du client : `pnpm chantier --mission` prend la mission à la main et écrit
-  son statut à côté d'elle. Les clés SSH des deux dépôts (une clé de
-  déploiement par client et par sens) sont dans `~/.ssh/config` de la
-  machine, jamais dans le dépôt ni dans la config.
+  absolu hors du dossier client : le clone de la file, un dépôt nu qui ne
+  tire du produit que ses étiquettes `v*`, les versions côte à côte),
+  `intervalle_minutes`. Les adresses sont relues à chaque rattrapage (une
+  file ou un produit déplacés se suivent) ; git vers elles ne demande rien
+  et coupe une connexion figée. Avec lui, le fichier `signataires` (la clé
+  publique de l'agence) : sans lui, aucune version ne s'installe. Sans
+  `livraison.yaml`, rien ne quitte la machine du client : `pnpm chantier
+  --mission` prend la mission à la main et écrit son statut à côté d'elle.
+  Les clés SSH des deux dépôts (une clé de déploiement par client et par
+  sens) sont dans `~/.ssh/config` de la machine, jamais dans le dépôt ni
+  dans la config.
 - `memoire/` — la mémoire des chantiers (`PLAN-RONDE.md` R10), écrite par
   le code dans l'arbre de la fusion ou du retrait, poussée avec eux :
   `INDEX.md` (une ligne par événement), `chantiers/`, `CONVENTIONS.md` (on y

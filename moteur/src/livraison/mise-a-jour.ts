@@ -18,7 +18,7 @@ import type { MetierConversation } from '../conversation/conversation'
 import type { Ligne } from '../journal/journal'
 import { jourDe, type Temporal } from '../temps/temporal'
 import { type Livraison, lireLivraison } from './config'
-import { type Rattrapage, rattraperStatuts } from './missions'
+import { ENV_DISTANT, type Rattrapage, rattraperStatuts } from './missions'
 import { poserVerrou } from './verrou'
 import {
   etiquettesCandidates,
@@ -30,7 +30,7 @@ import {
 
 // La mise à jour chez le client (PLAN-LIVRAISON.md L8, L9) : le harnais tire
 // lui-même ses versions. Dans son installation (hors du dossier client) :
-// `depot/` (un clone nu du dépôt du produit, en lecture seule),
+// `depot/` (un dépôt nu qui ne tire du produit que ses versions signées),
 // `versions/<tag>/` (un arbre par version), `courant` et `precedent` (des
 // liens). Préparer : la plus récente des versions qui descendent de la
 // courante, vérifiée (signature de l'agence, nom, lignée), installée à côté,
@@ -122,17 +122,23 @@ export interface Preparation {
   occupee?: true
 }
 
-/** Le clone nu du dépôt du produit, à jour de ses seules versions ; créé au besoin. */
+/**
+ * Le dépôt nu du produit chez le client, créé au besoin, à jour de ses seules
+ * versions : les étiquettes `v*` et ce qu'elles portent, jamais les branches
+ * ni les autres étiquettes du produit (le travail de l'agence ne part pas).
+ * L'adresse est celle de `livraison.yaml`, relue à chaque fois ; git n'y
+ * attend aucune invite et coupe une connexion figée (`ENV_DISTANT`). Sans
+ * `--force` : une version qui changerait sous le même nom fait échouer le
+ * fetch, et le rattrapage le dit.
+ */
 function depotAJour(c: Commande, l: Livraison): string {
   const depot = join(l.installation, DOSSIER_DEPOT)
   if (!existsSync(depot)) {
     mkdirSync(l.installation, { recursive: true })
-    git(c, l.installation, ['clone', '--bare', '--quiet', l.depot, depot])
-  } else {
-    // Les seules étiquettes v* (une autre étiquette réécrite ne bloque rien) ; sans `--force` : une
-    // version qui changerait sous le même nom fait échouer le fetch, et le rattrapage le dit.
-    git(c, depot, ['fetch', 'origin', 'refs/tags/v*:refs/tags/v*'])
+    git(c, l.installation, ['init', '--quiet', '--bare', depot])
   }
+  git(c, depot, ['config', 'remote.origin.url', l.depot])
+  git(c, depot, ['fetch', 'origin', 'refs/tags/v*:refs/tags/v*'], ENV_DISTANT())
   return depot
 }
 
