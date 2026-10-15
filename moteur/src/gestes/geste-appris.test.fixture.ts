@@ -2,7 +2,6 @@ import { z } from 'zod'
 import { VALIDEE } from '../approbation/jeton'
 import type { Domaine } from '../conversation/domaine'
 import type { RoleDeclare } from '../conversation/roles'
-import type { Evenement } from '../journal/journal'
 import { type DeclarationsGeste, type GesteAppris, SansCandidat } from './geste-appris'
 import type { OperationApprise } from './operation'
 import type { TypeParametreDeclare } from './types-parametre'
@@ -81,22 +80,6 @@ export const OPERATION_EXEMPLE: OperationApprise<Reaffectation> = {
   egal: (a, b) => a.vacation === b.vacation && a.agent === b.agent,
   objet: (m) => m.vacation,
 }
-
-/** Une réaffectation reçue puis validée, comme la sécurité privée l'inscrit : ce que `relire` relit. */
-export const reaffectationValidee = (
-  objet: string,
-  conversation: string,
-  modifications: unknown[],
-): Evenement[] => [
-  {
-    type: 'reaffectation',
-    client: 'fictif',
-    objet,
-    issue: 'reçue',
-    donnees: { conversation, modifications },
-  },
-  { type: 'reaffectation', client: 'fictif', objet, issue: VALIDEE, donnees: { jeton: 'j' } },
-]
 
 /** Le domaine de la sécurité privée, tel qu'elle le déclare, pour les métiers simulés des tests (PLAN-METIER-2.md § 3.5). */
 export const DOMAINE_EXEMPLE: Domaine = {

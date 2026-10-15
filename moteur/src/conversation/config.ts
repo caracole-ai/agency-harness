@@ -2,8 +2,8 @@ import { z } from 'zod'
 import { EFFORTS, type PrixModele } from '../modele/modele'
 
 // La section `conversation` de la config d'un client : le modèle, ses prix,
-// l'effort par usage, les plafonds (par demande et par mois) et le seuil de
-// promotion. Validée au démarrage : un plafond absent n'est jamais « infini »
+// l'effort par usage, les plafonds (par demande et par mois). Validée au
+// démarrage : un plafond absent n'est jamais « infini »
 // (PLAN-ESPACES.md § 4.5).
 
 /** Comment la clé se présente : l'en-tête d'Anthropic, ou `Authorization: Bearer`. */
@@ -47,26 +47,10 @@ export const ConversationSchema = z.strictObject({
       tokens_sortie: z.number().int().positive(),
       secondes: z.number().int().positive(),
     }),
-    /**
-     * Le plafond d'une fabrication de geste appris (PLAN-PROMOTION.md § 6.1), à
-     * part de celui d'une demande : sa réflexion relit chaque réponse montrée et
-     * dépasse celle d'une échappée. Absent, celui de la demande.
-     */
-    fabrication: z.strictObject({ tokens_sortie: z.number().int().positive() }).optional(),
     par_mois_usd: z.number().positive(),
-  }),
-  promotion: z.strictObject({
-    occurrences: z.number().int().positive(),
-    jours: z.number().int().positive(),
-    /** Combien de jours un instantané d'échappée (`echappees/<id>.json`) est gardé avant la purge (PLAN-PROMOTION.md P8). */
-    conservation_jours: z.number().int().positive().default(90),
   }),
 })
 export type ConfigConversation = z.infer<typeof ConversationSchema>
-
-/** Les tokens de sortie laissés à une fabrication : son plafond s'il est déclaré, sinon celui de la demande. */
-export const plafondFabrication = (c: ConfigConversation): number =>
-  c.plafonds.fabrication?.tokens_sortie ?? c.plafonds.par_demande.tokens_sortie
 
 /** Les prix de la config, dans les noms du moteur. */
 export const prixDe = (c: ConfigConversation): PrixModele => {
