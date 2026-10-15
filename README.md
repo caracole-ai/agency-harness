@@ -313,7 +313,13 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   (activables, ou pourquoi pas), actifs et retirés ; le patron active après
   une confirmation à l'écran, ou retire avec un motif (`/api/gestes`,
   `/api/gestes/activer`, `/api/gestes/retirer` ; « par » est son identité
-  vérifiée, jamais un champ du corps).
+  vérifiée, jamais un champ du corps). Le même onglet montre d'abord les
+  **demandes sans geste** (`/api/sans-geste` : les `consigne`/`nouvelle` du
+  journal groupées par intention, les plus fréquentes d'abord, avec leurs
+  derniers résumés) ; « Créer ce geste » les commande
+  (`/api/sans-geste/commander` : une ligne `geste commandé`, aucun modèle),
+  l'agence code le geste, un humain l'active ; la ronde ne propose une
+  mission `geste_code` que pour une intention commandée.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont

@@ -33,8 +33,14 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 - **`general/retrait-promotion`, non fusionnée** (la fusion de la session
   a été celle de `masquer-remplacees`) : le retrait de la promotion en cinq
   commits (couplage défait, nuit/ronde/chantier, évals, config et
-  suppression, docs). `pnpm check` vert : moteur 586, interface 29,
-  sécurité 144, agence 263 (les tests de la promotion partis avec elle).
+  suppression, docs), puis **« Demandes sans geste »** (deux commits) :
+  l'onglet « Appris » montre les demandes nouvelles groupées par intention
+  (`/api/sans-geste`), « Créer ce geste » écrit une ligne `geste commandé`
+  (`/api/sans-geste/commander`, capacité `administre`, aucun modèle), et le
+  catalogue de la ronde marque l'intention « commandée », la seule qui
+  mérite une mission `geste_code`. Vu à 1280 et 390 px. `pnpm check` vert :
+  moteur 592, interface 31, sécurité 144, agence 263 (les tests de la
+  promotion partis avec elle, huit tests neufs).
   La ronde n'écrit plus de mission `geste_code` sans commande ; la nuit
   purge les instantanés (90 jours) à la place de `pnpm promotions` ;
   `citations` et `PropositionMetier.criteres` restent (lus par des tests).
