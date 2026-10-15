@@ -75,18 +75,21 @@ const SortieClaude = z.looseObject({
     .optional(),
 })
 
+/** Ce qu'un enfant ne reçoit jamais : la clé de signature de l'agence et l'agent SSH qui pourrait la porter. */
+const RETENUES = new Set([VARIABLE_CLE_SIGNATURE, 'SSH_AUTH_SOCK'])
+
 /**
  * L'environnement d'un processus enfant : celui donné, sans les variables
  * `npm_*` du script qui tourne (`pnpm -s chantier` passerait son
  * `npm_config_loglevel=silent` au `pnpm check` du modèle et du code, qui
- * sortirait en échec sans rien dire : vu le 2026-10-11), et sans la clé de
- * signature de l'agence (PLAN-LIVRAISON.md § 0.4 : jamais dans
- * l'environnement d'un modèle ni du code qu'il a écrit).
+ * sortirait en échec sans rien dire : vu le 2026-10-11), sans la clé de
+ * signature de l'agence ni l'agent SSH (PLAN-LIVRAISON.md § 0.4). Cela ne
+ * suffit pas contre du code écrit par le modèle : il tourne sous le même
+ * utilisateur et peut lire le fichier de la clé (ouvert, PLAN-LIVRAISON.md
+ * lot 2).
  */
 export const envEnfant = (env: Record<string, string | undefined>) =>
-  Object.fromEntries(
-    Object.entries(env).filter(([k]) => !/^npm_/i.test(k) && k !== VARIABLE_CLE_SIGNATURE),
-  )
+  Object.fromEntries(Object.entries(env).filter(([k]) => !/^npm_/i.test(k) && !RETENUES.has(k)))
 
 /** Lance le binaire avec ses arguments et son entrée ; rend code, sorties, ou `delai` si le délai mural a tué le processus. */
 export type Lancer = (

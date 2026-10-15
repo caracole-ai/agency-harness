@@ -457,11 +457,14 @@ pnpm versionner          # une version signée sur origin/main tel quel, pour li
                          # « pnpm version » : pnpm en a une à lui, qui masquerait le script.
                          # La signature, pour pnpm chantier, retirer et versionner :
                          # AGENCE_CLE_SIGNATURE = le chemin de la clé privée SSH de l'agence,
-                         # hors du dépôt (ssh-keygen -t ed25519 ; OpenSSH 8.2 au moins), jamais
-                         # dans l'environnement d'un modèle ni de pnpm check (envEnfant la
-                         # retire). Chaque client reçoit avec son dossier un fichier
-                         # `signataires` : « agence <clé publique> » ; chez lui, git -c
-                         # gpg.ssh.allowedSignersFile=signataires verify-tag <version> la vérifie.
+                         # hors du dépôt (ssh-keygen -t ed25519 ; OpenSSH 8.2 au moins). Son
+                         # chemin et l'agent SSH ne passent ni au modèle ni à pnpm check
+                         # (envEnfant les retire) ; mais le code que le modèle écrit tourne sous
+                         # le même utilisateur et pourrait lire le fichier : ouvert, voir
+                         # PLAN-LIVRAISON.md, lot 2. Chaque client reçoit avec son dossier un
+                         # fichier `signataires` : « agence <clé publique> » ; chez lui, seule une
+                         # étiquette annotée qui porte son nom, signée SSH par cette clé, est
+                         # admise (verifierEtiquette, livraison/version.ts).
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,

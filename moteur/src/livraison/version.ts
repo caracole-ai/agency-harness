@@ -44,13 +44,24 @@ export function versions(c: Commande, depot: string): string[] {
     .sort(comparerVersions)
 }
 
-/** La prochaine étiquette du jour (`date` : AAAA-MM-JJ) : le plus haut rang du jour, plus un. */
+/**
+ * La prochaine étiquette du jour (`date` : AAAA-MM-JJ) : le plus haut rang du
+ * jour, plus un ; et toujours après la plus récente que le dépôt connaisse
+ * (un chantier commencé avant minuit, une horloge en retard) : les noms
+ * suivent l'ordre où les versions sont posées, le client les ordonne ainsi.
+ */
 export function prochaineEtiquette(c: Commande, depot: string, date: string): string {
-  const rangs = versions(c, depot).flatMap((t) => {
+  const toutes = versions(c, depot)
+  const rangs = toutes.flatMap((t) => {
     const v = lireVersion(t)
     return v && v.jour === date ? [v.rang] : []
   })
-  return `v${date}-${Math.max(0, ...rangs) + 1}`
+  const prochaine = `v${date}-${Math.max(0, ...rangs) + 1}`
+  const derniere = toutes.at(-1)
+  const d = derniere ? lireVersion(derniere) : undefined
+  return derniere && d && comparerVersions(prochaine, derniere) <= 0
+    ? `v${d.jour}-${d.rang + 1}`
+    : prochaine
 }
 
 /** Ce qu'une version dit d'elle-même, en clair dans son message. */
@@ -80,7 +91,7 @@ export function rendreManifeste(tag: string, m: Manifeste): string {
   ].join('\n')
 }
 
-/** Pose l'étiquette signée (SSH) sur `commit`, dans cet arbre ; lève si git refuse. */
+/** Pose l'étiquette signée (SSH) sur `commit`, dans cet arbre ; lève si git refuse, sans dire le chemin de la clé (le message peut partir dans un statut). */
 export function signerEtiquette(
   c: Commande,
   arbre: string,
@@ -89,7 +100,7 @@ export function signerEtiquette(
   message: string,
   cle: string,
 ): void {
-  git(c, arbre, [
+  const r = c(arbre, 'git', [
     '-c',
     'gpg.format=ssh',
     '-c',
@@ -101,17 +112,53 @@ export function signerEtiquette(
     tag,
     commit,
   ])
+  if (r.code !== 0) {
+    throw new Error(
+      `signature de ${tag} refusée par git : ${(r.erreur || r.sortie).replaceAll(cle, '<clé>').trim().slice(0, 300)}`,
+    )
+  }
 }
 
-/** L'étiquette est signée par une clé de `signataires` (`git verify-tag`) : rend la raison du refus, ou undefined si elle l'est. */
+/** Le début d'une signature SSH dans un objet tag ; tout autre format (OpenPGP, X.509) est refusé. */
+const SIGNATURE_SSH = '-----BEGIN SSH SIGNATURE-----'
+
+/**
+ * L'étiquette est une version signée par une clé de `signataires` : un objet
+ * tag annoté qui porte ce nom-là (une ref renommée qui pointerait sur une
+ * autre version signée est refusée), une signature SSH et aucune autre (un
+ * trousseau OpenPGP ou X.509 de la machine ne compte pas), vérifiée par `git
+ * verify-tag`. Rend la raison du refus, ou undefined si elle est admise.
+ */
 export function verifierEtiquette(
   c: Commande,
   depot: string,
   tag: string,
   signataires: string,
 ): string | undefined {
+  if (!lireVersion(tag)) return `${tag} : pas une étiquette de version`
   if (!existsSync(signataires)) return `fichier des signataires introuvable : ${signataires}`
-  const r = c(depot, 'git', ['-c', `gpg.ssh.allowedSignersFile=${signataires}`, 'verify-tag', tag])
+  const objet = c(depot, 'git', ['cat-file', 'tag', tag])
+  if (objet.code !== 0) return `${tag} : pas une étiquette annotée`
+  const nom = /^tag (.*)$/m.exec(objet.sortie)?.[1]
+  if (nom !== tag) return `${tag} : l'étiquette signée s'appelle ${nom ?? '?'}`
+  if (
+    !objet.sortie.includes(SIGNATURE_SSH) ||
+    /-----BEGIN (PGP|SIGNED MESSAGE)/.test(objet.sortie)
+  ) {
+    return `${tag} : pas une signature SSH`
+  }
+  const r = c(depot, 'git', [
+    '-c',
+    `gpg.ssh.allowedSignersFile=${signataires}`,
+    '-c',
+    'gpg.minTrustLevel=fully',
+    '-c',
+    'gpg.openpgp.program=false',
+    '-c',
+    'gpg.x509.program=false',
+    'verify-tag',
+    tag,
+  ])
   return r.code === 0
     ? undefined
     : `signature refusée (${(r.erreur || r.sortie).trim().split('\n').at(-1)?.slice(0, 200) ?? '?'})`

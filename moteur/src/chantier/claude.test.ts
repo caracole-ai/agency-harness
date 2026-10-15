@@ -187,8 +187,12 @@ describe('envEnfant', () => {
   })
 
   it('retire la clé de signature de l’agence (PLAN-LIVRAISON.md § 0.4)', () => {
-    expect(envEnfant({ PATH: '/bin', [VARIABLE_CLE_SIGNATURE]: '/cles/agence' })).toEqual({
-      PATH: '/bin',
-    })
+    expect(
+      envEnfant({
+        PATH: '/bin',
+        [VARIABLE_CLE_SIGNATURE]: '/cles/agence',
+        SSH_AUTH_SOCK: '/tmp/agent.1',
+      }),
+    ).toEqual({ PATH: '/bin' })
   })
 })

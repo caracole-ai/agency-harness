@@ -248,6 +248,24 @@ retrait nomme le client que garde la mémoire de la fusion ; une fusion déjà
 sur `origin/main` rend la version déjà posée ; `preflightSignature` refuse
 une clé rangée dans le dépôt.
 
+Relecture indépendante du lot 2, corrigé : une ref renommée vers une
+version signée plus ancienne était admise (`verify-tag` ne compare pas le
+nom) → le nom signé dans l'objet doit être celui de la ref ; une signature
+OpenPGP d'une clé du trousseau de la machine était admise → seule une
+signature SSH compte (`gpg.minTrustLevel=fully`, OpenPGP et X.509
+désactivés) ; un chantier commencé avant minuit prenait un nom plus ancien
+qu'une version déjà posée → un nom est toujours après la plus récente ; une
+version restée locale (tentative tuée avant le push) passait pour posée →
+ôtée ; le chemin de la clé pouvait partir dans un message d'échec → masqué ;
+`SSH_AUTH_SOCK` retiré des enfants. **Ouvert, à Lionel avant un client
+réel** : `pnpm check` et `pnpm evals` exécutent du code écrit par le modèle
+sous l'utilisateur de l'agence, sans bac à sable : ce code peut lire le
+fichier de la clé de signature (et toute clé SSH de la machine). Retirer la
+variable ne suffit pas ; il faut que l'arbre du chantier tourne sous un
+autre utilisateur, ou dans un bac à sable qui interdit la lecture de la
+clé (`sandbox-exec` sous macOS, `bwrap` sous Linux). Le risque existait déjà
+pour les clés SSH de la machine ; la clé de signature le rend décisif.
+
 - `moteur/src/livraison/version.ts` : `prochaineEtiquette(c, racine,
   date)`, `signerEtiquette(c, arbre, tag, message, cle)`,
   `verifierEtiquette(c, depot, tag, signataires)`, `etiquettesCandidates(c,

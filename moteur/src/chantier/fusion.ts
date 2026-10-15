@@ -2,11 +2,13 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import type { Designable } from '../conversation/designation'
 import {
+  comparerVersions,
   lireVersion,
   type Manifeste,
   prochaineEtiquette,
   rendreManifeste,
   signerEtiquette,
+  versions,
 } from '../livraison/version'
 import {
   BRANCHE_PRINCIPALE,
@@ -125,6 +127,7 @@ function poserVersion(
   v: OptionsVersion,
   m: Omit<Manifeste, 'commit'>,
 ): string {
+  oterVersionsOrphelines(c, arbre)
   const tag = prochaineEtiquette(c, arbre, v.jour)
   signerEtiquette(c, arbre, tag, commit, rendreManifeste(tag, { ...m, commit }), v.cle)
   return tag
@@ -135,12 +138,28 @@ const oterEtiquettes = (c: Commande, arbre: string, tags: (string | undefined)[]
   for (const t of tags) if (t) c(arbre, 'git', ['tag', '-d', t])
 }
 
-/** La version déjà posée sur ce commit, s'il y en a une. */
+/**
+ * Les versions locales que le distant n'a pas (une tentative tuée entre
+ * `tag -s` et le push) : ôtées, pour qu'aucune ne passe pour posée ni ne
+ * prenne un rang. Une version n'existe que poussée, avec sa fusion.
+ */
+function oterVersionsOrphelines(c: Commande, arbre: string): void {
+  const distantes = new Set(
+    git(c, arbre, ['ls-remote', '--tags', '--refs', DISTANT, 'refs/tags/v*'])
+      .split('\n')
+      .map((l) => l.split('\t')[1]?.replace('refs/tags/', ''))
+      .filter((t): t is string => t !== undefined),
+  )
+  for (const t of versions(c, arbre)) if (!distantes.has(t)) c(arbre, 'git', ['tag', '-d', t])
+}
+
+/** La version déjà posée sur ce commit, s'il y en a une (la plus récente). */
 const versionDe = (c: Commande, arbre: string, commit: string): string | undefined =>
   git(c, arbre, ['tag', '--points-at', commit, '--list', 'v*'])
     .split('\n')
     .map((t) => t.trim())
     .filter((t) => lireVersion(t) !== undefined)
+    .sort(comparerVersions)
     .at(-1)
 
 /** Une tentative dans un arbre détaché : finie, ou son push refusé par le distant. */
@@ -440,6 +459,7 @@ export function versionner(o: {
     'version',
     (arbre): Tentative<{ sorte: 'posee' | 'deja'; version: string; commit: string }> => {
       const commit = git(c, arbre, ['rev-parse', 'HEAD']).trim()
+      oterVersionsOrphelines(c, arbre)
       const deja = versionDe(c, arbre, commit)
       if (deja) return { fini: { sorte: 'deja', version: deja, commit } }
       const version = poserVersion(c, arbre, commit, o.version, { sorte: 'manuelle' })

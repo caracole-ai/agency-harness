@@ -531,6 +531,9 @@ describe('G2 : le retrait défait la fusion', () => {
     refuserPush(e.depots.origine)
     expect(() => retirer(e.depots.racine)).toThrow(/retrait défait \(push refusé deux fois/)
     expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(tete)
+    // Aucune version du retrait n'est restée, ni ici ni là-bas.
+    expect(git(e.depots.racine, 'tag', '--list', 'v*')).toBe('v2026-10-11-1')
+    expect(git(e.depots.origine, 'tag', '--list', 'v*')).toBe('v2026-10-11-1')
     expect(missionsRetirees(cloneDuDistant(e.depots.origine))).toEqual([])
     expect(etatHumain(e.depots.racine)).toEqual(e.humain)
     expect(arbresRestants(e.depots.racine)).toEqual([])
@@ -668,7 +671,20 @@ describe('un push refusé à la fusion', () => {
       git(d, 'config', 'user.email', 'autre@exemple.invalid')
       git(d, 'config', 'user.name', 'autre')
       git(d, 'commit', '-q', '--allow-empty', '-m', 'poussé entre-temps')
-      git(d, 'push', '-q', 'origin', 'main')
+      // … avec sa version du jour : la reprise prend le rang suivant.
+      git(
+        d,
+        '-c',
+        'gpg.format=ssh',
+        '-c',
+        `user.signingkey=${CLE_ESSAI.privee}`,
+        'tag',
+        '-s',
+        '-m',
+        'Version v2026-10-11-1',
+        'v2026-10-11-1',
+      )
+      git(d, 'push', '-q', '--atomic', 'origin', 'main', 'refs/tags/v2026-10-11-1')
     }
     let origine = ''
     const { commande: simulee } = commandeSimulee()
@@ -698,6 +714,13 @@ describe('un push refusé à la fusion', () => {
     })
     expect(pousse).toBe(true)
     expect(r.sorte === 'fait' && r.issue).toBe('fusionné')
+    expect(r.sorte === 'fait' && r.fusion?.sorte === 'fusionne' && r.fusion.version).toBe(
+      'v2026-10-11-2',
+    )
+    expect(git(depots.racine, 'tag', '--list', 'v*').split('\n')).toEqual([
+      'v2026-10-11-1',
+      'v2026-10-11-2',
+    ])
     const fusion = git(depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
     // La fusion part du commit poussé entre-temps : rien de ce qu'il a apporté n'est perdu.
     expect(git(depots.origine, 'log', '-1', '--format=%s', `${fusion}^1`)).toBe(
@@ -896,5 +919,30 @@ describe('pnpm versionner (L4) : origin/main tel quel', () => {
     )
     expect(etatHumain(depots.racine)).toEqual(humain)
     expect(arbresRestants(depots.racine)).toEqual([])
+  })
+
+  it('une version restée locale (une tentative tuée avant le push) ne passe pas pour posée : elle est ôtée, la vraie posée', () => {
+    const depots = creerDepots()
+    git(
+      depots.racine,
+      '-c',
+      'gpg.format=ssh',
+      '-c',
+      `user.signingkey=${CLE_ESSAI.privee}`,
+      'tag',
+      '-s',
+      '-m',
+      'orpheline',
+      'v2026-10-15-1',
+      'origin/main',
+    )
+    const r = versionner({
+      commande: commandeSync,
+      racine: depots.racine,
+      version: { cle: CLE_ESSAI.privee, jour: '2026-10-15' },
+    })
+    expect(r).toMatchObject({ sorte: 'posee', version: 'v2026-10-15-1' })
+    expect(git(depots.origine, 'tag', '--list', 'v*')).toBe('v2026-10-15-1')
+    expect(git(depots.origine, 'cat-file', 'tag', 'v2026-10-15-1')).toContain('sorte: manuelle')
   })
 })

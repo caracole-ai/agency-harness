@@ -16,13 +16,17 @@ installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
 interface 29, sécurité 133, agence web 259.
 
 **`general/l2-version`, non fusionnée : le lot 2 (la version signée)**,
-`pnpm check` vert (moteur 490). Chaque fusion et chaque retrait posent
+relu, corrigé, `pnpm check` vert (moteur 495). Chaque fusion et chaque retrait posent
 `v<AAAA-MM-JJ>-<n>`, signée SSH (`AGENCE_CLE_SIGNATURE`, hors du dépôt,
 retirée de l'environnement des modèles), poussée avec eux tout ou rien ;
 `pnpm versionner` étiquette `origin/main` tel quel. **Prochaine session :
 fusionner `general/l2-version`, puis le lot 3** (la file des missions) ;
 puis le lot 4. Avant la première fusion réelle, Lionel crée la clé de
-l'agence (`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte.
+l'agence (`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **Ouvert,
+à trancher avant un client réel** : le code écrit par le modèle (`pnpm
+check` dans l'arbre) tourne sous l'utilisateur de l'agence et peut lire la
+clé ; il faut un bac à sable ou un autre utilisateur (`PLAN-LIVRAISON.md`,
+lot 2).
 
 - **Le lot 1** : `pnpm chantier --mission <fichier> [--sortie <dossier>]`
   travaille dans `.claude/worktrees/chantier-<id>` du dépôt de l'agence,

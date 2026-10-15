@@ -81,6 +81,26 @@ describe('les étiquettes de version (L4)', () => {
     expect(prochaineEtiquette(commandeSync, depot, '2026-10-15')).toBe('v2026-10-15-4')
     expect(prochaineEtiquette(commandeSync, depot, '2026-10-16')).toBe('v2026-10-16-1')
   })
+
+  it('toujours après la plus récente : un chantier commencé avant minuit, une horloge en retard', () => {
+    const { depot, agence } = essai()
+    signer(depot, 'v2026-10-16-1', agence.privee)
+    expect(prochaineEtiquette(commandeSync, depot, '2026-10-15')).toBe('v2026-10-16-2')
+    expect(prochaineEtiquette(commandeSync, depot, '2026-10-17')).toBe('v2026-10-17-1')
+  })
+
+  it('une signature qui échoue ne dit pas le chemin de la clé (le message peut partir dans un statut)', () => {
+    const { depot, agence } = essai()
+    signer(depot, 'v2026-10-15-1', agence.privee)
+    expect(() => signer(depot, 'v2026-10-15-1', agence.privee)).toThrow(
+      /signature de v2026-10-15-1 refusée/,
+    )
+    try {
+      signer(depot, 'v2026-10-15-1', agence.privee)
+    } catch (erreur) {
+      expect((erreur as Error).message).not.toContain(agence.privee)
+    }
+  })
 })
 
 describe('la signature (L4, mesure du lot 2)', () => {
@@ -95,15 +115,81 @@ describe('la signature (L4, mesure du lot 2)', () => {
       /signature refusée/,
     )
     expect(verifierEtiquette(commandeSync, depot, 'v2026-10-15-3', signataires)).toMatch(
-      /signature refusée/,
+      /pas une signature SSH/,
     )
     expect(verifierEtiquette(commandeSync, depot, 'v2026-10-15-4', signataires)).toMatch(
-      /signature refusée/,
+      /pas une étiquette annotée/,
     )
     expect(verifierEtiquette(commandeSync, depot, 'v2026-10-15-1', join(d, 'absent'))).toMatch(
       /introuvable/,
     )
   })
+
+  it('une ref renommée vers une version signée plus ancienne : refusée (le nom signé n’est pas le sien)', () => {
+    const { depot, agence, signataires } = essai()
+    signer(depot, 'v2026-10-15-1', agence.privee)
+    git(
+      depot,
+      'update-ref',
+      'refs/tags/v2099-01-01-1',
+      git(depot, 'rev-parse', 'refs/tags/v2026-10-15-1'),
+    )
+    expect(verifierEtiquette(commandeSync, depot, 'v2099-01-01-1', signataires)).toMatch(
+      /s'appelle v2026-10-15-1/,
+    )
+    expect(verifierEtiquette(commandeSync, depot, 'chantier/x', signataires)).toMatch(
+      /pas une étiquette de version/,
+    )
+  })
+
+  it.skipIf(spawnSync('gpg', ['--version']).status !== 0)(
+    'une signature OpenPGP d’une clé du trousseau de la machine : refusée, seule une signature SSH compte',
+    () => {
+      const { d, depot, signataires } = essai()
+      const gnupg = mkdtempSync(join(tmpdir(), 'gpg-'))
+      const env = { ...process.env, GNUPGHOME: gnupg }
+      const gpg = (...args: string[]) =>
+        spawnSync('gpg', ['--batch', ...args], { env, encoding: 'utf8' })
+      expect(
+        gpg(
+          '--passphrase',
+          '',
+          '--quick-gen-key',
+          'Autre <autre@exemple.invalid>',
+          'ed25519',
+          'sign',
+          'never',
+        ).status,
+      ).toBe(0)
+      const r = spawnSync(
+        'git',
+        [
+          '-c',
+          'user.signingkey=autre@exemple.invalid',
+          'tag',
+          '-s',
+          '-m',
+          'Version',
+          'v2026-10-15-1',
+        ],
+        { cwd: depot, env, encoding: 'utf8' },
+      )
+      expect(r.status, r.stderr).toBe(0)
+      // Le trousseau visible de la vérification, comme celui d'une machine cliente qui en aurait un.
+      const avant = process.env.GNUPGHOME
+      process.env.GNUPGHOME = gnupg
+      try {
+        expect(verifierEtiquette(commandeSync, depot, 'v2026-10-15-1', signataires)).toMatch(
+          /pas une signature SSH/,
+        )
+      } finally {
+        if (avant === undefined) delete process.env.GNUPGHOME
+        else process.env.GNUPGHOME = avant
+        spawnSync('gpgconf', ['--kill', 'gpg-agent'], { env })
+      }
+      expect(d).toBeTruthy()
+    },
+  )
 
   it('le message porte le manifeste en clair', () => {
     const { depot, agence } = essai()
