@@ -7,14 +7,13 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/masquer-remplacees` (8106d79).
-**`general/retrait-promotion` n'est pas fusionnée** (15 commits devant `main`,
-non poussée) : à fusionner après relecture de Lionel. `pnpm evals ronde`
-(Fable, le modèle `ronde`) passé le 2026-10-15 : R-1 et R-3 ok, fuite 0 ;
-R-2 manque la factorisation, comme une passe sur trois le 2026-10-11 avec
-l'ancien prompt (la trace : « vues une fois chacune : trop tôt », la carte
-dit qu'une demande vue une fois ne mérite pas de mission) : l'étiquette de
-R-2 contredit la carte, question à Lionel, pas un effet de la branche. `pnpm check` vert sur la branche :
+`main` = `origin/main` = la fusion de `general/retrait-promotion` (bf82764,
+2026-10-15, après relecture de Lionel). `pnpm evals ronde` (Fable, le modèle
+`ronde`) : R-1 et R-3 ok, fuite 0 ; R-2 manque la factorisation, comme une
+passe sur trois le 2026-10-11 avec l'ancien prompt (la trace : « vues une
+fois chacune : trop tôt ») : l'étiquette de R-2 contredit la carte (une
+demande vue une fois ne mérite pas de mission), question à Lionel.
+`pnpm check` vert :
 moteur 603, interface 33, sécurité 144, agence web 263.
 
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
