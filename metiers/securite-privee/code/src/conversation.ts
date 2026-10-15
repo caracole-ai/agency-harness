@@ -77,11 +77,6 @@ const DEPARTAGE = "à égalité, le numéro d'agent le plus bas (A-2 avant A-10)
  */
 export const INTENTIONS: Intention[] = [
   {
-    id: 'heures_par_agent',
-    description: 'les heures faites par un agent, ou par tous, sur une période',
-    ecrit: false,
-  },
-  {
     id: 'compter_vacations',
     description: 'compter des vacations (de nuit, par site, par agent)',
     ecrit: false,

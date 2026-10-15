@@ -835,6 +835,97 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
   })
 })
 
+describe('les heures d’un agent, ou de tous : un geste codé qui lit (geste commandé le 2026-10-15)', () => {
+  // Chiffres à la main sur `planning.csv`, par jour de début : semaine du 05/10
+  // au 11/10, A-1 V-01 + V-02 = 24 h ; A-2 V-04 (nuit, 12 h) + V-05 (4 h) = 16 h ;
+  // A-4 V-08, nuit du 10 au 11, 12 h ; semaine du 12/10 au 18/10, A-4 0 h.
+  const heures = (agent: string | null, du: string | null, au: string | null) =>
+    outil('heures_par_agent', { agent, du, au })
+
+  it('le patron nomme un agent : ses heures sur la période, rendues par le code, sans échappée', async () => {
+    const s = session()
+    const { r, conversation } = await tour(
+      s,
+      PATRON,
+      heures('Karim', '2026-10-05', '2026-10-11'),
+      'Donne-moi les heures de Karim du 5 au 11 octobre.',
+    )
+    expect(r).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad : 24 h du 05/10/2026 au 11/10/2026.',
+    })
+    expect(lignes(s, conversation).find((l) => l.type === 'consigne')?.issue).toBe('action')
+    expect(lignes(s, conversation).filter((l) => l.type === TYPE_APPEL)).toHaveLength(1)
+    expect(lignes(s, conversation).filter((l) => l.type === TYPE_ECHAPPEE)).toEqual([])
+  })
+  it('une nuit compte entière sur son jour de début', async () => {
+    const s = session()
+    const julien = await tour(s, PATRON, heures('Julien', '2026-10-05', '2026-10-11'))
+    expect(julien.r.texte).toBe('Julien Lefèvre : 16 h du 05/10/2026 au 11/10/2026.')
+    const moussa = await tour(s, PATRON, heures('Moussa', '2026-10-05', '2026-10-11'))
+    expect(moussa.r.texte).toBe('Moussa Diallo : 12 h du 05/10/2026 au 11/10/2026.')
+    const ensuite = await tour(s, PATRON, heures('Moussa', '2026-10-12', '2026-10-18'))
+    expect(ensuite.r.texte).toBe('Moussa Diallo : 0 h du 12/10/2026 au 18/10/2026.')
+  })
+  it('tous : chaque agent du planning, 0 h compris, du moins d’heures au plus ; à égalité, l’ordre du planning', async () => {
+    const { r } = await tour(
+      session(),
+      PATRON,
+      heures(null, '2026-10-05', '2026-10-11'),
+      "Qui a le moins d'heures cette semaine ?",
+    )
+    expect(r).toEqual({
+      sorte: 'resultat',
+      texte: [
+        'Les heures de chaque agent du 05/10/2026 au 11/10/2026 :',
+        'Thomas Girard : 0 h',
+        'Nadia Belkacem : 0 h',
+        'Mehdi Saïdi : 0 h',
+        'Nicolas Robert : 0 h',
+        'Pierre Moreau : 0 h',
+        'Laura Petit : 0 h',
+        'Sophie Marchand : 12 h',
+        'Moussa Diallo : 12 h',
+        'Isabelle Fontaine : 12 h',
+        'Aïcha Traoré : 12 h',
+        'Julien Lefèvre : 16 h',
+        'Karim Haddad : 24 h',
+        'Kevin Nguyen : 24 h',
+      ].join('\n'),
+    })
+  })
+  it('une borne nulle ne borne pas : depuis un jour, ou tout le planning', async () => {
+    const s = session()
+    const depuis = await tour(s, PATRON, heures('Karim', '2026-10-01', null))
+    expect(depuis.r.texte).toBe('Karim Haddad : 36 h depuis le 01/10/2026.')
+    const tout = await tour(s, PATRON, heures(null, null, null))
+    expect(tout.r.texte).toMatch(/^Les heures de chaque agent sur tout le planning :\n/)
+    expect(tout.r.texte).toContain('\nKarim Haddad : 36 h')
+  })
+  it('un agent ne compte que ses heures, sans nom ; un collègue nommé est refusé (D4)', async () => {
+    const s = session()
+    const siennes = await tour(s, agent('A-3'), heures(null, '2026-10-05', '2026-10-11'))
+    expect(siennes.r).toEqual({
+      sorte: 'resultat',
+      texte: 'Tes heures du 05/10/2026 au 11/10/2026 : 12 h.',
+    })
+    const autre = await tour(
+      s,
+      agent('A-3'),
+      heures('Julien', '2026-10-05', '2026-10-11'),
+      "Combien d'heures a fait Julien cette semaine ?",
+    )
+    expect(autre.r).toEqual({
+      sorte: 'refus',
+      texte: 'Tu ne peux désigner que toi-même : « Julien » ne te désigne pas.',
+    })
+  })
+  it('une période inversée : refusée, rien n’est compté', async () => {
+    const { r } = await tour(session(), PATRON, heures('Karim', '2026-10-11', '2026-10-05'))
+    expect(r).toEqual({ sorte: 'refus', texte: 'La période est inversée.' })
+  })
+})
+
 describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l’échappée (PLAN-PSEUDONYMES.md S3)', () => {
   const nouvelle: Scripte = {
     outil: 'demande_nouvelle',
