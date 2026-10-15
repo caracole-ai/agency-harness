@@ -13,10 +13,10 @@ import {
   avecSession,
   type Capacite,
   chargerPersonnes,
-  commanderGeste,
+  commanderMission,
   confirmer,
   coutDuMois,
-  demandesSansGeste,
+  demandesAvecEtat,
   ErreurAtelier,
   FORMAT_INTENTION,
   FUSEAU,
@@ -440,13 +440,21 @@ export function creerApp(options: {
   })
 
   // Les demandes sans geste (REFLEXIONS.md, 2026-10-15) : ce que l'outil n'a
-  // pas su faire, groupé par intention, et la commande du patron (« Créer ce
-  // geste ») : une ligne au journal, aucun modèle. « par » est l'identité
-  // vérifiée, jamais un champ du corps.
+  // pas su faire, groupé par intention, chaque commande avec son état
+  // (chantier, disponible) ; et la commande du patron (« Créer ce geste ») :
+  // la mission écrite par le code chez le client, puis une ligne au journal,
+  // aucun modèle. « par » est l'identité vérifiée, jamais un champ du corps.
   app.post('/api/sans-geste', async (c) => {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
     exigerCapacite(m, identite, 'administre')
-    return c.json(await session(identite, (s) => demandesSansGeste(m.journal(s).lire())))
+    return c.json(
+      await session(identite, (s) =>
+        demandesAvecEtat(
+          m.journal(s).lire(),
+          m.actions.map((a) => a.id),
+        ),
+      ),
+    )
   })
 
   app.post('/api/sans-geste/commander', async (c) => {
@@ -462,9 +470,7 @@ export function creerApp(options: {
       ...(identite.personne !== undefined ? { personne: identite.personne } : {}),
     }
     return c.json(
-      await session(identite, (s) =>
-        commanderGeste(m.journal(s), m.client(s), intention, par, maintenant()),
-      ),
+      await session(identite, (s) => commanderMission(m, s, dossier, intention, par, maintenant())),
     )
   })
 

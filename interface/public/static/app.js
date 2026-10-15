@@ -20,6 +20,8 @@ const API = {
 const FUSEAU = 'Europe/Paris'
 /** Le type de ligne d'un appel au modèle (moteur/src/modele/compteur.ts) : son coût est montré au journal. */
 const TYPE_APPEL = 'appel_modele'
+/** L'issue d'un chantier fusionné (`ISSUES_CHANTIER.fusionne`, moteur/src/chantier/chantier.ts). */
+const FUSIONNE = 'fusionné'
 
 /** Comment montrer chaque sorte de réponse. */
 const SORTES = {
@@ -598,7 +600,19 @@ function rendreGestes(gestes, sansGeste) {
 /** Qui a commandé : le rôle, et la personne quand le rôle est identifié. */
 const quiCommande = (par) => (par.personne ? `${par.role} ${par.personne}` : par.role)
 
-/** Une demande sans geste : l'intention, combien de fois, les derniers résumés ; commandée, ou le bouton pour la commander. */
+/** Où en est une commande : disponible, chantier fait, ou mission écrite en attente de la nuit. */
+function etatCommande(intention, c) {
+  if (c.disponible) return `Disponible : le geste ${intention} est dans le catalogue.`
+  const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}.`
+  if (!c.chantier) return `${commande} Mission écrite, en attente de la nuit.`
+  const issue =
+    c.chantier.issue === FUSIONNE
+      ? `${FUSIONNE} : disponible à la prochaine mise à jour de l’outil`
+      : c.chantier.issue
+  return `${commande} Chantier du ${jour(c.chantier.le)} : ${issue}.`
+}
+
+/** Une demande sans geste : l'intention, combien de fois, les derniers résumés ; où en est sa commande, ou le bouton pour la commander. */
 function carteSansGeste(d) {
   return el(
     'li',
@@ -612,10 +626,7 @@ function carteSansGeste(d) {
     ),
     ...d.exemples.map((e) => el('p', { classe: 'texte', texte: `« ${e} »` })),
     d.commande
-      ? el('p', {
-          classe: 'repondu',
-          texte: `Commandé le ${jour(d.commande.le)} par ${quiCommande(d.commande.par)}.`,
-        })
+      ? el('p', { classe: 'repondu', texte: etatCommande(d.intention, d.commande) })
       : zoneCommande(d),
   )
 }

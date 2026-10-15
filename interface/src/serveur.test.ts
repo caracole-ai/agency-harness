@@ -1,6 +1,14 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,6 +25,7 @@ import {
   Journal,
   type Ligne,
   lireFichiersGestes,
+  lireMission,
   metierDe,
   modeleSimule,
   type Reponse,
@@ -24,8 +33,10 @@ import {
   type Tableau,
   TYPE_ACCES_REFUSE,
   TYPE_APPEL,
+  TYPE_CHANTIER,
   TYPE_CONFIRMATION_ATTENDUE,
   TYPE_CONSIGNE,
+  TYPE_ECHAPPEE,
   TYPE_GESTE_APPRIS,
   TYPE_GESTE_COMMANDE,
 } from '@harnais/moteur'
@@ -487,12 +498,24 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     motif: consigne,
     donnees: { identite: PATRON, demande: { sorte: 'nouvelle', intention, resume } },
   })
-  /** Une copie avec trois demandes sans geste sous deux intentions, une inconnue et une nouvelle sans résumé. */
+  /** L'échappée qui a suivi une demande, telle que `echappee.ts` l'écrit : la consigne version modèle, des A-… à la place des noms. */
+  const echappee = (conversation: string, id: string, intention: string, consigne: string) => ({
+    type: TYPE_ECHAPPEE,
+    client: CLIENT,
+    objet: conversation,
+    issue: 'reponse',
+    motif: 'Libère Julien samedi.',
+    donnees: { echappee: id, intention, role: 'patron', consigne_modele: consigne, tours: 2 },
+  })
+  /** Une copie avec trois demandes sans geste sous deux intentions (une échappée pour `liberer_un_jour`), une inconnue et une nouvelle sans résumé. */
   function copieAvecDemandes(): string {
     const dossier = copie()
     const j = new Journal(join(dossier, 'journal.sqlite'))
     j.ecrire(
-      [nouvelle('C-1', 'liberer_un_jour', 'libérer Julien samedi', 'Libère Julien samedi.')],
+      [
+        nouvelle('C-1', 'liberer_un_jour', 'libérer Julien samedi', 'Libère Julien samedi.'),
+        echappee('C-1', 'E-20261008T1000-0001', 'liberer_un_jour', 'Libère A-3 samedi.'),
+      ],
       '2026-10-08T08:00:00Z',
     )
     j.ecrire(
@@ -562,7 +585,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       },
     ])
   })
-  it('commander : le patron seul, « par » est son identité vérifiée ; la ligne est au journal, sans appel ; une seconde fois, 400', async () => {
+  it('commander : le patron seul, « par » est son identité vérifiée ; la mission est écrite, puis la ligne au journal, sans appel ; une seconde fois, 400', async () => {
     const dossier = copieAvecDemandes()
     const a = app([], dossier)
     expect(
@@ -600,6 +623,17 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       compte: 2,
     })
     expect(journalDe(dossier).filter((l) => l.type === TYPE_APPEL)).toEqual([])
+    const chemin = join(dossier, 'rondes', '2026-10-10', 'liberer_un_jour.yaml')
+    const { mission } = lireMission(chemin)
+    expect(mission).toMatchObject({
+      id: 'liberer_un_jour',
+      sorte: 'geste_code',
+      ecrit: true,
+      echappees: ['E-20261008T1000-0001'],
+      consignes_types: ['Libère <personne> samedi.'],
+      statut: 'à faire',
+    })
+    expect(readFileSync(chemin, 'utf8')).not.toMatch(/Julien|Sophie|A-\d/)
     const encore = await poster(a, '/api/sans-geste/commander', {
       identite: PATRON,
       intention: 'liberer_un_jour',
@@ -611,8 +645,55 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     const [d] = (await (await lire(a, '/api/sans-geste')).json()) as { commande?: unknown }[]
     expect(d).toMatchObject({
       intention: 'liberer_un_jour',
-      commande: { par: { role: 'patron' }, le: '2026-10-10' },
+      commande: { par: { role: 'patron' }, le: '2026-10-10', disponible: false },
     })
+    expect(d).not.toHaveProperty('commande.chantier')
+  })
+  it('l’état d’une commande : le chantier qui l’a suivie, puis « disponible » quand le métier porte le geste', async () => {
+    const dossier = copieAvecDemandes()
+    const commander = () =>
+      poster(app([], dossier), '/api/sans-geste/commander', {
+        identite: PATRON,
+        intention: 'liberer_un_jour',
+      })
+    expect((await commander()).status).toBe(200)
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [{ type: TYPE_CHANTIER, client: CLIENT, objet: 'liberer_un_jour', issue: 'fusionné' }],
+      '2026-10-11T01:30:00Z',
+    )
+    j.fermer()
+    const etat = async (a: ReturnType<typeof app>) =>
+      ((await (await lire(a, '/api/sans-geste')).json()) as { commande?: unknown }[])[0]?.commande
+    expect(await etat(app([], dossier))).toEqual({
+      par: { role: 'patron' },
+      le: '2026-10-10',
+      chantier: { issue: 'fusionné', le: '2026-10-11' },
+      disponible: false,
+    })
+    // L'outil relancé sur le code fusionné : le métier porte un geste de ce nom.
+    const [action] = METIER.actions
+    if (!action) throw new Error('le métier fictif sans geste')
+    const avecGeste = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: { ...METIER, actions: [...METIER.actions, { ...action, id: 'liberer_un_jour' }] },
+    })
+    expect(await etat(avecGeste)).toMatchObject({ disponible: true })
+  })
+  it('commander sans consigne utilisable (aucune échappée sous l’intention) : 400, ni mission ni ligne', async () => {
+    const dossier = copieAvecDemandes()
+    const r = await poster(app([], dossier), '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'heures_par_agent',
+    })
+    expect(r.status).toBe(400)
+    expect(((await r.json()) as { erreur: string }).erreur).toMatch(
+      /^heures_par_agent : aucune consigne utilisable/,
+    )
+    expect(journalDe(dossier).filter((l) => l.type === TYPE_GESTE_COMMANDE)).toEqual([])
+    expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'heures_par_agent.yaml'))).toBe(false)
   })
 })
 
