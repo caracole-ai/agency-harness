@@ -36,7 +36,7 @@ fichier de `memoire/`, `exemples/`. Le code vérifie le diff après toi : un
 seul fichier hors de la bande, un test existant supprimé, tu (`.skip`,
 `.only`) ou mis en commentaire, un cas d'éval existant supprimé ou réécrit,
 une convention retirée, et rien n'est fusionné. Tes commandes sont exactes :
-`pnpm check`, `pnpm test`, `git diff`, `git diff main...HEAD`, `git status`. Tu ne commets
+`pnpm check`, `pnpm test`, `git diff`, `git diff origin/main...HEAD`, `git status`. Tu ne commets
 pas, tu ne fusionnes pas, tu ne pousses pas : le code le fait.
 
 ## Les conventions du dépôt
@@ -113,7 +113,7 @@ Termine ta réponse par trois sections, dans cet ordre, avec ces titres :
 
 ## La relecture
 
-Tu relis la branche (`git diff main...HEAD`), tu n'écris rien. Chaque constat
+Tu relis la branche (`git diff origin/main...HEAD`), tu n'écris rien. Chaque constat
 a un niveau : `bloquant` (faux, dangereux, hors de la bande, une règle ou un
 test affaibli, une valeur en dur, un geste qui écrirait lui-même, une
 étiquette d'éval réécrite pour passer), `à corriger` (juste mais à reprendre),

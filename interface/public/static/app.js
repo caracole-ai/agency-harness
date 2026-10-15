@@ -534,11 +534,11 @@ async function chargerSansGeste() {
 /** Qui a commandé : le rôle, et la personne quand le rôle est identifié. */
 const quiCommande = (par) => (par.personne ? `${par.role} ${par.personne}` : par.role)
 
-/** Où en est une commande : disponible, chantier fait, ou mission écrite en attente de la nuit. */
+/** Où en est une commande : disponible, chantier fait, ou mission écrite en attente de l'agence. */
 function etatCommande(intention, c) {
   if (c.disponible) return `Disponible : le geste ${intention} est dans le catalogue.`
   const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}.`
-  if (!c.chantier) return `${commande} Mission écrite, en attente de la nuit.`
+  if (!c.chantier) return `${commande} Mission écrite, en attente de l’agence.`
   const issue =
     c.chantier.issue === FUSIONNE
       ? `${FUSIONNE} : disponible à la prochaine mise à jour de l’outil`
@@ -565,7 +565,7 @@ function carteSansGeste(d) {
   )
 }
 
-/** Commander le geste, après une confirmation à l'écran : la mission est écrite, le harnais la code la nuit. */
+/** Commander le geste, après une confirmation à l'écran : la mission est écrite, le harnais la code à l'agence. */
 function zoneCommande(d) {
   const zone = el('div', { classe: 'actions' })
   const bouton = (classe, texte, onclick) =>
@@ -576,7 +576,7 @@ function zoneCommande(d) {
     montrer(
       el('p', {
         classe: 'question',
-        texte: `Commander le geste « ${d.intention} » ? Le harnais le code la nuit, sous ses contrôles.`,
+        texte: `Commander le geste « ${d.intention} » ? Le harnais le code à l’agence, sous ses contrôles.`,
       }),
       bouton('bouton--oui', 'Oui, commander', async () => {
         try {

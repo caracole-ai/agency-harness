@@ -38,6 +38,9 @@ export function conditionsManquantes(
     .map(([condition]) => condition)
 }
 
+/** Un nom de métier (le dossier `metiers/<métier>`) : rien qu'un chemin lirait autrement (`*`, `/`, `..`). */
+export const NOM_METIER = /^[a-z0-9][a-z0-9-]*$/
+
 /** Ce que toute config porte, quel que soit le métier. Le métier valide le reste. */
 export const ConfigBase = z.looseObject({
   client: z.string().min(1),

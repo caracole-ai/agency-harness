@@ -40,9 +40,9 @@ const git = (cwd: string, ...args: string[]) => {
   return r.stdout
 }
 
-/** Une branche du clone qui écrit et supprime ces fichiers, commise ; rend sa garde. */
+/** Une branche du dépôt qui écrit et supprime ces fichiers, commise ; rend sa garde (depuis `origin/main`). */
 function branche(ecrire: Record<string, string>, supprimer: string[] = [], lignesMax = 600) {
-  const { depot } = creerDepots()
+  const { racine: depot } = creerDepots()
   git(depot, 'checkout', '-q', '-b', 'chantier/essai')
   for (const [chemin, contenu] of Object.entries(ecrire)) {
     mkdirSync(dirname(join(depot, chemin)), { recursive: true })

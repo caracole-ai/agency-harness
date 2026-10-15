@@ -157,6 +157,21 @@ plans). Aucun code.
 
 ### Lot 1 — Le chantier sans clone, sans dossier client (`general/l1-chantier`, une session)
 
+**Fait le 2026-10-15.** Écarts au plan, tranchés en session : (1) la mémoire
+et les retraits que lit le chantier sont ceux d'`origin/main` (lus dans
+l'arbre du chantier, juste ouvert), pas ceux de la racine : avec L2, `main`
+de la racine n'avance plus, sa mémoire serait en retard ; la racine ne sert
+qu'à la décision sans git (`--sans-modele`, et une mission déjà écartée) ;
+(2) `--sortie` vaut par défaut le dossier de la mission (la même forme que la
+file du lot 3 : `<date>/<id>.yaml`, `.statut.yaml`, `.chantier.md`) ; (3) le
+push est atomique (`--atomic`) : sans lui, l'étiquette passait quand `main`
+était refusé, et revenait par le suivi des étiquettes à la reprise ; (4)
+`retirer <id>` lit le client, le titre et les intentions dans la mémoire de
+la fusion (sur `origin/main`), et nettoie le motif contre les noms des
+clients fictifs de tous les métiers ; (5) le statut porte aussi `retiré`
+(L7 le suppose) ; une question pour l'atelier et une fuite rendent
+`écartée`.
+
 - `moteur/src/chantier/arbre.ts` : `verifierBase(c, racine)` (un dépôt git,
   un distant `origin`, `worktree prune`) ; `ouvrirArbre` depuis
   `origin/main` après `fetch` ; `ouvrirArbreDetache(c, racine, id)` pour la

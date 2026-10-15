@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { stringify } from 'yaml'
 import { TYPE_CONSIGNE } from '../conversation/conversation'
@@ -8,6 +8,7 @@ import { TYPE_GESTE_COMMANDE } from '../gestes/commande'
 import type { Evenement, Journal } from '../journal/journal'
 import { Temporal } from '../temps/temporal'
 import { MISSION_ESSAI } from './essai.test.fixture'
+import { slugClient } from './memoire'
 import {
   CLIENT_ESSAI,
   DOMAINE_ESSAI,
@@ -24,11 +25,15 @@ import {
   decider,
   demandesAvecEtat,
   ecrireMission,
+  ecrireStatut,
   HORS_VOCABULAIRE,
   lireMission,
+  lireStatut,
   type Mission,
   missionCommandee,
   missionPourModele,
+  missionsOuvertes,
+  type Statut,
   TYPE_CHANTIER,
 } from './mission'
 
@@ -46,11 +51,12 @@ function ecrire(m: Mission, nom = `${m.id}.yaml`, date = m.date): string {
 }
 
 describe('lireMission', () => {
-  it('lit une mission ; le client est le dossier au-dessus de missions/', () => {
+  it('lit une mission ; le client est le dossier au-dessus de missions/, en slug', () => {
     const chemin = ecrire(mission())
     const lue = lireMission(chemin)
     expect(lue.mission.id).toBe('simuler_absence')
-    expect(lue.dossierClient).toBe(join(chemin, '..', '..', '..'))
+    expect(lue.client).toBe(slugClient(basename(join(chemin, '..', '..', '..'))))
+    expect(lue.client).toMatch(/^mission-[a-z0-9]+$/)
   })
 
   it('refuse un champ inconnu, un nom de fichier ou une date qui ne sont pas les siens, un fichier hors de missions/', () => {
@@ -162,7 +168,7 @@ function commandee(dossier: string, intention: string, x: Partial<ContexteComman
   try {
     const declaree = METIER_ESSAI.intentions.find((i) => i.id === intention)
     return missionCommandee(intention, s.journal.lire(), {
-      catalogue: construireCatalogue(METIER_ESSAI, dossier),
+      catalogue: construireCatalogue(METIER_ESSAI, missionsOuvertes(dossier)),
       ...(declaree ? { declaree } : {}),
       personnes: PERSONNES_ESSAI,
       domaine: DOMAINE_ESSAI,
@@ -243,6 +249,19 @@ describe('missionCommandee', () => {
     expect(() => commandee(dossier, 'heures_par_agent')).toThrow(/aucune consigne utilisable/)
   })
 
+  it('relue entière avant d’être écrite (PLAN-LIVRAISON.md L3) : un nom ailleurs que dans une consigne, refusée', () => {
+    const { dossier, ecrire } = client()
+    ecrire('2026-10-09T08:00:00Z', [
+      nouvelle('C-1', 'simuler_absence'),
+      ...echappeeEssai('E-20261009T1000-0001', 'C-1', 'simuler_absence', 'Et si A-1 partait ?'),
+    ])
+    expect(() =>
+      commandee(dossier, 'simuler_absence', {
+        declaree: { id: 'simuler_absence', description: 'le départ de Rosalie', ecrit: false },
+      }),
+    ).toThrow(/porterait un nom ou un identifiant/)
+  })
+
   it('« écrit » : celui du métier quand il déclare l’intention ; sinon vrai si une échappée a fini en proposition', () => {
     const { dossier, ecrire } = client()
     ecrire('2026-10-09T08:00:00Z', [
@@ -272,7 +291,7 @@ describe('missionCommandee', () => {
     expect(commandee(dossier, 'rendre_cles').ecrit).toBe(true)
   })
 
-  it('écrite où la nuit la lit, relue par lireMission ; le modèle du chantier lit des types', () => {
+  it('écrite chez le client, relue par lireMission ; le modèle du chantier lit des types', () => {
     const { dossier, ecrire } = client()
     ecrire('2026-10-09T08:00:00Z', [
       nouvelle('C-1', 'simuler_absence'),
@@ -342,6 +361,37 @@ describe('missionCommandee', () => {
     } finally {
       METIER_ESSAI.fermer(s)
     }
+  })
+})
+
+describe('le statut d’une mission (PLAN-LIVRAISON.md L7)', () => {
+  const STATUT: Statut = {
+    statut: 'fusionné',
+    issue: 'fusionné',
+    cout_usd: 1.5,
+    le: '2026-10-11T01:00:00Z',
+  }
+
+  it('s’écrit à côté de la mission et se relit ; absent : rien ; la mission reste seule ouverte', () => {
+    const chemin = ecrire(mission())
+    const dossier = join(chemin, '..')
+    expect(lireStatut(join(dossier, 'simuler_absence.statut.yaml'))).toBeUndefined()
+    expect(ecrireStatut(dossier, 'simuler_absence', STATUT)).toBe(
+      join(dossier, 'simuler_absence.statut.yaml'),
+    )
+    expect(lireStatut(join(dossier, 'simuler_absence.statut.yaml'))).toEqual(STATUT)
+    expect(missionsOuvertes(join(dossier, '..', '..')).map((m) => m.id)).toEqual([
+      'simuler_absence',
+    ])
+  })
+
+  it('une donnée lue par un schéma strict : un statut inconnu, un champ de plus, refusés', () => {
+    const d = mkdtempSync(join(tmpdir(), 'statut-'))
+    writeFileSync(join(d, 'a.statut.yaml'), stringify({ ...STATUT, statut: 'installe-toi' }))
+    writeFileSync(join(d, 'b.statut.yaml'), stringify({ ...STATUT, commande: 'rm -rf /' }))
+    expect(() => lireStatut(join(d, 'a.statut.yaml'))).toThrow(/statut invalide/)
+    expect(() => lireStatut(join(d, 'b.statut.yaml'))).toThrow(/statut invalide/)
+    expect(() => ecrireStatut(d, 'c', { ...STATUT, le: 'hier' })).toThrow()
   })
 })
 

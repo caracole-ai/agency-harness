@@ -10,8 +10,8 @@
 #                    le binaire », jamais « mesuré ».
 # acces: anthropic = la clé d'API de l'agence (ANTHROPIC_API_KEY), le mode de
 #                    PLAN-GENERAL.md G10. La bascule doit avoir lieu avant la
-#                    finalisation, au plus tard avant la phase E ; tout se
-#                    mesure à nouveau ce jour-là.
+#                    finalisation (PLAN-LIVRAISON.md § 6) ; tout se mesure à
+#                    nouveau ce jour-là.
 modeles:
   chantier:
     plan: { acces: claude, modele: claude-fable-5-1, effort: high }
@@ -30,14 +30,19 @@ prix_par_million_usd:
 claude:
   binaire: claude
 
-# Le clone de la nuit (PLAN-GENERAL.md G3, PLAN-RONDE.md R11) : un clone du
-# dépôt réservé à la nuit, jamais l'arbre d'un humain ; `pnpm nuit` le remet à
-# `origin/main` au début de chaque nuit, les chantiers en sont des arbres de
-# travail, la fusion et le push se font là. `~/` : le dossier de l'utilisateur.
-depot_nuit: ~/harnais-nuit
+# Le chantier tourne à l'agence, au clic du patron (PLAN-LIVRAISON.md L1, L2) :
+# dans des arbres de travail de ce dépôt partis d'`origin/main`
+# (`.claude/worktrees/`), la fusion dans un arbre détaché, poussée sur `main`
+# du distant ; ni l'arbre de qui lance ni sa branche `main` ne bougent.
+# `pnpm agence` (lot 3) : au plus `chantiers_max_par_jour` chantiers par jour
+# (comptés dans memoire/INDEX.md), la file relue toutes les
+# `intervalle_secondes`, une file git par client (`missions-<slug>`).
+agence:
+  chantiers_max_par_jour: 3
+  intervalle_secondes: 60
+  clients: []
 
 chantier:
-  missions_max_par_nuit: 1
   # Ce que le plan d'un chantier lit de la mémoire (R10).
   memoire_index_lignes: 60
   tours_max: 60
@@ -49,8 +54,8 @@ chantier:
   # (`./**` : un `Write` nu écrit partout sur la machine, sondé le 2026-10-11) ;
   # le plan et la relecture n'ont que `outils_lecture`.
   # Les commandes, exactes : `git diff*` permettrait `--no-index` ou `--output=` hors de l'arbre.
-  outils_autorises: ["Read(./**)", "Edit(./**)", "Write(./**)", "Glob(./**)", "Grep(./**)", "Bash(pnpm check)", "Bash(pnpm test)", "Bash(git diff)", "Bash(git diff main...HEAD)", "Bash(git status)"]
-  outils_lecture: ["Read(./**)", "Glob(./**)", "Grep(./**)", "Bash(git diff main...HEAD)", "Bash(git log --oneline main..HEAD)", "Bash(git status)"]
+  outils_autorises: ["Read(./**)", "Edit(./**)", "Write(./**)", "Glob(./**)", "Grep(./**)", "Bash(pnpm check)", "Bash(pnpm test)", "Bash(git diff)", "Bash(git diff origin/main...HEAD)", "Bash(git status)"]
+  outils_lecture: ["Read(./**)", "Glob(./**)", "Grep(./**)", "Bash(git diff origin/main...HEAD)", "Bash(git log --oneline origin/main..HEAD)", "Bash(git status)"]
   # Le client des évals de traduction que le code rejoue dans l'arbre (G1, condition 4), par métier,
   # relatif à l'arbre ; un métier absent : la condition 4 refuse (PLAN-METIER-2.md M9).
   evals_clients: { securite-privee: exemples/client-fictif, agence-web: exemples/agence-web-fictive }

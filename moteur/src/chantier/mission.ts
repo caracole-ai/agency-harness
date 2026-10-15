@@ -22,15 +22,18 @@ import {
 } from '../gestes/commande'
 import type { Ligne } from '../journal/journal'
 import { FUSEAU, jourDe, type Temporal } from '../temps/temporal'
-import type { MissionRetiree } from './memoire'
+import { interdits, type MissionRetiree, slugClient } from './memoire'
 
 // La mission d'un chantier (REFLEXIONS.md, décidé le 2026-10-15) : un geste
 // codé que le patron a commandé (« Créer ce geste »). Le code l'écrit chez le
-// client (`missions/<date>/<id>.yaml`, `commanderMission`), la nuit la prend,
-// le chantier la relit par un schéma strict et décide en code avant tout
+// client (`missions/<date>/<id>.yaml`, `commanderMission`), relue avant de
+// partir (aucun nom, aucun identifiant : PLAN-LIVRAISON.md L3) ; le chantier,
+// à l'agence, la relit par un schéma strict et décide en code avant tout
 // appel : une mission retirée, ou dont l'intention a déjà un geste actif, ne
 // lance rien. Ce qui part au modèle du chantier n'est jamais la mission
-// entière : ni ses échappées ni le client, des types seulement.
+// entière : ni ses échappées ni le client, des types seulement. Le chantier
+// rend un statut (`<id>.statut.yaml`, L7) : une donnée, lue par un schéma
+// strict.
 
 /** La ligne d'un chantier au journal : l'identifiant de la mission en objet, l'issue. */
 export const TYPE_CHANTIER = 'chantier'
@@ -90,15 +93,15 @@ const MissionEcrite = z.looseObject({
   intentions: z.array(z.string()).default([]),
 })
 
-/** Les missions déjà écrites chez le client, toutes dates. */
-function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes'] {
+/** Les missions déjà écrites chez le client, toutes dates (un statut à côté n'en est pas une). */
+export function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes'] {
   const racine = join(dossierClient, DOSSIER_MISSIONS)
   if (!existsSync(racine)) return []
   return readdirSync(racine, { withFileTypes: true })
     .filter((d) => d.isDirectory())
     .flatMap((d) =>
       readdirSync(join(racine, d.name))
-        .filter((f) => f.endsWith('.yaml'))
+        .filter((f) => f.endsWith('.yaml') && !f.endsWith(SUFFIXE_STATUT))
         .flatMap((f) => {
           const lu = MissionEcrite.safeParse(parse(readFileSync(join(racine, d.name, f), 'utf8')))
           return lu.success
@@ -116,19 +119,17 @@ function missionsOuvertes(dossierClient: string): Catalogue['missions_ouvertes']
     )
 }
 
-/** Le catalogue d'un client : ses gestes codés, ses missions déjà écrites. */
-export function construireCatalogue<S>(m: MetierConversation<S>, dossierClient: string): Catalogue {
-  return {
-    gestes: m.actions.map((a) => ({ id: a.id })),
-    missions_ouvertes: missionsOuvertes(dossierClient),
-  }
+/** Le catalogue : les gestes codés du métier, les missions déjà écrites (`missionsOuvertes` chez le client, aucune au chantier). */
+export function construireCatalogue<S>(
+  m: MetierConversation<S>,
+  missions_ouvertes: Catalogue['missions_ouvertes'],
+): Catalogue {
+  return { gestes: m.actions.map((a) => ({ id: a.id })), missions_ouvertes }
 }
 
 export interface MissionLue {
   mission: Mission
-  /** Le dossier du client : la mission est dans `<dossier>/missions/<date>/`. */
-  dossierClient: string
-  /** Le nom du dossier du client, pour le dossier de chantier seulement. */
+  /** Le client, en slug (le nom de son dossier) : ce que la mémoire du chantier cite de lui (L3). */
   client: string
 }
 
@@ -146,8 +147,7 @@ export function lireMission(chemin: string): MissionLue {
   if (`${lu.data.id}.yaml` !== basename(chemin) || lu.data.date !== basename(dossierDate)) {
     throw new Error(`${chemin} : l'identifiant ou la date ne sont pas ceux du chemin`)
   }
-  const dossierClient = dirname(dossierMissions)
-  return { mission: lu.data, dossierClient, client: basename(dossierClient) }
+  return { mission: lu.data, client: slugClient(basename(dirname(dossierMissions))) }
 }
 
 export type Decision = { sorte: 'chantier' } | { sorte: 'ecartee'; motif: string }
@@ -277,10 +277,16 @@ export function missionCommandee(intention: string, lignes: Ligne[], c: Contexte
   })
   const decision = decider(mission, c.catalogue, [])
   if (decision.sorte !== 'chantier') throw new ErreurCommande(`${intention} : ${decision.motif}`)
+  // Ce qui part du client (L3) : le texte entier relu contre les noms, là où ils sont.
+  if (interdits(missionPourModele(mission, c.domaine), c.personnes).length > 0) {
+    throw new ErreurCommande(
+      `${intention} : la mission porterait un nom ou un identifiant ; rien n'est commandé`,
+    )
+  }
   return mission
 }
 
-/** Écrit la mission là où la nuit la lit (`<client>/missions/<date>/<id>.yaml`) ; rend le chemin. */
+/** Écrit la mission chez le client (`<client>/missions/<date>/<id>.yaml`) ; rend le chemin. */
 export function ecrireMission(dossierClient: string, mission: Mission): string {
   const dossier = join(dossierClient, DOSSIER_MISSIONS, mission.date)
   mkdirSync(dossier, { recursive: true })
@@ -306,7 +312,7 @@ export function commanderMission<S>(
   const journal = m.journal(s)
   const declaree = m.intentions.find((i) => i.id === intention)
   const mission = missionCommandee(intention, journal.lire(), {
-    catalogue: construireCatalogue(m, dossierClient),
+    catalogue: construireCatalogue(m, missionsOuvertes(dossierClient)),
     ...(declaree ? { declaree } : {}),
     personnes: m.noms(s),
     domaine: m.domaine,
@@ -315,6 +321,46 @@ export function commanderMission<S>(
   })
   ecrireMission(dossierClient, mission)
   return commanderGeste(journal, m.client(s), intention, par, maintenant)
+}
+
+/** Ce que le chantier rend d'une mission (L7) : `en cours` et `en attente` sont écrits par `pnpm agence`. */
+export const STATUTS_CHANTIER = [
+  'en cours',
+  'fusionné',
+  'refusé',
+  'écartée',
+  'échoué',
+  'en attente',
+  'retiré',
+] as const
+export type StatutChantier = (typeof STATUTS_CHANTIER)[number]
+/** Le statut d'une mission, à côté d'elle : `<date>/<id>.statut.yaml`. */
+export const SUFFIXE_STATUT = '.statut.yaml'
+
+export const Statut = z.strictObject({
+  statut: z.enum(STATUTS_CHANTIER),
+  issue: z.string().min(1),
+  /** L'étiquette de la version qui porte la fusion ou le retrait (PLAN-LIVRAISON.md L4). */
+  version: z.string().min(1).optional(),
+  cout_usd: z.number().nonnegative(),
+  le: z.iso.datetime(),
+})
+export type Statut = z.infer<typeof Statut>
+
+/** Écrit `<dossier>/<id>.statut.yaml` ; rend son chemin. */
+export function ecrireStatut(dossier: string, id: string, statut: Statut): string {
+  mkdirSync(dossier, { recursive: true })
+  const chemin = join(dossier, `${id}${SUFFIXE_STATUT}`)
+  writeFileSync(chemin, stringify(Statut.parse(statut)))
+  return chemin
+}
+
+/** Lit un statut par le schéma strict : une donnée venue d'ailleurs, jamais une instruction ; absent : undefined, invalide : lève. */
+export function lireStatut(chemin: string): Statut | undefined {
+  if (!existsSync(chemin)) return undefined
+  const lu = Statut.safeParse(parse(readFileSync(chemin, 'utf8')))
+  if (!lu.success) throw new Error(`${chemin} : statut invalide (${z.prettifyError(lu.error)})`)
+  return lu.data
 }
 
 /** Ce que devient une commande : le dernier chantier qui l'a suivie, et si le geste est dans le catalogue. */

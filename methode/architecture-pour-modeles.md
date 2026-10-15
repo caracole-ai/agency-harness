@@ -45,7 +45,7 @@ D'une **commande du patron**, et de rien d'autre. Quand l'outil ne sait pas
 faire une demande, le patron la voit, regroupée avec celles qui lui
 ressemblent ; s'il clique « Créer ce geste », le code écrit une mission
 (`missions/<date>/<intention>.yaml` chez le client) depuis les demandes
-réelles, des places à la place des noms. La nuit, un chantier la code dans
+réelles, des places à la place des noms. À l'agence, un chantier la code dans
 la bande métier : plan, implémentation, garde du diff, `pnpm check`,
 relecture, mesure de la traduction, puis fusion si les huit conditions sont
 vertes. Le geste porte l'identifiant de la mission. Aucun modèle ne cherche

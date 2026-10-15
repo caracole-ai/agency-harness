@@ -50,7 +50,7 @@ describe('agence.yaml', () => {
   })
 
   it('un réglage manquant refuse', () => {
-    const { depot_nuit: _depot, ...sans } = brut()
+    const { agence: _agence, ...sans } = brut()
     expect(() => chargerAgence(racineAvec(sans))).toThrow(/invalide/)
   })
 

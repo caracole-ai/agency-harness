@@ -13,12 +13,12 @@ import { fichierConsignes } from './garde'
 import { CLIENT_ESSAI, dossierEssai, METIER_ESSAI } from './metier-essai.test.fixture'
 import { commanderMission, DOSSIER_MISSIONS, type Mission } from './mission'
 
-// Pour les tests du chantier (PLAN-RONDE.md § 6.4, PLAN-GENERAL.md G1 à G3) :
-// trois dépôts git réels et jetables (un dépôt nu qui joue `origin`, le clone
-// de la nuit, l'arbre « courant » d'un humain), un binaire `claude` simulé par
-// un script qui écrit un diff connu dans son dossier et rend un JSON, et
-// `pnpm` simulé (install, check, evals) ; git, lui, tourne pour de vrai, et
-// chaque commande émise se capture.
+// Pour les tests du chantier (PLAN-RONDE.md § 6.4, PLAN-GENERAL.md G1, G2 ;
+// PLAN-LIVRAISON.md L2) : deux dépôts git réels et jetables (un dépôt nu qui
+// joue `origin`, le dépôt de l'agence, qui est l'arbre d'un humain), un
+// binaire `claude` simulé par un script qui écrit un diff connu dans son
+// dossier et rend un JSON, et `pnpm` simulé (install, check, evals) ; git,
+// lui, tourne pour de vrai, et chaque commande émise se capture.
 
 const git = (cwd: string, ...args: string[]) => {
   const r = spawnSync('git', args, { cwd, encoding: 'utf8' })
@@ -42,18 +42,15 @@ export const ENV_ESSAI: Record<string, string | undefined> = { PATH: process.env
 export interface Depots {
   /** Le dépôt nu qui joue `origin`. */
   origine: string
-  /** Le clone de la nuit (G3). */
-  depot: string
-  /** L'arbre d'un humain : le code qui tourne. */
+  /** Le dépôt de l'agence, arbre d'un humain sur `main` : le code qui tourne, la base des arbres. */
   racine: string
 }
 
-/** Un dépôt nu, un arbre humain qui y pousse `main`, et le clone de la nuit. */
+/** Un dépôt nu, et un arbre humain qui y pousse `main`. */
 export function creerDepots(): Depots {
   const base = mkdtempSync(join(tmpdir(), 'chantier-'))
   const origine = join(base, 'origine.git')
   const racine = join(base, 'humain')
-  const depot = join(base, 'nuit')
   git(base, 'init', '-q', '--bare', '-b', 'main', origine)
   mkdirSync(racine)
   git(racine, 'init', '-q', '-b', 'main')
@@ -79,10 +76,36 @@ export function creerDepots(): Depots {
   git(racine, 'commit', '-q', '-m', 'départ')
   git(racine, 'remote', 'add', 'origin', origine)
   git(racine, 'push', '-q', 'origin', 'main')
-  git(base, 'clone', '-q', origine, depot)
-  git(depot, 'config', 'user.email', 'nuit@exemple.invalid')
-  git(depot, 'config', 'user.name', 'nuit')
-  return { origine, depot, racine }
+  return { origine, racine }
+}
+
+/** Un clone jetable du distant : ce que `main` d'`origin` porte (la mémoire, le code). */
+export function cloneDuDistant(origine: string): string {
+  const d = join(mkdtempSync(join(tmpdir(), 'distant-')), 'clone')
+  git(tmpdir(), 'clone', '-q', origine, d)
+  return d
+}
+
+/** Ce qui doit rester identique dans l'arbre d'un humain : sa tête, sa branche, son `main`, son état. */
+export const etatHumain = (racine: string) => ({
+  tete: git(racine, 'rev-parse', 'HEAD'),
+  branche: git(racine, 'rev-parse', '--abbrev-ref', 'HEAD'),
+  main: git(racine, 'rev-parse', 'refs/heads/main'),
+  statut: git(racine, 'status', '--porcelain', '--untracked-files=all'),
+})
+
+/** Le distant refuse tout push (`pre-receive` rend 1), ou seulement les `fois` premiers. */
+export function refuserPush(origine: string, fois?: number): void {
+  const hook = join(origine, 'hooks', 'pre-receive')
+  const compte = join(origine, 'refus-restants')
+  writeFileSync(
+    hook,
+    fois === undefined
+      ? '#!/bin/sh\nexit 1\n'
+      : `#!/bin/sh\nn=$(cat "${compte}")\nif [ "$n" -gt 0 ]; then echo $((n - 1)) > "${compte}"; exit 1; fi\nexit 0\n`,
+  )
+  if (fois !== undefined) writeFileSync(compte, `${fois}\n`)
+  chmodSync(hook, 0o755)
 }
 
 /** Ce que joue le binaire simulé, appel après appel. */
@@ -214,17 +237,12 @@ export function commandeSimulee(p: PnpmSimule = {}): {
 /** Le client des évals du métier d'essai : jamais lu, `pnpm` est simulé ; la commande émise le porte. */
 export const CLIENT_EVALS_ESSAI = 'exemples/client-essai'
 
-/** L'agence du dépôt, avec le binaire simulé, le clone de la nuit d'essai et le client des évals du métier d'essai. */
-export function agenceEssai(
-  binaire: string,
-  depot: string,
-  x: Partial<Agence['chantier']> = {},
-): Agence {
+/** L'agence du dépôt, avec le binaire simulé et le client des évals du métier d'essai. */
+export function agenceEssai(binaire: string, x: Partial<Agence['chantier']> = {}): Agence {
   const a = chargerAgence(RACINE_DEPOT)
   return {
     ...a,
     claude: { binaire },
-    depot_nuit: depot,
     chantier: {
       ...a.chantier,
       evals_clients: { [MISSION_ESSAI.metier]: CLIENT_EVALS_ESSAI },

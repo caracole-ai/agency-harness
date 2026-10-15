@@ -7,18 +7,36 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/commande-seule` (8911022,
-2026-10-15 : la ronde et les gestes appris retirés, ≈ 8 000 lignes ; le
-geste `heures_par_agent` codé par le harnais repris). `pnpm check` vert :
-moteur 476, interface 29, sécurité 133, agence web 259.
-
-**`general/livraison`, non fusionnée : le lot 0 de `PLAN-LIVRAISON.md`**
-(le plan seul, aucun code). Lionel, le soir du 2026-10-15 : le chantier se
+`main` = `origin/main` = la fusion de `general/l1-chantier` (2026-10-15) :
+le lot 0 de `PLAN-LIVRAISON.md` (le plan) et son **lot 1, le chantier sans
+clone ni dossier client**. Lionel, le soir du 2026-10-15 : le chantier se
 lance **au clic**, **à l'agence**, sans nuit ni clone réservé ; chaque
 fusion émet une **version signée** que le harnais du client **tire** et
-installe lui-même, avec retour arrière. À fusionner à la session suivante,
-puis **commencer le lot 1** (le chantier sans clone, sans dossier client).
+installe lui-même, avec retour arrière. `pnpm check` vert : moteur 477,
+interface 29, sécurité 133, agence web 259.
 
+**Prochaine session : lots 2 (la version signée) et 3 (la file des
+missions)**, indépendants : deux sous-agents en arbres de travail, ou deux
+sessions ; puis le lot 4.
+
+- **Le lot 1** : `pnpm chantier --mission <fichier> [--sortie <dossier>]`
+  travaille dans `.claude/worktrees/chantier-<id>` du dépôt de l'agence,
+  parti d'`origin/main` frais ; la fusion (et le retrait) dans un arbre
+  détaché, push atomique sur `main` du distant, une reprise si refusé. Sur
+  la base, seulement `fetch`, `worktree`, `rev-parse` (`arbre.test.ts`) :
+  l'arbre de qui lance, même sale et sur une autre branche, et son `main`
+  ne bougent pas. Le chantier ne lit aucun dossier client : il écrit
+  `<id>.chantier.md` et `<id>.statut.yaml` (L7) dans la sortie (par défaut
+  à côté de la mission), contrôle contre les noms du client fictif du
+  métier ; la mission est relue entière contre les vrais noms à la commande.
+  `pnpm nuit`, `depot_nuit`, `MESURES.md` écrit par le code : retirés.
+  Écarts au plan, notés sous son lot 1 (la mémoire lue sur `origin/main`,
+  le push atomique, `retirer` sans `--client`).
+- **En attendant le lot 3, en mode non livré** : plus aucune ligne
+  `chantier` n'arrive au journal du client (c'est le client qui l'écrira en
+  lisant le statut, L7) ; la carte reste « commandé, en attente de
+  l'agence » jusqu'à « disponible ». Le lot 3 doit aussi lire les statuts
+  du dossier `missions/` local quand le client n'est pas livré.
 - **La chaîne visée** (`PLAN-LIVRAISON.md` § 1) : demande sans geste →
   « Créer ce geste » → la mission masquée, écrite chez le client et poussée
   dans sa file git `missions-<slug>` → `pnpm agence` la prend dans la
@@ -28,12 +46,10 @@ puis **commencer le lot 1** (le chantier sans clone, sans dossier client).
   tire l'étiquette, la vérifie, l'installe à côté, `pnpm check`, bascule à
   un moment calme (`pnpm harnais`), journal `mise à jour : faite` → la
   carte dit « disponible ».
-- **La chaîne d'aujourd'hui** (`main`) fait encore tout avec le clone de la
-  nuit : `pnpm nuit` et `agence.yaml: depot_nuit` existent jusqu'au lot 1.
-  Mesurée en réel le 2026-10-15 sur `heures_par_agent` dans le clone
-  `~/harnais-nuit` (dépôt nu `~/harnais-nuit-origine.git`) : huit
-  conditions vertes, `evals traduire` 73/73. Ces deux dossiers se suppriment
-  après le lot 5, par Lionel.
+- **Mesurée en réel le 2026-10-15** (avant le lot 1, dans le clone
+  `~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`) : le geste
+  `heures_par_agent`, huit conditions vertes, `evals traduire` 73/73. Ces
+  deux dossiers se suppriment après le lot 5, par Lionel.
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
@@ -79,8 +95,6 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
   `echappees.yaml` gardent l'intention `heures_par_agent` (une étiquette) ;
   « fuite 1 » de sa passe `evals traduire` non lue ; l'arrondi des heures
   recopié de `remplacement.ts`.
-- ~~La priorité d'une mission commandée dans la nuit ; la mise à jour à
-  distance~~ : tranchées le 2026-10-15 (`PLAN-LIVRAISON.md` L1, L4 à L9).
 - Le niveau 2 de `designer` envoie au modèle les candidats avec leur nom,
   contre « aucun nom ne part au modèle ».
 - À Lionel : la bascule vers la clé d'API avant un client réel (après le
@@ -132,6 +146,6 @@ pnpm veiller --client exemples/client-fictif --date 2026-10-06
 pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…"
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
-pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sans-modele]   # --refaire rouvre la branche telle quelle
-pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # jamais avec `pnpm -s`
+pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [--sans-modele]   # --refaire rouvre la branche telle quelle
+pnpm chantier retirer <id> --motif "<texte>"
 ```
