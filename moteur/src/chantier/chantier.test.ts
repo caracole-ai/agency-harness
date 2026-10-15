@@ -854,6 +854,8 @@ describe('aucun merge ni push hors de fusion.ts', () => {
       .filter((f) => !f.endsWith('.test.ts') && !f.endsWith(join('chantier', 'fusion.ts')))
       // Les aides de test montent leurs faux dépôts avec git, poussées comprises.
       .filter((f) => !f.endsWith('essai.test.fixture.ts'))
+      // La file des missions d'un client (PLAN-LIVRAISON.md L5) : ses pushs ne vont qu'à une file.
+      .filter((f) => !f.endsWith(join('livraison', 'missions.ts')))
       .filter((f) => /['"`](?:merge|push)['"`]/.test(readFileSync(f, 'utf8')))
     expect(fautifs).toEqual([])
   })

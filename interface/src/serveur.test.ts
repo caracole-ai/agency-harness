@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import {
   type Choix,
   DOSSIER_MISSIONS,
+  ecrireStatut,
   FICHIER_PERSONNES,
   type Identite,
   Journal,
@@ -16,6 +17,7 @@ import {
   modeleSimule,
   type Reponse,
   type Scripte,
+  type Statut,
   type Tableau,
   TYPE_ACCES_REFUSE,
   TYPE_APPEL,
@@ -522,6 +524,51 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       metier: { ...METIER, actions: [...METIER.actions, { ...action, id: 'remise_des_cles' }] },
     })
     expect(await etat(avecGeste)).toMatchObject({ disponible: true })
+  })
+  it('la carte suit les statuts que le chantier écrit à côté de la mission (non livré, PLAN-LIVRAISON.md L7) : en attente, en cours, fusionné et sa version, disponible', async () => {
+    const dossier = copieAvecDemandes()
+    const a = app([], dossier)
+    expect(
+      (
+        await poster(a, '/api/sans-geste/commander', {
+          identite: PATRON,
+          intention: 'remise_des_cles',
+        })
+      ).status,
+    ).toBe(200)
+    const etat = async (x: ReturnType<typeof app>) =>
+      (
+        (await (await lire(x, '/api/sans-geste')).json()) as { commande?: { chantier?: unknown } }[]
+      )[0]?.commande
+    expect((await etat(a))?.chantier).toBeUndefined()
+    const date = join(dossier, 'missions', '2026-10-10')
+    const statut = (s: Statut) => ecrireStatut(date, 'remise_des_cles', s)
+    statut({
+      statut: 'en cours',
+      issue: 'chantier en cours',
+      cout_usd: 0,
+      le: '2026-10-10T20:00:00Z',
+    })
+    expect((await etat(a))?.chantier).toEqual({ issue: 'en cours', le: '2026-10-10' })
+    statut({
+      statut: 'fusionné',
+      issue: 'fusionné',
+      version: 'v2026-10-10-1',
+      cout_usd: 1.5,
+      le: '2026-10-10T20:40:00Z',
+    })
+    expect((await etat(a))?.chantier).toEqual({
+      issue: 'fusionné',
+      le: '2026-10-10',
+      version: 'v2026-10-10-1',
+    })
+    // Relu, le même statut n'ajoute rien au journal.
+    await etat(a)
+    expect(
+      journalDe(dossier)
+        .filter((l) => l.type === TYPE_CHANTIER)
+        .map((l) => l.issue),
+    ).toEqual(['en cours', 'fusionné'])
   })
   it('commander sans consigne utilisable (aucune échappée sous l’intention) : 400, ni mission ni ligne', async () => {
     const dossier = copieAvecDemandes()

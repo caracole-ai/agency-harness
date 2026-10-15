@@ -15,13 +15,19 @@ fusion émet une **version signée** que le harnais du client **tire** et
 installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
 interface 29, sécurité 133, agence web 259.
 
-**`general/l2-version`, non fusionnée : le lot 2 (la version signée)**,
+**`general/l3-missions`, non fusionnée, empilée sur `general/l2-version` :
+les lots 2 et 3** ; une seule fusion de `general/l3-missions` les porte.
+Lot 3 : « Créer ce geste » pousse la mission dans la file git du client
+(`livraison.yaml`) ; `pnpm agence [--une-fois]` la prend, écrit `en cours`
+puis le statut final et le dossier dans la file ; l'onglet « Gestes »
+rattrape les statuts (une ligne `chantier` par statut nouveau) et la carte
+dit en attente / en cours / fusionné (v…) / disponible. Lot 2 :
 relu, corrigé, `pnpm check` vert (moteur 495). Chaque fusion et chaque retrait posent
 `v<AAAA-MM-JJ>-<n>`, signée SSH (`AGENCE_CLE_SIGNATURE`, hors du dépôt,
 retirée de l'environnement des modèles), poussée avec eux tout ou rien ;
 `pnpm versionner` étiquette `origin/main` tel quel. **Prochaine session :
-fusionner `general/l2-version`, puis le lot 3** (la file des missions) ;
-puis le lot 4. Avant la première fusion réelle, Lionel crée la clé de
+fusionner `general/l3-missions`, puis le lot 4** (la mise à jour chez le
+client et le lanceur `pnpm harnais`). Avant la première fusion réelle, Lionel crée la clé de
 l'agence (`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **Ouvert,
 à trancher avant un client réel** : le code écrit par le modèle (`pnpm
 check` dans l'arbre) tourne sous l'utilisateur de l'agence et peut lire la
@@ -41,20 +47,6 @@ lot 2).
   `pnpm nuit`, `depot_nuit`, `MESURES.md` écrit par le code : retirés.
   Écarts au plan, notés sous son lot 1 (la mémoire lue sur `origin/main`,
   le push atomique, `retirer` sans `--client`).
-- **En attendant le lot 3, en mode non livré** : plus aucune ligne
-  `chantier` n'arrive au journal du client (c'est le client qui l'écrira en
-  lisant le statut, L7) ; la carte reste « commandé, en attente de
-  l'agence » jusqu'à « disponible ». Le lot 3 doit aussi lire les statuts
-  du dossier `missions/` local quand le client n'est pas livré.
-- **La chaîne visée** (`PLAN-LIVRAISON.md` § 1) : demande sans geste →
-  « Créer ce geste » → la mission masquée, écrite chez le client et poussée
-  dans sa file git `missions-<slug>` → `pnpm agence` la prend dans la
-  minute, chantier dans `.claude/worktrees/chantier-<id>` depuis
-  `origin/main`, fusion dans un arbre détaché, étiquette `v<date>-<n>`
-  signée (SSH), statut dans la file → le harnais du client lit le statut,
-  tire l'étiquette, la vérifie, l'installe à côté, `pnpm check`, bascule à
-  un moment calme (`pnpm harnais`), journal `mise à jour : faite` → la
-  carte dit « disponible ».
 - **Mesurée en réel le 2026-10-15** (avant le lot 1, dans le clone
   `~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`) : le geste
   `heures_par_agent`, huit conditions vertes, `evals traduire` 73/73. Ces
@@ -158,4 +150,5 @@ pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id]
 pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [--sans-modele]   # --refaire rouvre la branche telle quelle
 pnpm chantier retirer <id> --motif "<texte>"
 pnpm versionner            # AGENCE_CLE_SIGNATURE=<clé privée hors du dépôt>
+pnpm agence [--une-fois]   # les files des clients d'agence.yaml: agence.clients
 ```

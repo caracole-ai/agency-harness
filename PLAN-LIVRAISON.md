@@ -287,6 +287,22 @@ pour les clés SSH de la machine ; la clé de signature le rend décisif.
 
 ### Lot 3 — La file des missions, l'aller et le retour (`general/l3-missions`, une session ; indépendant du lot 2)
 
+**Fait le 2026-10-15, sur `general/l3-missions`, empilée sur le lot 2 (le
+préflight de `pnpm agence` exige la clé) : une seule fusion les porte
+tous deux.** Écarts : le verrou est `.claude/missions/agence.lock` (à côté
+des files, une seule exclusion dans `.git/info/exclude`) ; la borne compte
+les statuts finals du jour qui ont coûté un appel dans les files, pas
+`memoire/INDEX.md` de la racine (en retard depuis L2) ; une mission d'un
+autre métier que son client (`agence.clients[].metier`) est écartée et son
+statut le dit ; le rattrapage tourne aussi sans `livraison.yaml` (il lit les
+statuts que `pnpm chantier` écrit à côté des missions) et se déclenche, en
+attendant la minuterie du lot 4, à chaque ouverture de l'onglet « Gestes »
+(dans `/api/sans-geste`, pas de route nouvelle) ; `etat.yaml` (la version
+courante) attend le lot 4, qui la connaît ; un statut `en cours` resté après
+un arrêt brutal n'est pas repris (la branche existe : `--refaire` à la
+main) ; `commanderEtLivrer` (dans `livraison/missions.ts`) fait la commande
+puis l'aller, `commanderMission` rend aussi le chemin de la mission.
+
 - `moteur/src/livraison/config.ts` : `livraison.yaml` (schéma strict :
   `depot`, `missions`, `installation`, `intervalle_minutes`), `lireLivraison(dossier)`
   rend `undefined` sans fichier (L5).

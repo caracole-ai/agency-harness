@@ -12,7 +12,7 @@ import {
   avecSession,
   type Capacite,
   chargerPersonnes,
-  commanderMission,
+  commanderEtLivrer,
   confirmer,
   coutDuMois,
   demandesAvecEtat,
@@ -27,6 +27,7 @@ import {
   type MetierConversation,
   type Modele,
   type Personne,
+  rattraperStatuts,
   roleDe,
   type Tableau,
   Temporal,
@@ -400,12 +401,20 @@ export function creerApp(options: {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
     exigerCapacite(m, identite, 'administre')
     return c.json(
-      await session(identite, (s) =>
-        demandesAvecEtat(
+      await session(identite, (s) => {
+        // Les statuts des chantiers d'abord (PLAN-LIVRAISON.md L7) : la file du client livré, ou ses
+        // missions/ ; une file injoignable n'empêche pas la liste, elle se dit dans la console.
+        try {
+          const r = rattraperStatuts(m, s, dossier, maintenant())
+          for (const p of r.problemes) console.error(`file des missions : ${p}`)
+        } catch (erreur) {
+          console.error(`file des missions : ${(erreur as Error).message}`)
+        }
+        return demandesAvecEtat(
           m.journal(s).lire(),
           m.actions.map((a) => a.id),
-        ),
-      ),
+        )
+      }),
     )
   })
 
@@ -422,7 +431,9 @@ export function creerApp(options: {
       ...(identite.personne !== undefined ? { personne: identite.personne } : {}),
     }
     return c.json(
-      await session(identite, (s) => commanderMission(m, s, dossier, intention, par, maintenant())),
+      await session(identite, (s) =>
+        commanderEtLivrer(m, s, dossier, intention, par, maintenant()),
+      ),
     )
   })
 

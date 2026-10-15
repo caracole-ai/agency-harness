@@ -24,14 +24,13 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { chargerAgence } from '../agence/config'
-import { personnesFictives } from '../agence/fictif'
+import { nomsFictifs } from '../agence/fictif'
 import { commandeSync } from '../chantier/arbre'
 import { faireChantier } from '../chantier/chantier'
 import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { Designable } from '../conversation/designation'
 import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -54,12 +53,6 @@ const USAGE =
 
 const agence = chargerAgence(RACINE)
 
-/** Les noms des clients fictifs de ces métiers (`evals_clients`) : à l'agence, les seuls noms connus (L3). */
-async function nomsFictifs(metiers: string[]): Promise<Designable[]> {
-  const clients = metiers.flatMap((x) => agence.chantier.evals_clients[x] ?? [])
-  return (await Promise.all(clients.map((d) => personnesFictives(join(RACINE, d))))).flat()
-}
-
 try {
   if (positionals[0] === 'retirer') {
     const id = positionals[1]
@@ -70,7 +63,11 @@ try {
     const motif = values.motif
     const maintenant = Temporal.Now.zonedDateTimeISO(FUSEAU)
     const cle = preflightSignature(process.env, RACINE)
-    const personnes = await nomsFictifs(Object.keys(agence.chantier.evals_clients))
+    const personnes = await nomsFictifs(
+      agence.chantier.evals_clients,
+      RACINE,
+      Object.keys(agence.chantier.evals_clients),
+    )
     const r = retirerFusion({
       commande: commandeSync,
       racine: RACINE,
@@ -117,7 +114,7 @@ try {
       agence,
       mission: chemin,
       client,
-      personnes: await nomsFictifs([mission.metier]),
+      personnes: await nomsFictifs(agence.chantier.evals_clients, RACINE, [mission.metier]),
       sortie: values.sortie ? resolve(values.sortie) : dirname(chemin),
       env: process.env,
       sansModele: values['sans-modele'] === true,

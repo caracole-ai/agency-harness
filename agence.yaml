@@ -38,9 +38,11 @@ claude:
 # dans des arbres de travail de ce dépôt partis d'`origin/main`
 # (`.claude/worktrees/`), la fusion dans un arbre détaché, poussée sur `main`
 # du distant ; ni l'arbre de qui lance ni sa branche `main` ne bougent.
-# `pnpm agence` (lot 3) : au plus `chantiers_max_par_jour` chantiers par jour
-# (comptés dans memoire/INDEX.md), la file relue toutes les
-# `intervalle_secondes`, une file git par client (`missions-<slug>`).
+# `pnpm agence` : au plus `chantiers_max_par_jour` chantiers qui coûtent un
+# appel par jour (comptés sur les statuts des files), les files relues toutes
+# les `intervalle_secondes`. Un client : `{ slug, metier, missions: <adresse
+# git de missions-<slug>> }` ; une mission de sa file qui nomme un autre
+# métier est écartée. Les clés SSH sont dans la config SSH de la machine.
 agence:
   chantiers_max_par_jour: 3
   intervalle_secondes: 60
