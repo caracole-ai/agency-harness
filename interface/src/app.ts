@@ -13,9 +13,12 @@ import {
   avecSession,
   type Capacite,
   chargerPersonnes,
+  commanderMission,
   confirmer,
   coutDuMois,
+  demandesAvecEtat,
   ErreurAtelier,
+  FORMAT_INTENTION,
   FUSEAU,
   type Identite,
   IdentiteSchema,
@@ -433,6 +436,41 @@ export function creerApp(options: {
       await session(identite, (s) =>
         retirerGeste(dossier, m.journal(s), m.client(s), id, motif, identite.role, maintenant()),
       ),
+    )
+  })
+
+  // Les demandes sans geste (REFLEXIONS.md, 2026-10-15) : ce que l'outil n'a
+  // pas su faire, groupé par intention, chaque commande avec son état
+  // (chantier, disponible) ; et la commande du patron (« Créer ce geste ») :
+  // la mission écrite par le code chez le client, puis une ligne au journal,
+  // aucun modèle. « par » est l'identité vérifiée, jamais un champ du corps.
+  app.post('/api/sans-geste', async (c) => {
+    const identite = entrer((await lireCorps(c.req.raw)).identite)
+    exigerCapacite(m, identite, 'administre')
+    return c.json(
+      await session(identite, (s) =>
+        demandesAvecEtat(
+          m.journal(s).lire(),
+          m.actions.map((a) => a.id),
+        ),
+      ),
+    )
+  })
+
+  app.post('/api/sans-geste/commander', async (c) => {
+    const corps = await lireCorps(c.req.raw)
+    if (typeof corps.intention !== 'string' || !FORMAT_INTENTION.test(corps.intention)) {
+      throw new ErreurRequete('intention attendue : le mot-clé de la demande, en snake_case')
+    }
+    const intention = corps.intention
+    const identite = entrer(corps.identite)
+    exigerCapacite(m, identite, 'administre')
+    const par: Identite = {
+      role: identite.role,
+      ...(identite.personne !== undefined ? { personne: identite.personne } : {}),
+    }
+    return c.json(
+      await session(identite, (s) => commanderMission(m, s, dossier, intention, par, maintenant())),
     )
   })
 

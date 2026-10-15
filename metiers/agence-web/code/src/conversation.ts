@@ -187,7 +187,8 @@ function visibles(s: Session, identite: Identite): Designable[] {
  * Les sortes de demandes nouvelles déjà connues : une liste courte, tirée des
  * familles de phrases de l'entretien § 12 qui reviennent (marge, forfaits,
  * heures de maintenance, devis sans réponse, PV non signés, accès), pour que
- * la promotion compte la même demande sous le même mot. Aucune n'écrit.
+ * la ronde et le compte des demandes sans geste voient la même demande sous
+ * le même mot. Aucune n'écrit.
  */
 export const INTENTIONS: Intention[] = [
   {

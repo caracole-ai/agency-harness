@@ -132,7 +132,7 @@ export interface PropositionMetier<Session> {
   ): { id: string; texte: string }
   /** Le demandeur a dit oui : la clé sur le contenu exact, puis les demandes d'accord du métier. Rend le texte. */
   valider(s: Session, id: string, maintenant: Temporal.ZonedDateTime): string
-  /** Les règles et les préférences d'une proposition, celles que l'échappée montre : la fabrication d'un geste qui écrit les reçoit aussi. */
+  /** Les règles et les préférences d'une proposition, celles que l'échappée montre. */
   criteres(s: Session): CriteresProposition
   /** Les autres choix d'une proposition ouverte (exemple : un autre agent pour une vacation), chacun un geste ; absent, aucun. */
   choix?(s: Session, id: string): Choix[]

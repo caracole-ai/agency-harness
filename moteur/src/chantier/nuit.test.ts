@@ -9,6 +9,7 @@ import { TYPE_CHANTIER } from './chantier'
 import {
   agenceEssai,
   binaireSimule,
+  clientAvecCommande,
   commandeSimulee,
   creerDepots,
   ENV_ESSAI,
@@ -18,7 +19,7 @@ import {
 import { lireIndex, lireMesures } from './memoire'
 import { faireNuit, type OptionsNuit } from './nuit'
 
-// PLAN-RONDE.md § 7 et R8, R11, en simulé : promotions → ronde → au plus une
+// PLAN-RONDE.md § 7 et R8, R11, en simulé : purge → ronde → au plus une
 // mission de chantier, depuis le clone de la nuit remis à origin/main ;
 // relancée la même nuit, elle ne refait rien ; un clone sale l'arrête avant
 // tout appel.
@@ -26,8 +27,10 @@ import { faireNuit, type OptionsNuit } from './nuit'
 const git = (cwd: string, ...args: string[]) =>
   spawnSync('git', args, { cwd, encoding: 'utf8' }).stdout.trim()
 
-const { id, sorte, titre, pourquoi, echappees, intentions, consignes_types, ecrit, estimation } =
+const { id, titre, pourquoi, echappees, intentions, consignes_types, ecrit, estimation } =
   MISSION_ESSAI
+// Une ronde n'écrit jamais `geste_code` : sa mission naît d'une commande du patron.
+const sorte = 'intention_nouvelle'
 const RAPPORT = {
   observations: ['deux simulations'],
   missions: [
@@ -70,19 +73,17 @@ const chantiersAuJournal = (dossier: string) => {
 }
 
 describe('faireNuit', () => {
-  it('promotions → ronde → une mission → fusion ; la mémoire et la ligne de la nuit poussées depuis le clone', async () => {
+  it('purge → ronde → une mission → fusion ; la mémoire et la ligne de la nuit poussées depuis le clone', async () => {
     const e = essai()
     const r = await faireNuit(METIER_ESSAI, e.options)
     expect(r.etapes.map((x) => [x.etape, x.ok])).toEqual([
       ['clone', true],
-      ['promotions', true],
+      ['purge', true],
       ['ronde', true],
       ['chantier', true],
       ['mémoire', true],
     ])
-    expect(e.emises.find((x) => x.commande === 'pnpm' && x.args[0] === 'promotions')?.args).toEqual(
-      ['promotions', '--client', e.options.dossierClient, '--date', '2026-10-10'],
-    )
+    expect(r.etapes.find((x) => x.etape === 'purge')?.issue).toBe('rien à purger')
     expect(lireIndex(e.depots.depot).map((l) => l.sorte)).toEqual(['ronde', 'fusion'])
     expect(lireMesures(e.depots.depot)).toEqual([{ date: '2026-10-10', client: 'client essai' }])
     expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(
@@ -109,13 +110,13 @@ describe('faireNuit', () => {
     expect(chantiersAuJournal(e.options.dossierClient)).toHaveLength(1)
   })
 
-  it('au plus missions_max_par_nuit chantiers ; une mission en attente de promotion ne compte pas', async () => {
+  it('au plus missions_max_par_nuit chantiers : les autres missions attendent la nuit suivante', async () => {
     const e = essai()
     const deux = {
       ...RAPPORT,
       missions: [
-        { ...RAPPORT.missions[0], id: 'heures', intentions: ['heures_par_agent'], echappees: [] },
         RAPPORT.missions[0],
+        { ...RAPPORT.missions[0], id: 'heures', intentions: ['heures_par_agent'], echappees: [] },
         { ...RAPPORT.missions[0], id: 'troisieme', intentions: ['autre'], echappees: [] },
       ],
     }
@@ -123,7 +124,7 @@ describe('faireNuit', () => {
       ...e.options,
       appelRonde: async () => ({ ok: true, sortie: deux, cout_usd: 0.2, estime: true }),
     })
-    expect(r.chantiers.map((x) => x.sorte)).toEqual(['decision', 'fait'])
+    expect(r.chantiers.map((x) => x.sorte)).toEqual(['fait'])
     expect(r.etapes.filter((x) => x.etape === 'chantier')).toHaveLength(1)
     // Relancée la même nuit : la borne tient, la troisième mission attend la nuit suivante.
     const encore = await faireNuit(METIER_ESSAI, {
@@ -131,6 +132,25 @@ describe('faireNuit', () => {
       appelRonde: async () => ({ ok: true, sortie: deux, cout_usd: 0.2, estime: true }),
     })
     expect(encore.etapes.filter((x) => x.etape === 'chantier')).toEqual([])
+    expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
+  })
+
+  it('une mission commandée par le patron : la nuit la prend telle quelle, la ligne `chantier` porte l’intention', async () => {
+    const e = essai()
+    const { dossier } = clientAvecCommande()
+    const r = await faireNuit(METIER_ESSAI, {
+      ...e.options,
+      dossierClient: dossier,
+      appelRonde: async () => ({
+        ok: true,
+        sortie: { observations: [], missions: [], rien_a_signaler: true },
+        cout_usd: 0.2,
+        estime: true,
+      }),
+    })
+    expect(r.chantiers.map((x) => x.sorte)).toEqual(['fait'])
+    expect(r.etapes.find((x) => x.etape === 'chantier')?.issue).toMatch(/^liberer_un_jour : /)
+    expect(chantiersAuJournal(dossier).map((l) => l.objet)).toEqual(['liberer_un_jour'])
     expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
   })
 

@@ -17,7 +17,6 @@ import { parse } from 'yaml'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { evalsDuMetier, FichierTraduire } from '../evals/evals'
 import { passeTraduction } from '../evals/traduction'
-import { modeleDepuisConfig } from '../modele/anthropic'
 import {
   activerGeste,
   type GesteListe,
@@ -25,8 +24,9 @@ import {
   retirerGeste,
   STATUT_LISIBLE,
   verifierGesteAppris,
-} from '../promotion/atelier'
-import { dollars } from '../promotion/promotion'
+} from '../gestes/atelier'
+import { modeleDepuisConfig } from '../modele/anthropic'
+import { dollars } from '../modele/modele'
 import { dateFr, FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'
 

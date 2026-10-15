@@ -4,7 +4,7 @@ import { interdits, type MissionRetiree } from '../chantier/memoire'
 import { FORMAT_INTENTION, schemaJson } from '../conversation/actions'
 import type { Designable } from '../conversation/designation'
 import { type Domaine, motifPourTester } from '../conversation/domaine'
-import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, type Resume } from './resume'
+import type { Catalogue, Resume } from './resume'
 
 // Le rapport de la ronde (PLAN-RONDE.md § 5.2, R3) : un schéma strict, l'outil
 // (ou la sortie structurée du binaire, § 0.a) et la revalidation en code. Une
@@ -12,8 +12,7 @@ import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, type Resume } from './
 // consigne-type qui porte un identifiant ou un nom, un rapport incohérent) fait
 // refuser tout le rapport : il est écrit quand même, sans mission. L'état du
 // catalogue (un geste actif, une mission déjà ouverte ou retirée) écarte une
-// mission, en le disant ; une intention au seuil de promotion la marque
-// « promotion en cours » (§ 0.b) : aucun chantier.
+// mission, en le disant.
 
 export const OUTIL_RAPPORT = 'rapport_de_ronde'
 
@@ -25,17 +24,25 @@ export const SORTES_MISSION = [
 ] as const
 export type SorteMission = (typeof SORTES_MISSION)[number]
 
+/** Les sortes qu'une ronde peut écrire : jamais `geste_code`, dont la mission naît d'une commande du patron (`commanderMission`). */
+export const SORTES_RONDE = SORTES_MISSION.filter(
+  (s): s is Exclude<SorteMission, 'geste_code'> => s !== 'geste_code',
+)
+
 export const ESTIMATIONS = ['petite', 'moyenne', 'grande'] as const
 
 export const OBSERVATIONS_MAX = 10
 export const OBSERVATION_LONGUEUR_MAX = 300
+export const ECHAPPEES_MAX = 20
+export const CONSIGNES_TYPES_MAX = 5
+export const CONSIGNE_TYPE_LONGUEUR_MAX = 200
 
 export const MissionRonde = z.strictObject({
   id: z
     .string()
     .regex(FORMAT_INTENTION)
     .describe('un slug en snake_case ASCII, le nom du geste ou de la mission'),
-  sorte: z.enum(SORTES_MISSION),
+  sorte: z.enum(SORTES_RONDE),
   titre: z.string().min(1).max(120).describe('la mission en une phrase courte'),
   pourquoi: z
     .string()
@@ -44,13 +51,16 @@ export const MissionRonde = z.strictObject({
     .describe('pourquoi elle mérite un chantier, avec les comptes du résumé'),
   echappees: z
     .array(z.string())
-    .max(20)
+    .max(ECHAPPEES_MAX)
     .describe('les identifiants E-… des échappées de la fenêtre qui la justifient'),
   intentions: z
     .array(z.string().regex(FORMAT_INTENTION))
     .max(10)
     .describe('les intentions du catalogue concernées, ou un slug neuf'),
-  consignes_types: z.array(z.string().min(1).max(200)).min(1).max(5),
+  consignes_types: z
+    .array(z.string().min(1).max(CONSIGNE_TYPE_LONGUEUR_MAX))
+    .min(1)
+    .max(CONSIGNES_TYPES_MAX),
   ecrit: z.boolean().describe('vrai si la demande modifie les données'),
   estimation: z.enum(ESTIMATIONS),
 })
@@ -98,7 +108,6 @@ export const memesIntentions = (a: string[], b: string[]) =>
 /** Ce que devient une mission revalidée. */
 export const STATUTS_MISSION = {
   a_faire: 'à faire',
-  promotion: PROMOTION_EN_COURS,
   question: "question pour l'atelier",
   ecartee: 'écartée',
 } as const
@@ -192,24 +201,7 @@ export function revalider(
     }
     if (m.sorte === 'question_pour_l_atelier')
       return { mission: m, statut: STATUTS_MISSION.question }
-    // Les intentions du catalogue au seuil, sans échec de fabrication : la promotion les prend (§ 0.b, R3).
-    // Une factorisation dont une intention seulement est au seuil reste un chantier.
-    const enCours = m.intentions.filter((i) => intentions.get(i)?.promotion === PROMOTION_EN_COURS)
-    if (enCours.length > 0 && enCours.length === m.intentions.length) {
-      return {
-        mission: m,
-        statut: STATUTS_MISSION.promotion,
-        raison: `${enCours.join(', ')} : au seuil de promotion, pnpm promotions la prend`,
-      }
-    }
-    const atelier = m.intentions.filter((i) => intentions.get(i)?.promotion === A_L_ATELIER)
-    return {
-      mission: m,
-      statut: STATUTS_MISSION.a_faire,
-      ...(atelier.length > 0
-        ? { raison: `${atelier.join(', ')} : fabrication échouée, à coder à l'atelier` }
-        : {}),
-    }
+    return { mission: m, statut: STATUTS_MISSION.a_faire }
   })
   return { sorte: 'accepte', missions }
 }

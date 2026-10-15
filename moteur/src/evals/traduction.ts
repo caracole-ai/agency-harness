@@ -45,9 +45,9 @@ import {
 } from './evals'
 
 // Jouer des cas d'évals sur des copies fraîches du client (PLAN-ESPACES.md
-// § 9) : ce que `pnpm evals` fait, partagé avec `pnpm promotions`, qui
-// mesure la traduction avec le geste fabriqué chargé avant qu'on puisse
-// l'activer (PLAN-PROMOTION.md § 6.3, § 7.1). Chaque cas tourne sur sa
+// § 9) : ce que `pnpm evals` fait, partagé avec `pnpm gestes verifier
+// --avec-modele`, qui mesure la traduction avec un geste appris chargé avant
+// qu'on puisse l'activer. Chaque cas tourne sur sa
 // copie, passe la porte, garde sa trace ; la vérification est en code, la
 // fuite aussi : aucun nom de la copie dans ce qui part au modèle
 // (PLAN-PSEUDONYMES.md § 7).
@@ -83,7 +83,7 @@ export function copieClient(source: string, piege?: Variante): string {
   const dossier = mkdtempSync(join(tmpdir(), 'eval-'))
   cpSync(source, dossier, {
     recursive: true,
-    filter: (f) => !/\.sqlite$|rapport-demo|promotions/.test(relative(source, f)),
+    filter: (f) => !/\.sqlite$|rapport-demo|atelier/.test(relative(source, f)),
   })
   if (piege) {
     const fichier = join(dossier, piege.fichier)
@@ -331,15 +331,15 @@ export interface BilanTraduction {
   appels: number
 }
 
-/** Le dossier des dossiers de promotion, dans le dossier du client : la passe y laisse son tableau. */
-export const DOSSIER_PROMOTIONS = 'promotions'
+/** Le dossier de l'atelier, dans le dossier du client : la passe de traduction d'un geste appris y laisse son tableau. */
+export const DOSSIER_ATELIER = 'atelier'
 
 /**
- * La passe qui décide « activable », la même pour `pnpm promotions` et
- * `pnpm gestes verifier --avec-modele` (§ 6.3, § 7.1) : `consignes.yaml`
+ * La passe qui décide « activable » (`pnpm gestes verifier --avec-modele`) :
+ * `consignes.yaml`
  * entier et les tests du geste, tous les gestes appris du dossier chargés par
- * leur fichier (celui-ci compris, proposé ou actif). Son tableau s'écrit à
- * côté du dossier de promotion, `promotions/<id>-<date>-traduction.md`.
+ * leur fichier (celui-ci compris, proposé ou actif). Son tableau s'écrit dans
+ * `atelier/<id>-<date>-traduction.md`.
  */
 export async function passeTraduction<S>(
   m: MetierConversation<S>,
@@ -374,9 +374,9 @@ export async function passeTraduction<S>(
     },
   )
   const b = bilan(resultats, SEUILS.traduire)
-  // Le dossier de promotion s'écrit après la passe : son répertoire n'existe pas forcément encore.
-  mkdirSync(join(dossier, DOSSIER_PROMOTIONS), { recursive: true })
-  const tableau = join(dossier, DOSSIER_PROMOTIONS, `${geste.id}-${options.date}-traduction.md`)
+  // Le répertoire n'existe pas forcément encore.
+  mkdirSync(join(dossier, DOSSIER_ATELIER), { recursive: true })
+  const tableau = join(dossier, DOSSIER_ATELIER, `${geste.id}-${options.date}-traduction.md`)
   writeFileSync(
     tableau,
     rendreResultats(

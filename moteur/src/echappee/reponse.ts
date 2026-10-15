@@ -215,7 +215,8 @@ function nonQuantites(texte: string): DateEcrite[] {
 }
 
 /**
- * Ce qu'un texte cite et qu'un rejeu doit reproduire (PLAN-PROMOTION.md § 6.2) :
+ * Ce qu'un texte cite et qu'un rejeu doit reproduire (la fenêtre d'observation
+ * du parseur de nombres, que les tests de l'argent utilisent) :
  * ses nombres, tels qu'écrits, hors dates, heures et identifiants, et les mots
  * d'au moins trois lettres des noms connus qu'il cite. Les dates n'en sont
  * pas : elles sont des paramètres, ou dites par le harnais, et un gabarit les

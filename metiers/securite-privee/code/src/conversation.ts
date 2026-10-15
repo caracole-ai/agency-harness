@@ -71,9 +71,10 @@ const DEPARTAGE = "à égalité, le numéro d'agent le plus bas (A-2 avant A-10)
 
 /**
  * Les sortes de demandes nouvelles déjà connues : le mot-clé que le modèle
- * réutilise, pour que la promotion (§ 8) compte la même demande sous le même
- * mot. Liste écrite à la main depuis les cas des évals ; une intention promue
- * en geste en sort, une intention nouvelle qui revient y entre.
+ * réutilise, pour que la ronde et le compte des demandes sans geste voient la
+ * même demande sous le même mot. Liste écrite à la main depuis les cas des
+ * évals ; une intention devenue geste en sort, une intention nouvelle qui
+ * revient y entre.
  */
 export const INTENTIONS: Intention[] = [
   {

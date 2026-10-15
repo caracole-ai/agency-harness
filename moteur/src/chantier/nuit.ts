@@ -3,6 +3,7 @@ import { basename, dirname, join } from 'node:path'
 import { z } from 'zod'
 import { type Agence, cheminDepotNuit, type Executer } from '../agence/config'
 import type { MetierConversation } from '../conversation/conversation'
+import { purgerInstantanes } from '../gestes/instantanes'
 import { STATUTS_MISSION } from '../ronde/rapport'
 import { jourDe } from '../ronde/resume'
 import { type AppelRonde, DOSSIER_RONDES, faireRonde, ISSUES_RONDE } from '../ronde/ronde'
@@ -15,16 +16,19 @@ import { ajouterMesure, lireMesures } from './memoire'
 import { lireMission } from './mission'
 
 // La nuit (PLAN-RONDE.md § 7, R8, R11 ; PLAN-GENERAL.md G3) : le clone de la
-// nuit remis à `origin/main` (avant tout appel, propre ou rien), puis
-// `pnpm promotions` → la ronde → le chantier de la première mission non
-// traitée, tant que `missions_max_par_nuit` n'est pas atteint ; la mémoire de
+// nuit remis à `origin/main` (avant tout appel, propre ou rien), puis la purge
+// des instantanés d'échappée → la ronde → le chantier de la première mission
+// non traitée, tant que `missions_max_par_nuit` n'est pas atteint ; la mémoire de
 // la ronde et la ligne de la nuit (`MESURES.md`) commises et poussées depuis le
 // clone. Une étape qui échoue n'arrête pas les suivantes ; chaque étape dit son
 // issue. Idempotente : relancée la même nuit, la ronde est déjà faite, une
 // mission déjà tentée ne se refait pas, la ligne de mesure n'est pas doublée.
 
 /** Ce que les missions d'une nuit peuvent devenir, pour le choix du chantier. */
-const A_TENTER: string[] = [STATUTS_MISSION.a_faire, STATUTS_MISSION.promotion]
+const A_TENTER: string[] = [STATUTS_MISSION.a_faire]
+
+/** Un instantané d'échappée que plus aucun geste appris ne cite s'efface passé ce délai (l'ancien `promotion.conservation_jours`). */
+const CONSERVATION_JOURS = 90
 
 export interface OptionsNuit {
   racine: string
@@ -40,7 +44,7 @@ export interface OptionsNuit {
 }
 
 export interface Etapenuit {
-  etape: 'clone' | 'promotions' | 'ronde' | 'chantier' | 'mémoire'
+  etape: 'clone' | 'purge' | 'ronde' | 'chantier' | 'mémoire'
   ok: boolean
   issue: string
 }
@@ -108,20 +112,27 @@ export async function faireNuit<S>(m: MetierConversation<S>, o: OptionsNuit): Pr
     return { etapes, chantiers }
   }
 
-  const promotions = c(
-    o.racine,
-    'pnpm',
-    ['promotions', '--client', o.dossierClient, '--date', date],
-    o.env,
-  )
-  etapes.push({
-    etape: 'promotions',
-    ok: promotions.code === 0,
-    issue:
-      promotions.code === 0
-        ? 'faites'
-        : `échouées : ${(promotions.erreur || promotions.sortie).trim().split('\n').at(-1) ?? '?'}`,
-  })
+  // La purge : les instantanés d'échappée que plus aucun geste appris ne cite, passé le délai.
+  try {
+    const s = m.ouvrir(o.dossierClient)
+    try {
+      const supprimes = purgerInstantanes(
+        o.dossierClient,
+        m.journal(s),
+        o.date.subtract({ days: CONSERVATION_JOURS }),
+      )
+      etapes.push({
+        etape: 'purge',
+        ok: true,
+        issue:
+          supprimes.length > 0 ? `${supprimes.length} instantané(s) supprimé(s)` : 'rien à purger',
+      })
+    } finally {
+      m.fermer(s)
+    }
+  } catch (erreur) {
+    etapes.push({ etape: 'purge', ok: false, issue: message(erreur) })
+  }
 
   try {
     const r = await faireRonde(m, {
@@ -172,7 +183,7 @@ export async function faireNuit<S>(m: MetierConversation<S>, o: OptionsNuit): Pr
         ...(o.executer ? { executer: o.executer } : {}),
       })
       chantiers.push(r)
-      // Une décision sans appel (promotion en cours, écartée, refusée avant tout appel) ne compte pas.
+      // Une décision sans appel (question, écartée, refusée avant tout appel) ne compte pas.
       if (r.sorte === 'fuite') {
         etapes.push({
           etape: 'chantier',

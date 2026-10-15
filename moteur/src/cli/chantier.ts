@@ -1,8 +1,8 @@
 // pnpm chantier --mission <client>/rondes/<date>/<id>.yaml [--sans-modele] [--refaire]
 // pnpm chantier retirer <id> --motif "<texte>" --client <dossier>
 // Le chantier d'une mission de la ronde (PLAN-RONDE.md § 6.3, R5 ;
-// PLAN-GENERAL.md G1, G2, G3) : décidé en code (promotion en cours, question
-// pour l'atelier, écartée : aucun appel), puis plan, implémentation, garde,
+// PLAN-GENERAL.md G1, G2, G3) : décidé en code (question pour l'atelier,
+// écartée : aucun appel), puis plan, implémentation, garde,
 // `pnpm check`, relecture, une reprise au plus, honnêteté, dans un arbre de
 // travail du clone de la nuit (`agence.yaml: depot_nuit`) ; le dossier
 // `<client>/chantiers/<id>.md`, la mémoire, et la fusion dans `main` du clone
@@ -25,7 +25,7 @@ import { faireChantier, TYPE_CHANTIER } from '../chantier/chantier'
 import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionsRetirees } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
-import { dollars } from '../promotion/promotion'
+import { dollars } from '../modele/modele'
 import { DOSSIER_RONDES } from '../ronde/ronde'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'

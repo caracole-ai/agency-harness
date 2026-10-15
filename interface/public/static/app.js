@@ -14,10 +14,14 @@ const API = {
   gestes: '/api/gestes',
   activerGeste: '/api/gestes/activer',
   retirerGeste: '/api/gestes/retirer',
+  sansGeste: '/api/sans-geste',
+  commanderGeste: '/api/sans-geste/commander',
 }
 const FUSEAU = 'Europe/Paris'
 /** Le type de ligne d'un appel au modèle (moteur/src/modele/compteur.ts) : son coût est montré au journal. */
 const TYPE_APPEL = 'appel_modele'
+/** L'issue d'un chantier fusionné (`ISSUES_CHANTIER.fusionne`, moteur/src/chantier/chantier.ts). */
+const FUSIONNE = 'fusionné'
 
 /** Comment montrer chaque sorte de réponse. */
 const SORTES = {
@@ -509,14 +513,18 @@ function motif(l) {
 
 // ---------- ce que l'outil a appris ----------
 
-/** La liste des gestes appris passe la porte au nom de la personne choisie : réservée au patron, comme le journal. */
+/** Les demandes sans geste et la liste des gestes appris passent la porte au nom de la personne choisie : réservées au patron, comme le journal. */
 async function chargerGestes() {
   const zone = $('appris')
   if (!zone.querySelector('.liste, .vide'))
     zone.replaceChildren(el('p', { classe: 'chargement', texte: 'Chargement…' }))
   let gestes
+  let sansGeste
   try {
-    gestes = await appeler(API.gestes, { identite: ici.identite })
+    ;[gestes, sansGeste] = await Promise.all([
+      appeler(API.gestes, { identite: ici.identite }),
+      appeler(API.sansGeste, { identite: ici.identite }),
+    ])
   } catch (erreur) {
     zone.replaceChildren(
       erreur.statut === 403
@@ -525,16 +533,16 @@ async function chargerGestes() {
     )
     return
   }
-  rendreGestes(gestes)
+  rendreGestes(gestes, sansGeste)
 }
 
-function rendreGestes(gestes) {
+function rendreGestes(gestes, sansGeste) {
   const groupes = [
     [
-      'Proposés par l’outil',
+      'Proposés',
       'propose',
       'Aucun geste proposé. ',
-      'Quand une demande nouvelle revient, l’outil fabrique un geste, le vérifie, puis vous le propose ici.',
+      'Un geste proposé est un geste appris écrit à la main, vérifié, qui attend votre oui.',
     ],
     ['Actifs', 'actif', 'Aucun geste actif. ', 'Un geste actif répond seul, sans appel à l’IA.'],
     [
@@ -544,7 +552,17 @@ function rendreGestes(gestes) {
       'Un geste retiré ne répond plus dès la consigne suivante.',
     ],
   ]
-  const zone = []
+  const zone = [el('h3', { texte: 'Demandes sans geste' })]
+  zone.push(
+    sansGeste.length === 0
+      ? el(
+          'p',
+          { classe: 'vide' },
+          el('b', { texte: 'Aucune demande sans geste. ' }),
+          'Quand l’outil ne sait pas faire une demande, elle apparaît ici ; vous décidez lesquelles deviennent un geste.',
+        )
+      : el('ul', { classe: 'liste' }, ...sansGeste.map(carteSansGeste)),
+  )
   for (const [titre, statut, vide, suite] of groupes) {
     zone.push(el('h3', { texte: titre }))
     const liste = gestes.filter((g) => g.statut === statut)
@@ -577,6 +595,70 @@ function rendreGestes(gestes) {
     )
   }
   $('appris').replaceChildren(...zone)
+}
+
+/** Qui a commandé : le rôle, et la personne quand le rôle est identifié. */
+const quiCommande = (par) => (par.personne ? `${par.role} ${par.personne}` : par.role)
+
+/** Où en est une commande : disponible, chantier fait, ou mission écrite en attente de la nuit. */
+function etatCommande(intention, c) {
+  if (c.disponible) return `Disponible : le geste ${intention} est dans le catalogue.`
+  const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}.`
+  if (!c.chantier) return `${commande} Mission écrite, en attente de la nuit.`
+  const issue =
+    c.chantier.issue === FUSIONNE
+      ? `${FUSIONNE} : disponible à la prochaine mise à jour de l’outil`
+      : c.chantier.issue
+  return `${commande} Chantier du ${jour(c.chantier.le)} : ${issue}.`
+}
+
+/** Une demande sans geste : l'intention, combien de fois, les derniers résumés ; où en est sa commande, ou le bouton pour la commander. */
+function carteSansGeste(d) {
+  return el(
+    'li',
+    { classe: `carte${d.commande ? '' : ' carte--attente'}` },
+    el(
+      'div',
+      { classe: 'carte__meta' },
+      el('span', { classe: 'carte__titre', texte: d.intention }),
+      el('span', { texte: `${d.compte} fois` }),
+      el('span', { texte: `dernière le ${jour(d.derniere)}` }),
+    ),
+    ...d.exemples.map((e) => el('p', { classe: 'texte', texte: `« ${e} »` })),
+    d.commande
+      ? el('p', { classe: 'repondu', texte: etatCommande(d.intention, d.commande) })
+      : zoneCommande(d),
+  )
+}
+
+/** Commander le geste, après une confirmation à l'écran : l'agence le construit, le patron l'activera. */
+function zoneCommande(d) {
+  const zone = el('div', { classe: 'actions' })
+  const bouton = (classe, texte, onclick) =>
+    el('button', { classe: `bouton ${classe} bouton--petit`, type: 'button', texte, onclick })
+  const montrer = (...enfants) => zone.replaceChildren(...enfants.filter(Boolean))
+  const initial = () => montrer(bouton('bouton--oui', 'Créer ce geste', confirmer))
+  function confirmer() {
+    montrer(
+      el('p', {
+        classe: 'question',
+        texte: `Commander le geste « ${d.intention} » ? L’agence le construit ; vous l’activerez.`,
+      }),
+      bouton('bouton--oui', 'Oui, commander', async () => {
+        try {
+          await appeler(API.commanderGeste, { identite: ici.identite, intention: d.intention })
+          montrer(el('p', { classe: 'repondu', texte: 'Commandé.' }))
+          chargerGestes()
+        } catch (erreur) {
+          initial()
+          zone.prepend(el('p', { classe: 'texte', role: 'alert', texte: erreur.message }))
+        }
+      }),
+      bouton('bouton--non', 'Annuler', initial),
+    )
+  }
+  initial()
+  return zone
 }
 
 /** Ce que la dernière vérification de ce fichier a donné, en une phrase. */

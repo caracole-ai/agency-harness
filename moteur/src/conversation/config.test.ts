@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
-import { ConversationSchema, plafondFabrication, prixDe } from './config'
+import { ConversationSchema, prixDe } from './config'
 
 // La section `conversation` de la config client (PLAN-ESPACES.md § 4.7).
 
@@ -24,29 +24,9 @@ describe('ConversationSchema', () => {
     s.inconnue = 1
     expect(ConversationSchema.safeParse(s).success).toBe(false)
   })
-  it('conservation_jours : 90 par défaut, le client fictif le dit, zéro refuse', () => {
-    const s = section() as { promotion: Record<string, unknown> }
-    expect(ConversationSchema.parse(s).promotion.conservation_jours).toBe(90)
-    delete s.promotion.conservation_jours
-    expect(ConversationSchema.parse(s).promotion.conservation_jours).toBe(90)
-    s.promotion.conservation_jours = 0
-    expect(ConversationSchema.safeParse(s).success).toBe(false)
-  })
   it('zéro tour par demande refuse', () => {
     const s = section() as { plafonds: { par_demande: { tours: number } } }
     s.plafonds.par_demande.tours = 0
-    expect(ConversationSchema.safeParse(s).success).toBe(false)
-  })
-  it('la fabrication : son plafond s’il est déclaré, sinon celui de la demande ; zéro refuse', () => {
-    const s = section() as {
-      plafonds: { par_demande: { tokens_sortie: number }; fabrication?: unknown }
-    }
-    s.plafonds.par_demande.tokens_sortie = 12000
-    delete s.plafonds.fabrication
-    expect(plafondFabrication(ConversationSchema.parse(s))).toBe(12000)
-    s.plafonds.fabrication = { tokens_sortie: 30000 }
-    expect(plafondFabrication(ConversationSchema.parse(s))).toBe(30000)
-    s.plafonds.fabrication = { tokens_sortie: 0 }
     expect(ConversationSchema.safeParse(s).success).toBe(false)
   })
   it('un effort hors liste refuse', () => {

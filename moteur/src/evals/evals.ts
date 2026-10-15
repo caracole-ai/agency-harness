@@ -27,7 +27,7 @@ export const CATEGORIE_AGENT_PATRON = 'agent_patron'
 /** Le dossier des cas d'éval d'un métier, relatif à la racine du dépôt (PLAN-METIER-2.md M8) ; `evals/` garde les résultats, les traces et les journaux fixés. */
 export const evalsDuMetier = (metier: string): string => `metiers/${metier}/evals`
 
-/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %, rejeu des gestes appris 100 % ; la fabrication est une mesure, son seuil est dans son fichier (PLAN-PROMOTION.md § 8). */
+/** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %, rejeu des gestes appris 100 %. */
 export const SEUILS = { traduire: 0.95, echappee: 0.8, gestes: 1 } as const
 
 /** Un dossier d'éval dérivé du client : une chaîne remplacée dans un de ses fichiers, sur la copie du cas. */
@@ -117,24 +117,6 @@ export const FichierGestes = z.strictObject({
   gestes: z.array(GesteAppris).min(1),
 })
 export type FichierGestes = z.infer<typeof FichierGestes>
-
-/** Un cas de fabrication : une intention, et les cas d'`echappees.yaml` qui la portent, rejoués avant de fabriquer (PLAN-PROMOTION.md § 6.4). */
-export const CasPromotion = z.strictObject({
-  id: z.string().min(1),
-  intention: z.string().min(1),
-  echappees: z.array(z.string().min(1)).min(1),
-  /** Un cas impossible par construction (P11) : pourquoi ; le résultat le dit avant ses écarts. */
-  impossible: z.string().min(1).optional(),
-})
-export type CasPromotion = z.infer<typeof CasPromotion>
-
-export const FichierPromotions = z.strictObject({
-  maintenant: z.string(),
-  /** Une mesure, pas une promesse : écrit dans le fichier, pas dans le code. */
-  seuil: z.number().min(0).max(1),
-  cas: z.array(CasPromotion).min(1),
-})
-export type FichierPromotions = z.infer<typeof FichierPromotions>
 
 const egal = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 

@@ -400,11 +400,10 @@ const inscrite = (role: string, personne: string | undefined) =>
   registre.some((p) => p.role === role && p.personne === personne)
 
 describe('les fichiers des évals de l’agence web', () => {
-  it('chacun cite le plan dans son commentaire de tête ; promotions.yaml est vide', () => {
-    for (const f of ['consignes.yaml', 'echappees.yaml', 'gestes.yaml', 'promotions.yaml']) {
+  it('chacun cite le plan dans son commentaire de tête', () => {
+    for (const f of ['consignes.yaml', 'echappees.yaml', 'gestes.yaml']) {
       expect(lire(f).split('\n').slice(0, 3).join(' '), f).toContain('PLAN-METIER-2.md § 9')
     }
-    expect(parse(lire('promotions.yaml'))).toBeNull()
   })
   it('maintenant : la date de référence du générateur', () => {
     for (const m of [traduire.maintenant, echappees.maintenant]) {

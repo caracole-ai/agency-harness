@@ -25,7 +25,7 @@ import {
 } from './echappee'
 import { fuites, type Precision } from './pseudonymes'
 
-// Ce que le journal garde d'une échappée pour la promotion, avec le modèle
+// Ce que le journal garde d'une échappée pour le rejeu, avec le modèle
 // simulé et des tables en mémoire : l'identifiant sur chaque ligne, le texte
 // final tel que montré, l'instantané de la copie (PLAN-PROMOTION.md § 4.5) ;
 // et aucun nom ne part au modèle, ni dans la consigne, ni dans la copie, ni
@@ -52,7 +52,6 @@ const CONFIG: ConfigConversation = {
     effort: { traduire: 'low', echappee: 'medium' },
   },
   plafonds: { par_demande: { tours: 12, tokens_sortie: 6000, secondes: 120 }, par_mois_usd: 30 },
-  promotion: { occurrences: 3, jours: 30, conservation_jours: 90 },
 }
 const PATRON: Identite = { role: 'patron' }
 const JULIEN: Identite = { role: 'agent', personne: 'A-2' }

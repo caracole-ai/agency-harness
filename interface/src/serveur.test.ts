@@ -1,6 +1,14 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,14 +25,20 @@ import {
   Journal,
   type Ligne,
   lireFichiersGestes,
+  lireMission,
   metierDe,
   modeleSimule,
   type Reponse,
   type Scripte,
   type Tableau,
   TYPE_ACCES_REFUSE,
+  TYPE_APPEL,
+  TYPE_CHANTIER,
   TYPE_CONFIRMATION_ATTENDUE,
+  TYPE_CONSIGNE,
+  TYPE_ECHAPPEE,
   TYPE_GESTE_APPRIS,
+  TYPE_GESTE_COMMANDE,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
@@ -471,6 +485,222 @@ describe('ce que l’outil a appris : /api/gestes, activer, retirer (PLAN-PROMOT
   })
   it('la page a l’onglet « Appris »', async () => {
     expect(await (await app().request('/')).text()).toContain("Ce que l'outil a appris")
+  })
+})
+
+describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2026-10-15)', () => {
+  const CLIENT = 'client fictif (sécurité privée)'
+  const nouvelle = (conversation: string, intention: string, resume: string, consigne: string) => ({
+    type: TYPE_CONSIGNE,
+    client: CLIENT,
+    objet: conversation,
+    issue: 'nouvelle',
+    motif: consigne,
+    donnees: { identite: PATRON, demande: { sorte: 'nouvelle', intention, resume } },
+  })
+  /** L'échappée qui a suivi une demande, telle que `echappee.ts` l'écrit : la consigne version modèle, des A-… à la place des noms. */
+  const echappee = (conversation: string, id: string, intention: string, consigne: string) => ({
+    type: TYPE_ECHAPPEE,
+    client: CLIENT,
+    objet: conversation,
+    issue: 'proposition',
+    motif: 'Julien a-t-il rendu ses clés ?',
+    donnees: { echappee: id, intention, role: 'patron', consigne_modele: consigne, tours: 2 },
+  })
+  /**
+   * Une copie avec trois demandes sans geste sous deux intentions (une échappée
+   * finie en proposition pour `remise_des_cles`), une inconnue et une nouvelle
+   * sans résumé. Des intentions que le métier ne déclare ni ne code : la nuit
+   * peut fusionner un geste du métier sans que ces tests, hors de sa bande, changent.
+   */
+  function copieAvecDemandes(): string {
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [
+        nouvelle('C-1', 'remise_des_cles', 'les clés de Julien', 'Julien a-t-il rendu ses clés ?'),
+        echappee('C-1', 'E-20261008T1000-0001', 'remise_des_cles', 'A-3 a-t-il rendu ses clés ?'),
+      ],
+      '2026-10-08T08:00:00Z',
+    )
+    j.ecrire(
+      [
+        nouvelle(
+          'C-2',
+          'releve_kilometrique',
+          'les kilomètres de Karim',
+          'Combien de kilomètres a fait Karim ?',
+        ),
+      ],
+      '2026-10-09T08:00:00Z',
+    )
+    j.ecrire(
+      [
+        nouvelle(
+          'C-3',
+          'remise_des_cles',
+          'les clés de Sophie',
+          'Sophie a-t-elle rendu ses clés ?',
+        ),
+      ],
+      '2026-10-09T09:00:00Z',
+    )
+    j.ecrire(
+      [
+        {
+          type: TYPE_CONSIGNE,
+          client: CLIENT,
+          objet: 'C-4',
+          issue: 'inconnue',
+          motif: 'Fais la paie.',
+          donnees: { identite: PATRON, demande: { sorte: 'inconnue', raison: 'x' } },
+        },
+        {
+          type: TYPE_CONSIGNE,
+          client: CLIENT,
+          objet: 'C-5',
+          issue: 'nouvelle',
+          motif: 'Encore Julien.',
+          donnees: { identite: PATRON },
+        },
+      ],
+      '2026-10-09T10:00:00Z',
+    )
+    j.fermer()
+    return dossier
+  }
+
+  it('la liste est au patron seul : par intention, les plus fréquentes d’abord, avec les résumés et la dernière date', async () => {
+    const a = app([], copieAvecDemandes())
+    expect((await lire(a, '/api/sans-geste', { role: 'agent', agent: 'A-2' })).status).toBe(403)
+    const r = await lire(a, '/api/sans-geste')
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual([
+      {
+        intention: 'remise_des_cles',
+        compte: 2,
+        exemples: ['les clés de Sophie', 'les clés de Julien'],
+        derniere: '2026-10-09',
+      },
+      {
+        intention: 'releve_kilometrique',
+        compte: 1,
+        exemples: ['les kilomètres de Karim'],
+        derniere: '2026-10-09',
+      },
+    ])
+  })
+  it('commander : le patron seul, « par » est son identité vérifiée ; la mission est écrite, puis la ligne au journal, sans appel ; une seconde fois, 400', async () => {
+    const dossier = copieAvecDemandes()
+    const a = app([], dossier)
+    expect(
+      (
+        await poster(a, '/api/sans-geste/commander', {
+          identite: { role: 'agent', agent: 'A-2' },
+          intention: 'remise_des_cles',
+        })
+      ).status,
+    ).toBe(403)
+    expect((await poster(a, '/api/sans-geste/commander', { identite: PATRON })).status).toBe(400)
+    const inconnue = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'inventaire_cles',
+    })
+    expect(inconnue.status).toBe(400)
+    expect(((await inconnue.json()) as { erreur: string }).erreur).toBe(
+      'inventaire_cles : aucune demande sans geste sous ce mot',
+    )
+    const r = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'remise_des_cles',
+    })
+    expect(r.status).toBe(200)
+    expect(await r.json()).toEqual({ intention: 'remise_des_cles', le: '2026-10-10' })
+    const commande = journalDe(dossier).find((l) => l.type === TYPE_GESTE_COMMANDE)
+    expect(commande).toMatchObject({
+      objet: 'remise_des_cles',
+      motif: 'les clés de Sophie',
+      horodatage: '2026-10-10T19:40:00Z',
+    })
+    expect(JSON.parse(commande?.donnees ?? '{}')).toEqual({
+      par: { role: 'patron' },
+      exemples: ['les clés de Sophie', 'les clés de Julien'],
+      compte: 2,
+    })
+    expect(journalDe(dossier).filter((l) => l.type === TYPE_APPEL)).toEqual([])
+    const chemin = join(dossier, 'rondes', '2026-10-10', 'remise_des_cles.yaml')
+    const { mission } = lireMission(chemin)
+    expect(mission).toMatchObject({
+      id: 'remise_des_cles',
+      sorte: 'geste_code',
+      ecrit: true,
+      echappees: ['E-20261008T1000-0001'],
+      consignes_types: ['<personne> a-t-il rendu ses clés ?'],
+      statut: 'à faire',
+    })
+    expect(readFileSync(chemin, 'utf8')).not.toMatch(/Julien|Sophie|A-\d/)
+    const encore = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'remise_des_cles',
+    })
+    expect(encore.status).toBe(400)
+    expect(((await encore.json()) as { erreur: string }).erreur).toBe(
+      'remise_des_cles : déjà commandé le 2026-10-10',
+    )
+    const [d] = (await (await lire(a, '/api/sans-geste')).json()) as { commande?: unknown }[]
+    expect(d).toMatchObject({
+      intention: 'remise_des_cles',
+      commande: { par: { role: 'patron' }, le: '2026-10-10', disponible: false },
+    })
+    expect(d).not.toHaveProperty('commande.chantier')
+  })
+  it('l’état d’une commande : le chantier qui l’a suivie, puis « disponible » quand le métier porte le geste', async () => {
+    const dossier = copieAvecDemandes()
+    const commander = () =>
+      poster(app([], dossier), '/api/sans-geste/commander', {
+        identite: PATRON,
+        intention: 'remise_des_cles',
+      })
+    expect((await commander()).status).toBe(200)
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [{ type: TYPE_CHANTIER, client: CLIENT, objet: 'remise_des_cles', issue: 'fusionné' }],
+      '2026-10-11T01:30:00Z',
+    )
+    j.fermer()
+    const etat = async (a: ReturnType<typeof app>) =>
+      ((await (await lire(a, '/api/sans-geste')).json()) as { commande?: unknown }[])[0]?.commande
+    expect(await etat(app([], dossier))).toEqual({
+      par: { role: 'patron' },
+      le: '2026-10-10',
+      chantier: { issue: 'fusionné', le: '2026-10-11' },
+      disponible: false,
+    })
+    // L'outil relancé sur le code fusionné : le métier porte un geste de ce nom.
+    const [action] = METIER.actions
+    if (!action) throw new Error('le métier fictif sans geste')
+    const avecGeste = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: { ...METIER, actions: [...METIER.actions, { ...action, id: 'remise_des_cles' }] },
+    })
+    expect(await etat(avecGeste)).toMatchObject({ disponible: true })
+  })
+  it('commander sans consigne utilisable (aucune échappée sous l’intention) : 400, ni mission ni ligne', async () => {
+    const dossier = copieAvecDemandes()
+    const r = await poster(app([], dossier), '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'releve_kilometrique',
+    })
+    expect(r.status).toBe(400)
+    expect(((await r.json()) as { erreur: string }).erreur).toMatch(
+      /^releve_kilometrique : aucune consigne utilisable/,
+    )
+    expect(journalDe(dossier).filter((l) => l.type === TYPE_GESTE_COMMANDE)).toEqual([])
+    expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'releve_kilometrique.yaml'))).toBe(
+      false,
+    )
   })
 })
 

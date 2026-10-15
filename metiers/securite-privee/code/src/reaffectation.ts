@@ -188,7 +188,7 @@ export function ouvrirReaffectation(
 /**
  * Le patron change des agents d'une réaffectation reçue (PLAN-CHOIX.md C2) :
  * une nouvelle s'ouvre, rattachée à la même conversation (celle de la
- * proposition d'origine, que la promotion relit), avec les mêmes contrôles ;
+ * proposition d'origine), avec les mêmes contrôles ;
  * l'ancienne passe à « remplacée » et ne se valide plus. Un refus des
  * contrôles laisse l'ancienne telle quelle.
  */

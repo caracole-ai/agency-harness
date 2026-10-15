@@ -35,7 +35,6 @@ export const CONFIG_ESSAI: ConfigConversation = {
     effort: { traduire: 'low', echappee: 'medium' },
   },
   plafonds: { par_demande: { tours: 12, tokens_sortie: 1000, secondes: 60 }, par_mois_usd: 30 },
-  promotion: { occurrences: 3, jours: 30, conservation_jours: 90 },
 }
 
 const VOIR_PLANNING: Action<Session, unknown> = {

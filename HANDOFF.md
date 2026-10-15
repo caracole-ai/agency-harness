@@ -1,4 +1,4 @@
-# Handoff — 2026-10-14
+# Handoff — 2026-10-15
 
 Pour reprendre dans une session neuve : deux pages, l'état et la suite. Les
 décisions et leur fil sont dans `REFLEXIONS.md`, les plans dans `PLAN-*.md`,
@@ -7,39 +7,53 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/choix-boutons` (S9, lot 3).
-`pnpm check` vert : moteur 644, interface 28, sécurité 145, agence web 263.
+`main` = `origin/main` = la fusion de `general/masquer-remplacees` (8106d79).
+**`general/retrait-promotion` n'est pas fusionnée** (15 commits devant `main`,
+non poussée) : à fusionner après relecture de Lionel. `pnpm evals ronde`
+(Fable, le modèle `ronde`) passé le 2026-10-15 : R-1 et R-3 ok, fuite 0 ;
+R-2 manque la factorisation, comme une passe sur trois le 2026-10-11 avec
+l'ancien prompt (la trace : « vues une fois chacune : trop tôt », la carte
+dit qu'une demande vue une fois ne mérite pas de mission) : l'étiquette de
+R-2 contredit la carte, question à Lionel, pas un effet de la branche. `pnpm check` vert sur la branche :
+moteur 603, interface 33, sécurité 144, agence web 263.
 
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
 - **Les trois espaces** (`PLAN-ESPACES.md`) : la traduction vers un geste
   codé, l'échappée (SQL en lecture sur une copie, pseudonymes, contrôle « pas
-  un chiffre ni un nom hors des données »), la promotion (`PLAN-PROMOTION.md`),
-  **gelée** (Lionel, 2026-10-14) : le code reste, plus de session dessus ;
-  l'apprentissage viendra d'un « retiens ça » du patron. La phase E retirera
-  l'étape `promotions` de `pnpm nuit`.
+  un chiffre ni un nom hors des données »), et **la commande** : la promotion
+  automatique est retirée (Lionel, 2026-10-15) ; un geste nouveau se construit
+  sur commande du patron, jamais parce qu'une demande revient.
+- **La commande devient un geste codé** (plan
+  `~/.claude/plans/adaptive-twirling-tome.md`, commits « Commande → geste
+  codé ») : « Créer ce geste » fait écrire par le code, sans modèle, la
+  mission `geste_code` (`rondes/<date>/<intention>.yaml`, consignes des
+  échappées masquées, sans nom ni `estimation`), puis la ligne `geste
+  commandé` ; sinon 400 (aucune consigne utilisable, nom déjà pris, déjà
+  commandé). La nuit la prend ; la ronde ne peut plus écrire `geste_code` et
+  n'écrase jamais une mission déjà écrite. La carte suit : mission écrite →
+  chantier du … → disponible (un geste du métier porte ce nom). Vérifié sans
+  modèle sur une copie, vu à 1280 et 390 px.
+- **Mesure avec modèle (2026-10-15, `heures_par_agent`) : la chaîne entière
+  marche.** Trois demandes réelles (Sonnet) → « Créer ce geste » → `pnpm
+  chantier` : **fusionné** dans `main` du clone (`~/harnais-nuit`, poussé
+  vers `~/harnais-nuit-origine.git`, étiquette `chantier/heures_par_agent`),
+  huit conditions vertes, 7 cas de traduction, `evals traduire` 73/73, 0
+  bloquant, 308 lignes, 1 512 s, 7,89 $ équivalent API (abonnement). La
+  carte dit « disponible » sur le code fusionné ; la même question passe par
+  le geste (`action`, sans échappée). Trois passes avant : refus sur un test
+  de l'interface couplé au métier (corrigé, 4ef5f19), `--refaire` qui rouvre
+  la branche telle quelle au lieu de repartir de `main` (supprimer la branche
+  du clone pour repartir), un plan coupé par la limite d'usage. Le geste
+  n'est pas dans ce dépôt : le tirer du dépôt nu est à Lionel.
 - **La nuit** (`PLAN-RONDE.md`, `PLAN-GENERAL.md`) : ronde, chantier, fusion
-  automatique sous conditions, sur l'abonnement par le binaire `claude`.
-- **Le modèle : Sonnet 5.5 par l'abonnement** (`acces: { binaire: claude }`,
-  `moteur/src/modele/abonnement.ts`). GLM-5.3 chez GMI n'est plus utilisé.
-- **S9 fusionnée en entier** (`PLAN-CHOIX.md`) : le patron change un agent
-  dans une proposition, en mots (`changer_remplacant`) ou par un bouton
-  « Prendre X pour V-03 » (`PropositionMetier.choix`, `traiterGeste`,
-  `/api/geste`, sans modèle). Une proposition corrigée n'apprend rien ; la
-  nouvelle R-… se rattache à la conversation d'origine par le champ générique
-  `corrige`. Deux R-… en attente : « laquelle ? ».
-- **`general/masquer-remplacees`, non fusionnée** (une fusion par session) :
-  une proposition corrigée depuis une autre conversation ne reste plus dans
-  « Confirmations en attente ». L'attente de la nouvelle garde `corrige`,
-  l'interface ne liste pas celle qu'elle remplace ; le « oui » sur l'ancienne
-  répond toujours « remplacée par … ». Vu à 1280 et 390 px. À fusionner
-  (`pnpm check` vert suffit : aucun modèle en jeu).
+  sous conditions ; tout sur l'abonnement (binaire `claude`, Sonnet 5.5 au
+  quotidien).
 - **Dernières mesures (Sonnet, `evals/resultats/apparie-2026-10-14-s9-*`)** :
   traduction 120 contre 119 sur les cas communs, cas neufs 12/12,
   `liberer_un_jour` 3/3, gestes 6/6, échappée de la sécurité 18/18 ; agence
-  16 et 17/24, sous son seuil parce que ses étiquettes sont des brouillons.
-  Fuite : R-2 seule, des deux côtés (voir « Ouvert »).
+  16 et 17/24 (étiquettes en brouillon). Fuite : R-2 seule, des deux côtés.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 
@@ -70,6 +84,21 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
+- À Lionel, sur le geste fusionné : relire le remplacement du geste appris
+  d'éval `heures_par_agent` → `compter_vacations` (`evals/gestes.yaml`, que
+  la garde ne surveille pas) et les 7 cas ajoutés ; « fuite 1 » à `evals
+  traduire` non lue (l'arbre est supprimé après fusion ; peut-être la fuite
+  comptée à tort sur exception) ; remarques de relecture : E-01/E-02 de
+  `echappees.yaml` gardent l'intention `heures_par_agent`, arrondi des heures
+  recopié de `remplacement.ts`, description de fixture trompeuse.
+- Non tranché : la priorité d'une mission commandée dans la nuit
+  (`missions_max_par_nuit: 1`, ordre par date : elle peut attendre) ; la
+  mise à jour à distance (« disponible » chez un client en dépend) ; le
+  dossier d'une mission commandée dit encore « Mission de la ronde du … »
+  (`rendreDecision`, `chantier.ts`).
+- À Lionel : le sort des gestes appris (`gestes/`, atelier, onglet « Appris »,
+  `pnpm gestes`, `evals gestes`, ≈ 2 500 lignes) : plus aucun producteur
+  depuis le retrait ; garder dormants ou retirer.
 - À Lionel : R-2 (« Aisha ») fuit à chaque passe : le niveau 2 de `designer`
   envoie au modèle les candidats avec leur nom, contre « aucun nom ne part au
   modèle ».
@@ -80,9 +109,8 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 - Les tableaux d'évals disent « coût réel » sous l'abonnement (une
   estimation).
 - Agence : `facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur),
-  17 tests au lieu de 23, les promotions jamais mesurées, le piège `lots.nom`.
-- Une fuite comptée à tort sur exception ; le commentaire « impossible » de
-  `compter_vacations` (`metiers/securite-privee/evals/promotions.yaml`).
+  17 tests au lieu de 23, le piège `lots.nom`.
+- Une fuite comptée à tort sur exception.
 - Non relus : le mini-site (https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52)
   et la présentation (https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2).
 
@@ -123,9 +151,8 @@ pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm veiller --client exemples/client-fictif --date 2026-10-06
 pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…"
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
-pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]
 pnpm gestes --client <copie> lister | verifier <id> | activer <id> --par <nom> | retirer <id> --motif "…"
-pnpm evals traduire|echappee|promotion|gestes --client exemples/client-fictif [--seulement id,id] [--modele simule]
+pnpm evals traduire|echappee|gestes|ronde --client exemples/client-fictif [--seulement id,id] [--modele simule]
 pnpm ronde --client <copie> --date AAAA-MM-JJ [--sans-modele]
 pnpm chantier --mission <copie>/rondes/<date>/<id>.yaml
 pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # jamais avec `pnpm -s`

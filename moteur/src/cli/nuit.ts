@@ -1,15 +1,15 @@
 // pnpm nuit --client <dossier> [--date AAAA-MM-JJ]
 // La nuit (PLAN-RONDE.md § 7, R8 ; PLAN-GENERAL.md G3) : le clone de la nuit
 // (`agence.yaml: depot_nuit`) remis à `origin/main`, avant tout appel (un
-// clone sale ou qui serait l'arbre courant arrête la nuit) ; puis `pnpm
-// promotions` → la ronde (sa mémoire écrite et poussée depuis le clone) → le
-// chantier de la première mission non traitée, au plus
+// clone sale ou qui serait l'arbre courant arrête la nuit) ; puis la purge des
+// instantanés d'échappée → la ronde (sa mémoire écrite et poussée depuis le
+// clone) → le chantier de la première mission non traitée, au plus
 // `missions_max_par_nuit` ; la ligne de la nuit dans `memoire/MESURES.md`.
 // Une étape qui échoue n'arrête pas les suivantes. Relancée la même nuit, elle
 // ne refait rien. Rien n'est installé : la ligne cron est dans le README.
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
-// absente, et le coût est « estimé par le binaire » ; les promotions et la
-// mesure d'honnêteté appellent le modèle du quotidien (sa clé).
+// absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
+// appelle le modèle du quotidien.
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'

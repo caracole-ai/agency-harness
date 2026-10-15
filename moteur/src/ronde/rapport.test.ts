@@ -10,7 +10,7 @@ import {
   schemaJsonRapport,
   schemaRapport,
 } from './rapport'
-import { A_L_ATELIER, type Catalogue, PROMOTION_EN_COURS, resumerJournal } from './resume'
+import { type Catalogue, resumerJournal } from './resume'
 
 // PLAN-RONDE.md § 5.2 : chaque règle de R3 en un cas.
 
@@ -27,10 +27,10 @@ const CATALOGUE: Catalogue = {
   gestes: [{ id: 'voir_planning', description: 'le planning', ecrit: false, roles: ['patron'] }],
   appris: [{ id: 'agents_sans_carte', description: 'x', ecrit: false, statut: 'actif' }],
   intentions: [
-    { id: 'heures_par_agent', description: 'x', ecrit: false, promotion: PROMOTION_EN_COURS },
-    { id: 'simuler_absence', description: 'x', ecrit: false, promotion: A_L_ATELIER },
+    { id: 'heures_par_agent', description: 'x', ecrit: false },
+    { id: 'simuler_absence', description: 'x', ecrit: false },
     { id: 'agents_sans_carte', description: 'x', ecrit: false, geste_actif: true },
-    { id: 'liberer_un_jour', description: 'x', ecrit: true, promotion: PROMOTION_EN_COURS },
+    { id: 'liberer_un_jour', description: 'x', ecrit: true },
   ],
   missions_ouvertes: [
     {
@@ -45,7 +45,7 @@ const CATALOGUE: Catalogue = {
 
 const mission = (m: Partial<MissionRonde> = {}): MissionRonde => ({
   id: 'simuler_absence',
-  sorte: 'geste_code',
+  sorte: 'intention_nouvelle',
   titre: 'Coder la simulation d’absence',
   pourquoi: 'deux échappées, fabrication échouée',
   echappees: ['E-20261010T0900-0005', 'E-20261010T1000-0006'],
@@ -70,14 +70,13 @@ const config = {
 const verifier = (r: RapportDeRonde) => revalider(r, RESUME, CATALOGUE, config)
 
 describe('revalider (R3)', () => {
-  it('une mission juste : à faire, avec la raison de l’atelier', () => {
+  it('une mission juste : à faire', () => {
     expect(verifier(rapport([mission()]))).toEqual({
       sorte: 'accepte',
       missions: [
         {
           mission: mission(),
           statut: STATUTS_MISSION.a_faire,
-          raison: "simuler_absence : fabrication échouée, à coder à l'atelier",
         },
       ],
     })
@@ -147,32 +146,6 @@ describe('revalider (R3)', () => {
     expect(r.sorte === 'accepte' && r.missions[0]?.raison).toMatch(/deja_la/)
   })
 
-  it('une intention au seuil de promotion : « promotion en cours », aucun chantier (§ 0.b)', () => {
-    const lecture = verifier(
-      rapport([mission({ id: 'heures', intentions: ['heures_par_agent'], echappees: [] })]),
-    )
-    expect(lecture).toMatchObject({ sorte: 'accepte', missions: [{ statut: PROMOTION_EN_COURS }] })
-    const ecrit = verifier(
-      rapport([
-        mission({ id: 'liberer', intentions: ['liberer_un_jour'], ecrit: true, echappees: [] }),
-      ]),
-    )
-    expect(ecrit).toMatchObject({ sorte: 'accepte', missions: [{ statut: PROMOTION_EN_COURS }] })
-  })
-
-  it('une factorisation dont une intention seulement est au seuil : un chantier', () => {
-    const r = verifier(
-      rapport([
-        mission({
-          id: 'heures_et_absences',
-          sorte: 'factorisation',
-          intentions: ['heures_par_agent', 'simuler_absence'],
-        }),
-      ]),
-    )
-    expect(r).toMatchObject({ sorte: 'accepte', missions: [{ statut: STATUTS_MISSION.a_faire }] })
-  })
-
   it('une question pour l’atelier ne lance rien', () => {
     const r = verifier(
       rapport([mission({ id: 'decoupe', sorte: 'question_pour_l_atelier', intentions: [] })]),
@@ -187,6 +160,13 @@ describe('le schéma du rapport', () => {
     expect(schema.safeParse({ ...rapport([mission()]), autre: 1 }).success).toBe(false)
     expect(schema.safeParse(rapport([mission({ id: 'Pas un slug' })])).success).toBe(false)
     expect(schema.safeParse(rapport([mission()])).success).toBe(true)
+  })
+
+  it('la ronde n’écrit pas de mission `geste_code` : elle naît d’une commande du patron, le code l’écrit', () => {
+    const schema = schemaRapport(3, DOMAINE_ESSAI.places)
+    const geste = { ...rapport([mission()]), missions: [{ ...mission(), sorte: 'geste_code' }] }
+    expect(schema.safeParse(geste).success).toBe(false)
+    expect(JSON.stringify(schemaJsonRapport(3, DOMAINE_ESSAI.places))).not.toContain('geste_code')
   })
 
   it('l’outil et le schéma JSON du binaire disent la même chose', () => {
