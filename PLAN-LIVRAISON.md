@@ -170,7 +170,26 @@ push est atomique (`--atomic`) : sans lui, l'étiquette passait quand `main`
 la fusion (sur `origin/main`), et nettoie le motif contre les noms des
 clients fictifs de tous les métiers ; (5) le statut porte aussi `retiré`
 (L7 le suppose) ; une question pour l'atelier et une fuite rendent
-`écartée`.
+`écartée` ; (6) l'arbre du chantier s'ouvre détaché, la branche
+`chantier/<id>` n'est créée qu'une fois le chantier décidé (une mission
+écartée sur la mémoire d'`origin/main` ne laisse rien) ; (7) une fusion
+dont la branche est déjà dans `origin/main` (réponse d'un push perdue,
+`--refaire`) rend la fusion étiquetée, sans rien refusionner ; (8)
+`agence.yaml: clients[]` porte le `metier` de chaque client (le lot 3 refuse
+une mission de la file qui en nomme un autre) ; en mode non livré, `pnpm
+chantier` refuse une mission dont le métier n'est pas celui du client chez
+qui elle est.
+
+Risques acceptés, relevés à la relecture indépendante du lot 1 : la reprise
+après un push refusé refusionne sur un `origin/main` neuf sans rejouer
+`pnpm check` (L2 le veut) ; `exclureArbres` ajoute une ligne à
+`.git/info/exclude` du dépôt de base (un fichier, pas une commande git) ; le
+catalogue « un geste codé existe déjà » se juge sur le code de la racine,
+qui n'avance plus seule (le client juge sur le sien à la commande) ; un
+métier sans `evals_clients` n'a aucun nom à contrôler à l'agence (sa
+condition 4 refuse de toute façon) ; le slug du client entre dans
+`memoire/INDEX.md` d'`origin/main`, que tous les clients tireront au lot 4
+(à trancher par Lionel avant un second client réel).
 
 - `moteur/src/chantier/arbre.ts` : `verifierBase(c, racine)` (un dépôt git,
   un distant `origin`, `worktree prune`) ; `ouvrirArbre` depuis

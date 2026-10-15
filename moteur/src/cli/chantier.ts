@@ -19,6 +19,7 @@
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
 // appelle le modèle du quotidien (la clé que nomme la config du client).
+import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -29,6 +30,7 @@ import { faireChantier } from '../chantier/chantier'
 import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import type { Designable } from '../conversation/designation'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -97,6 +99,14 @@ try {
     }
     const chemin = resolve(values.mission)
     const { mission, client } = lireMission(chemin)
+    // Une mission chez un client (non livré) : son métier est celui du client, sinon le chantier
+    // ouvrirait la bande d'un autre métier, et le geste partirait chez ses clients (L10).
+    const config = join(dirname(chemin), '..', '..', FICHIER_CONFIG)
+    if (existsSync(config) && chargerConfig(config, ConfigBase).metier !== mission.metier) {
+      throw new Error(
+        `mission ${mission.id} du métier ${mission.metier}, client du métier ${chargerConfig(config, ConfigBase).metier}`,
+      )
+    }
     const r = await faireChantier(await conversationDuMetier(mission.metier), {
       racine: RACINE,
       agence,

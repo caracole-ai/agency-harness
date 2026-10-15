@@ -16,6 +16,7 @@ import {
   etatHumain,
   gesteVert,
   MISSION_ESSAI,
+  refuserPush,
 } from './essai.test.fixture'
 import { retirerFusion } from './fusion'
 import { ecrireRetrait } from './memoire'
@@ -96,6 +97,48 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
     expect(readFileSync(join(depots.racine, 'moteur', 'src', 'moteur.ts'), 'utf8')).toBe(
       'export const MOTEUR = 3\n',
     )
+  })
+
+  it('un chantier refusé, une fusion au push toujours refusé : sur la base, rien hors de la liste', async () => {
+    const depots = creerDepots()
+    const humain = etatHumain(depots.racine)
+    const { binaire } = binaireSimule({
+      plan: { faisable: true, raison: 'un geste', plan: '-' },
+      implementations: [{ ecrire: gesteVert() }],
+    })
+    const rouge = commandeSimulee({ check: [1] })
+    const options = {
+      racine: depots.racine,
+      agence: agenceEssai(binaire),
+      client: 'client-essai',
+      personnes: PERSONNES_ESSAI,
+      sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
+      env: ENV_ESSAI,
+      maintenant: Temporal.ZonedDateTime.from(`2026-10-11T03:00[${FUSEAU}]`),
+    }
+    const refuse = await faireChantier(METIER_ESSAI, {
+      ...options,
+      mission: clientAvecMission().fichier,
+      commande: rouge.commande,
+    })
+    expect(refuse.sorte === 'fait' && refuse.issue).toMatch(/^refusé/)
+    refuserPush(depots.origine)
+    const vert = commandeSimulee()
+    const echoue = await faireChantier(METIER_ESSAI, {
+      ...options,
+      mission: clientAvecMission({
+        ...MISSION_ESSAI,
+        id: 'autre_geste',
+        intentions: ['autre_geste'],
+      }).fichier,
+      commande: vert.commande,
+    })
+    expect(echoue.sorte === 'fait' && echoue.issue).toMatch(/push refusé deux fois/)
+    const surLaBase = [...rouge.emises, ...vert.emises].filter(
+      (x) => x.commande === 'git' && x.cwd === depots.racine,
+    )
+    expect(surLaBase.filter((x) => !PERMISES.includes(x.args[0] ?? ''))).toEqual([])
+    expect(etatHumain(depots.racine)).toEqual(humain)
   })
 
   it('verifierBase refuse un dossier qui n’est pas la racine d’un dépôt, et un dépôt sans origin', () => {

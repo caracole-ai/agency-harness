@@ -98,13 +98,18 @@ function exclureArbres(c: Commande, racine: string): void {
   }
 }
 
-export type ArbreOuvert = { sorte: 'ouvert'; chemin: string } | { sorte: 'deja_tentee' }
+/** `branche` : l'arbre est déjà sur `chantier/<id>` (`refaire`) ; sinon il est détaché, et `brancher` crée la branche une fois le chantier décidé. */
+export type ArbreOuvert =
+  | { sorte: 'ouvert'; chemin: string; branche: boolean }
+  | { sorte: 'deja_tentee' }
 
 /**
- * `git worktree add .claude/worktrees/chantier-<id> -b chantier/<id>
- * origin/main`, après `verifierBase`. Une branche qui existe : la mission a
- * déjà été tentée, rien n'est fait, sauf `refaire`, qui supprime l'arbre (pas
- * la branche) et le rouvre sur la branche telle qu'elle est.
+ * `git worktree add --detach .claude/worktrees/chantier-<id> origin/main`,
+ * après `verifierBase` : la mémoire d'`origin/main` s'y lit avant que la
+ * branche existe (une mission écartée ne laisse rien). Une branche
+ * `chantier/<id>` qui existe : la mission a déjà été tentée, rien n'est
+ * fait, sauf `refaire`, qui supprime l'arbre (pas la branche) et le rouvre
+ * sur la branche telle qu'elle est.
  */
 export function ouvrirArbre(c: Commande, racine: string, id: string, refaire = false): ArbreOuvert {
   exclureArbres(c, racine)
@@ -117,9 +122,14 @@ export function ouvrirArbre(c: Commande, racine: string, id: string, refaire = f
     racine,
     existe
       ? ['worktree', 'add', chemin, branche(id)]
-      : ['worktree', 'add', '--no-track', '-b', branche(id), chemin, REF_DISTANTE],
+      : ['worktree', 'add', '--detach', chemin, REF_DISTANTE],
   )
-  return { sorte: 'ouvert', chemin }
+  return { sorte: 'ouvert', chemin, branche: existe }
+}
+
+/** Le chantier décidé : la branche `chantier/<id>` créée dans son arbre, là où il est (`origin/main`). */
+export function brancher(c: Commande, arbre: string, id: string): void {
+  git(c, arbre, ['switch', '--quiet', '--no-track', '--create', branche(id)])
 }
 
 /** Un arbre détaché sur `origin/main` (`.claude/worktrees/<nom>`), après `verifierBase` : la fusion et le retrait s'y font, sans qu'aucune branche locale ne bouge. */

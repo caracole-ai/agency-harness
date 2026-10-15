@@ -12,7 +12,7 @@ le lot 0 de `PLAN-LIVRAISON.md` (le plan) et son **lot 1, le chantier sans
 clone ni dossier client**. Lionel, le soir du 2026-10-15 : le chantier se
 lance **au clic**, **à l'agence**, sans nuit ni clone réservé ; chaque
 fusion émet une **version signée** que le harnais du client **tire** et
-installe lui-même, avec retour arrière. `pnpm check` vert : moteur 477,
+installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
 interface 29, sécurité 133, agence web 259.
 
 **Prochaine session : lots 2 (la version signée) et 3 (la file des

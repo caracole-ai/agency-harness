@@ -9,6 +9,7 @@ import type { Domaine } from '../conversation/domaine'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
+  brancher,
   type Commande,
   commandeSync,
   commettre,
@@ -312,7 +313,8 @@ export async function faireChantier<S>(
   if (arbre.sorte === 'deja_tentee') return { sorte: 'deja_tentee', dossier }
   const cwd = arbre.chemin
 
-  // Les retraits et la mémoire d'`origin/main`, que la racine peut ne pas encore avoir (G2 : jamais refaite).
+  // Les retraits et la mémoire d'`origin/main`, que la racine peut ne pas encore avoir (G2 : jamais
+  // refaite), lus avant que la branche existe : une mission écartée ici ne laisse rien.
   const decision = decider(mission, catalogue, missionsRetirees(cwd))
   if (decision.sorte !== 'chantier') {
     fermerArbre(c, o.racine, mission.id)
@@ -439,6 +441,7 @@ export async function faireChantier<S>(
   }
 
   try {
+    if (!arbre.branche) brancher(c, cwd, mission.id)
     // L'arbre a ses propres dépendances : `pnpm check` y tourne.
     const installe = pnpm(['install', '--frozen-lockfile', '--prefer-offline'])
     if (installe.code !== 0) {

@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 import { z } from 'zod'
-import { chargerConfig } from '../config'
+import { chargerConfig, NOM_METIER } from '../config'
 import { VARIABLE_CLE_ANTHROPIC } from '../conversation/config'
 import { EFFORTS, type PrixModele } from '../modele/modele'
 
@@ -62,6 +62,8 @@ export const AgenceSchema = z.strictObject({
     clients: z.array(
       z.strictObject({
         slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
+        /** Son métier : une mission de sa file qui en nomme un autre est refusée (L10). */
+        metier: z.string().regex(NOM_METIER),
         /** L'adresse git de sa file (`missions-<slug>`), lue par `git clone`. */
         missions: z.string().min(1),
       }),

@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { relative } from 'node:path'
+import { join, relative } from 'node:path'
 import type { Designable } from '../conversation/designation'
 import {
   BRANCHE_PRINCIPALE,
+  branche,
   brancheExiste,
   type Commande,
   DISTANT,
@@ -13,7 +14,13 @@ import {
   retirerArbre,
   verifierBase,
 } from './arbre'
-import { DOSSIER_MEMOIRE, interdits, missionsRetirees } from './memoire'
+import {
+  DOSSIER_CHANTIERS_MEMOIRE,
+  DOSSIER_MEMOIRE,
+  interdits,
+  lireIndex,
+  missionsRetirees,
+} from './memoire'
 
 // La fusion automatique et son retrait (PLAN-GENERAL.md G1, G2 ;
 // PLAN-LIVRAISON.md L2). Le seul module qui fusionne et qui pousse, et
@@ -112,13 +119,26 @@ function avecReprise<T>(
   for (let essai = 0; essai < 2; essai++) {
     verifierBase(c, racine)
     const arbre = ouvrirArbreDetache(c, racine, nom)
+    let r: Tentative<T>
     try {
-      const r = travail(arbre)
-      if ('fini' in r) return r.fini
-      raison = r.pushRefuse
-    } finally {
-      retirerArbre(c, racine, arbre)
+      r = travail(arbre)
+    } catch (erreur) {
+      try {
+        retirerArbre(c, racine, arbre)
+      } catch {
+        // L'erreur du travail est celle qui compte ; le prochain `ouvrirArbreDetache` retire l'arbre.
+      }
+      throw erreur
     }
+    try {
+      retirerArbre(c, racine, arbre)
+    } catch (erreur) {
+      // Un arbre qui ne se retire pas ne défait rien de ce qui est poussé : le prochain
+      // `ouvrirArbreDetache` le retire. Il n'arrête qu'une reprise.
+      if (!('fini' in r)) throw erreur
+    }
+    if ('fini' in r) return r.fini
+    raison = r.pushRefuse
   }
   return enEchec(raison)
 }
@@ -196,6 +216,43 @@ export function conclure(o: {
       }
 
       enRoute = 'fusion défaite'
+      // La branche déjà dans `origin/main` (un push accepté dont la réponse s'est perdue, un
+      // `--refaire` d'une branche fusionnée) : rien ne se refusionne, l'étiquette dit ce qui l'est.
+      if (c(arbre, 'git', ['merge-base', '--is-ancestor', refBranche(o.id), 'HEAD']).code === 0) {
+        const posee = c(arbre, 'git', [
+          'rev-parse',
+          '--verify',
+          '--quiet',
+          `${refEtiquette(o.id)}^{commit}`,
+        ])
+        const entree = lireIndex(arbre)
+          .filter((e) => e.sorte === 'fusion' && e.id === o.id)
+          .at(-1)
+        oublierMemoire(c, arbre)
+        if (
+          posee.code === 0 &&
+          entree &&
+          c(arbre, 'git', ['merge-base', '--is-ancestor', posee.sortie.trim(), 'HEAD']).code === 0
+        ) {
+          return {
+            fini: {
+              sorte: 'fusionne',
+              fusion: posee.sortie.trim(),
+              memoire: join(
+                DOSSIER_MEMOIRE,
+                DOSSIER_CHANTIERS_MEMOIRE,
+                `${entree.date}-${o.id}.md`,
+              ),
+            },
+          }
+        }
+        return {
+          fini: {
+            sorte: 'echec',
+            raison: `${branche(o.id)} est déjà dans ${REF_DISTANTE} sans fusion étiquetée : rien n'est refait`,
+          },
+        }
+      }
       const message = `Chantier ${o.id} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : huit conditions vertes.`
       const fusion = c(arbre, 'git', ['merge', '--no-ff', '-m', message, refBranche(o.id)])
       if (fusion.code !== 0) {
@@ -208,6 +265,11 @@ export function conclure(o: {
       }
       try {
         const sha = git(c, arbre, ['rev-parse', 'HEAD']).trim()
+        if (
+          git(c, arbre, ['rev-list', '--parents', '-n', '1', sha]).trim().split(' ').length !== 3
+        ) {
+          return { fini: { sorte: 'echec', raison: "la fusion n'a pas fait de commit de fusion" } }
+        }
         git(c, arbre, ['tag', etiquette, sha])
         commettreMemoire(c, arbre, `Mémoire : chantier ${o.id} fusionné`)
         const refus = pousser(c, arbre, [refEtiquette(o.id)])

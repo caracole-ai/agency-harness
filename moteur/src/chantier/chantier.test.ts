@@ -28,7 +28,7 @@ import {
 } from './essai.test.fixture'
 import { type Condition, conclure, type IdCondition, refEtiquette, retirerFusion } from './fusion'
 import { fichierConsignes } from './garde'
-import { ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
+import { ecrireChantier, ecrireRetrait, lireIndex, missionsRetirees } from './memoire'
 import { METIER_ESSAI, PERSONNES_ESSAI } from './metier-essai.test.fixture'
 import { lireStatut, type Mission } from './mission'
 
@@ -481,6 +481,12 @@ describe('G2 : le retrait défait la fusion', () => {
     )
     expect(lireStatut(join(e.sortie, 'simuler_absence_bis.statut.yaml'))?.statut).toBe('écartée')
     expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
+    // Écartée avant que la branche existe : rien ne reste, et la relancer l'écarte encore.
+    expect(git(e.depots.racine, 'branch', '--list', 'chantier/simuler_absence_bis')).toBe('')
+    expect(arbresRestants(e.depots.racine)).toEqual([])
+    expect((await faireChantier(METIER_ESSAI, { ...e.options, mission: bis.fichier })).sorte).toBe(
+      'decision',
+    )
   })
 
   it('un push toujours refusé au retrait : rien n’est retiré, ni sur le distant ni chez l’humain', async () => {
@@ -497,6 +503,87 @@ describe('G2 : le retrait défait la fusion', () => {
   it('rien à retirer sans fusion étiquetée', async () => {
     const { depots } = await lancer({ pnpm: { check: [1] } })
     expect(() => retirer(depots.racine)).toThrow(/aucune fusion/)
+  })
+})
+
+describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
+  const vertes = (
+    ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+  ).map((id): Condition => ({ id, ok: true, mesure: 'vert' }))
+  const entree =
+    (id: string) =>
+    (arbre: string, sorte: 'fusion' | 'refus', issue: string): string =>
+      ecrireChantier(
+        arbre,
+        {
+          date: '2026-10-11',
+          client: CLIENT,
+          id,
+          titre: id,
+          sections: [],
+          appris: '',
+          sorte,
+          issue,
+        },
+        PERSONNES_ESSAI,
+      )
+
+  it('en conflit avec origin/main : échoué, ni fusion ni étiquette ni mémoire poussées, rien ne reste', () => {
+    const depots = creerDepots()
+    const fichier = 'metiers/essai/code/src/actions.ts'
+    git(depots.racine, 'checkout', '-q', '-b', 'chantier/x')
+    spawnSync('sh', ['-c', `echo "export const A = 1" > ${fichier}`], { cwd: depots.racine })
+    git(depots.racine, 'commit', '-q', '-am', 'x')
+    git(depots.racine, 'checkout', '-q', 'main')
+    const autre = cloneDuDistant(depots.origine)
+    spawnSync('sh', ['-c', `echo "export const A = 2" > ${fichier}`], { cwd: autre })
+    spawnSync(
+      'git',
+      ['-c', 'user.name=a', '-c', 'user.email=a@b', 'commit', '-q', '-am', 'autre'],
+      {
+        cwd: autre,
+      },
+    )
+    git(autre, 'push', '-q', 'origin', 'main')
+    const tete = git(depots.origine, 'rev-parse', 'main')
+    const humain = etatHumain(depots.racine)
+    const r = conclure({
+      commande: commandeSync,
+      racine: depots.racine,
+      id: 'x',
+      titre: 'x',
+      conditions: vertes,
+      personnes: PERSONNES_ESSAI,
+      ecrireEntree: entree('x'),
+    })
+    expect(r.sorte === 'echec' && r.raison).toMatch(/^fusion impossible/)
+    expect(git(depots.origine, 'rev-parse', 'main')).toBe(tete)
+    expect(git(depots.origine, 'tag', '--list')).toBe('')
+    expect(git(depots.racine, 'tag', '--list')).toBe('')
+    expect(etatHumain(depots.racine)).toEqual(humain)
+    expect(arbresRestants(depots.racine)).toEqual([])
+  })
+
+  it('déjà sur origin/main (la réponse d’un push perdue) : fusionné, la même fusion, rien de plus poussé', async () => {
+    const e = await lancer()
+    const tete = git(e.depots.origine, 'rev-parse', 'main')
+    const fusion = git(e.depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    const r = conclure({
+      commande: commandeSync,
+      racine: e.depots.racine,
+      id: 'simuler_absence',
+      titre: 'x',
+      conditions: vertes,
+      personnes: PERSONNES_ESSAI,
+      ecrireEntree: entree('simuler_absence'),
+    })
+    expect(r).toEqual({
+      sorte: 'fusionne',
+      fusion,
+      memoire: 'memoire/chantiers/2026-10-11-simuler_absence.md',
+    })
+    expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(tete)
+    expect(arbresRestants(e.depots.racine)).toEqual([])
   })
 })
 
