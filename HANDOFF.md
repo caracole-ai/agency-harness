@@ -8,7 +8,7 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 ## Où on en est
 
 `main` = `origin/main` = la fusion de `general/masquer-remplacees` (8106d79).
-**`general/retrait-promotion` n'est pas fusionnée** (12 commits devant `main`,
+**`general/retrait-promotion` n'est pas fusionnée** (13 commits devant `main`,
 non poussée) : à fusionner après relecture de Lionel et une passe
 `pnpm evals ronde --client exemples/client-fictif` sur Sonnet (le prompt de la
 ronde et la carte ont changé ; l'attendu de R-1..R-3 est le même par
@@ -33,16 +33,20 @@ moteur 603, interface 33, sécurité 144, agence web 263.
   n'écrase jamais une mission déjà écrite. La carte suit : mission écrite →
   chantier du … → disponible (un geste du métier porte ce nom). Vérifié sans
   modèle sur une copie, vu à 1280 et 390 px.
-- **La mesure avec modèle est préparée, pas lancée** (attend le « go » de
-  Lionel) : dépôt nu `~/harnais-nuit-origine.git` (cloné depuis ce dépôt, son
-  `main` = la tête de `general/retrait-promotion`, pour que le chantier lise
-  la convention du nom), clone de la nuit `~/harnais-nuit` (`depot_nuit`
-  d'`agence.yaml`), copie du client `~/harnais-mesure/client`. Reste : trois
-  demandes réelles d'une intention sans geste (`pnpm parler`, Sonnet), la
-  commande par l'interface, `pnpm chantier --mission
-  ~/harnais-mesure/client/rondes/<date>/<intention>.yaml`. Plafond 10 $ par
-  mission + `pnpm evals traduire` (≈ 1 à 2 $) : au plus ≈ 12 $ équivalents.
-  La fusion du geste reste sur la machine (`main` du clone → dépôt nu).
+- **Mesure avec modèle, 1re passe (2026-10-15, `heures_par_agent`)** :
+  trois demandes réelles sur Sonnet (0,09 $), commande par l'interface (yaml
+  sans nom), `pnpm chantier` : **refusé, `pnpm check` rouge** (6,58 $,
+  836 s ; plan Fable 4,23 $, implémentation Opus 2,35 $). Cause : un test de
+  l'interface (lot 3) prenait `heures_par_agent` comme intention sans geste ;
+  corrigé (4ef5f19). Avec ce correctif, la branche `chantier/heures_par_agent`
+  du clone est verte (sécurité 151 tests). Le geste porte bien l'identifiant
+  de la mission. **À Lionel** : le chantier a réécrit le geste appris d'éval
+  `heures_par_agent` de `evals/gestes.yaml` (devenu `compter_vacations`,
+  attendus changés), forcé par le moteur (un geste appris au nom d'un geste
+  codé est écarté) ; la garde ne surveille pas `gestes.yaml`. Relance :
+  mettre le correctif dans `main` du dépôt nu `~/harnais-nuit-origine.git`,
+  puis `pnpm chantier --mission
+  ~/harnais-mesure/client/rondes/2026-10-15/heures_par_agent.yaml --refaire`.
 - **La nuit** (`PLAN-RONDE.md`, `PLAN-GENERAL.md`) : ronde, chantier, fusion
   sous conditions ; tout sur l'abonnement (binaire `claude`, Sonnet 5.5 au
   quotidien).
