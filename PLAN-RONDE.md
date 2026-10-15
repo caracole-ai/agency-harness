@@ -1,5 +1,10 @@
 # Plan — la ronde de nuit et le chantier : le harnais propose ce qui manque au catalogue, un modèle le code, un humain fusionne
 
+> **Amendé le 2026-10-15** : la promotion automatique est retirée. La ronde
+> n'écrit aucune mission `geste_code` pour une intention que le patron n'a
+> pas commandée ; plus d'état « promotion en cours » (§ 0.b) ni de décision
+> « attend » ; la nuit enchaîne purge des instantanés → ronde → chantier.
+
 Écrit le 2026-10-10, sur deux décisions de Lionel du même jour
 (`REFLEXIONS.md`, « Décidé ») :
 

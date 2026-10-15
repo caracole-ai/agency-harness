@@ -1,5 +1,10 @@
 # Plan général — où on en est, et tout ce qui reste, dans l'ordre
 
+> **Amendé le 2026-10-15** : la promotion automatique est retirée
+> (`REFLEXIONS.md`). Les mentions de `pnpm promotions`, de la fabrication,
+> de l'état « promotion en cours » et de `evals promotion` décrivent l'état
+> d'avant ; la phase E n'a plus d'étape `promotions` à retirer.
+
 Écrit le 2026-10-10 au soir, sur trois décisions de Lionel du même soir
 (`REFLEXIONS.md`, « Décidé ») :
 

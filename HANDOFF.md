@@ -7,18 +7,19 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/choix-boutons` (S9, lot 3).
-`pnpm check` vert : moteur 644, interface 28, sécurité 145, agence web 263.
+`main` = `origin/main` = la fusion de `general/masquer-remplacees` (8106d79).
+`pnpm check` vert : moteur 644, interface 29, sécurité 145, agence web 263.
 
 - **Le moteur ne sait rien d'aucun métier** ; deux métiers le prouvent : la
   sécurité privée (`metiers/securite-privee`, client `exemples/client-fictif`)
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
 - **Les trois espaces** (`PLAN-ESPACES.md`) : la traduction vers un geste
   codé, l'échappée (SQL en lecture sur une copie, pseudonymes, contrôle « pas
-  un chiffre ni un nom hors des données »), la promotion (`PLAN-PROMOTION.md`),
-  **gelée** (Lionel, 2026-10-14) : le code reste, plus de session dessus ;
-  l'apprentissage viendra d'un « retiens ça » du patron. La phase E retirera
-  l'étape `promotions` de `pnpm nuit`.
+  un chiffre ni un nom hors des données »), et la **commande** à la place de
+  la promotion : la promotion automatique est **retirée** (Lionel,
+  2026-10-15, branche `general/retrait-promotion`, ci-dessous) ; un geste
+  nouveau se construit sur commande du patron, jamais parce qu'une demande
+  revient.
 - **La nuit** (`PLAN-RONDE.md`, `PLAN-GENERAL.md`) : ronde, chantier, fusion
   automatique sous conditions, sur l'abonnement par le binaire `claude`.
 - **Le modèle : Sonnet 5.5 par l'abonnement** (`acces: { binaire: claude }`,
@@ -29,12 +30,17 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
   `/api/geste`, sans modèle). Une proposition corrigée n'apprend rien ; la
   nouvelle R-… se rattache à la conversation d'origine par le champ générique
   `corrige`. Deux R-… en attente : « laquelle ? ».
-- **`general/masquer-remplacees`, non fusionnée** (une fusion par session) :
-  une proposition corrigée depuis une autre conversation ne reste plus dans
-  « Confirmations en attente ». L'attente de la nouvelle garde `corrige`,
-  l'interface ne liste pas celle qu'elle remplace ; le « oui » sur l'ancienne
-  répond toujours « remplacée par … ». Vu à 1280 et 390 px. À fusionner
-  (`pnpm check` vert suffit : aucun modèle en jeu).
+- **`general/retrait-promotion`, non fusionnée** (la fusion de la session
+  a été celle de `masquer-remplacees`) : le retrait de la promotion en cinq
+  commits (couplage défait, nuit/ronde/chantier, évals, config et
+  suppression, docs). `pnpm check` vert : moteur 586, interface 29,
+  sécurité 144, agence 263 (les tests de la promotion partis avec elle).
+  La ronde n'écrit plus de mission `geste_code` sans commande ; la nuit
+  purge les instantanés (90 jours) à la place de `pnpm promotions` ;
+  `citations` et `PropositionMetier.criteres` restent (lus par des tests).
+  À fusionner après relecture ; avant, une passe `pnpm evals ronde` sur
+  Sonnet (le prompt de la ronde a changé ; l'attendu de R-1..R-3 est le
+  même par construction).
 - **Dernières mesures (Sonnet, `evals/resultats/apparie-2026-10-14-s9-*`)** :
   traduction 120 contre 119 sur les cas communs, cas neufs 12/12,
   `liberer_un_jour` 3/3, gestes 6/6, échappée de la sécurité 18/18 ; agence
@@ -70,6 +76,9 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
+- À Lionel : le sort des gestes appris (`gestes/`, atelier, onglet « Appris »,
+  `pnpm gestes`, `evals gestes`, ≈ 2 500 lignes) : plus aucun producteur
+  depuis le retrait ; garder dormants ou retirer.
 - À Lionel : R-2 (« Aisha ») fuit à chaque passe : le niveau 2 de `designer`
   envoie au modèle les candidats avec leur nom, contre « aucun nom ne part au
   modèle ».
@@ -80,9 +89,8 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 - Les tableaux d'évals disent « coût réel » sous l'abonnement (une
   estimation).
 - Agence : `facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur),
-  17 tests au lieu de 23, les promotions jamais mesurées, le piège `lots.nom`.
-- Une fuite comptée à tort sur exception ; le commentaire « impossible » de
-  `compter_vacations` (`metiers/securite-privee/evals/promotions.yaml`).
+  17 tests au lieu de 23, le piège `lots.nom`.
+- Une fuite comptée à tort sur exception.
 - Non relus : le mini-site (https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52)
   et la présentation (https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2).
 
@@ -123,9 +131,8 @@ pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
 pnpm veiller --client exemples/client-fictif --date 2026-10-06
 pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…"
 pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
-pnpm promotions --client <copie> [--date AAAA-MM-JJ] [--sans-modele]
 pnpm gestes --client <copie> lister | verifier <id> | activer <id> --par <nom> | retirer <id> --motif "…"
-pnpm evals traduire|echappee|promotion|gestes --client exemples/client-fictif [--seulement id,id] [--modele simule]
+pnpm evals traduire|echappee|gestes|ronde --client exemples/client-fictif [--seulement id,id] [--modele simule]
 pnpm ronde --client <copie> --date AAAA-MM-JJ [--sans-modele]
 pnpm chantier --mission <copie>/rondes/<date>/<id>.yaml
 pnpm nuit --client <copie> [--date AAAA-MM-JJ]   # jamais avec `pnpm -s`

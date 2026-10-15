@@ -531,10 +531,10 @@ async function chargerGestes() {
 function rendreGestes(gestes) {
   const groupes = [
     [
-      'Proposés par l’outil',
+      'Proposés',
       'propose',
       'Aucun geste proposé. ',
-      'Quand une demande nouvelle revient, l’outil fabrique un geste, le vérifie, puis vous le propose ici.',
+      'Un geste proposé est un geste appris écrit à la main, vérifié, qui attend votre oui.',
     ],
     ['Actifs', 'actif', 'Aucun geste actif. ', 'Un geste actif répond seul, sans appel à l’IA.'],
     [
