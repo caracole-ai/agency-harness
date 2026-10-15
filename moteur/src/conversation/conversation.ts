@@ -160,7 +160,8 @@ interface Attente {
   identite: Identite
   demande:
     | { sorte: 'action'; action: string; params: Record<string, unknown> }
-    | { sorte: 'reaffectation'; id: string }
+    /** `corrige` : la proposition qu'elle remplace, que l'interface ne montre plus en attente. */
+    | { sorte: 'reaffectation'; id: string; corrige?: string }
   empreinte: string
 }
 
@@ -604,7 +605,11 @@ function ouvrirProposition<S>(
   })
   const attente: Attente = {
     identite: tour.identite,
-    demande: { sorte: 'reaffectation', id: ouverte.id },
+    demande: {
+      sorte: 'reaffectation',
+      id: ouverte.id,
+      ...(corrige !== undefined ? { corrige } : {}),
+    },
     empreinte: e,
   }
   ecrire(ici, tour, [
