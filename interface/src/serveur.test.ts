@@ -503,18 +503,23 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     type: TYPE_ECHAPPEE,
     client: CLIENT,
     objet: conversation,
-    issue: 'reponse',
-    motif: 'Libère Julien samedi.',
+    issue: 'proposition',
+    motif: 'Julien a-t-il rendu ses clés ?',
     donnees: { echappee: id, intention, role: 'patron', consigne_modele: consigne, tours: 2 },
   })
-  /** Une copie avec trois demandes sans geste sous deux intentions (une échappée pour `liberer_un_jour`), une inconnue et une nouvelle sans résumé. */
+  /**
+   * Une copie avec trois demandes sans geste sous deux intentions (une échappée
+   * finie en proposition pour `remise_des_cles`), une inconnue et une nouvelle
+   * sans résumé. Des intentions que le métier ne déclare ni ne code : la nuit
+   * peut fusionner un geste du métier sans que ces tests, hors de sa bande, changent.
+   */
   function copieAvecDemandes(): string {
     const dossier = copie()
     const j = new Journal(join(dossier, 'journal.sqlite'))
     j.ecrire(
       [
-        nouvelle('C-1', 'liberer_un_jour', 'libérer Julien samedi', 'Libère Julien samedi.'),
-        echappee('C-1', 'E-20261008T1000-0001', 'liberer_un_jour', 'Libère A-3 samedi.'),
+        nouvelle('C-1', 'remise_des_cles', 'les clés de Julien', 'Julien a-t-il rendu ses clés ?'),
+        echappee('C-1', 'E-20261008T1000-0001', 'remise_des_cles', 'A-3 a-t-il rendu ses clés ?'),
       ],
       '2026-10-08T08:00:00Z',
     )
@@ -522,9 +527,9 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       [
         nouvelle(
           'C-2',
-          'heures_par_agent',
-          'les heures de Karim',
-          'Combien d’heures a fait Karim ?',
+          'releve_kilometrique',
+          'les kilomètres de Karim',
+          'Combien de kilomètres a fait Karim ?',
         ),
       ],
       '2026-10-09T08:00:00Z',
@@ -533,9 +538,9 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       [
         nouvelle(
           'C-3',
-          'liberer_un_jour',
-          'libérer Sophie dimanche',
-          'Donne son dimanche à Sophie.',
+          'remise_des_cles',
+          'les clés de Sophie',
+          'Sophie a-t-elle rendu ses clés ?',
         ),
       ],
       '2026-10-09T09:00:00Z',
@@ -572,15 +577,15 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     expect(r.status).toBe(200)
     expect(await r.json()).toEqual([
       {
-        intention: 'liberer_un_jour',
+        intention: 'remise_des_cles',
         compte: 2,
-        exemples: ['libérer Sophie dimanche', 'libérer Julien samedi'],
+        exemples: ['les clés de Sophie', 'les clés de Julien'],
         derniere: '2026-10-09',
       },
       {
-        intention: 'heures_par_agent',
+        intention: 'releve_kilometrique',
         compte: 1,
-        exemples: ['les heures de Karim'],
+        exemples: ['les kilomètres de Karim'],
         derniere: '2026-10-09',
       },
     ])
@@ -592,7 +597,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       (
         await poster(a, '/api/sans-geste/commander', {
           identite: { role: 'agent', agent: 'A-2' },
-          intention: 'liberer_un_jour',
+          intention: 'remise_des_cles',
         })
       ).status,
     ).toBe(403)
@@ -607,44 +612,44 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     )
     const r = await poster(a, '/api/sans-geste/commander', {
       identite: PATRON,
-      intention: 'liberer_un_jour',
+      intention: 'remise_des_cles',
     })
     expect(r.status).toBe(200)
-    expect(await r.json()).toEqual({ intention: 'liberer_un_jour', le: '2026-10-10' })
+    expect(await r.json()).toEqual({ intention: 'remise_des_cles', le: '2026-10-10' })
     const commande = journalDe(dossier).find((l) => l.type === TYPE_GESTE_COMMANDE)
     expect(commande).toMatchObject({
-      objet: 'liberer_un_jour',
-      motif: 'libérer Sophie dimanche',
+      objet: 'remise_des_cles',
+      motif: 'les clés de Sophie',
       horodatage: '2026-10-10T19:40:00Z',
     })
     expect(JSON.parse(commande?.donnees ?? '{}')).toEqual({
       par: { role: 'patron' },
-      exemples: ['libérer Sophie dimanche', 'libérer Julien samedi'],
+      exemples: ['les clés de Sophie', 'les clés de Julien'],
       compte: 2,
     })
     expect(journalDe(dossier).filter((l) => l.type === TYPE_APPEL)).toEqual([])
-    const chemin = join(dossier, 'rondes', '2026-10-10', 'liberer_un_jour.yaml')
+    const chemin = join(dossier, 'rondes', '2026-10-10', 'remise_des_cles.yaml')
     const { mission } = lireMission(chemin)
     expect(mission).toMatchObject({
-      id: 'liberer_un_jour',
+      id: 'remise_des_cles',
       sorte: 'geste_code',
       ecrit: true,
       echappees: ['E-20261008T1000-0001'],
-      consignes_types: ['Libère <personne> samedi.'],
+      consignes_types: ['<personne> a-t-il rendu ses clés ?'],
       statut: 'à faire',
     })
     expect(readFileSync(chemin, 'utf8')).not.toMatch(/Julien|Sophie|A-\d/)
     const encore = await poster(a, '/api/sans-geste/commander', {
       identite: PATRON,
-      intention: 'liberer_un_jour',
+      intention: 'remise_des_cles',
     })
     expect(encore.status).toBe(400)
     expect(((await encore.json()) as { erreur: string }).erreur).toBe(
-      'liberer_un_jour : déjà commandé le 2026-10-10',
+      'remise_des_cles : déjà commandé le 2026-10-10',
     )
     const [d] = (await (await lire(a, '/api/sans-geste')).json()) as { commande?: unknown }[]
     expect(d).toMatchObject({
-      intention: 'liberer_un_jour',
+      intention: 'remise_des_cles',
       commande: { par: { role: 'patron' }, le: '2026-10-10', disponible: false },
     })
     expect(d).not.toHaveProperty('commande.chantier')
@@ -654,12 +659,12 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     const commander = () =>
       poster(app([], dossier), '/api/sans-geste/commander', {
         identite: PATRON,
-        intention: 'liberer_un_jour',
+        intention: 'remise_des_cles',
       })
     expect((await commander()).status).toBe(200)
     const j = new Journal(join(dossier, 'journal.sqlite'))
     j.ecrire(
-      [{ type: TYPE_CHANTIER, client: CLIENT, objet: 'liberer_un_jour', issue: 'fusionné' }],
+      [{ type: TYPE_CHANTIER, client: CLIENT, objet: 'remise_des_cles', issue: 'fusionné' }],
       '2026-10-11T01:30:00Z',
     )
     j.fermer()
@@ -678,7 +683,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       dossier,
       maintenant: MAINTENANT,
       modele: modeleSimule([]),
-      metier: { ...METIER, actions: [...METIER.actions, { ...action, id: 'liberer_un_jour' }] },
+      metier: { ...METIER, actions: [...METIER.actions, { ...action, id: 'remise_des_cles' }] },
     })
     expect(await etat(avecGeste)).toMatchObject({ disponible: true })
   })
@@ -686,14 +691,16 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     const dossier = copieAvecDemandes()
     const r = await poster(app([], dossier), '/api/sans-geste/commander', {
       identite: PATRON,
-      intention: 'heures_par_agent',
+      intention: 'releve_kilometrique',
     })
     expect(r.status).toBe(400)
     expect(((await r.json()) as { erreur: string }).erreur).toMatch(
-      /^heures_par_agent : aucune consigne utilisable/,
+      /^releve_kilometrique : aucune consigne utilisable/,
     )
     expect(journalDe(dossier).filter((l) => l.type === TYPE_GESTE_COMMANDE)).toEqual([])
-    expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'heures_par_agent.yaml'))).toBe(false)
+    expect(existsSync(join(dossier, 'rondes', '2026-10-10', 'releve_kilometrique.yaml'))).toBe(
+      false,
+    )
   })
 })
 
