@@ -128,6 +128,8 @@ function poserVersion(
   m: Omit<Manifeste, 'commit'>,
 ): string {
   oterVersionsOrphelines(c, arbre)
+  // Les versions du distant, même hors de `main` (une étiquette refusée chez les clients prend quand même son nom).
+  git(c, arbre, ['fetch', '--quiet', DISTANT, 'refs/tags/v*:refs/tags/v*'])
   const tag = prochaineEtiquette(c, arbre, v.jour)
   signerEtiquette(c, arbre, tag, commit, rendreManifeste(tag, { ...m, commit }), v.cle)
   return tag

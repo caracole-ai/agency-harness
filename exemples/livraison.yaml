@@ -1,0 +1,22 @@
+# Un client livré (PLAN-LIVRAISON.md L5) : ce fichier, posé dans le dossier
+# du client sous le nom `livraison.yaml`, fait de lui un client livré. Sans
+# lui, rien ne quitte sa machine. Ce fichier-ci documente : aucun exemple du
+# dépôt ne le lit.
+
+# Le dépôt du produit (l'`origin` de l'agence), en lecture seule : les
+# versions signées s'y tirent (`git fetch --tags`). Une clé de déploiement en
+# lecture, déclarée dans ~/.ssh/config de la machine (jamais ici).
+depot: git@github.com:agence/agency-harness.git
+
+# La file du client (`missions-<slug>`), en lecture et écriture : les missions
+# qu'il commande partent par là, les statuts des chantiers reviennent par là.
+# Une autre clé de déploiement, en écriture sur ce seul dépôt.
+missions: git@github.com:agence/missions-client-fictif.git
+
+# Hors du dossier client, un chemin absolu : `depot/` (le clone nu du
+# produit), `versions/<tag>/`, les liens `courant`, `precedent`,
+# `courant.suivant`, `missions/` (le clone de la file).
+installation: /opt/harnais/client-fictif
+
+# Le pas du rattrapage (statuts, versions), en minutes.
+intervalle_minutes: 15

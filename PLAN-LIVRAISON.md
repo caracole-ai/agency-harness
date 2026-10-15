@@ -353,6 +353,25 @@ faire avant un second client d'un autre métier.
 
 ### Lot 4 — La mise à jour chez le client et le lanceur (`general/l4-mise-a-jour`, une à deux sessions ; après 2 et 3)
 
+**Fait le 2026-10-15, sur `general/l4-mise-a-jour`, empilée sur les lots 2
+et 3.** Écarts : la préparation essaie les versions de la plus récente à la
+plus ancienne et prépare la première admise (une plus récente refusée, par
+sa signature ou sa lignée, ne bloque pas les suivantes) ; une version
+refusée ou revenue en arrière n'est jamais reprise (le journal le dit, une
+fois) ; l'interface lance le rattrapage dans un processus à part (`pnpm
+mise-a-jour`) pour continuer de répondre pendant `pnpm install` et `pnpm
+check` de la version ; le lanceur vit dans `interface/src/harnais.ts` (il
+connaît l'hôte et le port de l'interface), sa boucle dans
+`moteur/src/livraison/harnais.ts` ; la première installation se fait par
+`pnpm mise-a-jour` (la version préparée devient la courante) ; `etat.yaml`
+(la version courante d'un client, poussée dans sa file) n'est pas fait :
+l'agence n'en a pas l'usage avant la phase G ; `pnpm chantier retirer` pousse
+le statut `retiré` (et sa version) dans la file du client qui avait
+commandé. Trouvé par la chaîne entière : l'agence ne connaissait que les
+versions de `main` ; un nom pris sur le distant hors de `main` (une
+étiquette refusée chez les clients) bloquait toute version suivante →
+l'agence tire toutes les étiquettes `v*` avant de nommer.
+
 - `moteur/src/livraison/mise-a-jour.ts` : `preparer(dossier)` (L8 : fetch,
   candidates, vérification, worktree, install, check, `.prete`,
   `courant.suivant`, `VERSION`), `elaguer` (deux versions gardées),

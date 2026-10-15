@@ -31,6 +31,7 @@ import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
+import { statuerRetrait } from '../livraison/missions'
 import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -68,6 +69,7 @@ try {
       RACINE,
       Object.keys(agence.chantier.evals_clients),
     )
+    let client: string | undefined
     const r = retirerFusion({
       commande: commandeSync,
       racine: RACINE,
@@ -77,6 +79,7 @@ try {
       ecrireRetrait: (arbre) => {
         const fusion = missionFusionnee(arbre, id)
         if (!fusion) throw new Error(`aucune fusion de ${id} dans la mémoire d'origin/main`)
+        client = fusion.client
         ecrireRetrait(
           arbre,
           {
@@ -93,6 +96,21 @@ try {
     })
     console.log(
       `${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, version ${r.version}, poussé.`,
+    )
+    // Le client qui l'avait commandé le lit dans sa file (PLAN-LIVRAISON.md L7).
+    const dit =
+      client !== undefined &&
+      statuerRetrait(commandeSync, RACINE, agence.agence.clients, client, id, {
+        statut: 'retiré',
+        issue: `retiré : ${motif}`,
+        version: r.version,
+        cout_usd: 0,
+        le: maintenant.toInstant().toString(),
+      })
+    console.log(
+      dit
+        ? `Statut « retiré » poussé dans la file de ${client}.`
+        : `${client ?? 'Le client'} n'a pas de file à l'agence : rien n'est poussé.`,
     )
   } else {
     if (!values.mission) {

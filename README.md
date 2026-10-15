@@ -91,9 +91,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `pnpm check`, bascule à un moment calme, revient en arrière si le
   redémarrage échoue. Douze décisions L1 à L12, cinq lots. Lot 0 (le plan)
   et lot 1 (le chantier sans clone ni dossier client, la nuit retirée) faits
-  le 2026-10-15 ; lots 2 (la version signée, `pnpm versionner`) et 3 (la
-  file des missions, `pnpm agence`) faits sur `general/l3-missions`, à
-  fusionner ; lots 4 et 5 à faire.
+  le 2026-10-15 ; lots 2 (la version signée, `pnpm versionner`), 3 (la
+  file des missions, `pnpm agence`) et 4 (la mise à jour tirée, `pnpm
+  harnais`) faits sur `general/l4-mise-a-jour`, à fusionner ; lot 5 (la
+  mesure réelle) à faire.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -127,7 +128,7 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `evals_clients` donne, par métier, le client fictif de la condition 4
   (`PLAN-METIER-2.md` M9).
 - `<dossier client>/livraison.yaml` — le client livré (`PLAN-LIVRAISON.md`
-  L5) : `depot` (le dépôt du produit, en lecture seule), `missions` (sa file
+  L5 ; un exemple commenté : `exemples/livraison.yaml`) : `depot` (le dépôt du produit, en lecture seule), `missions` (sa file
   `missions-<slug>`, en lecture et écriture), `installation` (un chemin
   absolu hors du dossier client : le clone de la file, puis les versions au
   lot 4), `intervalle_minutes`. Sans ce fichier, rien ne quitte la machine
@@ -472,12 +473,41 @@ pnpm agence [--une-fois] # l'agence prend les missions de ses clients (PLAN-LIVR
                          # une boucle (agence.yaml: agence.intervalle_secondes) sous un verrou
                          # (.claude/missions/agence.lock) ; à chaque tour, la file git de chaque
                          # client (agence.clients : slug, métier, adresse de missions-<slug>)
-                         # tirée dans .claude/missions/<slug>/, la plus ancienne mission à
-                         # prendre (une mission d'un autre métier que son client : écartée), au
-                         # plus chantiers_max_par_jour chantiers qui coûtent par jour (au-delà :
+                         # tirée dans .claude/missions/<slug>/ (aucun lien suivi), la mission à
+                         # prendre (le client qui a eu le moins de chantiers aujourd'hui, puis
+                         # la plus ancienne ; une mission d'un autre métier que son client :
+                         # écartée), au plus chantiers_max_par_jour chantiers par jour, comptés
+                         # au registre de l'agence (.claude/missions/chantiers.log ; au-delà :
                          # « en attente », demain) ; préflight (binaire connecté, clé de
-                         # signature), statut « en cours » poussé, le chantier, son statut
-                         # final et son dossier poussés dans la file. --une-fois : un tour (cron).
+                         # signature), statut « en cours », le chantier, son statut final et son
+                         # dossier poussés dans la file (un push qui échoue part au tour
+                         # suivant). --une-fois : un tour (cron).
+pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
+                         # chez un client livré (PLAN-LIVRAISON.md L9) : le lanceur, lancé depuis
+                         # l'installation (cd <installation>/courant), qui lance pnpm interface
+                         # depuis la version courante, bascule sur la version prête quand
+                         # l'interface sort au calme (code 75), la sonde (POST /api/roles, 30 s),
+                         # revient en arrière si elle ne répond pas ; trois plantages en dix
+                         # minutes : arrêt. Il tourne avec le code de la version qui l'a lancé
+                         # jusqu'à son redémarrage à la main. À installer une fois, par exemple
+                         # launchd (macOS) : ProgramArguments = /bin/sh -c "cd <installation>/courant
+                         # && pnpm harnais --client <dossier>", KeepAlive = true ; systemd :
+                         # WorkingDirectory=<installation>/courant, ExecStart=pnpm harnais
+                         # --client <dossier>, Restart=on-failure.
+                         # Ce que le client voit : l'onglet « Gestes » dit « Version v…, mise à
+                         # jour le … » et, pour chaque commande, en attente de l'agence →
+                         # chantier en cours → fusionné (v…), mise à jour en préparation →
+                         # disponible ; le journal dit « mise à jour : faite | refusée |
+                         # retour arrière ».
+pnpm mise-a-jour [retirer] --client <dossier>
+                         # une fois, à la main (l'interface le lance d'elle-même toutes les
+                         # intervalle_minutes et dès qu'un statut arrive) : les statuts tirés
+                         # de la file, puis la prochaine version préparée à côté (signature de
+                         # l'agence vérifiée contre <dossier>/signataires, lignée, pnpm check
+                         # rejoué dans son arbre) ; la première fois, elle devient la courante.
+                         # Une version refusée ou revenue en arrière n'est jamais reprise.
+                         # retirer : courant ← precedent, à la main (l'interface le dit au
+                         # journal à son redémarrage).
 pnpm versionner          # une version signée sur origin/main tel quel, pour livrer le moteur
                          # sans chantier (PLAN-LIVRAISON.md L4) : l'étiquette v<AAAA-MM-JJ>-<n>,
                          # son message le manifeste en clair, l'étiquette seule poussée. Pas

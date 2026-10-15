@@ -13,6 +13,7 @@ const API = {
   geste: '/api/geste',
   sansGeste: '/api/sans-geste',
   commanderGeste: '/api/sans-geste/commander',
+  version: '/api/version',
 }
 const FUSEAU = 'Europe/Paris'
 /** Le type de ligne d'un appel au modèle (moteur/src/modele/compteur.ts) : son coût est montré au journal. */
@@ -510,8 +511,10 @@ async function chargerSansGeste() {
   if (!zone.querySelector('.liste, .vide'))
     zone.replaceChildren(el('p', { classe: 'chargement', texte: 'Chargement…' }))
   let sansGeste
+  let version
   try {
     sansGeste = await appeler(API.sansGeste, { identite: ici.identite })
+    version = await appeler(API.version, { identite: ici.identite })
   } catch (erreur) {
     zone.replaceChildren(
       erreur.statut === 403
@@ -521,6 +524,15 @@ async function chargerSansGeste() {
     return
   }
   zone.replaceChildren(
+    // La version qui tourne (PLAN-LIVRAISON.md L9) : seulement chez un client livré.
+    ...(version.version
+      ? [
+          el('p', {
+            classe: 'texte',
+            texte: `Version ${version.version}${version.le ? `, mise à jour le ${jour(version.le)}` : ''}.`,
+          }),
+        ]
+      : []),
     el('h3', { texte: 'Demandes sans geste' }),
     sansGeste.length === 0
       ? el(

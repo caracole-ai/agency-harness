@@ -26,6 +26,7 @@ import {
   TYPE_CONSIGNE,
   TYPE_ECHAPPEE,
   TYPE_GESTE_COMMANDE,
+  TYPE_MISE_A_JOUR,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
@@ -569,6 +570,30 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
         .filter((l) => l.type === TYPE_CHANTIER)
         .map((l) => l.issue),
     ).toEqual(['en cours', 'fusionné'])
+  })
+  it('/api/version (PLAN-LIVRAISON.md L9) : rien hors d’une installation ; installée, l’étiquette et le jour de sa mise à jour ; au patron seul', async () => {
+    expect(await (await lire(app(), '/api/version')).json()).toEqual({})
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [{ type: TYPE_MISE_A_JOUR, client: CLIENT, objet: 'v2026-10-10-2', issue: 'faite' }],
+      '2026-10-10T08:30:00Z',
+    )
+    j.fermer()
+    const installee = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: METIER,
+      version: 'v2026-10-10-2',
+    })
+    expect(await (await lire(installee, '/api/version')).json()).toEqual({
+      version: 'v2026-10-10-2',
+      le: '2026-10-10',
+    })
+    expect((await lire(installee, '/api/version', { role: 'agent', agent: 'A-2' })).status).toBe(
+      403,
+    )
   })
   it('commander sans consigne utilisable (aucune échappée sous l’intention) : 400, ni mission ni ligne', async () => {
     const dossier = copieAvecDemandes()

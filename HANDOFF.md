@@ -15,19 +15,25 @@ fusion émet une **version signée** que le harnais du client **tire** et
 installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
 interface 29, sécurité 133, agence web 259.
 
-**`general/l3-missions`, non fusionnée, empilée sur `general/l2-version` :
-les lots 2 et 3** ; une seule fusion de `general/l3-missions` les porte.
+**`general/l4-mise-a-jour`, non fusionnée, empilée sur `general/l3-missions`
+et `general/l2-version` : les lots 2, 3 et 4** ; une seule fusion de
+`general/l4-mise-a-jour` les porte. Lot 4 : chez le client livré, `pnpm
+mise-a-jour` tire les statuts et prépare la prochaine version à côté
+(signature, lignée, `pnpm check`) ; l'interface le lance d'elle-même et sort
+au calme (code 75) ; `pnpm harnais` bascule, sonde, revient en arrière ; la
+chaîne entière (`livraison/chaine.test.ts`, binaire simulé) joue les points
+1 à 5 du critère global.
 Lot 3 : « Créer ce geste » pousse la mission dans la file git du client
 (`livraison.yaml`) ; `pnpm agence [--une-fois]` la prend, écrit `en cours`
 puis le statut final et le dossier dans la file ; l'onglet « Gestes »
 rattrape les statuts (une ligne `chantier` par statut nouveau) et la carte
 dit en attente / en cours / fusionné (v…) / disponible. Lot 2 :
-relus et corrigés tous deux, `pnpm check` vert (moteur 510). Chaque fusion et chaque retrait posent
+relus et corrigés tous deux, `pnpm check` vert (moteur 524, interface 31). Chaque fusion et chaque retrait posent
 `v<AAAA-MM-JJ>-<n>`, signée SSH (`AGENCE_CLE_SIGNATURE`, hors du dépôt,
 retirée de l'environnement des modèles), poussée avec eux tout ou rien ;
 `pnpm versionner` étiquette `origin/main` tel quel. **Prochaine session :
-fusionner `general/l3-missions`, puis le lot 4** (la mise à jour chez le
-client et le lanceur `pnpm harnais`). Avant la première fusion réelle, Lionel crée la clé de
+fusionner `general/l4-mise-a-jour`, puis le lot 5** (la mesure réelle, avec
+les vrais modèles, et la clé de l'agence). Avant la première fusion réelle, Lionel crée la clé de
 l'agence (`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **Ouvert,
 à trancher avant un client réel** : le code écrit par le modèle (`pnpm
 check` dans l'arbre) tourne sous l'utilisateur de l'agence et peut lire la
@@ -151,4 +157,6 @@ pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [
 pnpm chantier retirer <id> --motif "<texte>"
 pnpm versionner            # AGENCE_CLE_SIGNATURE=<clé privée hors du dépôt>
 pnpm agence [--une-fois]   # les files des clients d'agence.yaml: agence.clients
+pnpm mise-a-jour [retirer] --client <dossier>   # chez un client livré
+pnpm harnais --client <dossier> [-- --modele simule]   # le lanceur, depuis <installation>/courant
 ```

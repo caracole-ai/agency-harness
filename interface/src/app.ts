@@ -17,6 +17,7 @@ import {
   coutDuMois,
   demandesAvecEtat,
   ErreurCommande,
+  etatVersion,
   FORMAT_INTENTION,
   FUSEAU,
   type Identite,
@@ -47,6 +48,8 @@ const PUBLIC = fileURLToPath(new URL('../public', import.meta.url))
 
 /** L'interface n'écoute qu'en local. */
 export const HOTE = '127.0.0.1'
+/** Le port de l'interface, sauf `--port`. */
+export const PORT = 3777
 /** Les noms sous lesquels une requête peut arriver : un autre nom est un site tiers qui pointe ici (rebinding DNS). */
 const HOTES = new Set([HOTE, 'localhost', '[::1]'])
 
@@ -226,6 +229,12 @@ export function creerApp(options: {
   maintenant?: string
   modele: Modele
   metier: Metier
+  /** L'étiquette de la version qui tourne (son fichier `VERSION`), pour `/api/version`. */
+  version?: string
+  /** Chaque requête (PLAN-LIVRAISON.md L8 : le moment calme se mesure ici). */
+  surRequete?: () => void
+  /** Après le rattrapage des statuts : combien de nouveaux (un statut nouveau peut porter une version). */
+  apresStatuts?: (nouveaux: number) => void
 }): Hono {
   const { dossier, modele, metier: m } = options
   const fixe = options.maintenant ? aParis(options.maintenant) : undefined
@@ -279,6 +288,10 @@ export function creerApp(options: {
   // tout ce qu'un formulaire ou un fetch sans pré-vol peut envoyer
   // (hono/csrf), et un nom d'hôte local (un site tiers ne peut pas lire le
   // journal par un nom à lui qui pointe sur cette machine).
+  app.use('*', async (_c, next) => {
+    options.surRequete?.()
+    await next()
+  })
   app.use('/api/*', csrf())
   app.use('/api/*', async (c, next) => {
     const { hostname } = new URL(c.req.url)
@@ -407,6 +420,7 @@ export function creerApp(options: {
         try {
           const r = rattraperStatuts(m, s, dossier, maintenant())
           for (const p of r.problemes) console.error(`file des missions : ${p}`)
+          options.apresStatuts?.(r.nouveaux)
         } catch (erreur) {
           console.error(`file des missions : ${(erreur as Error).message}`)
         }
@@ -416,6 +430,13 @@ export function creerApp(options: {
         )
       }),
     )
+  })
+
+  // La version qui tourne et le jour de sa mise à jour (PLAN-LIVRAISON.md L9) : en tête de l'onglet « Gestes ».
+  app.post('/api/version', async (c) => {
+    const identite = entrer((await lireCorps(c.req.raw)).identite)
+    exigerCapacite(m, identite, 'administre')
+    return c.json(await session(identite, (s) => etatVersion(m.journal(s).lire(), options.version)))
   })
 
   app.post('/api/sans-geste/commander', async (c) => {

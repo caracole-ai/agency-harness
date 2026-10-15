@@ -489,6 +489,31 @@ export function statuerEnFile(c: Commande, racine: string, x: MissionEnFile, sta
   publier(c, cloneAgence(racine, x.client.slug), `Chantier ${x.mission.id} : ${statut.statut}`)
 }
 
+/**
+ * Le retrait d'une mission (G2) dit à son client, s'il est livré : le statut
+ * `retiré` et sa version posés à côté de la mission la plus récente de ce nom
+ * dans sa file, poussés. Rend false si le client n'a pas de file à l'agence
+ * ou que la mission n'y est pas.
+ */
+export function statuerRetrait(
+  c: Commande,
+  racine: string,
+  clients: ClientAgence[],
+  slug: string,
+  id: string,
+  statut: Statut,
+): boolean {
+  const client = clients.find((x) => x.slug === slug)
+  if (!client) return false
+  const x = lireFile(c, racine, client)
+    .missions.filter((m) => m.mission.id === id)
+    .sort((a, b) => a.mission.date.localeCompare(b.mission.date))
+    .at(-1)
+  if (!x) return false
+  statuerEnFile(c, racine, x, statut)
+  return true
+}
+
 /** Le nom d'une mission dans la file, pour les messages. */
 export const nomEnFile = (x: MissionEnFile) =>
   `${x.client.slug}/${x.mission.date}/${basename(x.chemin)}`
