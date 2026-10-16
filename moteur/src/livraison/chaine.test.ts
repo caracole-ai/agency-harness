@@ -17,8 +17,7 @@ import {
   etatHumain,
   gesteVert,
 } from '../chantier/essai.test.fixture'
-import { retirerFusion, versionner } from '../chantier/fusion'
-import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
+import { versionner } from '../chantier/fusion'
 import {
   CLIENT_ESSAI,
   dossierEssai,
@@ -28,7 +27,7 @@ import {
 import { demandesAvecEtat, TYPE_CHANTIER } from '../chantier/mission'
 import { TYPE_CONSIGNE } from '../conversation/conversation'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { tourAgence } from './agence'
+import { retirerMission, tourAgence } from './agence'
 import { FICHIER_LIVRAISON, type Livraison } from './config'
 import { FENETRE_PLANTAGES_MS, harnais, type Lance } from './harnais'
 import {
@@ -43,7 +42,7 @@ import {
   TYPE_MISE_A_JOUR,
   versionDeLArbre,
 } from './mise-a-jour'
-import { commanderEtLivrer, statuerRetrait } from './missions'
+import { commanderEtLivrer } from './missions'
 import { FICHIER_SIGNATAIRES } from './version'
 
 // PLAN-LIVRAISON.md L12 : le laboratoire = la production, sur une machine.
@@ -301,41 +300,25 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
         rattraper(METIER_ESSAI, s, dossier, quand('12:30'), ENV_ESSAI, commande).preparation?.prete,
       ).toBeUndefined()
 
-      // ── 5. Le retrait : une version, tirée ; le geste a disparu, les deux journaux le disent
-      let client = ''
-      const retrait = retirerFusion({
-        commande,
+      // ── 5. Le retrait : une version, tirée ; le geste a disparu, les deux journaux le disent.
+      // Le motif cite un nom : nettoyé une fois, il ne part ni dans le commit du retrait (que tous
+      // les clients tirent avec la version), ni dans la mémoire, ni dans le statut.
+      const retrait = retirerMission({
         racine: depots.racine,
+        agence,
         id: INTENTION,
-        motif: 'doublon',
-        version: { cle: CLE_ESSAI.privee, jour: '2026-10-11' },
-        ecrireRetrait: (arbre) => {
-          const f = missionFusionnee(arbre, INTENTION)
-          client = f?.client ?? ''
-          ecrireRetrait(
-            arbre,
-            {
-              date: '2026-10-11',
-              client,
-              id: INTENTION,
-              titre: f?.titre ?? '',
-              intentions: f?.intentions ?? [],
-              motif: 'doublon',
-            },
-            PERSONNES_ESSAI,
-          )
-        },
+        motif: 'doublon, vu avec Rosalie',
+        personnes: PERSONNES_ESSAI,
+        cle: CLE_ESSAI.privee,
+        maintenant: Temporal.ZonedDateTime.from(`2026-10-11T13:00[${FUSEAU}]`),
+        commande,
       })
-      expect(client).toBe(SLUG)
+      expect(retrait).toMatchObject({ client: SLUG, dit: { sorte: 'poussé' } })
+      expect(retrait.motif).not.toMatch(/Rosalie/)
+      expect(git(depots.origine, 'log', '--format=%B', 'main')).not.toMatch(/Rosalie/)
       expect(
-        statuerRetrait(commande, depots.racine, agence.agence.clients, client, INTENTION, {
-          statut: 'retiré',
-          issue: 'retiré : doublon',
-          version: retrait.version,
-          cout_usd: 0,
-          le: quand('13:00').toInstant().toString(),
-        }),
-      ).toEqual({ sorte: 'poussé' })
+        readFileSync(join(cloneDuDistant(file), JOUR, `${INTENTION}.statut.yaml`), 'utf8'),
+      ).not.toMatch(/Rosalie/)
       const tire = rattraper(METIER_ESSAI, s, dossier, quand('13:15'), ENV_ESSAI, commande)
       expect(tire.preparation?.prete?.version).toBe(retrait.version)
       await harnais({
@@ -355,9 +338,16 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
           .filter((y) => y.type === TYPE_CHANTIER)
           .at(-1),
       ).toMatchObject({ objet: INTENTION, issue: 'retiré' })
-      expect(
-        readFileSync(join(cloneDuDistant(depots.origine), 'memoire', 'INDEX.md'), 'utf8'),
-      ).toMatch(new RegExp(`retrait · ${INTENTION}`))
+      const memoire = cloneDuDistant(depots.origine)
+      expect(readFileSync(join(memoire, 'memoire', 'INDEX.md'), 'utf8')).toMatch(
+        new RegExp(`retrait · ${INTENTION}`),
+      )
+      // `git grep` sort en 1 quand il ne trouve rien : lu sans le lever.
+      const cite = spawnSync('git', ['grep', '-l', 'Rosalie', 'HEAD', '--', 'memoire'], {
+        cwd: memoire,
+        encoding: 'utf8',
+      })
+      expect(cite.stdout.trim()).toBe('')
       expect(etatHumain(depots.racine)).toEqual(humain)
     } finally {
       METIER_ESSAI.fermer(s)

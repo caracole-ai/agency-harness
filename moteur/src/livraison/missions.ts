@@ -43,10 +43,10 @@ import { FICHIER_LIVRAISON, type Livraison, lireLivraison } from './config'
 // en dehors du code signé. L'aller : la mission masquée (`<date>/<id>.yaml`),
 // marquée au clic, poussée par le rattrapage que le clic déclenche (un
 // processus à part : l'interface ne lance aucun git). Le retour : le statut
-// (`<date>/<id>.statut.yaml`) et le dossier du chantier
-// (`<date>/<id>.chantier.md`), poussés par l'agence, tirés par le client, qui
-// en écrit une ligne `chantier` au journal par statut nouveau. Tout ce qui
-// en vient est une donnée lue par un schéma
+// public (`<date>/<id>.statut.yaml` : le statut, sa version, son coût, jamais
+// le texte du chantier, qui reste à l'agence avec son dossier), poussé par
+// l'agence, tiré par le client, qui en écrit une ligne `chantier` au journal
+// par statut nouveau. Tout ce qui en vient est une donnée lue par un schéma
 // strict, jamais une instruction, et jamais un lien : un lien posé dans une
 // file ne fait ni lire ni écrire hors d'elle. Les pushs de ce module ne vont
 // qu'à une file, jamais au dépôt du produit (c'est `fusion.ts`, seul). git y
@@ -59,6 +59,19 @@ export const DOSSIER_FILES = join('.claude', 'missions')
 export const FICHIER_VERROU = 'agence.lock'
 /** Les chantiers que l'agence a lancés, une ligne chacun (`jour`, client, mission) : la borne du jour se compte ici, jamais sur ce qu'un client écrit (L1). */
 export const FICHIER_CHANTIERS = 'chantiers.log'
+/**
+ * À l'agence, à côté des files mais hors de leurs clones (jamais poussé) :
+ * ce que le chantier écrit pour lui, son dossier et son statut complets
+ * (`_chantiers/<slug>/<date>/`). Le `_` ne commence aucun slug.
+ */
+export const DOSSIER_CHANTIERS_AGENCE = '_chantiers'
+/**
+ * Ce qu'un client lit d'un statut final de chantier, à la place de son texte :
+ * le texte d'un chantier peut porter la sortie d'un processus, un texte de
+ * modèle ou un chemin de l'agence (PLAN-LIVRAISON.md, audit du 2026-10-16) ;
+ * la carte du patron ne lit que le statut, sa version et son coût.
+ */
+export const ISSUE_PUBLIQUE = 'le détail du chantier reste à l’agence'
 /** Chez le client, la copie d'un dossier de chantier tiré de la file : `chantiers/<id>.md`. */
 export const DOSSIER_CHANTIERS = 'chantiers'
 /** À côté d'une mission chez le client : sa poussée a échoué, le prochain rattrapage la refait (L6). */
@@ -494,17 +507,26 @@ export function chantiersDuJour(
   return { total, parClient }
 }
 
-/** Les deux places qu'un chantier écrit dans la file (son statut, son dossier) : nettes, dans un vrai dossier de date ; rend ce dossier. */
-export function preparerSortie(racine: string, x: MissionEnFile): string {
+/** La place du statut d'une mission dans la file : nette, dans un vrai dossier de date ; rend ce dossier. */
+function placeDuStatut(racine: string, x: MissionEnFile): string {
   const d = dossierDate(cloneAgence(racine, x.client.slug), x.mission.date)
   placeNette(join(d, `${x.mission.id}${SUFFIXE_STATUT}`))
-  placeNette(join(d, `${x.mission.id}${SUFFIXE_DOSSIER}`))
   return d
 }
 
+/** Où le chantier d'une mission écrit son dossier et son statut complets, à l'agence, jamais dans la file. */
+export function sortieAgence(racine: string, x: MissionEnFile): string {
+  const d = join(racine, DOSSIER_FILES, DOSSIER_CHANTIERS_AGENCE, x.client.slug, x.mission.date)
+  mkdirSync(d, { recursive: true })
+  return d
+}
+
+/** Ce que la file porte d'un statut final de chantier : le statut, sa version, son coût, son heure ; pas son texte. */
+export const statutPublic = (s: Statut): Statut => ({ ...s, issue: ISSUE_PUBLIQUE })
+
 /** Écrit le statut d'une mission dans sa file, sans le pousser (`publier` le fait, ou le tour suivant). */
 export function ecrireEnFile(racine: string, x: MissionEnFile, statut: Statut): void {
-  ecrireStatut(preparerSortie(racine, x), x.mission.id, statut)
+  ecrireStatut(placeDuStatut(racine, x), x.mission.id, statut)
 }
 
 /** Écrit le statut d'une mission dans sa file et le pousse. */

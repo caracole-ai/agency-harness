@@ -49,9 +49,12 @@ import { FUSEAU, Temporal } from '../temps/temporal'
 import { prendreVerrou, tourAgence } from './agence'
 import { FICHIER_LIVRAISON, type Livraison, lireLivraison } from './config'
 import {
+  chantiersDuJour,
   commanderEtLivrer,
   DOSSIER_CHANTIERS,
+  DOSSIER_CHANTIERS_AGENCE,
   DOSSIER_FILES,
+  ISSUE_PUBLIQUE,
   lireFile,
   noterChantier,
   rattraperStatuts,
@@ -290,16 +293,28 @@ describe('l’agence prend la mission (L1) et le client lit le statut (L7)', () 
     expect(etatHumain(depots.racine)).toEqual(humain)
     expect(existsSync(join(depots.racine, DOSSIER_FILES, SLUG, '.git'))).toBe(true)
 
-    // Le client : une ligne par statut nouveau, jamais deux ; le dossier copié ; la carte dit la version.
+    // Le client : une ligne par statut nouveau, jamais deux ; la carte dit la version. Le dossier
+    // du chantier reste à l'agence : le client n'en reçoit aucun.
     const apres = rattraper(dossier, MAINTENANT.add({ hours: 2 }))
     expect(apres.r.nouveaux).toBe(1)
     expect(apres.chantiers.map((l) => l.issue)).toEqual(['en cours', 'fusionné'])
     expect(apres.commande?.chantier).toMatchObject({ issue: 'fusionné', version: 'v2026-10-10-1' })
     expect(rattraper(dossier).r.nouveaux).toBe(0)
     expect(rattraper(dossier).chantiers).toHaveLength(2)
-    expect(readFileSync(join(dossier, DOSSIER_CHANTIERS, `${INTENTION}.md`), 'utf8')).toMatch(
-      /Issue : \*\*fusionné\*\*/,
-    )
+    expect(existsSync(join(dossier, DOSSIER_CHANTIERS, `${INTENTION}.md`))).toBe(false)
+    expect(
+      readFileSync(
+        join(
+          depots.racine,
+          DOSSIER_FILES,
+          DOSSIER_CHANTIERS_AGENCE,
+          SLUG,
+          '2026-10-10',
+          `${INTENTION}.chantier.md`,
+        ),
+        'utf8',
+      ),
+    ).toMatch(/Issue : \*\*fusionné\*\*/)
 
     // Un second tour : rien à prendre.
     expect((await tour(depots.racine, agence(binaire, file), simulee)).prise).toBeUndefined()
@@ -701,5 +716,71 @@ describe('les états à moitié faits et les données bornées (audit de la livr
       METIER_ESSAI.fermer(s)
     }
     expect(Mission.safeParse({ ...MISSION_ESSAI, metier: '../agence-web' }).success).toBe(false)
+  })
+
+  it('ce que le chantier écrit reste à l’agence : la sortie de pnpm check (le code du modèle a pu y imprimer un secret) ne part pas dans la file ; le statut n’y porte que le statut', async () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const { binaire } = binaireSimule({ plan: PLAN, implementations: [{ ecrire: gesteVert() }] })
+    const { commande: simulee } = commandeSimulee()
+    const fuyante: Commande = (cwd, nom, args, env) =>
+      nom === 'pnpm' && args[0] === 'check'
+        ? { code: 1, sortie: 'SECRET-123 imprimé par un test', erreur: '' }
+        : simulee(cwd, nom, args, env)
+    const t = await tour(depots.racine, agence(binaire, file), fuyante)
+    expect(t.prise).toMatchObject({ statut: 'refusé' })
+    const vue = cloneDuDistant(file)
+    const fichiers = git(vue, 'ls-tree', '-r', '--name-only', 'HEAD').split('\n')
+    for (const f of fichiers) expect(readFileSync(join(vue, f), 'utf8')).not.toMatch(/SECRET-123/)
+    expect(git(vue, 'log', '--format=%B')).not.toMatch(/SECRET-123/)
+    expect(lireStatut(join(vue, '2026-10-10', `${INTENTION}.statut.yaml`))).toMatchObject({
+      statut: 'refusé',
+      issue: ISSUE_PUBLIQUE,
+    })
+    // Le détail reste à l'agence, pour qui doit le lire.
+    expect(
+      readFileSync(
+        join(
+          depots.racine,
+          DOSSIER_FILES,
+          DOSSIER_CHANTIERS_AGENCE,
+          SLUG,
+          '2026-10-10',
+          `${INTENTION}.chantier.md`,
+        ),
+        'utf8',
+      ),
+    ).toMatch(/SECRET-123/)
+  })
+
+  it('le texte du plan (un texte de modèle) ne part pas dans le statut ; l’agence le lit', async () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const atelier = binaireSimule({ plan: { faisable: false, raison: 'SECRET-456', plan: '-' } })
+    const t = await tour(depots.racine, agence(atelier.binaire, file), commandeSimulee().commande)
+    expect(t.prise).toMatchObject({ statut: 'écartée', issue: expect.stringMatching(/SECRET-456/) })
+    expect(
+      readFileSync(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`), 'utf8'),
+    ).not.toMatch(/SECRET-456/)
+  })
+
+  it('origin injoignable quand l’agence prend une mission : rien n’est écrit, la borne n’est pas entamée, la mission est prise au tour suivant', async () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const atelier = binaireSimule({ plan: { faisable: false, raison: 'hors bande', plan: '-' } })
+    const a = agence(atelier.binaire, file)
+    renameSync(depots.origine, `${depots.origine}.ailleurs`)
+    await expect(tour(depots.racine, a, commandeSimulee().commande)).rejects.toThrow(/git fetch/)
+    expect(existsSync(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`))).toBe(
+      false,
+    )
+    expect(chantiersDuJour(depots.racine, '2026-10-10').total).toBe(0)
+    renameSync(`${depots.origine}.ailleurs`, depots.origine)
+    expect((await tour(depots.racine, a, commandeSimulee().commande)).prise).toMatchObject({
+      statut: 'écartée',
+    })
   })
 })

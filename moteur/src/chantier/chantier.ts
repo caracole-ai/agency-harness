@@ -15,6 +15,7 @@ import {
   commandeSync,
   commettre,
   fermerArbre,
+  git,
   ouvrirArbre,
   REF_DISTANTE,
   verifierBase,
@@ -338,6 +339,8 @@ export async function faireChantier<S>(
   let texteImplementation = ''
   let garde: Garde | undefined
   let check: { ok: boolean; sortie: string } | undefined
+  /** Le commit sur lequel la dernière garde a porté : lui seul se fusionne. */
+  let gardee: string | undefined
   let honnetete: { ok: boolean; mesure: string } | undefined
   let fusion: IssueFusion | undefined
   let derniereLecture: Relecture | undefined
@@ -405,6 +408,7 @@ export async function faireChantier<S>(
   }
   const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
   const verifier = () => {
+    gardee = git(c, cwd, ['rev-parse', 'HEAD']).trim()
     garde = garderDiff(c, cwd, ch, personnes, mission.metier)
     const r = pnpm(['check'])
     check = { ok: r.code === 0, sortie: fin(`${r.sortie}\n${r.erreur}`, 15) }
@@ -552,7 +556,10 @@ export async function faireChantier<S>(
       (k) => k.niveau === 'bloquant',
     ).length
 
-    if (garde?.chemins.ok && check?.ok && relu && bloquantsRestants === 0) {
+    // Le code du modèle a tourné après la garde (pnpm check) : l'arbre doit être encore le commit
+    // gardé, sans rien de plus ; sinon rien ne se mesure ni ne se fusionne.
+    const bouge = arbreBouge(c, cwd, gardee)
+    if (garde?.chemins.ok && !bouge && check?.ok && relu && bloquantsRestants === 0) {
       honnetete = mesurerHonnetete(c, cwd, o.env, mission.metier, ch.evals_clients[mission.metier])
     }
 
@@ -565,15 +572,17 @@ export async function faireChantier<S>(
     conditions.push(
       {
         id: 'chemins',
-        ok: garde?.chemins.ok === true,
-        mesure: garde
-          ? garde.fichiers.length === 0
-            ? 'aucun fichier changé'
-            : [
-                ...garde.chemins.horsBande.map((x) => `hors bande : ${x}`),
-                ...garde.chemins.memoire,
-              ].join(' ; ') || `${garde.fichiers.length} fichier(s), tous dans la bande`
-          : 'non mesurée',
+        ok: garde?.chemins.ok === true && !bouge,
+        mesure: bouge
+          ? bouge
+          : garde
+            ? garde.fichiers.length === 0
+              ? 'aucun fichier changé'
+              : [
+                  ...garde.chemins.horsBande.map((x) => `hors bande : ${x}`),
+                  ...garde.chemins.memoire,
+                ].join(' ; ') || `${garde.fichiers.length} fichier(s), tous dans la bande`
+            : 'non mesurée',
       },
       {
         id: 'tests',
@@ -621,6 +630,7 @@ export async function faireChantier<S>(
       racine: o.racine,
       id: mission.id,
       titre,
+      commit: gardee,
       conditions,
       personnes,
       version: { cle, jour, client: o.client },
@@ -723,6 +733,25 @@ const round = (x: number) => Math.round(x * 1_000_000) / 1_000_000
  * quotidien (la clé que nomme sa config) : sa dernière ligne porte le compte
  * et le seuil, le taux décide.
  */
+/**
+ * L'arbre a-t-il bougé depuis la garde (le code du modèle tourne dans `pnpm
+ * check`) : un commit de plus, ou un fichier changé, ajouté ou retiré sans
+ * être commis. Rend ce qui a bougé, en mots, ou undefined.
+ */
+function arbreBouge(c: Commande, arbre: string, gardee: string | undefined): string | undefined {
+  if (!gardee) return undefined
+  const tete = git(c, arbre, ['rev-parse', 'HEAD']).trim()
+  if (tete !== gardee) {
+    return `l'arbre a bougé après la garde (${gardee.slice(0, 12)} → ${tete.slice(0, 12)}) : rien ne se fusionne`
+  }
+  const sale = git(c, arbre, ['status', '--porcelain', '--untracked-files=all'])
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+  return sale.length > 0
+    ? `l'arbre a changé après la garde (${sale.length} fichier(s) hors du commit gardé) : rien ne se fusionne`
+    : undefined
+}
+
 function mesurerHonnetete(
   c: Commande,
   arbre: string,

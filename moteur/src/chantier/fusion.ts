@@ -212,10 +212,12 @@ function avecReprise<T>(
  * Conclut un chantier : dans un arbre détaché sur `origin/main`.
  * `conditions` : les sept premières, mesurées par le chantier ; la huitième
  * se mesure ici, sur l'entrée de mémoire écrite par `ecrireEntree` dans cet
- * arbre. Huit vertes : `git merge --no-ff` de `chantier/<id>`, l'étiquette
- * `chantier/<id>` sur la fusion, la mémoire commise à part, `git push` sur
- * `main` du distant avec l'étiquette. Sinon : rien de fusionné, la mémoire
- * du refus commise et poussée.
+ * arbre. Huit vertes : `git merge --no-ff` du commit gardé de `chantier/<id>`
+ * (jamais la pointe de la branche : le code du modèle tourne après la garde,
+ * dans `pnpm check` et `pnpm evals`), l'étiquette `chantier/<id>` sur la
+ * fusion, la mémoire commise à part, `git push` sur `main` du distant avec
+ * l'étiquette. Sinon : rien de fusionné, la mémoire du refus commise et
+ * poussée.
  */
 export function conclure(o: {
   commande: Commande
@@ -223,6 +225,8 @@ export function conclure(o: {
   racine: string
   id: string
   titre: string
+  /** Le commit de `chantier/<id>` sur lequel la garde a porté : lui seul se fusionne. */
+  commit: string | undefined
   conditions: Condition[]
   /** Écrit l'entrée de mémoire dans cet arbre avec cette sorte et cette issue ; rend son chemin, lève si elle porterait un nom. */
   ecrireEntree: (arbre: string, sorte: 'fusion' | 'refus', issue: string) => string
@@ -283,9 +287,12 @@ export function conclure(o: {
       }
 
       enRoute = 'fusion défaite'
-      // La branche déjà dans `origin/main` (un push accepté dont la réponse s'est perdue, un
+      if (!o.commit) {
+        return { fini: { sorte: 'echec', raison: 'aucun commit gardé à fusionner' } }
+      }
+      // Le commit gardé déjà dans `origin/main` (un push accepté dont la réponse s'est perdue, un
       // `--refaire` d'une branche fusionnée) : rien ne se refusionne, l'étiquette dit ce qui l'est.
-      if (c(arbre, 'git', ['merge-base', '--is-ancestor', refBranche(o.id), 'HEAD']).code === 0) {
+      if (c(arbre, 'git', ['merge-base', '--is-ancestor', o.commit, 'HEAD']).code === 0) {
         const posee = c(arbre, 'git', [
           'rev-parse',
           '--verify',
@@ -323,7 +330,7 @@ export function conclure(o: {
         }
       }
       const message = `Chantier ${o.id} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : huit conditions vertes.`
-      const fusion = c(arbre, 'git', ['merge', '--no-ff', '-m', message, refBranche(o.id)])
+      const fusion = c(arbre, 'git', ['merge', '--no-ff', '-m', message, o.commit])
       if (fusion.code !== 0) {
         return {
           fini: {
@@ -340,7 +347,10 @@ export function conclure(o: {
         ) {
           return { fini: { sorte: 'echec', raison: "la fusion n'a pas fait de commit de fusion" } }
         }
-        git(c, arbre, ['tag', etiquette, sha])
+        // `-f` : une étiquette restée locale (une tentative tuée avant le push) ne bloque pas la reprise ;
+        // une étiquette déjà sur le distant (une branche refusionnée après coup) n'est jamais remplacée :
+        // le push atomique la refuse, et rien ne part.
+        git(c, arbre, ['tag', '-f', etiquette, sha])
         version = poserVersion(c, arbre, sha, o.version, {
           sorte: 'chantier',
           chantier: o.id,

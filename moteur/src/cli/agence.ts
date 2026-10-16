@@ -2,15 +2,19 @@
 // L'agence prend les missions que ses clients commandent (PLAN-LIVRAISON.md
 // L1) : une boucle, toutes les `agence.yaml: agence.intervalle_secondes`,
 // sous un verrou (`.claude/missions/agence.lock`, le pid ; un verrou dont le
-// pid est mort est levé). À chaque tour, la file de chaque client
-// (`agence.clients`) tirée dans `.claude/missions/<slug>/`, la plus ancienne
-// mission à prendre, au plus `chantiers_max_par_jour` chantiers par jour ;
-// son chantier (`pnpm chantier`, dans un arbre de ce dépôt parti
-// d'`origin/main` : ni l'arbre de qui lance ni son `main` ne bougent), son
-// statut et son dossier poussés dans la file du client. Avant tout chantier,
-// le préflight : `claude auth status` connecté, ANTHROPIC_API_KEY absente, la
-// clé de signature (AGENCE_CLE_SIGNATURE, hors du dépôt). --une-fois : un
-// seul tour (un cron, un test). Ctrl-C arrête la boucle, le verrou est rendu.
+// pid est mort, ou posé avant le démarrage de la machine, est levé). À
+// chaque tour, la file de chaque client (`agence.clients`) tirée dans
+// `.claude/missions/<slug>/`, la mission à prendre (le client qui a eu le
+// moins de chantiers aujourd'hui, puis la plus ancienne), au plus
+// `chantiers_max_par_jour` chantiers par jour ; son chantier (dans un arbre
+// de ce dépôt parti d'`origin/main` : ni l'arbre de qui lance ni son `main`
+// ne bougent), son dossier et son statut complets gardés à l'agence
+// (`.claude/missions/_chantiers/<slug>/<date>/`), le statut public (sans le
+// texte du chantier) poussé dans la file du client. Avant tout chantier, le
+// préflight : `claude auth status` connecté, ANTHROPIC_API_KEY absente, la
+// clé de signature (AGENCE_CLE_SIGNATURE, hors du dépôt), `origin`
+// joignable. --une-fois : un seul tour (un cron, un test). Ctrl-C arrête la
+// boucle, le verrou est rendu.
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { chargerAgence } from '../agence/config'

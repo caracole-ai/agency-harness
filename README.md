@@ -276,7 +276,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `origin/main` dans la bande, la mémoire en ajout seul aux conventions,
   aucun test retiré ni tu, `lignes_max`, les cas de traduction des gestes
   nouveaux), `fusion.ts` (les huit conditions de G1, `git merge --no-ff`
-  dans un arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
+  du commit que la garde a vu, jamais la pointe de la branche, dans un
+  arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
   `main` du distant, une reprise si le push est refusé, la mémoire commise à
   part ; le retrait par `git revert -m 1`, de même ; une version signée
   après chaque fusion et chaque retrait, poussée avec eux, et `versionner` ;
@@ -462,10 +463,13 @@ pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier
                          # Fable relit (une reprise au plus sur un bloquant), le code mesure
                          # l'honnêteté (trois cas par geste nouveau, pnpm evals traduire avec le
                          # modèle du quotidien : exige sa clé) ; la mémoire, et, si les huit
-                         # conditions de G1 sont vertes, fusion --no-ff dans un arbre détaché +
-                         # étiquette chantier/<id> + push sur main du distant. Le dossier
-                         # <id>.chantier.md et le statut <id>.statut.yaml vont dans --sortie (par
-                         # défaut, à côté de la mission). Le métier est celui de la mission ; les
+                         # conditions de G1 sont vertes, fusion --no-ff du commit que la garde a
+                         # vu (pas la pointe de la branche : un commit posé après la garde, ou un
+                         # arbre qui a changé avant les évals, refuse) dans un arbre détaché +
+                         # étiquette chantier/<id> + version signée v<AAAA-MM-JJ>-<n> + push
+                         # atomique sur main du distant. Le dossier <id>.chantier.md et le statut
+                         # <id>.statut.yaml vont dans --sortie (par défaut, à côté de la mission ;
+                         # pnpm agence : à l'agence, jamais dans la file). Le métier est celui de la mission ; les
                          # noms contrôlés, ceux de son client fictif (evals_clients). Déjà
                          # tentée : rien, sauf --refaire (qui rouvre la branche telle quelle :
                          # pour repartir d'origin/main, supprimer la branche chantier/<id>).
@@ -473,9 +477,14 @@ pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier
                          # ni git.
 pnpm chantier retirer <id> --motif "<texte>"
                          # G2 : git revert -m 1 de la fusion dans un arbre détaché sur
-                         # origin/main, push sur main du distant, la mémoire (motif, et le
-                         # client, le titre et les intentions que garde la mémoire de la fusion :
-                         # jamais refaite, même sous un autre nom), et sa version signée.
+                         # origin/main, sa version signée, push sur main du distant, la mémoire
+                         # (motif, et le client, le titre et les intentions que garde la mémoire
+                         # de la fusion : jamais refaite, même sous un autre nom), puis le statut
+                         # « retiré » et sa version dans la file du client qui l'avait commandée
+                         # (une file injoignable : le statut attend dans son clone, le prochain
+                         # tour de pnpm agence le pousse). Le motif, nettoyé des noms des clients
+                         # fictifs, est le même dans le commit (que tous les clients tirent avec
+                         # la version), la mémoire et le statut.
 pnpm agence [--une-fois] # l'agence prend les missions de ses clients (PLAN-LIVRAISON.md L1) :
                          # une boucle (agence.yaml: agence.intervalle_secondes) sous un verrou
                          # (.claude/missions/agence.lock) ; à chaque tour, la file git de chaque
@@ -486,9 +495,14 @@ pnpm agence [--une-fois] # l'agence prend les missions de ses clients (PLAN-LIVR
                          # écartée), au plus chantiers_max_par_jour chantiers par jour, comptés
                          # au registre de l'agence (.claude/missions/chantiers.log ; au-delà :
                          # « en attente », demain) ; préflight (binaire connecté, clé de
-                         # signature), statut « en cours », le chantier, son statut final et son
-                         # dossier poussés dans la file (un push qui échoue part au tour
-                         # suivant). --une-fois : un tour (cron).
+                         # signature, origin joignable : sinon rien n'est écrit, la mission
+                         # attend le tour suivant), statut « en cours », le chantier ; son dossier
+                         # et son statut complets restent à l'agence
+                         # (.claude/missions/_chantiers/<slug>/<date>/), la file ne reçoit que le
+                         # statut public (le statut, sa version, son coût ; jamais le texte du
+                         # chantier : une sortie de pnpm check, un texte de modèle) ; un push qui
+                         # échoue part au tour suivant, un statut écrit mais pas commis aussi.
+                         # --une-fois : un tour (cron).
 pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
                          # chez un client livré (PLAN-LIVRAISON.md L9) : le lanceur, lancé depuis
                          # l'installation (cd <installation>/courant), qui lance pnpm interface

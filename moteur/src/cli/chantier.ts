@@ -13,9 +13,12 @@
 // le chantier ne lit aucun dossier client. Une mission déjà tentée ne se
 // refait pas sans --refaire. --sans-modele : la décision et ce que le plan
 // recevrait, aucun appel, aucun git.
-// `retirer` (G2) : `git revert -m 1` de la fusion dans un arbre détaché, push,
-// la mémoire (motif, et le client, le titre et les intentions que la mémoire
-// de la fusion garde : la mission n'est jamais refaite).
+// `retirer` (G2) : `git revert -m 1` de la fusion dans un arbre détaché, sa
+// version signée, push, la mémoire (motif, et le client, le titre et les
+// intentions que la mémoire de la fusion garde : la mission n'est jamais
+// refaite), puis le statut `retiré` dans la file du client qui l'avait
+// commandée (`retirerMission`) ; le motif, nettoyé des noms des clients
+// fictifs, est le même dans le commit, la mémoire et le statut.
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
 // appelle le modèle du quotidien (la clé que nomme la config du client).
@@ -27,11 +30,9 @@ import { chargerAgence } from '../agence/config'
 import { nomsFictifs } from '../agence/fictif'
 import { commandeSync } from '../chantier/arbre'
 import { faireChantier } from '../chantier/chantier'
-import { retirerFusion } from '../chantier/fusion'
-import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
 import { lireMission } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import { statuerRetrait } from '../livraison/missions'
+import { retirerMission } from '../livraison/agence'
 import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -61,59 +62,32 @@ try {
       console.error(USAGE)
       process.exit(2)
     }
-    const motif = values.motif
-    const maintenant = Temporal.Now.zonedDateTimeISO(FUSEAU)
     const cle = preflightSignature(process.env, RACINE)
     const personnes = await nomsFictifs(
       agence.chantier.evals_clients,
       RACINE,
       Object.keys(agence.chantier.evals_clients),
     )
-    let client: string | undefined
-    const r = retirerFusion({
-      commande: commandeSync,
+    const r = retirerMission({
       racine: RACINE,
+      agence,
       id,
-      motif,
-      version: { cle, jour: maintenant.toPlainDate().toString() },
-      ecrireRetrait: (arbre) => {
-        const fusion = missionFusionnee(arbre, id)
-        if (!fusion) throw new Error(`aucune fusion de ${id} dans la mémoire d'origin/main`)
-        client = fusion.client
-        ecrireRetrait(
-          arbre,
-          {
-            date: maintenant.toPlainDate().toString(),
-            client: fusion.client,
-            id,
-            titre: fusion.titre,
-            intentions: fusion.intentions,
-            motif,
-          },
-          personnes,
-        )
-      },
+      motif: values.motif,
+      personnes,
+      cle,
+      maintenant: Temporal.Now.zonedDateTimeISO(FUSEAU),
+      commande: commandeSync,
     })
     console.log(
       `${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, version ${r.version}, poussé.`,
     )
     // Le client qui l'avait commandé le lit dans sa file (PLAN-LIVRAISON.md L7).
-    const dit =
-      client === undefined
-        ? { sorte: 'absent' as const }
-        : statuerRetrait(commandeSync, RACINE, agence.agence.clients, client, id, {
-            statut: 'retiré',
-            issue: `retiré : ${motif}`,
-            version: r.version,
-            cout_usd: 0,
-            le: maintenant.toInstant().toString(),
-          })
     console.log(
-      dit.sorte === 'poussé'
-        ? `Statut « retiré » poussé dans la file de ${client}.`
-        : dit.sorte === 'en attente'
-          ? `Statut « retiré » écrit dans la file de ${client}, pas encore poussé (${dit.raison}) : le prochain tour de pnpm agence le pousse.`
-          : `${client ?? 'Le client'} n'a pas de file à l'agence, ou la mission n'y est pas : rien n'est poussé.`,
+      r.dit.sorte === 'poussé'
+        ? `Statut « retiré » poussé dans la file de ${r.client}.`
+        : r.dit.sorte === 'en attente'
+          ? `Statut « retiré » écrit dans la file de ${r.client}, pas encore poussé (${r.dit.raison}) : le prochain tour de pnpm agence le pousse.`
+          : `${r.client ?? 'Le client'} n'a pas de file à l'agence, ou la mission n'y est pas : rien n'est poussé.`,
     )
   } else {
     if (!values.mission) {
