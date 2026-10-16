@@ -519,6 +519,14 @@ livrée dont la file est injoignable : avant l'audit, l'onglet et le clic
 gelaient l'interface 15 s (`/api/roles` à 14 s) ; après, l'onglet répond en
 22 ms, le clic en 39 ms, la mission reste marquée jusqu'au retour de la
 file.
+Rejoué une dernière fois sur la pointe finale (`d451316`, après la
+relecture des corrections) : le même parcours, vert, avec en plus un second
+`retirer` refusé (« déjà la version précédente ») ; le dépôt du client ne
+porte que `v…-1`, pas l'étiquette `chantier/heures_par_agent` du produit.
+Vu à cette occasion, laissé : après un retour arrière, la carte d'une
+commande fusionnée dit encore « mise à jour en préparation » (le journal,
+lui, dit le retour) ; à revoir avec la place des gestes dans l'interface
+(phase F).
 
 - `moteur/src/livraison/mise-a-jour.ts` : `preparer(dossier)` (L8 : fetch,
   candidates, vérification, worktree, install, check, `.prete`,
