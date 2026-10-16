@@ -22,6 +22,130 @@ main.
 Le capital, ce sont les **interdits et les tests**, pas les prompts : un prompt
 se réécrit à chaque changement de modèle, un test reste vrai des années.
 
+## La carte
+
+Deux schémas, relevés sur les imports réels du code (2026-10-16). Le premier
+dit qui tourne où et ce qui circule entre le client, l'agence et les dépôts.
+Le second dit comment le moteur, un métier et le dossier d'un client se
+tiennent. Une flèche pleine : un appel, une lecture ou une écriture sur la
+même machine. Une flèche épaisse : git, d'une machine à l'autre. Une flèche
+pointillée : un processus lancé, ou un import. Dans le second, les services
+que tout le monde appelle (journal, modèle, personnes, jeton, temps) sont
+regroupés en un nœud, une flèche par module qui s'en sert ; les fichiers de
+chaque module sont listés dans « Structure ».
+
+### Qui tourne où, et ce qui circule
+
+```mermaid
+flowchart LR
+  subgraph client["Chez le client, sur sa machine"]
+    direction TB
+    patron(["Le patron, dans son navigateur<br>127.0.0.1 seulement"])
+    lanceur["pnpm harnais, le lanceur<br>interface/src/harnais.ts<br>la seule chose installée à la main"]
+    interface["pnpm interface<br>interface/src/serveur.ts, app.ts"]
+    maj["pnpm mise-a-jour<br>moteur/src/livraison/mise-a-jour.ts<br>le seul processus qui lance git chez le client"]
+    dossier[("Le dossier client, jamais versionné<br>config.yaml, personnes.yaml, les exports CSV,<br>journal.sqlite, missions/2026-10-16/releve_kilometrique.yaml,<br>livraison.yaml, signataires")]
+    installation[("L’installation, hors du dossier<br>depot/ (un dépôt nu), versions/v2026-10-16-1/,<br>les liens courant, precedent, courant.suivant,<br>missions/ (le clone de la file)")]
+  end
+  subgraph git["Les dépôts git distants"]
+    direction TB
+    produit[("Le dépôt du produit<br>main, memoire/, les étiquettes signées v2026-10-16-1…")]
+    file[("Une file par client, missions-client-fictif<br>la mission masquée, le statut public, etat.yaml")]
+  end
+  subgraph agence["À l’agence, sur la machine de l’agence"]
+    direction TB
+    boucle["pnpm agence<br>moteur/src/livraison/agence.ts<br>une boucle sur les files d’agence.yaml, un verrou"]
+    chantier["pnpm chantier<br>moteur/src/chantier/<br>arbre.ts, claude.ts, garde.ts, fusion.ts, memoire.ts"]
+    modeles["Les modèles du chantier, agence.yaml<br>le binaire claude sur l’abonnement<br>plan Fable, code Opus, revue Fable"]
+    versionner["pnpm versionner<br>moteur/src/livraison/version.ts<br>AGENCE_CLE_SIGNATURE, hors du dépôt"]
+    reste[("Ce qui ne part jamais<br>.claude/missions/_chantiers/, chantiers.log<br>le dossier complet, la sortie de pnpm check")]
+  end
+
+  patron -- "une demande, une confirmation,<br>la commande d’un geste absent" --> interface
+  lanceur -- "lance depuis courant, bascule au calme,<br>revient en arrière si la sonde échoue" --> interface
+  interface -- "lit config, métier, personnes, journal<br>écrit la conversation au journal, la mission" --> dossier
+  interface -. "lance au démarrage, toutes les N minutes,<br>à l’onglet Gestes, après une commande" .-> maj
+  maj -- "pousse les missions marquées,<br>écrit les statuts revenus au journal" --> dossier
+  maj -- "installe à côté, rejoue pnpm check,<br>pose le lien suivant" --> installation
+  lanceur -- "courant devient suivant,<br>ou precedent au retour arrière" --> installation
+  maj == "pousse la mission masquée,<br>tire le statut public" ==> file
+  produit == "les étiquettes v* seulement,<br>signature et lignée vérifiées" ==> maj
+  file == "tire la mission" ==> boucle
+  boucle -- "une mission à la fois" --> chantier
+  chantier -- "plan, code, revue" --> modeles
+  produit == "un arbre de travail depuis origin/main" ==> chantier
+  chantier == "fusion du commit gardé, push HEAD:main<br>un retrait : revert de la fusion" ==> produit
+  chantier -- "après chaque fusion, chaque retrait" --> versionner
+  versionner == "une étiquette signée, son manifeste" ==> produit
+  boucle == "écrit le statut public" ==> file
+  boucle -- "garde le dossier et le statut complets" --> reste
+```
+
+### Le moteur, un métier, le dossier d'un client
+
+```mermaid
+flowchart TB
+  subgraph entrees["Les entrées"]
+    direction LR
+    app["L’interface web<br>interface/src/app.ts, serveur.ts"]
+    clis["pnpm parler, veiller, evals, registre"]
+    livraison_cli["pnpm chantier, agence, versionner,<br>mise-a-jour, harnais"]
+  end
+  subgraph moteur["Le moteur, moteur/src : aucun métier en dur"]
+    direction TB
+    chargeur["cli/metier.ts<br>importe le métier que nomme config.yaml"]
+    conversation["conversation/<br>premier espace : un geste codé,<br>choisi par la traduction"]
+    echappee["echappee/<br>deuxième espace : du SQL en lecture<br>sur une copie masquée"]
+    commande["gestes/commande.ts, chantier/mission.ts<br>troisième espace : la commande d’un geste absent"]
+    livraison["livraison/, chantier/<br>le schéma du dessus"]
+    archetypes["archetypes/<br>la veille des échéances"]
+    controles["controles/<br>les moments : avant, après, réponse, stop"]
+    regles["regles/<br>le registre, le verdict, la fiche"]
+    evals["evals/<br>traduction, échappée"]
+    partages["Les services partagés<br>journal/ (SQLite), modele/ (la clé, le binaire claude, simulé, le coût),<br>personnes/, approbation/jeton.ts, temps/"]
+  end
+  subgraph metier["Un métier, metiers/securite-privee ou metiers/agence-web"]
+    direction TB
+    index["code/src/index.ts<br>exporte CONVERSATION et VEILLER"]
+    mconv["conversation.ts, actions.ts, domaine.ts, roles.ts<br>les gestes codés, le vocabulaire, les rôles"]
+    mcopie["copie.ts<br>la copie masquée d’un rôle"]
+    mcontroles["controles.ts, echeances.ts, veille.ts<br>les interdits, les échéances"]
+    mconnecteurs["connecteurs/<br>les exports CSV lus"]
+    mcapital["fiche.md, regles.yaml, evals/*.yaml<br>le capital : les interdits et les tests"]
+  end
+  subgraph dossier["Le dossier client, jamais versionné"]
+    direction LR
+    config["config.yaml<br>metier, modele"]
+    donnees["personnes.yaml, les exports CSV,<br>journal.sqlite"]
+    missions["missions/2026-10-16/releve_kilometrique.yaml"]
+  end
+
+  app -- "une demande, un geste, une confirmation" --> conversation
+  app -- "la commande, les demandes et leur état" --> commande
+  app -- "l’état de la version, le rattrapage" --> livraison
+  app & clis -- "metierDe" --> chargeur
+  clis --> conversation & archetypes & evals & regles
+  livraison_cli --> livraison
+  chargeur -- "lit metier" --> config
+  chargeur -- "import dynamique" --> index
+  index --> mconv & mcopie & mcontroles & mconnecteurs
+  index -. "n’importe que @harnais/moteur" .-> moteur
+  conversation -- "MetierConversation" --> mconv
+  conversation --> echappee
+  echappee -- "la copie du rôle" --> mcopie
+  commande --> conversation
+  commande -- "écrit la mission" --> missions
+  livraison -- "lit et pousse la mission" --> commande
+  archetypes -- "VEILLER" --> mcontroles
+  archetypes --> controles
+  controles --> regles
+  regles -- "regles.yaml, fiche.md" --> mcapital
+  evals -- "evals/*.yaml" --> mcapital
+  evals --> conversation
+  mconnecteurs & partages --> donnees
+  conversation & echappee & commande & livraison & archetypes --> partages
+```
+
 ## Structure
 
 - `GRILLE.md` — la grille d'une fiche métier : neuf rubriques (les bornes, le
