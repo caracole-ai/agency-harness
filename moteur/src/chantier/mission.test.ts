@@ -341,6 +341,7 @@ describe('missionCommandee', () => {
       ).toEqual({
         intention: 'simuler_absence',
         le: '2026-10-10',
+        chemin: join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'simuler_absence.yaml'),
       })
       const chemin = join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'simuler_absence.yaml')
       expect(lireMission(chemin).mission).toMatchObject({ sorte: 'geste_code', statut: 'à faire' })

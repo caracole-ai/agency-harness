@@ -31,9 +31,14 @@ export const commandeSync: Commande = (cwd, commande, args, env) => {
   return { code: r.status, sortie: r.stdout, erreur: r.stderr }
 }
 
-/** `git <args>` dans `cwd` ; lève avec la sortie d'erreur si le code n'est pas 0. */
-export function git(c: Commande, cwd: string, args: string[]): string {
-  const r = c(cwd, 'git', args)
+/** `git <args>` dans `cwd` (avec cet environnement, s'il est donné) ; lève avec la sortie d'erreur si le code n'est pas 0. */
+export function git(
+  c: Commande,
+  cwd: string,
+  args: string[],
+  env?: Record<string, string | undefined>,
+): string {
+  const r = c(cwd, 'git', args, env)
   if (r.code !== 0) {
     throw new Error(`git ${args.join(' ')} : ${(r.erreur || r.sortie).trim().slice(0, 500)}`)
   }
@@ -86,17 +91,20 @@ export function verifierBase(c: Commande, racine: string): void {
 export const brancheExiste = (c: Commande, racine: string, id: string): boolean =>
   c(racine, 'git', ['rev-parse', '--verify', '--quiet', refBranche(id)]).code === 0
 
-/** Les arbres de travail ne se voient pas dans `git status` de la base : une exclusion locale, idempotente. */
-function exclureArbres(c: Commande, racine: string): void {
+/** Ce dossier de la base (relatif) ne se voit pas dans `git status` : une exclusion locale, idempotente (`.git/info/exclude`). */
+export function exclure(c: Commande, racine: string, dossier: string): void {
   const info = join(dossierCommun(c, racine), 'info')
   const exclude = join(info, 'exclude')
-  const ligne = `/${DOSSIER_ARBRES}/`
+  const ligne = `/${dossier}/`
   mkdirSync(info, { recursive: true })
   const actuel = existsSync(exclude) ? readFileSync(exclude, 'utf8') : ''
   if (!actuel.split('\n').includes(ligne)) {
     appendFileSync(exclude, `${actuel.endsWith('\n') || actuel === '' ? '' : '\n'}${ligne}\n`)
   }
 }
+
+/** Les arbres de travail ne se voient pas dans `git status` de la base. */
+const exclureArbres = (c: Commande, racine: string) => exclure(c, racine, DOSSIER_ARBRES)
 
 /** `branche` : l'arbre est déjà sur `chantier/<id>` (`refaire`) ; sinon il est détaché, et `brancher` crée la branche une fois le chantier décidé. */
 export type ArbreOuvert =

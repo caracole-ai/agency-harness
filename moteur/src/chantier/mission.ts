@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { basename, dirname, join } from 'node:path'
 import { parse, stringify } from 'yaml'
 import { z } from 'zod'
-import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
+import { ConfigBase, chargerConfig, FICHIER_CONFIG, MOTIF_SLUG, NOM_METIER } from '../config'
 import { FORMAT_INTENTION, type Intention } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
@@ -21,6 +21,7 @@ import {
   TYPE_GESTE_COMMANDE,
 } from '../gestes/commande'
 import type { Ligne } from '../journal/journal'
+import { MOTIF_VERSION } from '../livraison/version'
 import { FUSEAU, jourDe, type Temporal } from '../temps/temporal'
 import { interdits, type MissionRetiree, slugClient } from './memoire'
 
@@ -61,7 +62,7 @@ export const Mission = z.strictObject({
     .max(CONSIGNES_TYPES_MAX),
   ecrit: z.boolean(),
   date: z.iso.date(),
-  metier: z.string().min(1),
+  metier: z.string().regex(NOM_METIER),
   statut: z.string().min(1),
 })
 export type Mission = z.infer<typeof Mission>
@@ -133,13 +134,19 @@ export interface MissionLue {
   client: string
 }
 
-/** Lit `<client>/missions/<date>/<id>.yaml` ; lève si le fichier n'est pas une mission. */
+/**
+ * Lit une mission, chez le client (`<client>/missions/<date>/<id>.yaml`) ou
+ * dans sa file à l'agence (`<slug>/<date>/<id>.yaml`, PLAN-LIVRAISON.md
+ * L6) ; lève si le fichier n'est pas une mission, ou n'est pas à sa place.
+ */
 export function lireMission(chemin: string): MissionLue {
   const dossierDate = dirname(chemin)
-  const dossierMissions = dirname(dossierDate)
-  if (basename(dossierMissions) !== DOSSIER_MISSIONS) {
+  const file = dirname(dossierDate)
+  const client =
+    basename(file) === DOSSIER_MISSIONS ? slugClient(basename(dirname(file))) : basename(file)
+  if (!MOTIF_SLUG.test(client)) {
     throw new Error(
-      `${chemin} : une mission vit dans <client>/${DOSSIER_MISSIONS}/<date>/<id>.yaml`,
+      `${chemin} : une mission vit dans <client>/${DOSSIER_MISSIONS}/<date>/<id>.yaml, ou <slug>/<date>/<id>.yaml dans une file`,
     )
   }
   const lu = Mission.safeParse(parse(readFileSync(chemin, 'utf8')))
@@ -147,7 +154,7 @@ export function lireMission(chemin: string): MissionLue {
   if (`${lu.data.id}.yaml` !== basename(chemin) || lu.data.date !== basename(dossierDate)) {
     throw new Error(`${chemin} : l'identifiant ou la date ne sont pas ceux du chemin`)
   }
-  return { mission: lu.data, client: slugClient(basename(dirname(dossierMissions))) }
+  return { mission: lu.data, client }
 }
 
 export type Decision = { sorte: 'chantier' } | { sorte: 'ecartee'; motif: string }
@@ -308,7 +315,7 @@ export function commanderMission<S>(
   intention: string,
   par: Identite,
   maintenant: Temporal.ZonedDateTime,
-): { intention: string; le: string } {
+): { intention: string; le: string; chemin: string } {
   const journal = m.journal(s)
   const declaree = m.intentions.find((i) => i.id === intention)
   const mission = missionCommandee(intention, journal.lire(), {
@@ -319,8 +326,8 @@ export function commanderMission<S>(
     metier: chargerConfig(join(dossierClient, FICHIER_CONFIG), ConfigBase).metier,
     date: maintenant.withTimeZone(FUSEAU).toPlainDate(),
   })
-  ecrireMission(dossierClient, mission)
-  return commanderGeste(journal, m.client(s), intention, par, maintenant)
+  const chemin = ecrireMission(dossierClient, mission)
+  return { ...commanderGeste(journal, m.client(s), intention, par, maintenant), chemin }
 }
 
 /** Ce que le chantier rend d'une mission (L7) : `en cours` et `en attente` sont écrits par `pnpm agence`. */
@@ -336,12 +343,14 @@ export const STATUTS_CHANTIER = [
 export type StatutChantier = (typeof STATUTS_CHANTIER)[number]
 /** Le statut d'une mission, à côté d'elle : `<date>/<id>.statut.yaml`. */
 export const SUFFIXE_STATUT = '.statut.yaml'
+/** Le dossier d'un chantier, à côté de son statut : `<id>.chantier.md`. */
+export const SUFFIXE_DOSSIER = '.chantier.md'
 
 export const Statut = z.strictObject({
   statut: z.enum(STATUTS_CHANTIER),
   issue: z.string().min(1),
   /** L'étiquette de la version qui porte la fusion ou le retrait (PLAN-LIVRAISON.md L4). */
-  version: z.string().min(1).optional(),
+  version: z.string().regex(MOTIF_VERSION).optional(),
   cout_usd: z.number().nonnegative(),
   le: z.iso.datetime(),
 })
@@ -367,11 +376,18 @@ export function lireStatut(chemin: string): Statut | undefined {
 export interface EtatCommande {
   par: Identite
   le: string
-  chantier?: { issue: string; le: string }
+  /** Le dernier statut du chantier (L7) ; `version` : l'étiquette qui porte la fusion ou le retrait. */
+  chantier?: { issue: string; le: string; version?: string }
   /** Un geste codé du métier porte l'identifiant de l'intention (`methode/chantier.md`). */
   disponible: boolean
 }
 export type DemandeAvecEtat = Omit<DemandeSansGeste, 'commande'> & { commande?: EtatCommande }
+
+/** Ce qu'une ligne `chantier` garde du statut qu'elle dit (L7) : son heure, sa version s'il en a une. */
+export const DonneesChantier = z.looseObject({
+  le: z.string().optional(),
+  version: z.string().optional(),
+})
 
 /**
  * Les demandes sans geste, chaque commande avec son état : la dernière ligne
@@ -379,12 +395,17 @@ export type DemandeAvecEtat = Omit<DemandeSansGeste, 'commande'> & { commande?: 
  * `disponible` si un geste codé du métier porte l'intention.
  */
 export function demandesAvecEtat(lignes: Ligne[], gestesCodes: string[]): DemandeAvecEtat[] {
-  const chantiers = new Map<string, { issue: string; le: string }>()
+  const chantiers = new Map<string, NonNullable<EtatCommande['chantier']>>()
   for (const l of lignes) {
     if (l.objet === null) continue
     if (l.type === TYPE_GESTE_COMMANDE) chantiers.delete(l.objet)
     if (l.type === TYPE_CHANTIER && l.issue !== null) {
-      chantiers.set(l.objet, { issue: l.issue, le: jourDe(l.horodatage).toString() })
+      const version = DonneesChantier.safeParse(JSON.parse(l.donnees ?? 'null')).data?.version
+      chantiers.set(l.objet, {
+        issue: l.issue,
+        le: jourDe(l.horodatage).toString(),
+        ...(version ? { version } : {}),
+      })
     }
   }
   const codes = new Set(gestesCodes)

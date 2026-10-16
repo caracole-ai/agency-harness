@@ -13,12 +13,15 @@ const API = {
   geste: '/api/geste',
   sansGeste: '/api/sans-geste',
   commanderGeste: '/api/sans-geste/commander',
+  version: '/api/version',
 }
 const FUSEAU = 'Europe/Paris'
 /** Le type de ligne d'un appel au modèle (moteur/src/modele/compteur.ts) : son coût est montré au journal. */
 const TYPE_APPEL = 'appel_modele'
-/** L'issue d'un chantier fusionné (`ISSUES_CHANTIER.fusionne`, moteur/src/chantier/chantier.ts). */
+/** Les statuts d'un chantier que la carte dit à sa façon (`STATUTS_CHANTIER`, moteur/src/chantier/mission.ts ; PLAN-LIVRAISON.md L7). */
 const FUSIONNE = 'fusionné'
+const EN_COURS = 'en cours'
+const EN_ATTENTE = 'en attente'
 
 /** Comment montrer chaque sorte de réponse. */
 const SORTES = {
@@ -508,8 +511,10 @@ async function chargerSansGeste() {
   if (!zone.querySelector('.liste, .vide'))
     zone.replaceChildren(el('p', { classe: 'chargement', texte: 'Chargement…' }))
   let sansGeste
+  let version
   try {
     sansGeste = await appeler(API.sansGeste, { identite: ici.identite })
+    version = await appeler(API.version, { identite: ici.identite })
   } catch (erreur) {
     zone.replaceChildren(
       erreur.statut === 403
@@ -519,6 +524,15 @@ async function chargerSansGeste() {
     return
   }
   zone.replaceChildren(
+    // La version qui tourne (PLAN-LIVRAISON.md L9) : seulement chez un client livré.
+    ...(version.version
+      ? [
+          el('p', {
+            classe: 'texte',
+            texte: `Version ${version.version}${version.le ? `, mise à jour le ${jour(version.le)}` : ''}.`,
+          }),
+        ]
+      : []),
     el('h3', { texte: 'Demandes sans geste' }),
     sansGeste.length === 0
       ? el(
@@ -534,15 +548,17 @@ async function chargerSansGeste() {
 /** Qui a commandé : le rôle, et la personne quand le rôle est identifié. */
 const quiCommande = (par) => (par.personne ? `${par.role} ${par.personne}` : par.role)
 
-/** Où en est une commande : disponible, chantier fait, ou mission écrite en attente de l'agence. */
+/** Où en est une commande (L7) : en attente de l'agence, chantier en cours, fusionné (mise à jour en préparation), disponible ; sinon le statut du chantier. */
 function etatCommande(intention, c) {
   if (c.disponible) return `Disponible : le geste ${intention} est dans le catalogue.`
   const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}.`
-  if (!c.chantier) return `${commande} Mission écrite, en attente de l’agence.`
-  const issue =
-    c.chantier.issue === FUSIONNE
-      ? `${FUSIONNE} : disponible à la prochaine mise à jour de l’outil`
-      : c.chantier.issue
+  if (!c.chantier) return `${commande} En attente de l’agence.`
+  const { issue, version } = c.chantier
+  if (issue === EN_COURS) return `${commande} Chantier en cours à l’agence.`
+  if (issue === EN_ATTENTE) return `${commande} En attente : le chantier se fera demain.`
+  if (issue === FUSIONNE) {
+    return `${commande} Fusionné${version ? ` (${version})` : ''} : mise à jour en préparation.`
+  }
   return `${commande} Chantier du ${jour(c.chantier.le)} : ${issue}.`
 }
 

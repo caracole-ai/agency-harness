@@ -238,6 +238,61 @@ condition 4 refuse de toute façon) ; le slug du client entre dans
 
 ### Lot 2 — La version signée (`general/l2-version`, une session ; indépendant du lot 3)
 
+**Fait le 2026-10-15, sur `general/l2-version`, à fusionner.** Écarts : la
+commande s'appelle **`pnpm versionner`** (`pnpm version` est une commande de
+pnpm, qui masquerait le script) ; `versionner` vit dans `fusion.ts`, le seul
+module qui pousse ; le manifeste est en lignes `clé: valeur` (`sorte`,
+`chantier`, `client`, `geste`, `commit`) ; `pnpm chantier` exige aussi la
+clé (une fusion sans version ne partirait chez personne) ; la version d'un
+retrait nomme le client que garde la mémoire de la fusion ; une fusion déjà
+sur `origin/main` rend la version déjà posée ; `preflightSignature` refuse
+une clé rangée dans le dépôt.
+
+Relecture indépendante du lot 2, corrigé : une ref renommée vers une
+version signée plus ancienne était admise (`verify-tag` ne compare pas le
+nom) → le nom signé dans l'objet doit être celui de la ref ; une signature
+OpenPGP d'une clé du trousseau de la machine était admise → seule une
+signature SSH compte (`gpg.minTrustLevel=fully`, OpenPGP et X.509
+désactivés) ; un chantier commencé avant minuit prenait un nom plus ancien
+qu'une version déjà posée → un nom est toujours après la plus récente ; une
+version restée locale (tentative tuée avant le push) passait pour posée →
+ôtée ; le chemin de la clé pouvait partir dans un message d'échec → masqué ;
+`SSH_AUTH_SOCK` retiré des enfants. **Ouvert, à Lionel avant un client
+réel** : `pnpm check` et `pnpm evals` exécutent du code écrit par le modèle
+sous l'utilisateur de l'agence, sans bac à sable : ce code peut lire le
+fichier de la clé de signature (et toute clé SSH de la machine). Retirer la
+variable ne suffit pas ; il faut que l'arbre du chantier tourne sous un
+autre utilisateur, ou dans un bac à sable qui interdit la lecture de la
+clé (`sandbox-exec` sous macOS, `bwrap` sous Linux). Le risque existait déjà
+pour les clés SSH de la machine ; la clé de signature le rend décisif.
+
+Audit avant fusion (2026-10-16), corrigé : la fusion prend le commit que la
+garde a vu, jamais la pointe de la branche (le code du modèle tourne après
+la garde, dans `pnpm check` et `pnpm evals` : un commit qu'il posait là
+partait signé chez tous les clients) ; un arbre qui a bougé après la garde
+refuse, avant les évals ; une étiquette `chantier/<id>` restée locale (une
+fusion tuée avant le push) est reposée, jamais sur le distant ; un
+`CLAUDE*.md` est interdit dans la bande (le binaire le chargerait comme
+consigne à la relecture et aux chantiers suivants), et les chemins
+interdits se comparent sans la casse (le disque de l'agence lit
+`claude.md` comme `CLAUDE.md`). **Ouvert, aggravé** :
+sans bac à sable, le code du modèle lit la clé, et aussi `~/.ssh`, le
+trousseau, le `.git` commun (ses hooks et sa config feraient tourner du code
+sous l'agence, hors de tout chantier) ; ce qu'il imprime ne part plus chez
+le client (lot 3), mais il peut l'écrire dans le code de la bande ou dans
+« Ce que j'ai appris » (la mémoire), que tous les clients tirent avec la
+version, et fausser les mesures (`pnpm check`, `pnpm evals`) : le bac à
+sable doit couvrir la lecture des secrets et l'écriture hors de l'arbre.
+**Ouvert, nouveau** : la fusion automatique signe tout ce que porte
+`origin/main` ; un compte de l'hébergeur volé y pousse, le chantier suivant
+le signe et tous les clients l'installent. Règle simple proposée : avant de
+signer, la fusion et le retrait refusent si un commit de `<dernière
+v*>..origin/main` touche autre chose que `memoire/` (un changement du moteur
+passe alors par `pnpm versionner`, le geste humain). Le manifeste de chaque
+version porte `client: <slug>` : tous les clients lisent les slugs de tous,
+un second canal du point ouvert du slug (lot 1). Non mesurable ici :
+`gpg.minTrustLevel=fully` (git 2.50 refuse déjà une autre clé sans lui).
+
 - `moteur/src/livraison/version.ts` : `prochaineEtiquette(c, racine,
   date)`, `signerEtiquette(c, arbre, tag, message, cle)`,
   `verifierEtiquette(c, depot, tag, signataires)`, `etiquettesCandidates(c,
@@ -258,6 +313,78 @@ condition 4 refuse de toute façon) ; le slug du client entre dans
   refusée, version plus ancienne refusée), en test.
 
 ### Lot 3 — La file des missions, l'aller et le retour (`general/l3-missions`, une session ; indépendant du lot 2)
+
+**Fait le 2026-10-15, sur `general/l3-missions`, empilée sur le lot 2 (le
+préflight de `pnpm agence` exige la clé) : une seule fusion les porte
+tous deux.** Écarts : le verrou est `.claude/missions/agence.lock` (à côté
+des files, une seule exclusion dans `.git/info/exclude`) ; la borne compte
+les statuts finals du jour qui ont coûté un appel dans les files, pas
+`memoire/INDEX.md` de la racine (en retard depuis L2) ; une mission d'un
+autre métier que son client (`agence.clients[].metier`) est écartée et son
+statut le dit ; le rattrapage tourne aussi sans `livraison.yaml` (il lit les
+statuts que `pnpm chantier` écrit à côté des missions) et se déclenche, en
+attendant la minuterie du lot 4, à chaque ouverture de l'onglet « Gestes »
+(dans `/api/sans-geste`, pas de route nouvelle) ; `etat.yaml` (la version
+courante) attend le lot 4, qui la connaît ; un statut `en cours` resté après
+un arrêt brutal n'est pas repris (la branche existe : `--refaire` à la
+main) ; `commanderEtLivrer` (dans `livraison/missions.ts`) fait la commande
+puis l'aller, `commanderMission` rend aussi le chemin de la mission.
+
+Relecture indépendante du lot 3, corrigé : un lien posé dans une file
+faisait écrire l'agence hors de la file et lire au client n'importe quel
+fichier → aucun lien n'est suivi (dossiers de date, missions, statuts,
+dossiers de chantier), une place occupée par un lien est nettoyée avant
+d'écrire ; la borne se comptait sur des statuts que le client écrit → elle
+se compte au registre de l'agence (`.claude/missions/chantiers.log`, une
+ligne par chantier lancé), et le client qui a eu le moins de chantiers du
+jour passe d'abord ; une mission datée de demain est laissée ; un commit
+dont le push a échoué partait pour poussé → `publier` pousse tout ce que la
+file n'a pas ; un statut que l'agence n'a pas pu pousser restait coincé, ou
+un `fusionné` devenait `échoué` → rien ne s'efface, ce qui est commis part
+au tour suivant ; une commande dont la config était illisible n'était ni
+poussée ni marquée → la marque est posée d'abord ; un `pull --rebase` en
+conflit laissait le clone bloqué → abandonné et dit ; git vers une file
+tournait sans délai (une invite gelait l'interface) → `GIT_TERMINAL_PROMPT=0`,
+ssh en mode lot, délai de 15 s ; le verrou se posait en deux temps → `wx`.
+**Ouvert** : deux clients de métiers différents qui commandent le même
+identifiant partagent la branche `chantier/<id>`, son étiquette et ses
+retraits ; le second finit « échoué » (le message le dit, sans proposer
+`--refaire`). Un espace de noms par métier (`chantier/<métier>/<id>`) est à
+faire avant un second client d'un autre métier.
+
+Audit avant fusion (2026-10-16), corrigé : un statut écrit dans le clone
+d'une file sans être commis (un arrêt avant le push) bloquait la file pour
+toujours → ce que le clone porte est commis d'abord, puis `pull --rebase`
+(pas `--autostash` : son conflit sort en 0 et laissait pousser des
+marqueurs) ; une reprise à la main (`pnpm chantier --refaire` sur une
+mission de la file) écrivait dossier et statut complets dans le clone →
+elle sort à l'agence et ne pose que le statut public ; une adresse de file
+changée est suivie (`remote set-url`) ;
+**écart à L7** : le dossier `<id>.chantier.md` et le texte du statut ne
+partent plus chez le client (ils portaient ce que le code du modèle
+imprime, le texte des modèles, des chemins de l'agence) : le dossier et le
+statut complets restent à l'agence (`.claude/missions/_chantiers/<slug>/<date>/`),
+la file reçoit le statut public (le statut, sa version, son coût ; la carte
+ne lit rien d'autre) ; non livré, `pnpm chantier` écrit toujours le dossier
+à côté de la mission ; la mission poussée est réécrite telle que le schéma
+la lit ; le statut « retiré » ne se perd plus (commis dans le clone, poussé
+au tour suivant) ; le motif d'un retrait est nettoyé une fois
+(`retirerMission`, le même dans le commit, la mémoire et le statut) ;
+`origin` injoignable au moment de prendre une mission la laisse à prendre
+au lieu de la faire finir « échoué » ; la version d'un statut et le métier
+d'une mission suivent leur motif ; le verrou à pid porte le démarrage de la
+machine (`boot_id`, `kern.bootsessionuuid`) : posé lors d'un autre
+démarrage, levé, sans rien demander à l'horloge ; vide et frais, tenu.
+Risques acceptés : deux écrivains du même statut (l'agence ne l'a pas
+encore commis, un tiers l'a réécrit dans la file) : la file s'arrête et le
+dit à chaque tour, rien de corrompu ne part (on efface le clone de
+l'agence, `.claude/missions/<slug>/`, pour repartir) ; un client qui
+repose `en attente` sur une mission déjà faite entame d'un chantier la borne
+du jour (sans appel au modèle ; l'équité entre clients borne l'effet) ;
+deux processus qui lèvent le même verrou mort au même instant (une fenêtre
+de quelques microsecondes) ; l'identifiant d'une intention n'est contrôlé
+que contre les noms des personnes du client, pas contre ses tiers (les
+clients d'une agence web) : à Lionel.
 
 - `moteur/src/livraison/config.ts` : `livraison.yaml` (schéma strict :
   `depot`, `missions`, `installation`, `intervalle_minutes`), `lireLivraison(dossier)`
@@ -286,6 +413,120 @@ condition 4 refuse de toute façon) ; le slug du client entre dans
 - **Critère** : les points 1 et 2 du critère global avec le binaire simulé.
 
 ### Lot 4 — La mise à jour chez le client et le lanceur (`general/l4-mise-a-jour`, une à deux sessions ; après 2 et 3)
+
+**Fait le 2026-10-15, sur `general/l4-mise-a-jour`, empilée sur les lots 2
+et 3.** Écarts : la préparation essaie les versions de la plus récente à la
+plus ancienne et prépare la première admise (une plus récente refusée, par
+sa signature ou sa lignée, ne bloque pas les suivantes) ; une version
+refusée ou revenue en arrière n'est jamais reprise (le journal le dit, une
+fois) ; l'interface lance le rattrapage dans un processus à part (`pnpm
+mise-a-jour`) pour continuer de répondre pendant `pnpm install` et `pnpm
+check` de la version ; le lanceur vit dans `interface/src/harnais.ts` (il
+connaît l'hôte et le port de l'interface), sa boucle dans
+`moteur/src/livraison/harnais.ts` ; la première installation se fait par
+`pnpm mise-a-jour` (la version préparée devient la courante) ; `etat.yaml`
+(la version courante d'un client, poussée dans sa file) n'est pas fait :
+l'agence n'en a pas l'usage avant la phase G ; `pnpm chantier retirer` pousse
+le statut `retiré` (et sa version) dans la file du client qui avait
+commandé. Trouvé par la chaîne entière : l'agence ne connaissait que les
+versions de `main` ; un nom pris sur le distant hors de `main` (une
+étiquette refusée chez les clients) bloquait toute version suivante →
+l'agence tire toutes les étiquettes `v*` avant de nommer.
+
+Relecture indépendante du lot 4, corrigé : l'interface sortait pour la
+bascule en pleine requête (un appel au modèle dure jusqu'à 7 min) → les
+requêtes en cours comptent ; un `retirer` à la main était défait par le
+rattrapage suivant → le marqueur de retour exclut la version tout de suite,
+et l'arbre de `courant` et de `precedent` n'est jamais touché ; deux
+préparations pouvaient se croiser → un verrou sur l'installation (bascule et
+retour l'attendent) ; une étiquette réécrite (même étrangère aux versions)
+bloquait tout sans un mot → seules les `v*` se tirent, une panne se dit
+(`erreur`) sans rien exclure ; une panne passagère (réseau, config) excluait
+une version pour toujours → seul un refus définitif (signature, lignée,
+`pnpm check` rouge) exclut ; « faite » s'écrivait avant la sonde → le
+lanceur pose un marqueur de bascule une fois la sonde passée, l'interface
+l'écrit au journal, la ligne avant d'ôter le marqueur ; trois plantages
+juste après une bascule arrêtaient le lanceur sans revenir → retour arrière
+(dans la fenêtre de dix minutes), et l'arrêt voulu sort en 0 (launchd et
+systemd ne le relancent pas) ; une interface lancée hors du lanceur sortait
+sans être relancée → seule celle du lanceur sort ; le lanceur retirait
+l'agent SSH du client (ses clés de déploiement) → il le garde ; le journal
+SQLite n'attendait pas un autre processus → `busy_timeout`.
+
+Rejoué pour de vrai le 2026-10-15, sans modèle, sur une machine : un dépôt
+nu du produit (cette branche), deux versions signées par une clé engendrée,
+une copie du client fictif livrée. `pnpm mise-a-jour` : signature vérifiée,
+`pnpm install` et `pnpm check` verts dans `versions/v…-1` (52 s), devenue
+la courante ; `pnpm harnais -- --modele simule` : l'interface sert depuis
+l'arbre de la version, « mise à jour : faite (v…-1) » ; la v…-2 publiée et
+préparée à côté (54 s) sans rien toucher de ce qui tourne ; au calme,
+l'interface sort (75), le lanceur bascule, la sonde répond, « faite (v…-2) »,
+`/api/version` le dit, `precedent` garde la v…-1. Rejoué après les
+corrections de la relecture (`19dee55`) : première installation sans ligne
+au journal ; bascule v…-3 → v…-4 au calme, sonde, puis « faite » écrite par
+l'interface qui tourne ; `pnpm mise-a-jour retirer` (v…-4 → v…-3), un
+rattrapage qui ne reprépare pas la v…-4, l'interface tuée, relancée par le
+lanceur sur la v…-3, « retour arrière (…, retirée à la main) » au journal.
+Le retour arrière sur sonde muette n'est joué qu'en test.
+
+Audit avant fusion (2026-10-16), corrigé : l'interface d'un client livré
+lançait git dans son propre processus (l'onglet « Gestes », le clic) : une
+file injoignable la gelait 15 s par appel, la conversation comprise
+(mesuré), et deux écrivains de lignes `chantier` pouvaient se croiser →
+l'interface ne lance plus git : le clic marque la mission, l'onglet et le
+clic déclenchent le rattrapage à part (relancé à sa fin s'il a été demandé
+pendant qu'il tournait) ; le pas de dix secondes n'ouvre le dossier client
+que si un marqueur attend ; un `spawn` raté se dit au lieu de faire tomber
+le processus ; après `pnpm mise-a-jour retirer`, l'interface qui tourne sur
+la version retirée sort au calme et le lanceur la relance sur la
+précédente (avant, rien ne redémarrait, et `elaguer` pouvait retirer
+l'arbre du code qui tournait), un second retrait est refusé ; trois
+plantages juste après une bascule pendant une préparation : le lanceur
+attend le verrou et revient (il s'arrêtait sur la nouvelle version) ; le
+port et le dossier passés après `--` ne l'emportent plus sur ceux du
+lanceur ; la sonde compte ses essais (une mise en veille n'exclut plus une
+version saine) ; un plancher : aucune version plus ancienne qu'une version
+signée qui a échoué ici (check rouge, retour arrière) ne se prépare, et une
+qui attendait déjà la bascule est écartée : un retrait qui échoue ne fait
+plus revenir le geste retiré ; le dépôt du produit chez le client ne tire
+que les étiquettes `v*` (`--no-tags` : ni les branches ni les étiquettes de
+chantier de l'agence, même posées dans l'histoire des versions), sans
+invite, une connexion figée coupée, son adresse relue ; le lanceur qui
+attend le verrou pour revenir le dit, une fois, avec le pid. Risques
+acceptés : les `pnpm install` et `pnpm check` d'une préparation n'ont pas
+de délai (un check qui ne finit pas tient l'installation : le lanceur
+attend et le dit) ; `livrer()`
+(`interface/src/serveur.ts`) et le lanceur réel (`interface/src/harnais.ts`)
+ne se jouent qu'au laboratoire ; leurs pièces (`noterSiMarque`,
+`relanceAttendue`, `doitRelancer`, `argumentsInterface`,
+`sonderInterface`, `retirerALaMain`) ont leurs tests.
+
+Rejoué pour de vrai après l'audit (2026-10-16, sur `814d831`, sans modèle,
+une machine) : première installation par `pnpm mise-a-jour` (72 s, un seul
+message), le dépôt du client ne porte que l'étiquette `v…-1` ; `pnpm
+harnais -- --modele simule` : l'interface sert depuis l'arbre de la `v…-1`,
+« Version v…-1. » en tête de l'onglet ; « Créer ce geste » à l'écran : la
+mission marquée, poussée dans la file par le rattrapage à part ; les statuts
+posés à la main dans la file comme l'agence le ferait (`en cours`, puis
+`fusionné` avec la `v…-2` signée) : la carte les suit au rafraîchissement ;
+la `v…-2` préparée à côté, sortie au calme (75), bascule, sonde, « faite
+(v…-2) », « Version v…-2, mise à jour le 16 octobre 2026 » ; `pnpm
+mise-a-jour retirer` : l'interface écrit « retour arrière (…, retirée à la
+main) », sort au calme d'elle-même, le lanceur la relance sur la `v…-1` ;
+tuée ensuite, relancée en 5 s sur la `v…-1` ; la `v…-2` jamais
+repréparée ; aucune erreur dans la console du navigateur. À part, une copie
+livrée dont la file est injoignable : avant l'audit, l'onglet et le clic
+gelaient l'interface 15 s (`/api/roles` à 14 s) ; après, l'onglet répond en
+22 ms, le clic en 39 ms, la mission reste marquée jusqu'au retour de la
+file.
+Rejoué une dernière fois sur la pointe finale (`d451316`, après la
+relecture des corrections) : le même parcours, vert, avec en plus un second
+`retirer` refusé (« déjà la version précédente ») ; le dépôt du client ne
+porte que `v…-1`, pas l'étiquette `chantier/heures_par_agent` du produit.
+Vu à cette occasion, laissé : après un retour arrière, la carte d'une
+commande fusionnée dit encore « mise à jour en préparation » (le journal,
+lui, dit le retour) ; à revoir avec la place des gestes dans l'interface
+(phase F).
 
 - `moteur/src/livraison/mise-a-jour.ts` : `preparer(dossier)` (L8 : fetch,
   candidates, vérification, worktree, install, check, `.prete`,

@@ -91,7 +91,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `pnpm check`, bascule à un moment calme, revient en arrière si le
   redémarrage échoue. Douze décisions L1 à L12, cinq lots. Lot 0 (le plan)
   et lot 1 (le chantier sans clone ni dossier client, la nuit retirée) faits
-  le 2026-10-15 ; lots 2 à 5 à faire.
+  le 2026-10-15 ; lots 2 (la version signée, `pnpm versionner`), 3 (la
+  file des missions, `pnpm agence`) et 4 (la mise à jour tirée, `pnpm
+  harnais`) faits le 2026-10-15, audités, corrigés et fusionnés le
+  2026-10-16 ; lot 5 (la mesure réelle) à faire.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -124,6 +127,20 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   écrits avec `${metier}` et résolus avec le métier de la mission ;
   `evals_clients` donne, par métier, le client fictif de la condition 4
   (`PLAN-METIER-2.md` M9).
+- `<dossier client>/livraison.yaml` — le client livré (`PLAN-LIVRAISON.md`
+  L5 ; un exemple commenté : `exemples/livraison.yaml`) : `depot` (le dépôt du produit, en lecture seule), `missions` (sa file
+  `missions-<slug>`, en lecture et écriture), `installation` (un chemin
+  absolu hors du dossier client : le clone de la file, un dépôt nu qui ne
+  tire du produit que ses étiquettes `v*`, les versions côte à côte),
+  `intervalle_minutes`. Les adresses sont relues à chaque rattrapage (une
+  file ou un produit déplacés se suivent) ; git vers elles ne demande rien
+  et coupe une connexion figée. Avec lui, le fichier `signataires` (la clé
+  publique de l'agence) : sans lui, aucune version ne s'installe. Sans
+  `livraison.yaml`, rien ne quitte la machine du client : `pnpm chantier
+  --mission` prend la mission à la main et écrit son statut à côté d'elle.
+  Les clés SSH des deux dépôts (une clé de déploiement par client et par
+  sens) sont dans `~/.ssh/config` de la machine, jamais dans le dépôt ni
+  dans la config.
 - `memoire/` — la mémoire des chantiers (`PLAN-RONDE.md` R10), écrite par
   le code dans l'arbre de la fusion ou du retrait, poussée avec eux :
   `INDEX.md` (une ligne par événement), `chantiers/`, `CONVENTIONS.md` (on y
@@ -259,20 +276,36 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `origin/main` dans la bande, la mémoire en ajout seul aux conventions,
   aucun test retiré ni tu, `lignes_max`, les cas de traduction des gestes
   nouveaux), `fusion.ts` (les huit conditions de G1, `git merge --no-ff`
-  dans un arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
+  du commit que la garde a vu, jamais la pointe de la branche, dans un
+  arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
   `main` du distant, une reprise si le push est refusé, la mémoire commise à
-  part ; le retrait par `git revert -m 1`, de même ; le seul module qui
-  fusionne ou pousse), `chantier.ts` (plan → implémentation → garde → `pnpm
+  part ; le retrait par `git revert -m 1`, de même ; une version signée
+  après chaque fusion et chaque retrait, poussée avec eux, et `versionner` ;
+  le seul module qui fusionne ou pousse), `chantier.ts` (plan → implémentation → garde → `pnpm
   check` → relecture → une reprise au plus → honnêteté → dossier → mémoire →
   fusion → statut ; aucun dossier client lu : les noms contrôlés sont ceux
   du client fictif du métier).
+  `src/livraison/` (`PLAN-LIVRAISON.md` L1, L4 à L9) : `version.ts` (les
+  étiquettes `v<AAAA-MM-JJ>-<n>`, signées SSH, vérifiées contre
+  `signataires` : nom, signature, lignée), `config.ts` (`livraison.yaml`),
+  `missions.ts` (la file git d'un client : la mission marquée puis poussée,
+  les statuts tirés, une ligne `chantier` par statut nouveau ; à l'agence,
+  les files tirées, le statut public poussé, le registre de la borne du
+  jour ; aucun lien suivi), `agence.ts` (un tour de `pnpm agence`, et
+  `retirerMission`), `mise-a-jour.ts` (chez le client : la version préparée
+  à côté, le plancher, les marqueurs du lanceur écrits au journal, le
+  moment calme), `harnais.ts` (le lanceur : bascule, sonde, retour
+  arrière ; `retirer` à la main), `verrou.ts` (le verrou à pid de l'agence
+  et de l'installation).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `metiers/<métier>/evals/`
   (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches.
 - `interface/` — l'interface, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
   chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
-  (`pnpm interface`, sur 127.0.0.1 seulement), `public/` (HTML, CSS et
+  (`pnpm interface`, sur 127.0.0.1 seulement ; chez un client livré, le
+  rattrapage à part, les marqueurs du lanceur au journal, la sortie au
+  calme), `src/harnais.ts` (`pnpm harnais`, le lanceur), `public/` (HTML, CSS et
   JavaScript sans framework, la charte de `presentation/`). Elle ne dépend
   d'aucun métier : le métier se charge depuis `config.yaml: metier`
   (`moteur/src/cli/metier.ts`, comme toutes les CLI), et ce qu'elle montre
@@ -281,8 +314,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   de `registre` (`PLAN-METIER-2.md` M10) ; `/api/roles` (les rôles déclarés,
   pour le sélecteur « Je suis »), `/api/entree` (sous qui la page s'ouvre :
   le rôle sans identifiant, sinon la première personne du registre dont le
-  rôle administre ; l'agence web s'ouvre sous M-01) et `/api/tableau` (le nom
-  et les textes de qui parle, ouverts à tout rôle passé par la porte). Cinq onglets
+  rôle administre ; l'agence web s'ouvre sous M-01), `/api/tableau` (le nom
+  et les textes de qui parle, ouverts à tout rôle passé par la porte) et
+  `/api/version` (au patron : la version installée, son fichier `VERSION`,
+  et le jour de sa mise à jour ; rien hors d'une installation). Cinq onglets
   (à valider, règles, délégations proposées, gestes, journal), réservés à la
   capacité `administre` (le patron, pour la sécurité), et
   la conversation toujours visible ; l'identité est choisie dans le registre
@@ -293,12 +328,21 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   (`/api/sans-geste/commander`, aucun modèle) : le code écrit la mission
   `geste_code` chez le client (`missions/<date>/<intention>.yaml`, depuis les
   consignes version modèle des échappées de l'intention, sans nom), puis une
-  ligne `geste commandé` ; le chantier, à l'agence, code le geste sous ses
-  portes (`PLAN-LIVRAISON.md` : la file des missions et la mise à jour
-  tirée, lots 3 et 4). La carte dit où en est la commande : mission écrite, chantier
-  du … (fusionné : disponible à la prochaine mise à jour de l'outil), puis
-  disponible quand le métier chargé porte le geste. « par » est l'identité
-  vérifiée, jamais un champ du corps.
+  ligne `geste commandé`, puis, si le client est livré (`livraison.yaml`), la
+  marque « à pousser » ; le chantier, à l'agence, code le geste sous ses
+  portes (`pnpm agence`). Les statuts des chantiers donnent une ligne
+  `chantier` au journal par statut nouveau, et le dossier, s'il est là,
+  est copié dans `chantiers/<id>.md`. Un client non livré : ils se lisent à
+  chaque ouverture de l'onglet, dans ses `missions/`, sans git. Un client
+  livré : l'interface ne lance aucun git (une file injoignable la
+  gèlerait) ; l'ouverture de l'onglet et la commande déclenchent le
+  rattrapage à part (`pnpm mise-a-jour`, seul à écrire ces lignes), qui
+  pousse la mission marquée et tire les statuts ; la carte suit au
+  rafraîchissement. La carte dit : en attente de l'agence, en attente du
+  lendemain (la borne du jour), chantier en cours, fusionné (v…) et mise à
+  jour en préparation, puis disponible quand le métier chargé porte le
+  geste ; un autre statut se dit tel quel (`PLAN-LIVRAISON.md` L7). « par »
+  est l'identité vérifiée, jamais un champ du corps.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -435,10 +479,16 @@ pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier
                          # Fable relit (une reprise au plus sur un bloquant), le code mesure
                          # l'honnêteté (trois cas par geste nouveau, pnpm evals traduire avec le
                          # modèle du quotidien : exige sa clé) ; la mémoire, et, si les huit
-                         # conditions de G1 sont vertes, fusion --no-ff dans un arbre détaché +
-                         # étiquette chantier/<id> + push sur main du distant. Le dossier
-                         # <id>.chantier.md et le statut <id>.statut.yaml vont dans --sortie (par
-                         # défaut, à côté de la mission). Le métier est celui de la mission ; les
+                         # conditions de G1 sont vertes, fusion --no-ff du commit que la garde a
+                         # vu (pas la pointe de la branche : un commit posé après la garde, ou un
+                         # arbre qui a changé avant les évals, refuse) dans un arbre détaché +
+                         # étiquette chantier/<id> + version signée v<AAAA-MM-JJ>-<n> + push
+                         # atomique sur main du distant. Le dossier <id>.chantier.md et le statut
+                         # <id>.statut.yaml vont dans --sortie (par défaut, à côté de la mission).
+                         # Une mission de la file d'un client, à l'agence (pnpm agence, ou une
+                         # reprise à la main : --refaire sur .claude/missions/<slug>/<date>/<id>.yaml) :
+                         # sa sortie est à l'agence (.claude/missions/_chantiers/), sans --sortie,
+                         # et la file ne reçoit que le statut public. Le métier est celui de la mission ; les
                          # noms contrôlés, ceux de son client fictif (evals_clients). Déjà
                          # tentée : rien, sauf --refaire (qui rouvre la branche telle quelle :
                          # pour repartir d'origin/main, supprimer la branche chantier/<id>).
@@ -446,9 +496,94 @@ pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier
                          # ni git.
 pnpm chantier retirer <id> --motif "<texte>"
                          # G2 : git revert -m 1 de la fusion dans un arbre détaché sur
-                         # origin/main, push sur main du distant, la mémoire (motif, et le
-                         # client, le titre et les intentions que garde la mémoire de la fusion :
-                         # jamais refaite, même sous un autre nom).
+                         # origin/main, sa version signée, push sur main du distant, la mémoire
+                         # (motif, et le client, le titre et les intentions que garde la mémoire
+                         # de la fusion : jamais refaite, même sous un autre nom), puis le statut
+                         # « retiré » et sa version dans la file du client qui l'avait commandée
+                         # (une file injoignable : le statut attend dans son clone, le prochain
+                         # tour de pnpm agence le pousse). Le motif, nettoyé des noms des clients
+                         # fictifs, est le même dans le commit (que tous les clients tirent avec
+                         # la version), la mémoire et le statut.
+pnpm agence [--une-fois] # l'agence prend les missions de ses clients (PLAN-LIVRAISON.md L1) :
+                         # une boucle (agence.yaml: agence.intervalle_secondes) sous un verrou
+                         # (.claude/missions/agence.lock) ; à chaque tour, la file git de chaque
+                         # client (agence.clients : slug, métier, adresse de missions-<slug>)
+                         # tirée dans .claude/missions/<slug>/ (aucun lien suivi), la mission à
+                         # prendre (le client qui a eu le moins de chantiers aujourd'hui, puis
+                         # la plus ancienne ; une mission d'un autre métier que son client :
+                         # écartée), au plus chantiers_max_par_jour chantiers par jour, comptés
+                         # au registre de l'agence (.claude/missions/chantiers.log ; au-delà :
+                         # « en attente », demain) ; préflight (binaire connecté, clé de
+                         # signature, origin joignable : sinon rien n'est écrit, la mission
+                         # attend le tour suivant), statut « en cours », le chantier ; son dossier
+                         # et son statut complets restent à l'agence
+                         # (.claude/missions/_chantiers/<slug>/<date>/), la file ne reçoit que le
+                         # statut public (le statut, sa version, son coût ; jamais le texte du
+                         # chantier : une sortie de pnpm check, un texte de modèle) ; un push qui
+                         # échoue part au tour suivant, un statut écrit mais pas commis aussi.
+                         # --une-fois : un tour (cron).
+pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
+                         # chez un client livré (PLAN-LIVRAISON.md L9) : le lanceur, lancé depuis
+                         # l'installation (cd <installation>/courant), qui lance pnpm interface
+                         # depuis la version courante (le dossier et le port du lanceur
+                         # l'emportent sur ceux passés après --), bascule sur la version prête
+                         # quand l'interface sort au calme (code 75), la sonde (POST /api/roles,
+                         # trente essais d'une seconde), revient en arrière si elle ne répond pas,
+                         # ou plante trois fois dans les dix minutes qui suivent (en attendant,
+                         # s'il le faut, qu'une préparation rende l'installation) ; trois
+                         # plantages hors de cette fenêtre : arrêt (code 0 : un humain regarde).
+                         # Bascule et retour attendent qu'aucune préparation ne tienne
+                         # l'installation. Il tourne avec le code de la version qui l'a lancé
+                         # jusqu'à son redémarrage à la main. À installer une fois, par exemple
+                         # launchd (macOS) : ProgramArguments = /bin/sh -c "cd
+                         # <installation>/courant && pnpm harnais --client <dossier>",
+                         # KeepAlive = { SuccessfulExit = false } (l'arrêt voulu n'est pas
+                         # relancé) ; systemd : WorkingDirectory=<installation>/courant,
+                         # ExecStart=pnpm harnais --client <dossier>, Restart=on-failure. Ni
+                         # launchd ni systemd ne lisent le PATH d'un shell : celui où sont node et
+                         # pnpm se donne (EnvironmentVariables, Environment=PATH=…), sinon
+                         # pnpm est introuvable (nvm, Homebrew).
+                         # L'interface lancée à la main (pnpm interface) d'un client livré ne
+                         # sort jamais pour une bascule : seule celle que le lanceur a lancée.
+                         # Ce que le client voit : l'onglet « Gestes » dit « Version v…, mise à
+                         # jour le … » et, pour chaque commande, en attente de l'agence →
+                         # chantier en cours → fusionné (v…), mise à jour en préparation →
+                         # disponible ; le journal dit « mise à jour : faite | refusée |
+                         # retour arrière ».
+pnpm mise-a-jour [retirer] --client <dossier>
+                         # une fois, à la main (l'interface d'un client livré le lance d'elle-
+                         # même, dans un processus à part : à son démarrage, toutes les
+                         # intervalle_minutes, à l'ouverture de l'onglet « Gestes » et après une
+                         # commande) : les missions marquées poussées et les statuts tirés de la
+                         # file, puis la prochaine version préparée à côté (signature de
+                         # l'agence vérifiée contre <dossier>/signataires, lignée, pnpm check
+                         # rejoué dans son arbre) ; la première fois, elle devient la courante.
+                         # Une version refusée pour de bon (signature, lignée, pnpm check rouge)
+                         # ou revenue en arrière n'est jamais reprise (un pnpm install rouge se
+                         # retente), ni aucune plus ancienne qu'une version signée qui a échoué
+                         # ici (check rouge, retour arrière : un retrait qui échoue ne fait pas
+                         # revenir le geste retiré). retirer : courant ← precedent, à la main
+                         # (refusé si la courante l'est déjà) ; l'interface lancée par le
+                         # lanceur le dit au journal, sort au moment calme suivant, et le
+                         # lanceur la relance sur la précédente.
+pnpm versionner          # une version signée sur origin/main tel quel, pour livrer le moteur
+                         # sans chantier (PLAN-LIVRAISON.md L4) : l'étiquette v<AAAA-MM-JJ>-<n>,
+                         # son message le manifeste en clair, l'étiquette seule poussée. Pas
+                         # « pnpm version » : pnpm en a une à lui, qui masquerait le script.
+                         # Juste après un chantier, origin/main porte la mémoire au-dessus de
+                         # la version du chantier : versionner en poserait une de plus, sans
+                         # code nouveau, que chaque client installerait (une minute d'install
+                         # et de check) ; à lancer quand le moteur a changé.
+                         # La signature, pour pnpm chantier, retirer et versionner :
+                         # AGENCE_CLE_SIGNATURE = le chemin de la clé privée SSH de l'agence,
+                         # hors du dépôt (ssh-keygen -t ed25519 ; OpenSSH 8.2 au moins). Son
+                         # chemin et l'agent SSH ne passent ni au modèle ni à pnpm check
+                         # (envEnfant les retire) ; mais le code que le modèle écrit tourne sous
+                         # le même utilisateur et pourrait lire le fichier : ouvert, voir
+                         # PLAN-LIVRAISON.md, lot 2. Chaque client reçoit avec son dossier un
+                         # fichier `signataires` : « agence <clé publique> » ; chez lui, seule une
+                         # étiquette annotée qui porte son nom, signée SSH par cette clé, est
+                         # admise (verifierEtiquette, livraison/version.ts).
                          # Sur une COPIE du client fictif
 pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
                          # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,

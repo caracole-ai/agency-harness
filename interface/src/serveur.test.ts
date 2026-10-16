@@ -1,12 +1,22 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   type Choix,
   DOSSIER_MISSIONS,
+  ecrireStatut,
+  FICHIER_LIVRAISON,
   FICHIER_PERSONNES,
   type Identite,
   Journal,
@@ -16,6 +26,8 @@ import {
   modeleSimule,
   type Reponse,
   type Scripte,
+  type Statut,
+  SUFFIXE_A_POUSSER,
   type Tableau,
   TYPE_ACCES_REFUSE,
   TYPE_APPEL,
@@ -24,6 +36,7 @@ import {
   TYPE_CONSIGNE,
   TYPE_ECHAPPEE,
   TYPE_GESTE_COMMANDE,
+  TYPE_MISE_A_JOUR,
 } from '@harnais/moteur'
 import { describe, expect, it, vi } from 'vitest'
 import { creerApp } from './app'
@@ -523,6 +536,82 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     })
     expect(await etat(avecGeste)).toMatchObject({ disponible: true })
   })
+  it('la carte suit les statuts que le chantier écrit à côté de la mission (non livré, PLAN-LIVRAISON.md L7) : en attente, en cours, fusionné et sa version, disponible', async () => {
+    const dossier = copieAvecDemandes()
+    const a = app([], dossier)
+    expect(
+      (
+        await poster(a, '/api/sans-geste/commander', {
+          identite: PATRON,
+          intention: 'remise_des_cles',
+        })
+      ).status,
+    ).toBe(200)
+    const etat = async (x: ReturnType<typeof app>) =>
+      (
+        (await (await lire(x, '/api/sans-geste')).json()) as { commande?: { chantier?: unknown } }[]
+      )[0]?.commande
+    expect((await etat(a))?.chantier).toBeUndefined()
+    const date = join(dossier, 'missions', '2026-10-10')
+    const statut = (s: Statut) => ecrireStatut(date, 'remise_des_cles', s)
+    statut({
+      statut: 'en attente',
+      issue: 'borne du jour atteinte (3 chantiers) : demain',
+      cout_usd: 0,
+      le: '2026-10-10T19:50:00Z',
+    })
+    expect((await etat(a))?.chantier).toEqual({ issue: 'en attente', le: '2026-10-10' })
+    statut({
+      statut: 'en cours',
+      issue: 'chantier en cours',
+      cout_usd: 0,
+      le: '2026-10-10T20:00:00Z',
+    })
+    expect((await etat(a))?.chantier).toEqual({ issue: 'en cours', le: '2026-10-10' })
+    statut({
+      statut: 'fusionné',
+      issue: 'fusionné',
+      version: 'v2026-10-10-1',
+      cout_usd: 1.5,
+      le: '2026-10-10T20:40:00Z',
+    })
+    expect((await etat(a))?.chantier).toEqual({
+      issue: 'fusionné',
+      le: '2026-10-10',
+      version: 'v2026-10-10-1',
+    })
+    // Relu, le même statut n'ajoute rien au journal.
+    await etat(a)
+    expect(
+      journalDe(dossier)
+        .filter((l) => l.type === TYPE_CHANTIER)
+        .map((l) => l.issue),
+    ).toEqual(['en attente', 'en cours', 'fusionné'])
+  })
+  it('/api/version (PLAN-LIVRAISON.md L9) : rien hors d’une installation ; installée, l’étiquette et le jour de sa mise à jour ; au patron seul', async () => {
+    expect(await (await lire(app(), '/api/version')).json()).toEqual({})
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [{ type: TYPE_MISE_A_JOUR, client: CLIENT, objet: 'v2026-10-10-2', issue: 'faite' }],
+      '2026-10-10T08:30:00Z',
+    )
+    j.fermer()
+    const installee = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: METIER,
+      version: 'v2026-10-10-2',
+    })
+    expect(await (await lire(installee, '/api/version')).json()).toEqual({
+      version: 'v2026-10-10-2',
+      le: '2026-10-10',
+    })
+    expect((await lire(installee, '/api/version', { role: 'agent', agent: 'A-2' })).status).toBe(
+      403,
+    )
+  })
   it('commander sans consigne utilisable (aucune échappée sous l’intention) : 400, ni mission ni ligne', async () => {
     const dossier = copieAvecDemandes()
     const r = await poster(app([], dossier), '/api/sans-geste/commander', {
@@ -537,6 +626,42 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     expect(
       existsSync(join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'releve_kilometrique.yaml')),
     ).toBe(false)
+  })
+  it('un client livré (PLAN-LIVRAISON.md L6, L7) : l’interface ne lance aucun git ; l’onglet et la commande déclenchent le rattrapage à part, la mission est marquée « à pousser »', async () => {
+    const dossier = copieAvecDemandes()
+    const installation = mkdtempSync(join(tmpdir(), 'installation-'))
+    writeFileSync(
+      join(dossier, FICHIER_LIVRAISON),
+      [
+        'depot: /nulle-part/produit.git',
+        'missions: /nulle-part/missions.git',
+        `installation: ${installation}`,
+        'intervalle_minutes: 15',
+        '',
+      ].join('\n'),
+    )
+    let rattrapages = 0
+    const a = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: METIER,
+      rattraper: () => {
+        rattrapages++
+      },
+    })
+    expect((await lire(a, '/api/sans-geste')).status).toBe(200)
+    expect(rattrapages).toBe(1)
+    const r = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'remise_des_cles',
+    })
+    expect(r.status).toBe(200)
+    expect(rattrapages).toBe(2)
+    const mission = join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'remise_des_cles.yaml')
+    expect(readFileSync(`${mission}${SUFFIXE_A_POUSSER}`, 'utf8')).toBe('à pousser\n')
+    // Aucun git n'a tourné dans l'interface : l'installation est vide (pas même le clone de la file).
+    expect(readdirSync(installation)).toEqual([])
   })
   it('la page a l’onglet « Gestes » : ce que l’outil ne sait pas encore faire, sans gestes appris', async () => {
     const page = await (await app().request('/')).text()

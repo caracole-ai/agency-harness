@@ -9,6 +9,7 @@ import { faireChantier } from './chantier'
 import {
   agenceEssai,
   binaireSimule,
+  CLE_ESSAI,
   clientAvecMission,
   commandeSimulee,
   creerDepots,
@@ -68,6 +69,7 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
       racine: depots.racine,
       id: MISSION_ESSAI.id,
       motif: 'essai',
+      version: { cle: CLE_ESSAI.privee, jour: '2026-10-12' },
       ecrireRetrait: (arbre) =>
         ecrireRetrait(
           arbre,

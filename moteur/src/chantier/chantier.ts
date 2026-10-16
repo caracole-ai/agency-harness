@@ -6,6 +6,7 @@ import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import type { Domaine } from '../conversation/domaine'
+import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
@@ -14,6 +15,7 @@ import {
   commandeSync,
   commettre,
   fermerArbre,
+  git,
   ouvrirArbre,
   REF_DISTANTE,
   verifierBase,
@@ -39,6 +41,7 @@ import {
   type Mission,
   missionPourModele,
   type StatutChantier,
+  SUFFIXE_DOSSIER,
   TYPE_CHANTIER,
 } from './mission'
 
@@ -60,8 +63,6 @@ import {
 // par le binaire `claude` (§ 0.a) : coût estimé par le binaire.
 
 export { TYPE_CHANTIER }
-/** Le dossier d'un chantier, dans le dossier de sortie : `<id>.chantier.md`. */
-export const SUFFIXE_DOSSIER = '.chantier.md'
 export const FICHIER_METHODE = join('methode', 'chantier.md')
 /** La carte du harnais : `methode/chantier.md` demande aux modèles du chantier de la lire. */
 export const FICHIER_CARTE = join('methode', 'architecture-pour-modeles.md')
@@ -218,11 +219,12 @@ export async function faireChantier<S>(
   const missionTexte = missionPourModele(mission, m.domaine)
 
   /** Le statut que lira le client (L7) ; sans modèle, aucun : rien n'a été tenté. */
-  const statuer = (statut: StatutChantier, issue: string, cout: number) => {
+  const statuer = (statut: StatutChantier, issue: string, cout: number, version?: string) => {
     if (o.sansModele) return
     ecrireStatut(o.sortie, mission.id, {
       statut,
       issue,
+      ...(version ? { version } : {}),
       cout_usd: round(cout),
       le: maintenant.toInstant().toString(),
     })
@@ -308,6 +310,8 @@ export async function faireChantier<S>(
       )
   }
   preflight('claude', o.agence, o.env, executer)
+  // La clé de signature (L4) : une fusion pose sa version ; sans clé, rien ne commence.
+  const cle = preflightSignature(o.env, o.racine, executer)
   verifierBase(c, o.racine)
   const arbre = ouvrirArbre(c, o.racine, mission.id, o.refaire === true)
   if (arbre.sorte === 'deja_tentee') return { sorte: 'deja_tentee', dossier }
@@ -334,6 +338,8 @@ export async function faireChantier<S>(
   let texteImplementation = ''
   let garde: Garde | undefined
   let check: { ok: boolean; sortie: string } | undefined
+  /** Le commit sur lequel la dernière garde a porté : lui seul se fusionne. */
+  let gardee: string | undefined
   let honnetete: { ok: boolean; mesure: string } | undefined
   let fusion: IssueFusion | undefined
   let derniereLecture: Relecture | undefined
@@ -401,6 +407,7 @@ export async function faireChantier<S>(
   }
   const pnpm = (args: string[]) => c(cwd, 'pnpm', args, envEnfant(o.env))
   const verifier = () => {
+    gardee = git(c, cwd, ['rev-parse', 'HEAD']).trim()
     garde = garderDiff(c, cwd, ch, personnes, mission.metier)
     const r = pnpm(['check'])
     check = { ok: r.code === 0, sortie: fin(`${r.sortie}\n${r.erreur}`, 15) }
@@ -548,7 +555,10 @@ export async function faireChantier<S>(
       (k) => k.niveau === 'bloquant',
     ).length
 
-    if (garde?.chemins.ok && check?.ok && relu && bloquantsRestants === 0) {
+    // Le code du modèle a tourné après la garde (pnpm check) : l'arbre doit être encore le commit
+    // gardé, sans rien de plus ; sinon rien ne se mesure ni ne se fusionne.
+    const bouge = arbreBouge(c, cwd, gardee)
+    if (garde?.chemins.ok && !bouge && check?.ok && relu && bloquantsRestants === 0) {
       honnetete = mesurerHonnetete(c, cwd, o.env, mission.metier, ch.evals_clients[mission.metier])
     }
 
@@ -561,15 +571,17 @@ export async function faireChantier<S>(
     conditions.push(
       {
         id: 'chemins',
-        ok: garde?.chemins.ok === true,
-        mesure: garde
-          ? garde.fichiers.length === 0
-            ? 'aucun fichier changé'
-            : [
-                ...garde.chemins.horsBande.map((x) => `hors bande : ${x}`),
-                ...garde.chemins.memoire,
-              ].join(' ; ') || `${garde.fichiers.length} fichier(s), tous dans la bande`
-          : 'non mesurée',
+        ok: garde?.chemins.ok === true && !bouge,
+        mesure: bouge
+          ? bouge
+          : garde
+            ? garde.fichiers.length === 0
+              ? 'aucun fichier changé'
+              : [
+                  ...garde.chemins.horsBande.map((x) => `hors bande : ${x}`),
+                  ...garde.chemins.memoire,
+                ].join(' ; ') || `${garde.fichiers.length} fichier(s), tous dans la bande`
+            : 'non mesurée',
       },
       {
         id: 'tests',
@@ -617,8 +629,10 @@ export async function faireChantier<S>(
       racine: o.racine,
       id: mission.id,
       titre,
+      commit: gardee,
       conditions,
       personnes,
+      version: { cle, jour, client: o.client },
       ecrireEntree: (arbreFusion, sorte, issueMemoire) =>
         ecrireChantier(
           arbreFusion,
@@ -694,6 +708,7 @@ export async function faireChantier<S>(
         : ISSUES_CHANTIER.echoue,
     issue,
     cout(),
+    fusion?.sorte === 'fusionne' ? fusion.version : undefined,
   )
   return {
     sorte: 'fait',
@@ -709,6 +724,25 @@ export async function faireChantier<S>(
 }
 
 const round = (x: number) => Math.round(x * 1_000_000) / 1_000_000
+
+/**
+ * L'arbre a-t-il bougé depuis la garde (le code du modèle tourne dans `pnpm
+ * check`) : un commit de plus, ou un fichier changé, ajouté ou retiré sans
+ * être commis. Rend ce qui a bougé, en mots, ou undefined.
+ */
+function arbreBouge(c: Commande, arbre: string, gardee: string | undefined): string | undefined {
+  if (!gardee) return undefined
+  const tete = git(c, arbre, ['rev-parse', 'HEAD']).trim()
+  if (tete !== gardee) {
+    return `l'arbre a bougé après la garde (${gardee.slice(0, 12)} → ${tete.slice(0, 12)}) : rien ne se fusionne`
+  }
+  const sale = git(c, arbre, ['status', '--porcelain', '--untracked-files=all'])
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+  return sale.length > 0
+    ? `l'arbre a changé après la garde (${sale.length} fichier(s) hors du commit gardé) : rien ne se fusionne`
+    : undefined
+}
 
 /**
  * Condition 4 de G1 : au moins trois cas de traduction par geste nouveau,
@@ -899,7 +933,7 @@ function rendreDossier(x: {
       : ['Non tentée.']),
     '',
     x.fusion?.sorte === 'fusionne'
-      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`, poussé.`
+      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`${x.fusion.version ? `, version \`${x.fusion.version}\`` : ''}, poussé.`
       : x.fusion?.sorte === 'refuse'
         ? 'Non fusionné : la branche reste.'
         : x.fusion

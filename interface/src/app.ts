@@ -12,11 +12,12 @@ import {
   avecSession,
   type Capacite,
   chargerPersonnes,
-  commanderMission,
+  commanderEtLivrer,
   confirmer,
   coutDuMois,
   demandesAvecEtat,
   ErreurCommande,
+  etatVersion,
   FORMAT_INTENTION,
   FUSEAU,
   type Identite,
@@ -27,6 +28,7 @@ import {
   type MetierConversation,
   type Modele,
   type Personne,
+  rattraperStatuts,
   roleDe,
   type Tableau,
   Temporal,
@@ -46,6 +48,8 @@ const PUBLIC = fileURLToPath(new URL('../public', import.meta.url))
 
 /** L'interface n'écoute qu'en local. */
 export const HOTE = '127.0.0.1'
+/** Le port de l'interface, sauf `--port`. */
+export const PORT = 3777
 /** Les noms sous lesquels une requête peut arriver : un autre nom est un site tiers qui pointe ici (rebinding DNS). */
 const HOTES = new Set([HOTE, 'localhost', '[::1]'])
 
@@ -225,6 +229,16 @@ export function creerApp(options: {
   maintenant?: string
   modele: Modele
   metier: Metier
+  /** L'étiquette de la version qui tourne (son fichier `VERSION`), pour `/api/version`. */
+  version?: string
+  /** Le début et la fin de chaque requête (PLAN-LIVRAISON.md L8 : le moment calme se mesure ici, requêtes en cours comprises). */
+  activite?: { debut: () => void; fin: () => void }
+  /**
+   * Un client livré : déclenche le rattrapage à part (`pnpm mise-a-jour`),
+   * qui tire la file (statuts, missions à pousser) et les versions. Alors
+   * l'interface ne lance aucun git : une file injoignable ne la gèle pas.
+   */
+  rattraper?: () => void
 }): Hono {
   const { dossier, modele, metier: m } = options
   const fixe = options.maintenant ? aParis(options.maintenant) : undefined
@@ -278,6 +292,14 @@ export function creerApp(options: {
   // tout ce qu'un formulaire ou un fetch sans pré-vol peut envoyer
   // (hono/csrf), et un nom d'hôte local (un site tiers ne peut pas lire le
   // journal par un nom à lui qui pointe sur cette machine).
+  app.use('*', async (_c, next) => {
+    options.activite?.debut()
+    try {
+      await next()
+    } finally {
+      options.activite?.fin()
+    }
+  })
   app.use('/api/*', csrf())
   app.use('/api/*', async (c, next) => {
     const { hostname } = new URL(c.req.url)
@@ -400,13 +422,33 @@ export function creerApp(options: {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
     exigerCapacite(m, identite, 'administre')
     return c.json(
-      await session(identite, (s) =>
-        demandesAvecEtat(
+      await session(identite, (s) => {
+        // Les statuts des chantiers d'abord (PLAN-LIVRAISON.md L7). Livré : le rattrapage à part tire la
+        // file et écrit les lignes `chantier` (un seul écrivain) ; la carte suit au rafraîchissement.
+        // Non livré : les statuts que `pnpm chantier` écrit à côté des missions, lus ici, sans git.
+        if (options.rattraper) {
+          options.rattraper()
+        } else {
+          try {
+            const r = rattraperStatuts(m, s, dossier, maintenant())
+            for (const p of r.problemes) console.error(`file des missions : ${p}`)
+          } catch (erreur) {
+            console.error(`file des missions : ${(erreur as Error).message}`)
+          }
+        }
+        return demandesAvecEtat(
           m.journal(s).lire(),
           m.actions.map((a) => a.id),
-        ),
-      ),
+        )
+      }),
     )
+  })
+
+  // La version qui tourne et le jour de sa mise à jour (PLAN-LIVRAISON.md L9) : en tête de l'onglet « Gestes ».
+  app.post('/api/version', async (c) => {
+    const identite = entrer((await lireCorps(c.req.raw)).identite)
+    exigerCapacite(m, identite, 'administre')
+    return c.json(await session(identite, (s) => etatVersion(m.journal(s).lire(), options.version)))
   })
 
   app.post('/api/sans-geste/commander', async (c) => {
@@ -421,9 +463,12 @@ export function creerApp(options: {
       role: identite.role,
       ...(identite.personne !== undefined ? { personne: identite.personne } : {}),
     }
-    return c.json(
-      await session(identite, (s) => commanderMission(m, s, dossier, intention, par, maintenant())),
+    const commande = await session(identite, (s) =>
+      commanderEtLivrer(m, s, dossier, intention, par, maintenant()),
     )
+    // Livré : la mission marquée part par le rattrapage à part, aussitôt (L6).
+    options.rattraper?.()
+    return c.json(commande)
   })
 
   app.post('/api/confirmer', async (c) => {

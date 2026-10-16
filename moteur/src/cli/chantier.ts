@@ -8,14 +8,20 @@
 // ce dépôt, dont ni l'arbre ni `main` ne bougent) ; la mémoire, et la fusion
 // sur `main` du distant si les huit conditions sont vertes. Le dossier
 // `<id>.chantier.md` et le statut `<id>.statut.yaml` vont dans `--sortie`
-// (par défaut, à côté de la mission). Le métier est celui que la mission
+// (par défaut, à côté de la mission) ; une mission de la file d'un client, à
+// l'agence (une reprise à la main, `--refaire`), sort à l'agence comme sous
+// `pnpm agence`, sans `--sortie`, et la file ne reçoit que le statut public.
+// Le métier est celui que la mission
 // nomme ; les noms contrôlés, ceux de son client fictif (`evals_clients`) :
 // le chantier ne lit aucun dossier client. Une mission déjà tentée ne se
 // refait pas sans --refaire. --sans-modele : la décision et ce que le plan
 // recevrait, aucun appel, aucun git.
-// `retirer` (G2) : `git revert -m 1` de la fusion dans un arbre détaché, push,
-// la mémoire (motif, et le client, le titre et les intentions que la mémoire
-// de la fusion garde : la mission n'est jamais refaite).
+// `retirer` (G2) : `git revert -m 1` de la fusion dans un arbre détaché, sa
+// version signée, push, la mémoire (motif, et le client, le titre et les
+// intentions que la mémoire de la fusion garde : la mission n'est jamais
+// refaite), puis le statut `retiré` dans la file du client qui l'avait
+// commandée (`retirerMission`) ; le motif, nettoyé des noms des clients
+// fictifs, est le même dans le commit, la mémoire et le statut.
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
 // appelle le modèle du quotidien (la clé que nomme la config du client).
@@ -24,14 +30,14 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { chargerAgence } from '../agence/config'
-import { personnesFictives } from '../agence/fictif'
+import { nomsFictifs } from '../agence/fictif'
 import { commandeSync } from '../chantier/arbre'
 import { faireChantier } from '../chantier/chantier'
-import { retirerFusion } from '../chantier/fusion'
-import { ecrireRetrait, missionFusionnee } from '../chantier/memoire'
-import { lireMission } from '../chantier/mission'
+import { lireMission, lireStatut, SUFFIXE_STATUT } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
-import type { Designable } from '../conversation/designation'
+import { retirerMission } from '../livraison/agence'
+import { slugEnFile, sortieAgence, statuerALaMain } from '../livraison/missions'
+import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { conversationDuMetier } from './metier'
@@ -53,12 +59,6 @@ const USAGE =
 
 const agence = chargerAgence(RACINE)
 
-/** Les noms des clients fictifs de ces métiers (`evals_clients`) : à l'agence, les seuls noms connus (L3). */
-async function nomsFictifs(metiers: string[]): Promise<Designable[]> {
-  const clients = metiers.flatMap((x) => agence.chantier.evals_clients[x] ?? [])
-  return (await Promise.all(clients.map((d) => personnesFictives(join(RACINE, d))))).flat()
-}
-
 try {
   if (positionals[0] === 'retirer') {
     const id = positionals[1]
@@ -66,32 +66,33 @@ try {
       console.error(USAGE)
       process.exit(2)
     }
-    const motif = values.motif
-    const maintenant = Temporal.Now.zonedDateTimeISO(FUSEAU)
-    const personnes = await nomsFictifs(Object.keys(agence.chantier.evals_clients))
-    const r = retirerFusion({
-      commande: commandeSync,
+    const cle = preflightSignature(process.env, RACINE)
+    const personnes = await nomsFictifs(
+      agence.chantier.evals_clients,
+      RACINE,
+      Object.keys(agence.chantier.evals_clients),
+    )
+    const r = retirerMission({
       racine: RACINE,
+      agence,
       id,
-      motif,
-      ecrireRetrait: (arbre) => {
-        const fusion = missionFusionnee(arbre, id)
-        if (!fusion) throw new Error(`aucune fusion de ${id} dans la mémoire d'origin/main`)
-        ecrireRetrait(
-          arbre,
-          {
-            date: maintenant.toPlainDate().toString(),
-            client: fusion.client,
-            id,
-            titre: fusion.titre,
-            intentions: fusion.intentions,
-            motif,
-          },
-          personnes,
-        )
-      },
+      motif: values.motif,
+      personnes,
+      cle,
+      maintenant: Temporal.Now.zonedDateTimeISO(FUSEAU),
+      commande: commandeSync,
     })
-    console.log(`${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, poussé.`)
+    console.log(
+      `${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, version ${r.version}, poussé.`,
+    )
+    // Le client qui l'avait commandé le lit dans sa file (PLAN-LIVRAISON.md L7).
+    console.log(
+      r.dit.sorte === 'poussé'
+        ? `Statut « retiré » poussé dans la file de ${r.client}.`
+        : r.dit.sorte === 'en attente'
+          ? `Statut « retiré » écrit dans la file de ${r.client}, pas encore poussé (${r.dit.raison}) : le prochain tour de pnpm agence le pousse.`
+          : `${r.client ?? 'Le client'} n'a pas de file à l'agence, ou la mission n'y est pas : rien n'est poussé.`,
+    )
   } else {
     if (!values.mission) {
       console.error(USAGE)
@@ -107,17 +108,40 @@ try {
         `mission ${mission.id} du métier ${mission.metier}, client du métier ${chargerConfig(config, ConfigBase).metier}`,
       )
     }
+    // Une mission de la file d'un client, à l'agence (une reprise à la main : --refaire) : comme pnpm
+    // agence, le dossier et le statut complets restent à l'agence, la file ne reçoit que le statut
+    // public, que le prochain tour de pnpm agence pousse (PLAN-LIVRAISON.md, audit du 2026-10-16).
+    const enFile = slugEnFile(RACINE, chemin)
+    if (enFile && values.sortie) {
+      throw new Error(
+        `${chemin} : une mission de la file d'un client sort à l'agence, sans --sortie`,
+      )
+    }
+    const sortie = values.sortie
+      ? resolve(values.sortie)
+      : enFile
+        ? sortieAgence(RACINE, enFile, mission.date)
+        : dirname(chemin)
     const r = await faireChantier(await conversationDuMetier(mission.metier), {
       racine: RACINE,
       agence,
       mission: chemin,
       client,
-      personnes: await nomsFictifs([mission.metier]),
-      sortie: values.sortie ? resolve(values.sortie) : dirname(chemin),
+      personnes: await nomsFictifs(agence.chantier.evals_clients, RACINE, [mission.metier]),
+      sortie,
       env: process.env,
       sansModele: values['sans-modele'] === true,
       refaire: values.refaire === true,
     })
+    if (
+      enFile &&
+      values['sans-modele'] !== true &&
+      statuerALaMain(chemin, lireStatut(join(sortie, `${mission.id}${SUFFIXE_STATUT}`)))
+    ) {
+      console.log(
+        `Statut public écrit dans la file de ${enFile} : le prochain tour de pnpm agence le pousse.`,
+      )
+    }
     switch (r.sorte) {
       case 'decision':
         console.log(`${r.decision.motif} : aucun appel. ${r.dossier}`)

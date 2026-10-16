@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Executer } from '../agence/config'
+import { VARIABLE_CLE_SIGNATURE } from '../livraison/version'
 import {
   argumentsClaude,
   envEnfant,
@@ -182,6 +183,16 @@ describe('envEnfant', () => {
   it('retire les variables npm_* du script parent : un pnpm -s ne rend pas muet le pnpm check du chantier', () => {
     expect(
       envEnfant({ PATH: '/bin', npm_config_loglevel: 'silent', npm_lifecycle_event: 'chantier' }),
+    ).toEqual({ PATH: '/bin' })
+  })
+
+  it('retire la clé de signature de l’agence (PLAN-LIVRAISON.md § 0.4)', () => {
+    expect(
+      envEnfant({
+        PATH: '/bin',
+        [VARIABLE_CLE_SIGNATURE]: '/cles/agence',
+        SSH_AUTH_SOCK: '/tmp/agent.1',
+      }),
     ).toEqual({ PATH: '/bin' })
   })
 })

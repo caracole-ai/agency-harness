@@ -6,6 +6,7 @@ import { stringify } from 'yaml'
 import { type Agence, chargerAgence } from '../agence/config'
 import { RACINE_DEPOT } from '../agence/fictif'
 import { TYPE_CONSIGNE } from '../conversation/conversation'
+import { FICHIER_SIGNATAIRES, VARIABLE_CLE_SIGNATURE } from '../livraison/version'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { type Commande, commandeSync } from './arbre'
 import { FICHIER_CARTE, FICHIER_METHODE } from './chantier'
@@ -36,8 +37,30 @@ it('un', () => {})
 it('deux', () => {})
 `
 
-/** L'environnement des processus lancés par un test : le `PATH` seul (le faux binaire est un script node). */
-export const ENV_ESSAI: Record<string, string | undefined> = { PATH: process.env.PATH }
+/** Une paire de clés ed25519 sans phrase de passe, dans un dossier temporaire, et le fichier `signataires` qui admet sa publique. */
+export function cleEssai(nom = 'agence'): {
+  privee: string
+  publique: string
+  signataires: string
+} {
+  const d = mkdtempSync(join(tmpdir(), 'cle-'))
+  const privee = join(d, nom)
+  const r = spawnSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-C', nom, '-f', privee])
+  if (r.status !== 0) throw new Error(`ssh-keygen : ${r.stderr}`)
+  const publique = readFileSync(`${privee}.pub`, 'utf8').trim()
+  const signataires = join(d, FICHIER_SIGNATAIRES)
+  writeFileSync(signataires, `${nom} ${publique}\n`)
+  return { privee, publique, signataires }
+}
+
+/** La clé de signature des tests (L4), hors de tout dépôt. */
+export const CLE_ESSAI = cleEssai()
+
+/** L'environnement des processus lancés par un test : le `PATH` (le faux binaire est un script node) et la clé de signature. */
+export const ENV_ESSAI: Record<string, string | undefined> = {
+  PATH: process.env.PATH,
+  [VARIABLE_CLE_SIGNATURE]: CLE_ESSAI.privee,
+}
 
 export interface Depots {
   /** Le dépôt nu qui joue `origin`. */
@@ -163,7 +186,7 @@ process.stdin.on('end', () => {
   const schema = args.includes('--json-schema') ? args[args.indexOf('--json-schema') + 1] : ''
   const role = schema.includes('faisable') ? 'plan' : schema.includes('constats') ? 'relecture' : 'implementation'
   const n = appels.filter((a) => a.role === role).length
-  appels.push({ role, args, entree, cwd: process.cwd() })
+  appels.push({ role, args, entree, cwd: process.cwd(), cle: process.env.${VARIABLE_CLE_SIGNATURE} !== undefined })
   writeFileSync(etat, JSON.stringify(appels))
   const sortie = { type: 'result', subtype: 'success', is_error: false, result: 'ok', total_cost_usd: scenario.cout ?? 0.5, num_turns: 3 }
   if (role === 'plan') sortie.structured_output = scenario.plan
@@ -194,6 +217,8 @@ export interface Appel {
   args: string[]
   entree: string
   cwd: string
+  /** La clé de signature était-elle dans son environnement (§ 0.4 : jamais). */
+  cle: boolean
 }
 
 /** Ce que rend `pnpm` simulé. */
@@ -210,15 +235,20 @@ export const EVALS_AU_SEUIL = {
   code: 0,
 }
 
+/** Une commande émise : où, quoi, et les noms des variables qu'elle a reçues quand on lui en a passé. */
+export interface Emise {
+  cwd: string
+  commande: string
+  args: string[]
+  variables?: string[]
+}
+
 /** git pour de vrai, `pnpm` simulé ; chaque commande émise est notée. */
-export function commandeSimulee(p: PnpmSimule = {}): {
-  commande: Commande
-  emises: { cwd: string; commande: string; args: string[] }[]
-} {
-  const emises: { cwd: string; commande: string; args: string[] }[] = []
+export function commandeSimulee(p: PnpmSimule = {}): { commande: Commande; emises: Emise[] } {
+  const emises: Emise[] = []
   let checks = 0
   const commande: Commande = (cwd, nom, args, env) => {
-    emises.push({ cwd, commande: nom, args })
+    emises.push({ cwd, commande: nom, args, ...(env ? { variables: Object.keys(env) } : {}) })
     if (nom !== 'pnpm') return commandeSync(cwd, nom, args, env)
     if (args[0] === 'check') {
       const codes = p.check ?? [0]

@@ -30,13 +30,22 @@ prix_par_million_usd:
 claude:
   binaire: claude
 
+# Chaque fusion et chaque retrait posent une version : une étiquette git
+# signée avec la clé SSH de l'agence, désignée par la variable
+# AGENCE_CLE_SIGNATURE (un chemin hors du dépôt, jamais ici ; L4).
+#
 # Le chantier tourne à l'agence, au clic du patron (PLAN-LIVRAISON.md L1, L2) :
 # dans des arbres de travail de ce dépôt partis d'`origin/main`
 # (`.claude/worktrees/`), la fusion dans un arbre détaché, poussée sur `main`
 # du distant ; ni l'arbre de qui lance ni sa branche `main` ne bougent.
-# `pnpm agence` (lot 3) : au plus `chantiers_max_par_jour` chantiers par jour
-# (comptés dans memoire/INDEX.md), la file relue toutes les
-# `intervalle_secondes`, une file git par client (`missions-<slug>`).
+# `pnpm agence` : au plus `chantiers_max_par_jour` chantiers lancés par jour
+# (comptés au registre de l'agence, `.claude/missions/chantiers.log`, jamais
+# sur ce qu'un client écrit), les files relues toutes les
+# `intervalle_secondes`. Un client : `{ slug, metier, missions: <adresse git
+# de missions-<slug>> }` ; une mission de sa file qui nomme un autre métier
+# est écartée. Le dossier de chaque chantier reste à l'agence
+# (`.claude/missions/_chantiers/`) ; la file ne reçoit que le statut. Les clés
+# SSH sont dans la config SSH de la machine.
 agence:
   chantiers_max_par_jour: 3
   intervalle_secondes: 60
@@ -61,6 +70,7 @@ chantier:
   evals_clients: { securite-privee: exemples/client-fictif, agence-web: exemples/agence-web-fictive }
   # `${metier}` : le métier de la mission, résolu avant la garde ; un chantier ne touche que son métier.
   chemins_autorises: ["metiers/${metier}/code/src/**", "metiers/${metier}/evals/consignes.yaml", "metiers/${metier}/fiche.md", "memoire/**"]
-  # Jamais, même dans la bande : les contrôles des règles (`controles.ts`, les échéances), et l'accès
-  # aux données du client (`connecteurs/`) ; tout métier les nomme ainsi (PLAN-METIER-2.md M9).
-  chemins_interdits: ["metiers/${metier}/code/src/controles.ts", "metiers/${metier}/code/src/echeances.ts", "metiers/${metier}/code/src/connecteurs/**"]
+  # Jamais, même dans la bande : les contrôles des règles (`controles.ts`, les échéances), l'accès
+  # aux données du client (`connecteurs/`) ; tout métier les nomme ainsi (PLAN-METIER-2.md M9). Ni
+  # un `CLAUDE*.md` : le binaire le chargerait comme consigne à la relecture et aux chantiers suivants.
+  chemins_interdits: ["metiers/${metier}/code/src/controles.ts", "metiers/${metier}/code/src/echeances.ts", "metiers/${metier}/code/src/connecteurs/**", "metiers/${metier}/**/CLAUDE*.md"]

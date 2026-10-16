@@ -40,6 +40,8 @@ export function conditionsManquantes(
 
 /** Un nom de métier (le dossier `metiers/<métier>`) : rien qu'un chemin lirait autrement (`*`, `/`, `..`). */
 export const NOM_METIER = /^[a-z0-9][a-z0-9-]*$/
+/** Un slug de client (`client-fictif`) : le nom de sa file à l'agence (`missions-<slug>`, PLAN-LIVRAISON.md L5). */
+export const MOTIF_SLUG = /^[a-z0-9][a-z0-9-]*$/
 
 /** Ce que toute config porte, quel que soit le métier. Le métier valide le reste. */
 export const ConfigBase = z.looseObject({

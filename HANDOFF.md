@@ -1,4 +1,4 @@
-# Handoff — 2026-10-15
+# Handoff — 2026-10-16
 
 Pour reprendre dans une session neuve : deux pages, l'état et la suite. Les
 décisions et leur fil sont dans `REFLEXIONS.md`, les plans dans `PLAN-*.md`,
@@ -7,45 +7,38 @@ l'historique dans git (l'ancien handoff de 4 220 lignes :
 
 ## Où on en est
 
-`main` = `origin/main` = la fusion de `general/l1-chantier` (2026-10-15) :
-le lot 0 de `PLAN-LIVRAISON.md` (le plan) et son **lot 1, le chantier sans
-clone ni dossier client**. Lionel, le soir du 2026-10-15 : le chantier se
-lance **au clic**, **à l'agence**, sans nuit ni clone réservé ; chaque
-fusion émet une **version signée** que le harnais du client **tire** et
-installe lui-même, avec retour arrière. `pnpm check` vert : moteur 481,
-interface 29, sécurité 133, agence web 259.
+`main` = `origin/main` = la fusion de `general/l4-mise-a-jour` (2026-10-16) :
+les lots 0 à 4 de `PLAN-LIVRAISON.md`. Le chantier se lance **au clic**,
+**à l'agence** (`pnpm agence`, une file git de missions masquées par
+client) ; chaque fusion et chaque retrait posent une **version signée**
+(`v<AAAA-MM-JJ>-<n>`, SSH, `AGENCE_CLE_SIGNATURE` hors du dépôt) ; le
+harnais du client la **tire** (`pnpm mise-a-jour`, lancé par l'interface
+dans un processus à part), vérifie signature et lignée, l'installe à côté,
+rejoue `pnpm check`, bascule au calme (`pnpm harnais`, le lanceur), revient
+en arrière si le redémarrage échoue. `pnpm check` vert : moteur 553,
+interface 32, sécurité 133, agence web 259.
 
-**Prochaine session : lots 2 (la version signée) et 3 (la file des
-missions)**, indépendants : deux sous-agents en arbres de travail, ou deux
-sessions ; puis le lot 4.
+**Audité avant la fusion le 2026-10-16** : trois relectures en parallèle,
+puis une relecture des corrections ; une trentaine de défauts corrigés en
+cinq commits, chacun avec un test qui échoue sur le code d'avant (le détail
+et les risques acceptés : « Audit avant fusion », sous les lots 2 à 4 du
+plan). Les plus lourds : une file bloquée pour toujours par un statut non
+commis ; l'interface gelée 15 s par une file injoignable (elle ne lance plus
+git) ; la sortie de `pnpm check` et le texte des modèles qui partaient chez
+le client (ils restent à l'agence) ; la fusion de la pointe de la branche au
+lieu du commit gardé ; un geste retiré qui revenait (un plancher de
+versions). L'onglet « Gestes » vu à l'écran ; le laboratoire du lot 4 rejoué
+pour de vrai, deux fois, la dernière sur la pointe finale.
 
-- **Le lot 1** : `pnpm chantier --mission <fichier> [--sortie <dossier>]`
-  travaille dans `.claude/worktrees/chantier-<id>` du dépôt de l'agence,
-  parti d'`origin/main` frais ; la fusion (et le retrait) dans un arbre
-  détaché, push atomique sur `main` du distant, une reprise si refusé. Sur
-  la base, seulement `fetch`, `worktree`, `rev-parse` (`arbre.test.ts`) :
-  l'arbre de qui lance, même sale et sur une autre branche, et son `main`
-  ne bougent pas. Le chantier ne lit aucun dossier client : il écrit
-  `<id>.chantier.md` et `<id>.statut.yaml` (L7) dans la sortie (par défaut
-  à côté de la mission), contrôle contre les noms du client fictif du
-  métier ; la mission est relue entière contre les vrais noms à la commande.
-  `pnpm nuit`, `depot_nuit`, `MESURES.md` écrit par le code : retirés.
-  Écarts au plan, notés sous son lot 1 (la mémoire lue sur `origin/main`,
-  le push atomique, `retirer` sans `--client`).
-- **En attendant le lot 3, en mode non livré** : plus aucune ligne
-  `chantier` n'arrive au journal du client (c'est le client qui l'écrira en
-  lisant le statut, L7) ; la carte reste « commandé, en attente de
-  l'agence » jusqu'à « disponible ». Le lot 3 doit aussi lire les statuts
-  du dossier `missions/` local quand le client n'est pas livré.
-- **La chaîne visée** (`PLAN-LIVRAISON.md` § 1) : demande sans geste →
-  « Créer ce geste » → la mission masquée, écrite chez le client et poussée
-  dans sa file git `missions-<slug>` → `pnpm agence` la prend dans la
-  minute, chantier dans `.claude/worktrees/chantier-<id>` depuis
-  `origin/main`, fusion dans un arbre détaché, étiquette `v<date>-<n>`
-  signée (SSH), statut dans la file → le harnais du client lit le statut,
-  tire l'étiquette, la vérifie, l'installe à côté, `pnpm check`, bascule à
-  un moment calme (`pnpm harnais`), journal `mise à jour : faite` → la
-  carte dit « disponible ».
+**Prochaine session : le lot 5** (la mesure réelle, avec les vrais modèles,
+la clé de l'agence et un bac à sable : voir « Ouvert, avant un client
+réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
+(`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte.
+
+- **Ne jamais lancer `pnpm agence`, `pnpm chantier` ni `pnpm versionner`
+  dans ce dépôt pour un essai** : ils poussent sur `origin` (GitHub). Le
+  laboratoire se monte dans un dossier temporaire (recette : « Rejoué pour
+  de vrai » sous le lot 4 du plan).
 - **Mesurée en réel le 2026-10-15** (avant le lot 1, dans le clone
   `~/harnais-nuit`, dépôt nu `~/harnais-nuit-origine.git`) : le geste
   `heures_par_agent`, huit conditions vertes, `evals traduire` 73/73. Ces
@@ -55,11 +48,27 @@ sessions ; puis le lot 4.
   et l'agence web (`metiers/agence-web`, client `exemples/agence-web-fictive`).
 - **Les trois espaces** : un geste codé (la traduction le choisit, le code
   l'exécute), l'échappée (SQL en lecture sur une copie masquée, contrôle
-  « pas un chiffre ni un nom hors des données » ; elle n'écrit plus aucune
-  copie des vraies tables sur disque), la commande.
+  « pas un chiffre ni un nom hors des données »), la commande.
 - **Tout tourne sur l'abonnement** (binaire `claude`, Sonnet 5.5 au
   quotidien, Fable et Opus au chantier) : les dollars affichés sont des
   équivalents API, rien n'est facturé ; la contrainte est le quota.
+
+## Ouvert, avant un client réel (à Lionel ; le détail sous les lots 2 et 3 du plan)
+
+- **Le bac à sable, aggravé** : le code du modèle (`pnpm check`, `pnpm
+  evals`) lit la clé, `~/.ssh`, le trousseau, écrit dans le `.git` commun,
+  et peut glisser ce qu'il lit dans le code ou la mémoire que tous les
+  clients tirent. Chemin simple : un utilisateur macOS dédié au chantier,
+  avec son propre clone, sans accès à tout cela ; l'agence ne fait que lire
+  le commit gardé, fusionner et signer.
+- **La fusion automatique signe tout ce que porte `origin/main`** (un compte
+  de l'hébergeur volé y pousse). Chemin simple : refuser de signer si un
+  commit de `<dernière v*>..origin/main` touche autre chose que `memoire/`.
+- **Le slug du client**, dans `memoire/INDEX.md` et le manifeste de chaque
+  version, que tous les clients lisent. Chemin simple : y nommer le métier ;
+  le client reste au registre local de l'agence (`chantiers.log`).
+- **L'espace de noms** `chantier/<métier>/<id>`. Chemin simple : le métier
+  passé avec l'identifiant dans `arbre.ts`, `fusion.ts` et la mémoire.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 
@@ -148,4 +157,8 @@ pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
 pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
 pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [--sans-modele]   # --refaire rouvre la branche telle quelle
 pnpm chantier retirer <id> --motif "<texte>"
+pnpm versionner            # AGENCE_CLE_SIGNATURE=<clé privée hors du dépôt>
+pnpm agence [--une-fois]   # les files des clients d'agence.yaml: agence.clients
+pnpm mise-a-jour [retirer] --client <dossier>   # chez un client livré ; retirer : revient à la précédente, l'interface relance d'elle-même au calme
+pnpm harnais --client <dossier> [-- --modele simule]   # le lanceur, depuis <installation>/courant
 ```
