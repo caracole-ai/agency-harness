@@ -166,6 +166,8 @@ flowchart LR
 - `GRILLE.md` — la grille d'une fiche métier : neuf rubriques (les bornes, le
   bon résultat et les données, les briques à proposer), les statuts d'un fait,
   la règle qui sépare le métier du client.
+- `GLOSSAIRE.md` — l'abécédaire : le vocabulaire du projet, les commandes,
+  les fichiers, une ligne chacun.
 - `REFLEXIONS.md` — le fil de la réflexion sur le système : décisions,
   enseignements, pistes ouvertes, questions à trancher. À relire en début de
   séance.
@@ -538,7 +540,12 @@ flowchart LR
   claude.ai (lien dans la conversation du 2026-10-05). Le mini-site « Le
   harnais en clair » (trois pages pour un lecteur non technique : le projet,
   la démo, parler à l'outil) est un autre artefact claude.ai, dont les
-  sources ne sont pas versionnées : lien dans `HANDOFF.md`.
+  sources ne sont pas versionnées : lien dans `HANDOFF.md`. `glossaire.mjs`
+  (2026-10-16) génère depuis `GLOSSAIRE.md` la page
+  https://smarttailor.fr/glossaire (`noindex`), à régénérer d'un bloc quand
+  le glossaire change, puis déployer le site (`../smart-tailor`). Sur la page
+  publique, l'entrée « Bac à sable » est réécrite sans le détail de la
+  faiblesse ouverte.
 - `exemples/client-fictif/` — une entreprise de sécurité fictive (13 agents,
   19 vacations, des erreurs posées exprès), sa config, son registre d'accès
   (`personnes.yaml` : le patron et les 13 agents) et `attendu.yaml`, la
