@@ -266,6 +266,31 @@ autre utilisateur, ou dans un bac à sable qui interdit la lecture de la
 clé (`sandbox-exec` sous macOS, `bwrap` sous Linux). Le risque existait déjà
 pour les clés SSH de la machine ; la clé de signature le rend décisif.
 
+Audit avant fusion (2026-10-16), corrigé : la fusion prend le commit que la
+garde a vu, jamais la pointe de la branche (le code du modèle tourne après
+la garde, dans `pnpm check` et `pnpm evals` : un commit qu'il posait là
+partait signé chez tous les clients) ; un arbre qui a bougé après la garde
+refuse, avant les évals ; une étiquette `chantier/<id>` restée locale (une
+fusion tuée avant le push) est reposée, jamais sur le distant ; un
+`CLAUDE*.md` est interdit dans la bande (le binaire le chargerait comme
+consigne à la relecture et aux chantiers suivants). **Ouvert, aggravé** :
+sans bac à sable, le code du modèle lit la clé, et aussi `~/.ssh`, le
+trousseau, le `.git` commun (ses hooks et sa config feraient tourner du code
+sous l'agence, hors de tout chantier) ; ce qu'il imprime ne part plus chez
+le client (lot 3), mais il peut l'écrire dans le code de la bande ou dans
+« Ce que j'ai appris » (la mémoire), que tous les clients tirent avec la
+version, et fausser les mesures (`pnpm check`, `pnpm evals`) : le bac à
+sable doit couvrir la lecture des secrets et l'écriture hors de l'arbre.
+**Ouvert, nouveau** : la fusion automatique signe tout ce que porte
+`origin/main` ; un compte de l'hébergeur volé y pousse, le chantier suivant
+le signe et tous les clients l'installent. Règle simple proposée : avant de
+signer, la fusion et le retrait refusent si un commit de `<dernière
+v*>..origin/main` touche autre chose que `memoire/` (un changement du moteur
+passe alors par `pnpm versionner`, le geste humain). Le manifeste de chaque
+version porte `client: <slug>` : tous les clients lisent les slugs de tous,
+un second canal du point ouvert du slug (lot 1). Non mesurable ici :
+`gpg.minTrustLevel=fully` (git 2.50 refuse déjà une autre clé sans lui).
+
 - `moteur/src/livraison/version.ts` : `prochaineEtiquette(c, racine,
   date)`, `signerEtiquette(c, arbre, tag, message, cle)`,
   `verifierEtiquette(c, depot, tag, signataires)`, `etiquettesCandidates(c,
@@ -324,6 +349,31 @@ identifiant partagent la branche `chantier/<id>`, son étiquette et ses
 retraits ; le second finit « échoué » (le message le dit, sans proposer
 `--refaire`). Un espace de noms par métier (`chantier/<métier>/<id>`) est à
 faire avant un second client d'un autre métier.
+
+Audit avant fusion (2026-10-16), corrigé : un statut écrit dans le clone
+d'une file sans être commis (un arrêt avant le push, un `--refaire` dont la
+sortie est la file) bloquait la file pour toujours → `pull --rebase
+--autostash` ; une adresse de file changée est suivie (`remote set-url`) ;
+**écart à L7** : le dossier `<id>.chantier.md` et le texte du statut ne
+partent plus chez le client (ils portaient ce que le code du modèle
+imprime, le texte des modèles, des chemins de l'agence) : le dossier et le
+statut complets restent à l'agence (`.claude/missions/_chantiers/<slug>/<date>/`),
+la file reçoit le statut public (le statut, sa version, son coût ; la carte
+ne lit rien d'autre) ; non livré, `pnpm chantier` écrit toujours le dossier
+à côté de la mission ; la mission poussée est réécrite telle que le schéma
+la lit ; le statut « retiré » ne se perd plus (commis dans le clone, poussé
+au tour suivant) ; le motif d'un retrait est nettoyé une fois
+(`retirerMission`, le même dans le commit, la mémoire et le statut) ;
+`origin` injoignable au moment de prendre une mission la laisse à prendre
+au lieu de la faire finir « échoué » ; la version d'un statut et le métier
+d'une mission suivent leur motif ; le verrou à pid : posé avant le démarrage
+de la machine, levé ; vide et frais, tenu. Risques acceptés : un client qui
+repose `en attente` sur une mission déjà faite entame d'un chantier la borne
+du jour (sans appel au modèle ; l'équité entre clients borne l'effet) ;
+deux processus qui lèvent le même verrou mort au même instant (une fenêtre
+de quelques microsecondes) ; l'identifiant d'une intention n'est contrôlé
+que contre les noms des personnes du client, pas contre ses tiers (les
+clients d'une agence web) : à Lionel.
 
 - `moteur/src/livraison/config.ts` : `livraison.yaml` (schéma strict :
   `depot`, `missions`, `installation`, `intervalle_minutes`), `lireLivraison(dossier)`
@@ -407,6 +457,33 @@ l'interface qui tourne ; `pnpm mise-a-jour retirer` (v…-4 → v…-3), un
 rattrapage qui ne reprépare pas la v…-4, l'interface tuée, relancée par le
 lanceur sur la v…-3, « retour arrière (…, retirée à la main) » au journal.
 Le retour arrière sur sonde muette n'est joué qu'en test.
+
+Audit avant fusion (2026-10-16), corrigé : l'interface d'un client livré
+lançait git dans son propre processus (l'onglet « Gestes », le clic) : une
+file injoignable la gelait 15 s par appel, la conversation comprise
+(mesuré), et deux écrivains de lignes `chantier` pouvaient se croiser →
+l'interface ne lance plus git : le clic marque la mission, l'onglet et le
+clic déclenchent le rattrapage à part (relancé à sa fin s'il a été demandé
+pendant qu'il tournait) ; le pas de dix secondes n'ouvre le dossier client
+que si un marqueur attend ; un `spawn` raté se dit au lieu de faire tomber
+le processus ; après `pnpm mise-a-jour retirer`, l'interface qui tourne sur
+la version retirée sort au calme et le lanceur la relance sur la
+précédente (avant, rien ne redémarrait, et `elaguer` pouvait retirer
+l'arbre du code qui tournait), un second retrait est refusé ; trois
+plantages juste après une bascule pendant une préparation : le lanceur
+attend le verrou et revient (il s'arrêtait sur la nouvelle version) ; le
+port et le dossier passés après `--` ne l'emportent plus sur ceux du
+lanceur ; la sonde compte ses essais (une mise en veille n'exclut plus une
+version saine) ; un plancher : aucune version plus ancienne qu'une version
+signée qui a échoué ici (check rouge, retour arrière) ne se prépare, un
+retrait qui échoue ne fait plus revenir le geste retiré ; le dépôt du
+produit chez le client ne tire que les étiquettes `v*` (plus les branches
+ni les étiquettes de chantier de l'agence), sans invite, une connexion
+figée coupée, son adresse relue. Risques acceptés : `livrer()`
+(`interface/src/serveur.ts`) et le lanceur réel (`interface/src/harnais.ts`)
+ne se jouent qu'au laboratoire ; leurs pièces (`noterSiMarque`,
+`relanceAttendue`, `doitRelancer`, `argumentsInterface`,
+`sonderInterface`, `retirerALaMain`) ont leurs tests.
 
 - `moteur/src/livraison/mise-a-jour.ts` : `preparer(dossier)` (L8 : fetch,
   candidates, vérification, worktree, install, check, `.prete`,

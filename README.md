@@ -93,8 +93,8 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   et lot 1 (le chantier sans clone ni dossier client, la nuit retirée) faits
   le 2026-10-15 ; lots 2 (la version signée, `pnpm versionner`), 3 (la
   file des missions, `pnpm agence`) et 4 (la mise à jour tirée, `pnpm
-  harnais`) faits sur `general/l4-mise-a-jour`, à fusionner ; lot 5 (la
-  mesure réelle) à faire.
+  harnais`) faits le 2026-10-15, audités, corrigés et fusionnés le
+  2026-10-16 ; lot 5 (la mesure réelle) à faire.
 - `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
   construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
   été demandé (jamais une donnée) et désigne des missions ; le chantier fait
@@ -285,13 +285,27 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   check` → relecture → une reprise au plus → honnêteté → dossier → mémoire →
   fusion → statut ; aucun dossier client lu : les noms contrôlés sont ceux
   du client fictif du métier).
+  `src/livraison/` (`PLAN-LIVRAISON.md` L1, L4 à L9) : `version.ts` (les
+  étiquettes `v<AAAA-MM-JJ>-<n>`, signées SSH, vérifiées contre
+  `signataires` : nom, signature, lignée), `config.ts` (`livraison.yaml`),
+  `missions.ts` (la file git d'un client : la mission marquée puis poussée,
+  les statuts tirés, une ligne `chantier` par statut nouveau ; à l'agence,
+  les files tirées, le statut public poussé, le registre de la borne du
+  jour ; aucun lien suivi), `agence.ts` (un tour de `pnpm agence`, et
+  `retirerMission`), `mise-a-jour.ts` (chez le client : la version préparée
+  à côté, le plancher, les marqueurs du lanceur écrits au journal, le
+  moment calme), `harnais.ts` (le lanceur : bascule, sonde, retour
+  arrière ; `retirer` à la main), `verrou.ts` (le verrou à pid de l'agence
+  et de l'installation).
   `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
   par `pnpm evals` sur les cas écrits à la main dans `metiers/<métier>/evals/`
   (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches.
 - `interface/` — l'interface, pour la démo (`@harnais/interface`,
   `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
   chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
-  (`pnpm interface`, sur 127.0.0.1 seulement), `public/` (HTML, CSS et
+  (`pnpm interface`, sur 127.0.0.1 seulement ; chez un client livré, le
+  rattrapage à part, les marqueurs du lanceur au journal, la sortie au
+  calme), `src/harnais.ts` (`pnpm harnais`, le lanceur), `public/` (HTML, CSS et
   JavaScript sans framework, la charte de `presentation/`). Elle ne dépend
   d'aucun métier : le métier se charge depuis `config.yaml: metier`
   (`moteur/src/cli/metier.ts`, comme toutes les CLI), et ce qu'elle montre
@@ -300,8 +314,10 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   de `registre` (`PLAN-METIER-2.md` M10) ; `/api/roles` (les rôles déclarés,
   pour le sélecteur « Je suis »), `/api/entree` (sous qui la page s'ouvre :
   le rôle sans identifiant, sinon la première personne du registre dont le
-  rôle administre ; l'agence web s'ouvre sous M-01) et `/api/tableau` (le nom
-  et les textes de qui parle, ouverts à tout rôle passé par la porte). Cinq onglets
+  rôle administre ; l'agence web s'ouvre sous M-01), `/api/tableau` (le nom
+  et les textes de qui parle, ouverts à tout rôle passé par la porte) et
+  `/api/version` (au patron : la version installée, son fichier `VERSION`,
+  et le jour de sa mise à jour ; rien hors d'une installation). Cinq onglets
   (à valider, règles, délégations proposées, gestes, journal), réservés à la
   capacité `administre` (le patron, pour la sécurité), et
   la conversation toujours visible ; l'identité est choisie dans le registre
@@ -551,6 +567,10 @@ pnpm versionner          # une version signée sur origin/main tel quel, pour li
                          # sans chantier (PLAN-LIVRAISON.md L4) : l'étiquette v<AAAA-MM-JJ>-<n>,
                          # son message le manifeste en clair, l'étiquette seule poussée. Pas
                          # « pnpm version » : pnpm en a une à lui, qui masquerait le script.
+                         # Juste après un chantier, origin/main porte la mémoire au-dessus de
+                         # la version du chantier : versionner en poserait une de plus, sans
+                         # code nouveau, que chaque client installerait (une minute d'install
+                         # et de check) ; à lancer quand le moteur a changé.
                          # La signature, pour pnpm chantier, retirer et versionner :
                          # AGENCE_CLE_SIGNATURE = le chemin de la clé privée SSH de l'agence,
                          # hors du dépôt (ssh-keygen -t ed25519 ; OpenSSH 8.2 au moins). Son

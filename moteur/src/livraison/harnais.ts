@@ -43,9 +43,9 @@ export interface OptionsHarnais {
 }
 
 /** Après un plantage, la pause avant de relancer. */
-export const PAUSE_PLANTAGE_MS = 5000
+const PAUSE_PLANTAGE_MS = 5000
 /** Au plus tant de plantages par fenêtre, puis arrêt. */
-export const PLANTAGES_MAX = 3
+const PLANTAGES_MAX = 3
 export const FENETRE_PLANTAGES_MS = 10 * 60 * 1000
 
 /** Ce qui arrête le lanceur : trop de plantages, ou aucune version courante. */

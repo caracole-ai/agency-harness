@@ -28,6 +28,7 @@ import { basculer, retirerALaMain, revenir } from './harnais'
 import {
   CALME_SECONDES,
   cible,
+  DOSSIER_DEPOT,
   DOSSIER_VERSIONS,
   doitRelancer,
   elaguer,
@@ -425,7 +426,7 @@ describe('le dépôt du produit chez le client (audit de la livraison, 2026-10-1
     }
     expect(preparer(dossier, l, ENV_ESSAI, [], espion).prete?.version).toBe('v2026-10-14-1')
     installerPremiere(l)
-    expect(git(join(l.installation, 'depot'), 'for-each-ref', '--format=%(refname)')).toBe(
+    expect(git(join(l.installation, DOSSIER_DEPOT), 'for-each-ref', '--format=%(refname)')).toBe(
       'refs/tags/v2026-10-14-1',
     )
     expect(envs).toHaveLength(1)

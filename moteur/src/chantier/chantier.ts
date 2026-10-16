@@ -41,6 +41,7 @@ import {
   type Mission,
   missionPourModele,
   type StatutChantier,
+  SUFFIXE_DOSSIER,
   TYPE_CHANTIER,
 } from './mission'
 
@@ -62,8 +63,6 @@ import {
 // par le binaire `claude` (§ 0.a) : coût estimé par le binaire.
 
 export { TYPE_CHANTIER }
-/** Le dossier d'un chantier, dans le dossier de sortie : `<id>.chantier.md`. */
-export const SUFFIXE_DOSSIER = '.chantier.md'
 export const FICHIER_METHODE = join('methode', 'chantier.md')
 /** La carte du harnais : `methode/chantier.md` demande aux modèles du chantier de la lire. */
 export const FICHIER_CARTE = join('methode', 'architecture-pour-modeles.md')

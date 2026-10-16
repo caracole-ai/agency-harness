@@ -343,6 +343,8 @@ export const STATUTS_CHANTIER = [
 export type StatutChantier = (typeof STATUTS_CHANTIER)[number]
 /** Le statut d'une mission, à côté d'elle : `<date>/<id>.statut.yaml`. */
 export const SUFFIXE_STATUT = '.statut.yaml'
+/** Le dossier d'un chantier, à côté de son statut : `<id>.chantier.md`. */
+export const SUFFIXE_DOSSIER = '.chantier.md'
 
 export const Statut = z.strictObject({
   statut: z.enum(STATUTS_CHANTIER),
@@ -381,8 +383,11 @@ export interface EtatCommande {
 }
 export type DemandeAvecEtat = Omit<DemandeSansGeste, 'commande'> & { commande?: EtatCommande }
 
-/** Ce qu'une ligne `chantier` dit de sa version, quand elle en a une. */
-const VersionChantier = z.looseObject({ version: z.string().optional() })
+/** Ce qu'une ligne `chantier` garde du statut qu'elle dit (L7) : son heure, sa version s'il en a une. */
+export const DonneesChantier = z.looseObject({
+  le: z.string().optional(),
+  version: z.string().optional(),
+})
 
 /**
  * Les demandes sans geste, chaque commande avec son état : la dernière ligne
@@ -395,7 +400,7 @@ export function demandesAvecEtat(lignes: Ligne[], gestesCodes: string[]): Demand
     if (l.objet === null) continue
     if (l.type === TYPE_GESTE_COMMANDE) chantiers.delete(l.objet)
     if (l.type === TYPE_CHANTIER && l.issue !== null) {
-      const version = VersionChantier.safeParse(JSON.parse(l.donnees ?? 'null')).data?.version
+      const version = DonneesChantier.safeParse(JSON.parse(l.donnees ?? 'null')).data?.version
       chantiers.set(l.objet, {
         issue: l.issue,
         le: jourDe(l.horodatage).toString(),

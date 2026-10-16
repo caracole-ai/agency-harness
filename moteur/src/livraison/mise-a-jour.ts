@@ -60,7 +60,7 @@ export const FICHIER_RETOUR = 'retour-arriere.yaml'
 /** Dans l'installation : le lanceur a basculé et la sonde a répondu ; l'interface le dit au journal (« faite »). */
 export const FICHIER_BASCULE = 'bascule.yaml'
 /** Dans l'installation : une préparation, une bascule ou un retour arrière à la fois. */
-export const FICHIER_VERROU_INSTALLATION = '.verrou'
+const FICHIER_VERROU_INSTALLATION = '.verrou'
 /** Posée par le lanceur dans l'environnement de l'interface : seule une interface qu'il relancera sort au calme. */
 export const VARIABLE_LANCEUR = 'HARNAIS_LANCEUR'
 export const LIENS = {

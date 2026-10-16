@@ -11,7 +11,6 @@ import {
 } from 'node:fs'
 import { basename, dirname, join } from 'node:path'
 import { stringify } from 'yaml'
-import { z } from 'zod'
 import type { Agence } from '../agence/config'
 import {
   BRANCHE_PRINCIPALE,
@@ -24,11 +23,13 @@ import {
 import {
   commanderMission,
   DOSSIER_MISSIONS,
+  DonneesChantier,
   ecrireStatut,
   lireMission,
   lireStatut,
   type Mission,
   type Statut,
+  SUFFIXE_DOSSIER,
   SUFFIXE_STATUT,
   TYPE_CHANTIER,
 } from '../chantier/mission'
@@ -58,7 +59,7 @@ export const DOSSIER_FILES = join('.claude', 'missions')
 /** Le verrou de `pnpm agence` (L1), à côté des files : le pid de qui tourne. */
 export const FICHIER_VERROU = 'agence.lock'
 /** Les chantiers que l'agence a lancés, une ligne chacun (`jour`, client, mission) : la borne du jour se compte ici, jamais sur ce qu'un client écrit (L1). */
-export const FICHIER_CHANTIERS = 'chantiers.log'
+const FICHIER_CHANTIERS = 'chantiers.log'
 /**
  * À l'agence, à côté des files mais hors de leurs clones (jamais poussé) :
  * ce que le chantier écrit pour lui, son dossier et son statut complets
@@ -76,7 +77,6 @@ export const ISSUE_PUBLIQUE = 'le détail du chantier reste à l’agence'
 export const DOSSIER_CHANTIERS = 'chantiers'
 /** À côté d'une mission chez le client : sa poussée a échoué, le prochain rattrapage la refait (L6). */
 export const SUFFIXE_A_POUSSER = '.a-pousser'
-const SUFFIXE_DOSSIER = '.chantier.md'
 const MOTIF_JOUR = /^\d{4}-\d{2}-\d{2}$/
 
 /**
@@ -102,7 +102,7 @@ function reel(chemin: string, sorte: 'dossier' | 'fichier'): boolean {
 }
 
 /** Avant d'écrire à cette place d'une file : ce qui l'occupe sans être un fichier (un lien venu d'ailleurs) est ôté. */
-export function placeNette(chemin: string): void {
+function placeNette(chemin: string): void {
   try {
     if (!lstatSync(chemin).isFile()) rmSync(chemin, { recursive: true, force: true })
   } catch {
@@ -155,7 +155,7 @@ function tirer(c: Commande, clone: string): void {
  * un. L'adresse est celle de la config, relue à chaque fois : une file
  * déplacée se suit sans effacer le clone.
  */
-export function synchroniser(c: Commande, url: string, clone: string, signe: string): void {
+function synchroniser(c: Commande, url: string, clone: string, signe: string): void {
   if (!existsSync(join(clone, '.git'))) {
     mkdirSync(dirname(clone), { recursive: true })
     git(c, dirname(clone), ['clone', '--quiet', url, clone], ENV_DISTANT())
@@ -212,15 +212,14 @@ export function publier(c: Commande, clone: string, message: string): boolean {
 }
 
 /** Un statut de la file, à sa place (`<date>/<id>.statut.yaml`), et le dossier du chantier s'il y est. */
-export interface StatutEnFile {
-  date: string
+interface StatutEnFile {
   id: string
   statut: Statut
   dossier?: string
 }
 
 /** Les statuts d'une file, lus par le schéma strict ; un fichier mal formé ou mal placé est écarté et dit. */
-export function statutsDe(file: string): { statuts: StatutEnFile[]; problemes: string[] } {
+function statutsDe(file: string): { statuts: StatutEnFile[]; problemes: string[] } {
   const statuts: StatutEnFile[] = []
   const problemes: string[] = []
   if (!existsSync(file)) return { statuts, problemes }
@@ -234,7 +233,7 @@ export function statutsDe(file: string): { statuts: StatutEnFile[]; problemes: s
         const statut = lireStatut(chemin)
         if (!statut) continue
         const dossier = join(file, date, `${id}${SUFFIXE_DOSSIER}`)
-        statuts.push({ date, id, statut, ...(reel(dossier, 'fichier') ? { dossier } : {}) })
+        statuts.push({ id, statut, ...(reel(dossier, 'fichier') ? { dossier } : {}) })
       } catch (erreur) {
         problemes.push((erreur as Error).message.slice(0, 300))
       }
@@ -246,7 +245,7 @@ export function statutsDe(file: string): { statuts: StatutEnFile[]; problemes: s
 // ─── Chez le client ────────────────────────────────────────────────────────
 
 /** Le clone de la file d'un client livré, dans son installation. */
-export const cloneDuClient = (l: Livraison) => join(l.installation, DOSSIER_MISSIONS)
+const cloneDuClient = (l: Livraison) => join(l.installation, DOSSIER_MISSIONS)
 
 /**
  * L'aller (L6) : la mission écrite chez le client, relue par le schéma strict
@@ -255,7 +254,7 @@ export const cloneDuClient = (l: Livraison) => join(l.installation, DOSSIER_MISS
  * laisse la mission marquée `à pousser` (la raison dans la marque) : le
  * prochain rattrapage la pousse.
  */
-export function pousserMission(
+function pousserMission(
   c: Commande,
   livraison: Livraison,
   chemin: string,
@@ -311,9 +310,6 @@ function missionsAPousser(dossierClient: string): string[] {
   )
 }
 
-/** Ce qu'une ligne `chantier` écrite au rattrapage garde du statut. */
-const DonneesStatut = z.looseObject({ le: z.string() })
-
 export interface Rattrapage {
   /** Les lignes `chantier` écrites (un statut nouveau chacune). */
   nouveaux: number
@@ -359,8 +355,8 @@ export function rattraperStatuts<S>(
       .lire()
       .filter((l) => l.type === TYPE_CHANTIER && l.objet !== null && l.donnees !== null)
       .flatMap((l) => {
-        const d = DonneesStatut.safeParse(JSON.parse(l.donnees ?? 'null'))
-        return d.success ? [`${l.objet}|${l.issue}|${d.data.le}`] : []
+        const le = DonneesChantier.safeParse(JSON.parse(l.donnees ?? 'null')).data?.le
+        return le ? [`${l.objet}|${l.issue}|${le}`] : []
       }),
   )
   const client = m.client(s)
