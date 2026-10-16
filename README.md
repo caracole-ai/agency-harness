@@ -24,126 +24,141 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
 
 ## La carte
 
-Deux schémas, relevés sur les imports réels du code (2026-10-16). Le premier
-dit qui tourne où et ce qui circule entre le client, l'agence et les dépôts.
-Le second dit comment le moteur, un métier et le dossier d'un client se
-tiennent. Une flèche pleine : un appel, une lecture ou une écriture sur la
-même machine. Une flèche épaisse : git, d'une machine à l'autre. Une flèche
-pointillée : un processus lancé, ou un import. Dans le second, les services
-que tout le monde appelle (journal, modèle, personnes, jeton, temps) sont
-regroupés en un nœud, une flèche par module qui s'en sert ; les fichiers de
-chaque module sont listés dans « Structure ».
+Quatre schémas, relevés sur les imports réels du code (2026-10-16) : qui
+tourne où ; la vie d'une mission, de bout en bout ; ce que le moteur demande
+à un métier ; le moteur vu de ses entrées. Une flèche pleine : un appel, une
+lecture ou une écriture sur la même machine. Une flèche épaisse : git, d'une
+machine à l'autre. Une flèche pointillée : un processus lancé, ou un import.
+Les services que tout le monde appelle (journal, modèle, personnes, jeton,
+temps) sont un seul nœud ; les fichiers de chaque module sont listés dans
+« Structure ».
 
-### Qui tourne où, et ce qui circule
+### Qui tourne où
 
 ```mermaid
 flowchart LR
+  subgraph agence["À l’agence, sur sa machine"]
+    boucle["pnpm agence"] --> chantier["pnpm chantier<br>arbre, modèles, garde, fusion"] --> versionner["pnpm versionner<br>l’étiquette signée"]
+    boucle --> reste[("Ce qui reste à l’agence<br>dossiers des chantiers, chantiers.log")]
+  end
   subgraph client["Chez le client, sur sa machine"]
-    direction TB
-    patron(["Le patron, dans son navigateur<br>127.0.0.1 seulement"])
-    lanceur["pnpm harnais, le lanceur<br>interface/src/harnais.ts<br>la seule chose installée à la main"]
-    interface["pnpm interface<br>interface/src/serveur.ts, app.ts"]
-    maj["pnpm mise-a-jour<br>moteur/src/livraison/mise-a-jour.ts<br>le seul processus qui lance git chez le client"]
-    dossier[("Le dossier client, jamais versionné<br>config.yaml, personnes.yaml, les exports CSV,<br>journal.sqlite, missions/2026-10-16/releve_kilometrique.yaml,<br>livraison.yaml, signataires")]
-    installation[("L’installation, hors du dossier<br>depot/ (un dépôt nu), versions/v2026-10-16-1/,<br>les liens courant, precedent, courant.suivant,<br>missions/ (le clone de la file)")]
+    patron(["Le patron"]) --> interface["pnpm interface<br>l’interface web"]
+    lanceur["pnpm harnais<br>le lanceur"] -.-> interface
+    interface -.-> maj["pnpm mise-a-jour<br>le rattrapage, seul à lancer git"]
+    interface --> dossier[("Le dossier client<br>config, personnes, CSV, journal, missions")]
+    maj --> dossier
+    maj --> installation[("L’installation<br>versions, courant, precedent")]
+    lanceur --> installation
   end
-  subgraph git["Les dépôts git distants"]
-    direction TB
-    produit[("Le dépôt du produit<br>main, memoire/, les étiquettes signées v2026-10-16-1…")]
-    file[("Une file par client, missions-client-fictif<br>la mission masquée, le statut public, etat.yaml")]
+  subgraph depots["Chez l’hébergeur git"]
+    file[("La file du client")]
+    produit[("Le dépôt du produit<br>main, memoire/, étiquettes v*")]
   end
-  subgraph agence["À l’agence, sur la machine de l’agence"]
-    direction TB
-    boucle["pnpm agence<br>moteur/src/livraison/agence.ts<br>une boucle sur les files d’agence.yaml, un verrou"]
-    chantier["pnpm chantier<br>moteur/src/chantier/<br>arbre.ts, claude.ts, garde.ts, fusion.ts, memoire.ts"]
-    modeles["Les modèles du chantier, agence.yaml<br>le binaire claude sur l’abonnement<br>plan Fable, code Opus, revue Fable"]
-    versionner["pnpm versionner<br>moteur/src/livraison/version.ts<br>AGENCE_CLE_SIGNATURE, hors du dépôt"]
-    reste[("Ce qui ne part jamais<br>.claude/missions/_chantiers/, chantiers.log<br>le dossier complet, la sortie de pnpm check")]
-  end
-
-  patron -- "une demande, une confirmation,<br>la commande d’un geste absent" --> interface
-  lanceur -- "lance depuis courant, bascule au calme,<br>revient en arrière si la sonde échoue" --> interface
-  interface -- "lit config, métier, personnes, journal<br>écrit la conversation au journal, la mission" --> dossier
-  interface -. "lance au démarrage, toutes les N minutes,<br>à l’onglet Gestes, après une commande" .-> maj
-  maj -- "pousse les missions marquées,<br>écrit les statuts revenus au journal" --> dossier
-  maj -- "installe à côté, rejoue pnpm check,<br>pose le lien suivant" --> installation
-  lanceur -- "courant devient suivant,<br>ou precedent au retour arrière" --> installation
-  maj == "pousse la mission masquée,<br>tire le statut public" ==> file
-  produit == "les étiquettes v* seulement,<br>signature et lignée vérifiées" ==> maj
-  file == "tire la mission" ==> boucle
-  boucle -- "une mission à la fois" --> chantier
-  chantier -- "plan, code, revue" --> modeles
-  produit == "un arbre de travail depuis origin/main" ==> chantier
-  chantier == "fusion du commit gardé, push HEAD:main<br>un retrait : revert de la fusion" ==> produit
-  chantier -- "après chaque fusion, chaque retrait" --> versionner
-  versionner == "une étiquette signée, son manifeste" ==> produit
-  boucle == "écrit le statut public" ==> file
-  boucle -- "garde le dossier et le statut complets" --> reste
+  maj <== "la mission masquée, le statut public" ==> file
+  file <== "la mission, le statut public" ==> boucle
+  produit == "les versions v*" ==> maj
+  produit <== "origin/main, la fusion, un retrait" ==> chantier
+  versionner == "v2026-10-16-1" ==> produit
 ```
 
-### Le moteur, un métier, le dossier d'un client
+### La vie d'une mission
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Patron
+  participant Lanceur as pnpm harnais
+  participant Interface as pnpm interface
+  participant MAJ as pnpm mise-a-jour
+  participant File as La file du client
+  participant Agence as pnpm agence
+  participant Chantier as pnpm chantier
+  participant Produit as Le dépôt du produit
+  Patron->>Interface: « Créer ce geste »
+  Interface->>Interface: écrit la mission, sans aucun nom
+  Interface-)MAJ: lance le rattrapage
+  MAJ->>File: pousse la mission masquée
+  File->>Agence: la mission
+  Agence->>Chantier: une mission à la fois
+  Produit->>Chantier: un arbre de travail depuis origin/main
+  Chantier->>Chantier: plan, code, revue, puis la garde : pnpm check, évals, interdits
+  Chantier->>Produit: fusion du commit gardé, push main
+  Chantier->>Produit: pnpm versionner, l’étiquette signée v2026-10-16-1
+  Agence->>File: le statut public
+  File->>MAJ: le statut
+  MAJ->>Interface: une ligne « chantier » au journal, l’onglet Gestes dit « Fusionné »
+  Produit->>MAJ: les étiquettes v*
+  MAJ->>MAJ: signature et lignée vérifiées, installée à côté, pnpm check, lien suivant
+  Interface-->>Lanceur: sort au calme, CODE_RELANCE
+  Lanceur->>Interface: relance sur la version prête
+  Lanceur->>Lanceur: sonde l’interface, revient à precedent si elle ne répond pas
+```
+
+### Ce que le moteur demande à un métier
 
 ```mermaid
 flowchart TB
-  subgraph entrees["Les entrées"]
-    direction LR
-    app["L’interface web<br>interface/src/app.ts, serveur.ts"]
-    clis["pnpm parler, veiller, evals, registre"]
-    livraison_cli["pnpm chantier, agence, versionner,<br>mise-a-jour, harnais"]
+  config["config.yaml du client<br>metier: securite-privee"] --> chargeur["cli/metier.ts<br>le seul endroit qui sait où vit un métier"]
+  chargeur -. "import dynamique" .-> index["metiers/securite-privee/code/src/index.ts<br>exporte CONVERSATION et VEILLER"]
+  subgraph moteur["Le moteur, moteur/src"]
+    conversation["conversation/<br>le geste codé"]
+    echappee["echappee/<br>la copie masquée"]
+    archetypes["archetypes/<br>la veille"]
+    regles["regles/<br>le registre"]
+    evals["evals/"]
   end
-  subgraph moteur["Le moteur, moteur/src : aucun métier en dur"]
-    direction TB
-    chargeur["cli/metier.ts<br>importe le métier que nomme config.yaml"]
-    conversation["conversation/<br>premier espace : un geste codé,<br>choisi par la traduction"]
-    echappee["echappee/<br>deuxième espace : du SQL en lecture<br>sur une copie masquée"]
-    commande["gestes/commande.ts, chantier/mission.ts<br>troisième espace : la commande d’un geste absent"]
-    livraison["livraison/, chantier/<br>le schéma du dessus"]
-    archetypes["archetypes/<br>la veille des échéances"]
-    controles["controles/<br>les moments : avant, après, réponse, stop"]
-    regles["regles/<br>le registre, le verdict, la fiche"]
-    evals["evals/<br>traduction, échappée"]
-    partages["Les services partagés<br>journal/ (SQLite), modele/ (la clé, le binaire claude, simulé, le coût),<br>personnes/, approbation/jeton.ts, temps/"]
-  end
-  subgraph metier["Un métier, metiers/securite-privee ou metiers/agence-web"]
-    direction TB
-    index["code/src/index.ts<br>exporte CONVERSATION et VEILLER"]
-    mconv["conversation.ts, actions.ts, domaine.ts, roles.ts<br>les gestes codés, le vocabulaire, les rôles"]
+  subgraph metier["Ce que le métier fournit"]
+    mconv["conversation, actions, domaine, roles<br>les gestes codés, le vocabulaire, les rôles"]
     mcopie["copie.ts<br>la copie masquée d’un rôle"]
-    mcontroles["controles.ts, echeances.ts, veille.ts<br>les interdits, les échéances"]
-    mconnecteurs["connecteurs/<br>les exports CSV lus"]
-    mcapital["fiche.md, regles.yaml, evals/*.yaml<br>le capital : les interdits et les tests"]
+    mcontroles["controles, echeances, veille<br>les interdits, les échéances"]
+    mconnecteurs["connecteurs/<br>les exports CSV du client"]
+    mcapital["fiche.md, regles.yaml, evals/<br>le capital : les interdits et les tests"]
   end
-  subgraph dossier["Le dossier client, jamais versionné"]
-    direction LR
-    config["config.yaml<br>metier, modele"]
-    donnees["personnes.yaml, les exports CSV,<br>journal.sqlite"]
-    missions["missions/2026-10-16/releve_kilometrique.yaml"]
-  end
+  index --> mconv & mcopie & mcontroles & mconnecteurs
+  conversation --> mconv
+  echappee --> mcopie
+  archetypes --> mcontroles
+  mcontroles --> mconnecteurs
+  regles --> mcapital
+  evals --> mcapital
+  index -. "n’importe que @harnais/moteur" .-> moteur
+```
 
-  app -- "une demande, un geste, une confirmation" --> conversation
-  app -- "la commande, les demandes et leur état" --> commande
-  app -- "l’état de la version, le rattrapage" --> livraison
-  app & clis -- "metierDe" --> chargeur
+### Le moteur, vu des entrées
+
+```mermaid
+flowchart LR
+  subgraph entrees["Les entrées"]
+    app["L’interface web<br>interface/src"]
+    clis["pnpm parler, veiller,<br>evals, registre"]
+    livraison_cli["pnpm chantier, agence,<br>versionner, mise-a-jour, harnais"]
+  end
+  subgraph moteur["Le moteur, moteur/src"]
+    conversation["conversation/<br>1er espace : le geste codé"]
+    echappee["echappee/<br>2e espace : SQL sur une copie masquée"]
+    commande["gestes/, chantier/mission.ts<br>3e espace : la commande"]
+    livraison["livraison/, chantier/<br>les deux premiers schémas"]
+    archetypes["archetypes/<br>la veille"]
+    controles["controles/<br>les moments"]
+    regles["regles/<br>registre, verdict, fiche"]
+    evals["evals/"]
+    partages["Les services partagés<br>journal, modèle, personnes, jeton, temps"]
+  end
+  subgraph dossier["Le dossier client"]
+    donnees["personnes.yaml, les CSV, journal.sqlite"]
+    missions["missions/2026-10-16/id.yaml"]
+  end
+  app --> conversation & commande & livraison
   clis --> conversation & archetypes & evals & regles
   livraison_cli --> livraison
-  chargeur -- "lit metier" --> config
-  chargeur -- "import dynamique" --> index
-  index --> mconv & mcopie & mcontroles & mconnecteurs
-  index -. "n’importe que @harnais/moteur" .-> moteur
-  conversation -- "MetierConversation" --> mconv
   conversation --> echappee
-  echappee -- "la copie du rôle" --> mcopie
   commande --> conversation
-  commande -- "écrit la mission" --> missions
-  livraison -- "lit et pousse la mission" --> commande
-  archetypes -- "VEILLER" --> mcontroles
-  archetypes --> controles
-  controles --> regles
-  regles -- "regles.yaml, fiche.md" --> mcapital
-  evals -- "evals/*.yaml" --> mcapital
+  livraison --> commande
+  archetypes --> controles --> regles
   evals --> conversation
-  mconnecteurs & partages --> donnees
   conversation & echappee & commande & livraison & archetypes --> partages
+  partages --> donnees
+  commande --> missions
 ```
 
 ## Structure
