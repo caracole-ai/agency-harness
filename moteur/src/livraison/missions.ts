@@ -6,6 +6,7 @@ import {
   mkdirSync,
   readdirSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs'
@@ -33,6 +34,7 @@ import {
   SUFFIXE_STATUT,
   TYPE_CHANTIER,
 } from '../chantier/mission'
+import { MOTIF_SLUG } from '../config'
 import { FORMAT_INTENTION } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Identite } from '../conversation/roles'
@@ -131,17 +133,28 @@ function datesDe(file: string, problemes: string[]): string[] {
     })
 }
 
+/** Ce que le clone porte sans l'avoir commis, en un commit ; rend false s'il n'y avait rien. */
+function commettre(c: Commande, clone: string, message: string): boolean {
+  git(c, clone, ['add', '-A'])
+  if (c(clone, 'git', ['diff', '--cached', '--quiet']).code === 0) return false
+  git(c, clone, ['commit', '--quiet', '-m', message])
+  return true
+}
+
 /**
- * `git pull --rebase` de `main` ; ce que le clone porte sans l'avoir commis
- * (un statut écrit, puis un arrêt avant `publier`) est mis de côté puis rendu
- * (`--autostash`) : sans cela la file refuserait de se tirer, pour toujours.
- * Un conflit est abandonné (le clone reste lisible) et dit.
+ * `git pull --rebase` de `main`. Ce que le clone porte sans l'avoir commis
+ * (un statut écrit, puis un arrêt avant `publier`) est commis d'abord : sans
+ * cela la file refuserait de se tirer, pour toujours ; et jamais
+ * `--autostash`, dont un conflit sort en 0 et laisse des marqueurs qu'on
+ * pousserait. Un conflit (deux écrivains du même fichier) est abandonné,
+ * rien n'est perdu ni poussé, et il se dit.
  */
 function tirer(c: Commande, clone: string): void {
+  commettre(c, clone, 'Écrit, pas encore poussé')
   const r = c(
     clone,
     'git',
-    ['pull', '--rebase', '--autostash', '--quiet', DISTANT, BRANCHE_PRINCIPALE],
+    ['pull', '--rebase', '--quiet', DISTANT, BRANCHE_PRINCIPALE],
     ENV_DISTANT(),
   )
   if (r.code !== 0) {
@@ -190,10 +203,7 @@ function enAvance(c: Commande, clone: string): boolean {
  * reprise après `pull --rebase`. Rend false s'il n'y avait rien à pousser.
  */
 export function publier(c: Commande, clone: string, message: string): boolean {
-  git(c, clone, ['add', '-A'])
-  if (c(clone, 'git', ['diff', '--cached', '--quiet']).code !== 0) {
-    git(c, clone, ['commit', '--quiet', '-m', message])
-  }
+  commettre(c, clone, message)
   if (!enAvance(c, clone)) return false
   const pousser = () =>
     c(
@@ -510,11 +520,36 @@ function placeDuStatut(racine: string, x: MissionEnFile): string {
   return d
 }
 
-/** Où le chantier d'une mission écrit son dossier et son statut complets, à l'agence, jamais dans la file. */
-export function sortieAgence(racine: string, x: MissionEnFile): string {
-  const d = join(racine, DOSSIER_FILES, DOSSIER_CHANTIERS_AGENCE, x.client.slug, x.mission.date)
+/** Où le chantier d'une mission de la file écrit son dossier et son statut complets, à l'agence, jamais dans la file. */
+export function sortieAgence(racine: string, slug: string, date: string): string {
+  const d = join(racine, DOSSIER_FILES, DOSSIER_CHANTIERS_AGENCE, slug, date)
   mkdirSync(d, { recursive: true })
   return d
+}
+
+/** Le slug du client si cette mission est dans le clone de sa file, à l'agence (`.claude/missions/<slug>/<date>/<id>.yaml`). */
+export function slugEnFile(racine: string, cheminMission: string): string | undefined {
+  const files = join(racine, DOSSIER_FILES)
+  if (!existsSync(files) || !existsSync(cheminMission)) return undefined
+  const clone = dirname(dirname(realpathSync(cheminMission)))
+  const slug = basename(clone)
+  return dirname(clone) === realpathSync(files) && MOTIF_SLUG.test(slug) ? slug : undefined
+}
+
+/**
+ * Une reprise à la main d'une mission de la file (`pnpm chantier --mission
+ * <clone>/<date>/<id>.yaml --refaire`, à l'agence) : le statut que le chantier
+ * a écrit à l'agence, public, à sa place dans le clone ; le prochain tour de
+ * `pnpm agence` le pousse. Rend false s'il n'y a aucun statut (sans modèle,
+ * déjà tentée).
+ */
+export function statuerALaMain(cheminMission: string, statut: Statut | undefined): boolean {
+  if (!statut) return false
+  const { mission } = lireMission(cheminMission)
+  const d = dirname(cheminMission)
+  placeNette(join(d, `${mission.id}${SUFFIXE_STATUT}`))
+  ecrireStatut(d, mission.id, statutPublic(statut))
+  return true
 }
 
 /** Ce que la file porte d'un statut final de chantier : le statut, sa version, son coût, son heure ; pas son texte. */

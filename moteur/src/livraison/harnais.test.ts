@@ -206,6 +206,7 @@ describe('le lanceur (L9)', () => {
       return lance
     }
     let t = 0
+    const dits: string[] = []
     const arret = await harnais({
       installation: d,
       lancer,
@@ -215,7 +216,12 @@ describe('le lanceur (L9)', () => {
         rendre = undefined
       },
       maintenant: () => (t += 1000),
+      dire: (m) => dits.push(m),
     })
+    // L'attente se dit, une fois, avec le pid de qui tient l'installation.
+    expect(dits.filter((m) => m.startsWith('retour arrière en attente'))).toEqual([
+      `retour arrière en attente : une préparation tient l’installation (pid ${process.pid})`,
+    ])
     expect(versionDe(d, LIENS.courant)).toBe('v2026-10-14-1')
     expect(parse(readFileSync(join(d, FICHIER_RETOUR), 'utf8'))).toEqual({
       de: 'v2026-10-15-1',

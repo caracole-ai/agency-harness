@@ -8,6 +8,7 @@ import {
   lier,
   marquerBascule,
   marquerRetour,
+  tenantInstallation,
   verrouInstallation,
   versionDeLArbre,
 } from './mise-a-jour'
@@ -167,15 +168,23 @@ export async function harnais(o: OptionsHarnais): Promise<ArretHarnais> {
   /** La bascule en cours de sonde, puis celle qui tourne, et son heure : des plantages dans la fenêtre qui la suit la font défaire. */
   let bascule: { de: string; vers: string } | undefined
   let basculeLe = 0
+  let attenteDite = false
   const revenirDe = (b: { de: string; vers: string }, raison: string) => {
     const fait = sousVerrou(o.installation, () => {
       revenir(o.installation, b.vers, b.de, raison)
       return true
     })
     if (fait === undefined) {
-      // Une préparation tient l'installation : on attend qu'elle la rende.
+      // Une préparation tient l'installation : on attend qu'elle la rende, et on le dit une fois.
+      if (!attenteDite) {
+        dire(
+          `retour arrière en attente : une préparation tient l’installation (pid ${tenantInstallation(o.installation) ?? '?'})`,
+        )
+        attenteDite = true
+      }
       return false
     }
+    attenteDite = false
     dire(`retour arrière : ${b.vers} → ${b.de} (${raison})`)
     return true
   }

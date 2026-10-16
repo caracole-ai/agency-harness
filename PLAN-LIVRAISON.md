@@ -273,7 +273,9 @@ partait signé chez tous les clients) ; un arbre qui a bougé après la garde
 refuse, avant les évals ; une étiquette `chantier/<id>` restée locale (une
 fusion tuée avant le push) est reposée, jamais sur le distant ; un
 `CLAUDE*.md` est interdit dans la bande (le binaire le chargerait comme
-consigne à la relecture et aux chantiers suivants). **Ouvert, aggravé** :
+consigne à la relecture et aux chantiers suivants), et les chemins
+interdits se comparent sans la casse (le disque de l'agence lit
+`claude.md` comme `CLAUDE.md`). **Ouvert, aggravé** :
 sans bac à sable, le code du modèle lit la clé, et aussi `~/.ssh`, le
 trousseau, le `.git` commun (ses hooks et sa config feraient tourner du code
 sous l'agence, hors de tout chantier) ; ce qu'il imprime ne part plus chez
@@ -351,9 +353,13 @@ retraits ; le second finit « échoué » (le message le dit, sans proposer
 faire avant un second client d'un autre métier.
 
 Audit avant fusion (2026-10-16), corrigé : un statut écrit dans le clone
-d'une file sans être commis (un arrêt avant le push, un `--refaire` dont la
-sortie est la file) bloquait la file pour toujours → `pull --rebase
---autostash` ; une adresse de file changée est suivie (`remote set-url`) ;
+d'une file sans être commis (un arrêt avant le push) bloquait la file pour
+toujours → ce que le clone porte est commis d'abord, puis `pull --rebase`
+(pas `--autostash` : son conflit sort en 0 et laissait pousser des
+marqueurs) ; une reprise à la main (`pnpm chantier --refaire` sur une
+mission de la file) écrivait dossier et statut complets dans le clone →
+elle sort à l'agence et ne pose que le statut public ; une adresse de file
+changée est suivie (`remote set-url`) ;
 **écart à L7** : le dossier `<id>.chantier.md` et le texte du statut ne
 partent plus chez le client (ils portaient ce que le code du modèle
 imprime, le texte des modèles, des chemins de l'agence) : le dossier et le
@@ -366,8 +372,13 @@ au tour suivant) ; le motif d'un retrait est nettoyé une fois
 (`retirerMission`, le même dans le commit, la mémoire et le statut) ;
 `origin` injoignable au moment de prendre une mission la laisse à prendre
 au lieu de la faire finir « échoué » ; la version d'un statut et le métier
-d'une mission suivent leur motif ; le verrou à pid : posé avant le démarrage
-de la machine, levé ; vide et frais, tenu. Risques acceptés : un client qui
+d'une mission suivent leur motif ; le verrou à pid porte le démarrage de la
+machine (`boot_id`, `kern.bootsessionuuid`) : posé lors d'un autre
+démarrage, levé, sans rien demander à l'horloge ; vide et frais, tenu.
+Risques acceptés : deux écrivains du même statut (l'agence ne l'a pas
+encore commis, un tiers l'a réécrit dans la file) : la file s'arrête et le
+dit à chaque tour, rien de corrompu ne part (on efface le clone de
+l'agence, `.claude/missions/<slug>/`, pour repartir) ; un client qui
 repose `en attente` sur une mission déjà faite entame d'un chantier la borne
 du jour (sans appel au modèle ; l'équité entre clients borne l'effet) ;
 deux processus qui lèvent le même verrou mort au même instant (une fenêtre
@@ -475,15 +486,39 @@ attend le verrou et revient (il s'arrêtait sur la nouvelle version) ; le
 port et le dossier passés après `--` ne l'emportent plus sur ceux du
 lanceur ; la sonde compte ses essais (une mise en veille n'exclut plus une
 version saine) ; un plancher : aucune version plus ancienne qu'une version
-signée qui a échoué ici (check rouge, retour arrière) ne se prépare, un
-retrait qui échoue ne fait plus revenir le geste retiré ; le dépôt du
-produit chez le client ne tire que les étiquettes `v*` (plus les branches
-ni les étiquettes de chantier de l'agence), sans invite, une connexion
-figée coupée, son adresse relue. Risques acceptés : `livrer()`
+signée qui a échoué ici (check rouge, retour arrière) ne se prépare, et une
+qui attendait déjà la bascule est écartée : un retrait qui échoue ne fait
+plus revenir le geste retiré ; le dépôt du produit chez le client ne tire
+que les étiquettes `v*` (`--no-tags` : ni les branches ni les étiquettes de
+chantier de l'agence, même posées dans l'histoire des versions), sans
+invite, une connexion figée coupée, son adresse relue ; le lanceur qui
+attend le verrou pour revenir le dit, une fois, avec le pid. Risques
+acceptés : les `pnpm install` et `pnpm check` d'une préparation n'ont pas
+de délai (un check qui ne finit pas tient l'installation : le lanceur
+attend et le dit) ; `livrer()`
 (`interface/src/serveur.ts`) et le lanceur réel (`interface/src/harnais.ts`)
 ne se jouent qu'au laboratoire ; leurs pièces (`noterSiMarque`,
 `relanceAttendue`, `doitRelancer`, `argumentsInterface`,
 `sonderInterface`, `retirerALaMain`) ont leurs tests.
+
+Rejoué pour de vrai après l'audit (2026-10-16, sur `814d831`, sans modèle,
+une machine) : première installation par `pnpm mise-a-jour` (72 s, un seul
+message), le dépôt du client ne porte que l'étiquette `v…-1` ; `pnpm
+harnais -- --modele simule` : l'interface sert depuis l'arbre de la `v…-1`,
+« Version v…-1. » en tête de l'onglet ; « Créer ce geste » à l'écran : la
+mission marquée, poussée dans la file par le rattrapage à part ; les statuts
+posés à la main dans la file comme l'agence le ferait (`en cours`, puis
+`fusionné` avec la `v…-2` signée) : la carte les suit au rafraîchissement ;
+la `v…-2` préparée à côté, sortie au calme (75), bascule, sonde, « faite
+(v…-2) », « Version v…-2, mise à jour le 16 octobre 2026 » ; `pnpm
+mise-a-jour retirer` : l'interface écrit « retour arrière (…, retirée à la
+main) », sort au calme d'elle-même, le lanceur la relance sur la `v…-1` ;
+tuée ensuite, relancée en 5 s sur la `v…-1` ; la `v…-2` jamais
+repréparée ; aucune erreur dans la console du navigateur. À part, une copie
+livrée dont la file est injoignable : avant l'audit, l'onglet et le clic
+gelaient l'interface 15 s (`/api/roles` à 14 s) ; après, l'onglet répond en
+22 ms, le clic en 39 ms, la mission reste marquée jusqu'au retour de la
+file.
 
 - `moteur/src/livraison/mise-a-jour.ts` : `preparer(dossier)` (L8 : fetch,
   candidates, vérification, worktree, install, check, `.prete`,

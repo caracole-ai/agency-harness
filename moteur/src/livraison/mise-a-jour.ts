@@ -19,7 +19,7 @@ import type { Ligne } from '../journal/journal'
 import { jourDe, type Temporal } from '../temps/temporal'
 import { type Livraison, lireLivraison } from './config'
 import { ENV_DISTANT, type Rattrapage, rattraperStatuts } from './missions'
-import { poserVerrou } from './verrou'
+import { poserVerrou, tenantDe } from './verrou'
 import {
   comparerVersions,
   etiquettesCandidates,
@@ -87,6 +87,10 @@ export type Bascule = z.infer<typeof Bascule>
 export const verrouInstallation = (installation: string) =>
   poserVerrou(join(installation, FICHIER_VERROU_INSTALLATION))
 
+/** Le pid de qui tient le verrou de l'installation, s'il est tenu. */
+export const tenantInstallation = (installation: string) =>
+  tenantDe(join(installation, FICHIER_VERROU_INSTALLATION))
+
 /** La cible d'un lien de l'installation, résolue ; undefined s'il n'existe pas. */
 export function cible(installation: string, lien: string): string | undefined {
   try {
@@ -141,7 +145,8 @@ function depotAJour(c: Commande, l: Livraison): string {
     git(c, l.installation, ['init', '--quiet', '--bare', depot])
   }
   git(c, depot, ['config', 'remote.origin.url', l.depot])
-  git(c, depot, ['fetch', 'origin', 'refs/tags/v*:refs/tags/v*'], ENV_DISTANT())
+  // `--no-tags` : git suivrait sinon toute étiquette posée dans l'histoire des versions (`chantier/<id>`).
+  git(c, depot, ['fetch', '--no-tags', 'origin', 'refs/tags/v*:refs/tags/v*'], ENV_DISTANT())
   return depot
 }
 
@@ -177,6 +182,13 @@ export function preparer(
     if (!existsSync(signataires))
       throw new Error(`${signataires} absent : aucune version ne peut être vérifiée`)
     const depot = depotAJour(c, l)
+    // Une version qui attend la bascule et que le plancher ou une exclusion écarte désormais (son
+    // retrait a échoué ici, par exemple) ne s'installe plus : son lien est ôté, `elaguer` retire son arbre.
+    const ecarter = (borne: (attend: string) => boolean) => {
+      const attend = versionDeLArbre(cible(l.installation, LIENS.suivant))
+      if (attend && borne(attend)) rmSync(join(l.installation, LIENS.suivant), { force: true })
+    }
+    ecarter((v) => exclues.includes(v) || (!!plancher && comparerVersions(v, plancher) <= 0))
     const courante = versionDeLArbre(cible(l.installation, LIENS.courant))
     const enService = [LIENS.courant, LIENS.precedent]
       .map((x) => cible(l.installation, x))
@@ -215,8 +227,10 @@ export function preparer(
         const r = c(arbre, 'pnpm', etape, enfant)
         if (r.code !== 0) {
           retirer()
-          // Un install rouge peut être le réseau : il se retente ; un check rouge, non, et il fait plancher.
+          // Un install rouge peut être le réseau : il se retente ; un check rouge, non, et il fait
+          // plancher, dès ce passage : une plus ancienne qui attend la bascule ne s'installe plus.
           const check = etape[0] === 'check'
+          if (check) ecarter((v) => comparerVersions(v, version) <= 0)
           refusees.push({
             version,
             raison: `pnpm ${etape[0]} rouge dans la version (${(r.erreur || r.sortie).trim().split('\n').at(-1)?.slice(0, 160) ?? '?'})`,

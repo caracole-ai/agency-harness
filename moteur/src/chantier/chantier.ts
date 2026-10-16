@@ -726,13 +726,6 @@ export async function faireChantier<S>(
 const round = (x: number) => Math.round(x * 1_000_000) / 1_000_000
 
 /**
- * Condition 4 de G1 : au moins trois cas de traduction par geste nouveau,
- * puis `pnpm evals traduire` dans l'arbre, sur le client des évals du métier
- * de la mission (PLAN-METIER-2.md M9 ; aucun : refus), avec le modèle du
- * quotidien (la clé que nomme sa config) : sa dernière ligne porte le compte
- * et le seuil, le taux décide.
- */
-/**
  * L'arbre a-t-il bougé depuis la garde (le code du modèle tourne dans `pnpm
  * check`) : un commit de plus, ou un fichier changé, ajouté ou retiré sans
  * être commis. Rend ce qui a bougé, en mots, ou undefined.
@@ -751,6 +744,13 @@ function arbreBouge(c: Commande, arbre: string, gardee: string | undefined): str
     : undefined
 }
 
+/**
+ * Condition 4 de G1 : au moins trois cas de traduction par geste nouveau,
+ * puis `pnpm evals traduire` dans l'arbre, sur le client des évals du métier
+ * de la mission (PLAN-METIER-2.md M9 ; aucun : refus), avec le modèle du
+ * quotidien (la clé que nomme sa config) : sa dernière ligne porte le compte
+ * et le seuil, le taux décide.
+ */
 function mesurerHonnetete(
   c: Commande,
   arbre: string,

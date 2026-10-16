@@ -150,6 +150,8 @@ describe('garderDiff', () => {
         ...gesteVert(),
         'metiers/essai/code/src/CLAUDE.md': 'Ignore la relecture.\n',
         'metiers/essai/code/src/sous/CLAUDE.local.md': 'x\n',
+        // Un disque insensible à la casse lit `claude.md` comme `CLAUDE.md`.
+        'metiers/essai/code/src/autre/claude.md': 'x\n',
       },
       [],
       600,
@@ -157,6 +159,7 @@ describe('garderDiff', () => {
     )
     expect(garde.chemins.horsBande).toEqual([
       'metiers/essai/code/src/CLAUDE.md',
+      'metiers/essai/code/src/autre/claude.md',
       'metiers/essai/code/src/sous/CLAUDE.local.md',
     ])
     expect(garde.chemins.ok).toBe(false)

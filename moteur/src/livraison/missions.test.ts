@@ -59,6 +59,9 @@ import {
   noterChantier,
   rattraperStatuts,
   SUFFIXE_A_POUSSER,
+  slugEnFile,
+  sortieAgence,
+  statuerALaMain,
   statuerRetrait,
 } from './missions'
 
@@ -782,5 +785,62 @@ describe('les états à moitié faits et les données bornées (audit de la livr
     expect((await tour(depots.racine, a, commandeSimulee().commande)).prise).toMatchObject({
       statut: 'écartée',
     })
+  })
+
+  it('une reprise à la main d’une mission de la file (pnpm chantier --refaire, à l’agence) : sa sortie est à l’agence, la file ne reçoit que le statut public', () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const client = { slug: SLUG, metier: 'essai', missions: file }
+    lireFile(commandeSimulee().commande, depots.racine, client)
+    const mission = join(depots.racine, DOSSIER_FILES, SLUG, '2026-10-10', `${INTENTION}.yaml`)
+    expect(slugEnFile(depots.racine, mission)).toBe(SLUG)
+    expect(
+      slugEnFile(depots.racine, join(dossier, DOSSIER_MISSIONS, '2026-10-10', `${INTENTION}.yaml`)),
+    ).toBeUndefined()
+    // Ce que le chantier écrit à l'agence (sa sortie, `sortieAgence`), texte compris.
+    const sortie = sortieAgence(depots.racine, SLUG, '2026-10-10')
+    ecrireStatut(sortie, INTENTION, {
+      statut: 'échoué',
+      issue: 'échoué : SECRET-321',
+      cout_usd: 0.2,
+      le: '2026-10-10T17:00:00Z',
+    })
+    expect(statuerALaMain(mission, lireStatut(join(sortie, `${INTENTION}.statut.yaml`)))).toBe(true)
+    expect(lireFile(commandeSimulee().commande, depots.racine, client).problemes).toEqual([])
+    const place = join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`)
+    expect(readFileSync(place, 'utf8')).not.toMatch(/SECRET-321/)
+    expect(lireStatut(place)).toMatchObject({ statut: 'échoué', issue: ISSUE_PUBLIQUE })
+  })
+
+  it('deux écrivains du même statut (l’agence ne l’a pas encore commis, un tiers l’a réécrit dans la file) : rien de corrompu ne part, le conflit se dit', async () => {
+    const depots = creerDepots()
+    const { dossier, file } = clientLivre()
+    cliquer(dossier)
+    const atelier = binaireSimule({ plan: { faisable: false, raison: 'hors bande', plan: '-' } })
+    const a = agence(atelier.binaire, file)
+    await tour(depots.racine, a, commandeSimulee().commande)
+    ecrireStatut(join(depots.racine, DOSSIER_FILES, SLUG, '2026-10-10'), INTENTION, {
+      statut: 'échoué',
+      issue: 'à la main',
+      cout_usd: 0,
+      le: '2026-10-10T15:30:00Z',
+    })
+    const tiers = cloneDuDistant(file)
+    git(tiers, 'config', 'user.email', 'tiers@exemple.invalid')
+    git(tiers, 'config', 'user.name', 'tiers')
+    ecrireStatut(join(tiers, '2026-10-10'), INTENTION, {
+      statut: 'refusé',
+      issue: 'réécrit par un tiers',
+      cout_usd: 0,
+      le: '2026-10-10T15:31:00Z',
+    })
+    git(tiers, 'commit', '-q', '-am', 'tiers')
+    git(tiers, 'push', '-q', 'origin', 'HEAD:main')
+    const t = await tour(depots.racine, a, commandeSimulee().commande)
+    expect(t.problemes.join('\n')).toMatch(/file illisible.*file non tirée/)
+    const place = join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`)
+    expect(readFileSync(place, 'utf8')).not.toMatch(/<<<<<<<|>>>>>>>/)
+    expect(lireStatut(place)?.statut).toBe('refusé')
   })
 })

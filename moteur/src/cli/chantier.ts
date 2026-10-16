@@ -8,7 +8,10 @@
 // ce dépôt, dont ni l'arbre ni `main` ne bougent) ; la mémoire, et la fusion
 // sur `main` du distant si les huit conditions sont vertes. Le dossier
 // `<id>.chantier.md` et le statut `<id>.statut.yaml` vont dans `--sortie`
-// (par défaut, à côté de la mission). Le métier est celui que la mission
+// (par défaut, à côté de la mission) ; une mission de la file d'un client, à
+// l'agence (une reprise à la main, `--refaire`), sort à l'agence comme sous
+// `pnpm agence`, sans `--sortie`, et la file ne reçoit que le statut public.
+// Le métier est celui que la mission
 // nomme ; les noms contrôlés, ceux de son client fictif (`evals_clients`) :
 // le chantier ne lit aucun dossier client. Une mission déjà tentée ne se
 // refait pas sans --refaire. --sans-modele : la décision et ce que le plan
@@ -30,9 +33,10 @@ import { chargerAgence } from '../agence/config'
 import { nomsFictifs } from '../agence/fictif'
 import { commandeSync } from '../chantier/arbre'
 import { faireChantier } from '../chantier/chantier'
-import { lireMission } from '../chantier/mission'
+import { lireMission, lireStatut, SUFFIXE_STATUT } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { retirerMission } from '../livraison/agence'
+import { slugEnFile, sortieAgence, statuerALaMain } from '../livraison/missions'
 import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -104,17 +108,40 @@ try {
         `mission ${mission.id} du métier ${mission.metier}, client du métier ${chargerConfig(config, ConfigBase).metier}`,
       )
     }
+    // Une mission de la file d'un client, à l'agence (une reprise à la main : --refaire) : comme pnpm
+    // agence, le dossier et le statut complets restent à l'agence, la file ne reçoit que le statut
+    // public, que le prochain tour de pnpm agence pousse (PLAN-LIVRAISON.md, audit du 2026-10-16).
+    const enFile = slugEnFile(RACINE, chemin)
+    if (enFile && values.sortie) {
+      throw new Error(
+        `${chemin} : une mission de la file d'un client sort à l'agence, sans --sortie`,
+      )
+    }
+    const sortie = values.sortie
+      ? resolve(values.sortie)
+      : enFile
+        ? sortieAgence(RACINE, enFile, mission.date)
+        : dirname(chemin)
     const r = await faireChantier(await conversationDuMetier(mission.metier), {
       racine: RACINE,
       agence,
       mission: chemin,
       client,
       personnes: await nomsFictifs(agence.chantier.evals_clients, RACINE, [mission.metier]),
-      sortie: values.sortie ? resolve(values.sortie) : dirname(chemin),
+      sortie,
       env: process.env,
       sansModele: values['sans-modele'] === true,
       refaire: values.refaire === true,
     })
+    if (
+      enFile &&
+      values['sans-modele'] !== true &&
+      statuerALaMain(chemin, lireStatut(join(sortie, `${mission.id}${SUFFIXE_STATUT}`)))
+    ) {
+      console.log(
+        `Statut public écrit dans la file de ${enFile} : le prochain tour de pnpm agence le pousse.`,
+      )
+    }
     switch (r.sorte) {
       case 'decision':
         console.log(`${r.decision.motif} : aucun appel. ${r.dossier}`)

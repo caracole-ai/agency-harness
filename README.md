@@ -484,8 +484,11 @@ pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier
                          # arbre qui a changé avant les évals, refuse) dans un arbre détaché +
                          # étiquette chantier/<id> + version signée v<AAAA-MM-JJ>-<n> + push
                          # atomique sur main du distant. Le dossier <id>.chantier.md et le statut
-                         # <id>.statut.yaml vont dans --sortie (par défaut, à côté de la mission ;
-                         # pnpm agence : à l'agence, jamais dans la file). Le métier est celui de la mission ; les
+                         # <id>.statut.yaml vont dans --sortie (par défaut, à côté de la mission).
+                         # Une mission de la file d'un client, à l'agence (pnpm agence, ou une
+                         # reprise à la main : --refaire sur .claude/missions/<slug>/<date>/<id>.yaml) :
+                         # sa sortie est à l'agence (.claude/missions/_chantiers/), sans --sortie,
+                         # et la file ne reçoit que le statut public. Le métier est celui de la mission ; les
                          # noms contrôlés, ceux de son client fictif (evals_clients). Déjà
                          # tentée : rien, sauf --refaire (qui rouvre la branche telle quelle :
                          # pour repartir d'origin/main, supprimer la branche chantier/<id>).

@@ -37,8 +37,12 @@ export function resoudreMetier(motif: string, metier: string): string {
   return motif.replaceAll(PLACE_METIER, metier)
 }
 
-/** Un chemin autorisé d'`agence.yaml` en expression : `**` traverse les dossiers, `*` non. */
-export function motifChemin(glob: string): RegExp {
+/**
+ * Un chemin d'`agence.yaml` en expression : `**` traverse les dossiers, `*`
+ * non. `sansCasse` : un disque insensible à la casse (APFS, par défaut) lit
+ * `claude.md` comme `CLAUDE.md` ; un interdit se compare donc sans la casse.
+ */
+export function motifChemin(glob: string, sansCasse = false): RegExp {
   const corps = glob
     .split('**')
     .map((part) =>
@@ -48,7 +52,7 @@ export function motifChemin(glob: string): RegExp {
         .join('[^/]*'),
     )
     .join('.*')
-  return new RegExp(`^${corps}$`)
+  return new RegExp(`^${corps}$`, sansCasse ? 'i' : '')
 }
 
 export interface Garde {
@@ -94,7 +98,7 @@ export function garderDiff(
   // Les interdits l'emportent : les contrôles des règles vivent dans la bande métier, jamais au chantier.
   const motifs = config.chemins_autorises.map((m) => motifChemin(resoudreMetier(m, metier)))
   const interditsChemins = config.chemins_interdits.map((m) =>
-    motifChemin(resoudreMetier(m, metier)),
+    motifChemin(resoudreMetier(m, metier), true),
   )
   const horsBande = fichiers
     .map((f) => f.chemin)

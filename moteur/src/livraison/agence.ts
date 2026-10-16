@@ -148,7 +148,7 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
   // chemin de l'agence) ne part jamais chez le client.
   let fin: Statut
   try {
-    const sortie = sortieAgence(o.racine, x)
+    const sortie = sortieAgence(o.racine, x.client.slug, x.mission.date)
     const r = await faireChantier(await o.metier(x.mission.metier), {
       racine: o.racine,
       agence: o.agence,

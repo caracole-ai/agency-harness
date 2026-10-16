@@ -411,10 +411,11 @@ describe('le dépôt du produit chez le client (audit de la livraison, 2026-10-1
   it('seules ses versions se tirent, jamais ses branches ni ses autres étiquettes ; git sans invite, une connexion figée coupée ; une adresse changée est suivie', () => {
     const pr = produit()
     pr.version('v2026-10-14-1')
-    // Le travail de l'agence, sur le produit : une branche, une étiquette de chantier.
+    // Le travail de l'agence, sur le produit : une étiquette de chantier dans l'histoire même de la
+    // version (sur la fusion qu'elle porte), une branche à part.
+    git(pr.agence, 'tag', 'chantier/essai', 'v2026-10-14-1^{commit}')
     git(pr.agence, 'switch', '-q', '-c', 'travail')
     git(pr.agence, 'commit', '-q', '--allow-empty', '-m', 'travail en cours')
-    git(pr.agence, 'tag', 'chantier/essai')
     git(pr.agence, 'push', '-q', 'origin', 'travail', 'refs/tags/chantier/essai')
     git(pr.agence, 'switch', '-q', 'main')
     const { dossier, l } = client(pr.nu)
@@ -533,5 +534,30 @@ describe('le pas de l’interface et le plancher des versions (audit de la livra
     } finally {
       METIER_ESSAI.fermer(s)
     }
+  })
+
+  it('une version plus ancienne qui attend déjà la bascule ne s’installe plus quand une plus récente échoue ici (le geste retiré ne revient pas par elle)', () => {
+    const { pr, dossier, l } = installe()
+    const v1 = cible(l.installation, LIENS.courant) ?? ''
+    pr.version('v2026-10-15-1')
+    expect(preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande).prete?.version).toBe(
+      'v2026-10-15-1',
+    )
+    pr.version('v2026-10-15-2')
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      rattraper(
+        METIER_ESSAI,
+        s,
+        dossier,
+        MAINTENANT,
+        ENV_ESSAI,
+        commandeSimulee({ check: [1] }).commande,
+      )
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
+    expect(cible(l.installation, LIENS.suivant)).toBeUndefined()
+    expect(relanceAttendue(l.installation, v1)).toBe(false)
   })
 })
