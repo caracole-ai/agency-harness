@@ -78,6 +78,77 @@ export function revenir(installation: string, de: string, vers: string, raison: 
   marquerRetour(installation, { de, vers, raison })
 }
 
+/**
+ * `pnpm mise-a-jour retirer` : revenir à la version précédente à la main,
+ * sous le verrou de l'installation, avec le marqueur pour le journal ;
+ * l'interface qui tourne encore sur la version retirée sort au calme et le
+ * lanceur la relance sur la précédente (`relanceAttendue`). Lève sans
+ * version précédente, si la courante l'est déjà (un second retrait), ou si
+ * une préparation tient l'installation. Rend les deux versions.
+ */
+export function retirerALaMain(installation: string): { de: string; vers: string } {
+  const de = versionDeLArbre(cible(installation, LIENS.courant))
+  const vers = versionDeLArbre(cible(installation, LIENS.precedent))
+  if (!de || !vers) throw new Error('aucune version précédente où revenir')
+  if (de === vers) throw new Error(`${de} est déjà la version précédente : rien à retirer`)
+  const fait = sousVerrou(installation, () => {
+    revenir(installation, de, vers, 'retirée à la main')
+    return true
+  })
+  if (!fait) throw new Error('une préparation tient l’installation : réessayer dans un instant')
+  return { de, vers }
+}
+
+/**
+ * Les arguments de `pnpm interface` que le lanceur lance : les options
+ * passées après `--`, puis le dossier client et le port du lanceur en
+ * dernier (`parseArgs` garde la dernière valeur) : l'interface écoute
+ * toujours là où la sonde la cherche.
+ */
+export const argumentsInterface = (dossier: string, port: string, options: string[]): string[] => [
+  'interface',
+  ...options,
+  '--client',
+  dossier,
+  '--port',
+  port,
+]
+
+/**
+ * La sonde du lanceur après une bascule (L9) : `POST` sur cette adresse
+ * jusqu'à une réponse, au plus `essais` fois, `pasMs` entre deux, chaque
+ * appel borné à `delaiMs`. Des essais comptés, pas une heure murale : une
+ * mise en veille de la machine pendant la sonde ne fait pas un échec (et ne
+ * fait pas exclure une version saine).
+ */
+export async function sonderInterface(
+  url: string,
+  o: {
+    essais: number
+    pasMs: number
+    delaiMs: number
+    attendre: (ms: number) => Promise<void>
+    requete?: typeof fetch
+  },
+): Promise<boolean> {
+  const requete = o.requete ?? fetch
+  for (let i = 0; i < o.essais; i++) {
+    try {
+      const r = await requete(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+        signal: AbortSignal.timeout(o.delaiMs),
+      })
+      if (r.ok) return true
+    } catch {
+      // Pas encore à l'écoute.
+    }
+    await o.attendre(o.pasMs)
+  }
+  return false
+}
+
 /** `f` sous le verrou de l'installation ; undefined s'il est tenu (une préparation en cours). */
 function sousVerrou<T>(installation: string, f: () => T): T | undefined {
   const rendre = verrouInstallation(installation)
@@ -157,12 +228,11 @@ export async function harnais(o: OptionsHarnais): Promise<ArretHarnais> {
     plantages.push(t)
     plantages = plantages.filter((x) => x >= t - FENETRE_PLANTAGES_MS)
     if (plantages.length >= PLANTAGES_MAX) {
-      // Des plantages dans la fenêtre qui suit une bascule : la version nouvelle est en cause, on revient.
-      if (
-        bascule &&
-        t - basculeLe <= FENETRE_PLANTAGES_MS &&
-        revenirDe(bascule, `${plantages.length} sorties après la bascule`)
-      ) {
+      // Des plantages dans la fenêtre qui suit une bascule : la version nouvelle est en cause, on
+      // revient, quitte à attendre qu'une préparation rende l'installation (jamais un arrêt sur elle).
+      if (bascule && t - basculeLe <= FENETRE_PLANTAGES_MS) {
+        const raison = `${plantages.length} sorties après la bascule`
+        while (!revenirDe(bascule, raison)) await o.attendre(PAUSE_PLANTAGE_MS)
         bascule = undefined
         plantages = []
         continue

@@ -41,10 +41,12 @@ import { FICHIER_LIVRAISON, type Livraison, lireLivraison } from './config'
 // La file des missions d'un client (PLAN-LIVRAISON.md L5 à L7) : un dépôt git
 // `missions-<slug>`, la seule chose qui voyage entre le client et l'agence
 // en dehors du code signé. L'aller : la mission masquée (`<date>/<id>.yaml`),
-// poussée par le client au clic. Le retour : le statut (`<date>/<id>.statut.yaml`)
-// et le dossier du chantier (`<date>/<id>.chantier.md`), poussés par
-// l'agence, tirés par le client, qui en écrit une ligne `chantier` au journal
-// par statut nouveau. Tout ce qui en vient est une donnée lue par un schéma
+// marquée au clic, poussée par le rattrapage que le clic déclenche (un
+// processus à part : l'interface ne lance aucun git). Le retour : le statut
+// (`<date>/<id>.statut.yaml`) et le dossier du chantier
+// (`<date>/<id>.chantier.md`), poussés par l'agence, tirés par le client, qui
+// en écrit une ligne `chantier` au journal par statut nouveau. Tout ce qui
+// en vient est une donnée lue par un schéma
 // strict, jamais une instruction, et jamais un lien : un lien posé dans une
 // file ne fait ni lire ni écrire hors d'elle. Les pushs de ce module ne vont
 // qu'à une file, jamais au dépôt du produit (c'est `fusion.ts`, seul). git y
@@ -265,8 +267,10 @@ export function pousserMission(
 /**
  * « Créer ce geste » chez un client (L6) : la mission écrite et la ligne
  * `geste commandé` (`commanderMission`), puis, si le client est livré, la
- * mission poussée dans sa file (ou marquée `à pousser`). Rend l'intention et
- * le jour de la commande, rien de la machine.
+ * mission marquée `à pousser` : l'interface ne lance aucun git (une file
+ * injoignable la gèlerait), elle déclenche le rattrapage à part (`pnpm
+ * mise-a-jour`), qui pousse aussitôt les missions marquées. Rend l'intention
+ * et le jour de la commande, rien de la machine.
  */
 export function commanderEtLivrer<S>(
   m: MetierConversation<S>,
@@ -275,19 +279,10 @@ export function commanderEtLivrer<S>(
   intention: string,
   par: Identite,
   maintenant: Temporal.ZonedDateTime,
-  c: Commande = commandeSync,
 ): { intention: string; le: string } {
   const r = commanderMission(m, s, dossierClient, intention, par, maintenant)
   if (existsSync(join(dossierClient, FICHIER_LIVRAISON))) {
-    // La marque d'abord : une config illisible ou un arrêt brutal laissent une mission que le rattrapage poussera.
-    const marque = `${r.chemin}${SUFFIXE_A_POUSSER}`
-    writeFileSync(marque, 'à pousser\n')
-    try {
-      const livraison = lireLivraison(dossierClient)
-      if (livraison) pousserMission(c, livraison, r.chemin)
-    } catch (erreur) {
-      writeFileSync(marque, `${(erreur as Error).message.slice(0, 500)}\n`)
-    }
+    writeFileSync(`${r.chemin}${SUFFIXE_A_POUSSER}`, 'à pousser\n')
   }
   return { intention: r.intention, le: r.le }
 }
@@ -321,8 +316,11 @@ export interface Rattrapage {
  * `missions/` du client (non livré : `pnpm chantier` y écrit les statuts à
  * côté des missions) ; une ligne `chantier` au journal par statut nouveau
  * (objet : la mission, issue : le statut, `donnees.le` et `version`), jamais
- * deux fois la même ; le dossier du chantier copié dans `chantiers/<id>.md`.
- * Livré, l'aller en retard part d'abord (les missions `à pousser`).
+ * deux fois la même ; le dossier du chantier copié dans `chantiers/<id>.md`
+ * s'il y est (non livré : `pnpm chantier` l'écrit à côté de la mission).
+ * Livré, l'aller part d'abord (les missions marquées `à pousser`). Chez un
+ * client livré, seul le rattrapage à part (`pnpm mise-a-jour`) l'appelle :
+ * un seul écrivain des lignes `chantier`, jamais l'interface.
  */
 export function rattraperStatuts<S>(
   m: MetierConversation<S>,

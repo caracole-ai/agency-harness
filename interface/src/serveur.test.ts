@@ -1,6 +1,14 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,6 +16,7 @@ import {
   type Choix,
   DOSSIER_MISSIONS,
   ecrireStatut,
+  FICHIER_LIVRAISON,
   FICHIER_PERSONNES,
   type Identite,
   Journal,
@@ -18,6 +27,7 @@ import {
   type Reponse,
   type Scripte,
   type Statut,
+  SUFFIXE_A_POUSSER,
   type Tableau,
   TYPE_ACCES_REFUSE,
   TYPE_APPEL,
@@ -545,6 +555,13 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     const date = join(dossier, 'missions', '2026-10-10')
     const statut = (s: Statut) => ecrireStatut(date, 'remise_des_cles', s)
     statut({
+      statut: 'en attente',
+      issue: 'borne du jour atteinte (3 chantiers) : demain',
+      cout_usd: 0,
+      le: '2026-10-10T19:50:00Z',
+    })
+    expect((await etat(a))?.chantier).toEqual({ issue: 'en attente', le: '2026-10-10' })
+    statut({
       statut: 'en cours',
       issue: 'chantier en cours',
       cout_usd: 0,
@@ -569,7 +586,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       journalDe(dossier)
         .filter((l) => l.type === TYPE_CHANTIER)
         .map((l) => l.issue),
-    ).toEqual(['en cours', 'fusionné'])
+    ).toEqual(['en attente', 'en cours', 'fusionné'])
   })
   it('/api/version (PLAN-LIVRAISON.md L9) : rien hors d’une installation ; installée, l’étiquette et le jour de sa mise à jour ; au patron seul', async () => {
     expect(await (await lire(app(), '/api/version')).json()).toEqual({})
@@ -609,6 +626,42 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     expect(
       existsSync(join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'releve_kilometrique.yaml')),
     ).toBe(false)
+  })
+  it('un client livré (PLAN-LIVRAISON.md L6, L7) : l’interface ne lance aucun git ; l’onglet et la commande déclenchent le rattrapage à part, la mission est marquée « à pousser »', async () => {
+    const dossier = copieAvecDemandes()
+    const installation = mkdtempSync(join(tmpdir(), 'installation-'))
+    writeFileSync(
+      join(dossier, FICHIER_LIVRAISON),
+      [
+        'depot: /nulle-part/produit.git',
+        'missions: /nulle-part/missions.git',
+        `installation: ${installation}`,
+        'intervalle_minutes: 15',
+        '',
+      ].join('\n'),
+    )
+    let rattrapages = 0
+    const a = creerApp({
+      dossier,
+      maintenant: MAINTENANT,
+      modele: modeleSimule([]),
+      metier: METIER,
+      rattraper: () => {
+        rattrapages++
+      },
+    })
+    expect((await lire(a, '/api/sans-geste')).status).toBe(200)
+    expect(rattrapages).toBe(1)
+    const r = await poster(a, '/api/sans-geste/commander', {
+      identite: PATRON,
+      intention: 'remise_des_cles',
+    })
+    expect(r.status).toBe(200)
+    expect(rattrapages).toBe(2)
+    const mission = join(dossier, DOSSIER_MISSIONS, '2026-10-10', 'remise_des_cles.yaml')
+    expect(readFileSync(`${mission}${SUFFIXE_A_POUSSER}`, 'utf8')).toBe('à pousser\n')
+    // Aucun git n'a tourné dans l'interface : l'installation est vide (pas même le clone de la file).
+    expect(readdirSync(installation)).toEqual([])
   })
   it('la page a l’onglet « Gestes » : ce que l’outil ne sait pas encore faire, sans gestes appris', async () => {
     const page = await (await app().request('/')).text()

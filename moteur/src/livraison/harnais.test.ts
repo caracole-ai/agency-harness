@@ -1,9 +1,18 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { parseArgs } from 'node:util'
 import { describe, expect, it } from 'vitest'
 import { parse } from 'yaml'
-import { FENETRE_PLANTAGES_MS, harnais, type Lance } from './harnais'
+import {
+  argumentsInterface,
+  basculer,
+  FENETRE_PLANTAGES_MS,
+  harnais,
+  type Lance,
+  retirerALaMain,
+  sonderInterface,
+} from './harnais'
 import {
   CODE_RELANCE,
   cible,
@@ -184,5 +193,87 @@ describe('le lanceur (L9)', () => {
     expect(versionDe(d, LIENS.courant)).toBe('v2026-10-14-1')
     expect(lancees.every((a) => a.endsWith('v2026-10-14-1'))).toBe(true)
     expect(cible(d, LIENS.precedent)).toBeUndefined()
+  })
+
+  it('trois plantages juste après la bascule pendant qu’une préparation tient l’installation : le lanceur attend le verrou et revient en arrière, jamais un arrêt sur la nouvelle version', async () => {
+    const d = installation()
+    const x = interfaces([CODE_RELANCE, 1, 1, 1])
+    let rendre: (() => void) | undefined
+    const lancer = (arbre: string) => {
+      const lance = x.lancer(arbre)
+      // La quatrième interface (le troisième plantage) : une préparation prend l'installation.
+      if (x.lancees.length === 4) rendre = verrouInstallation(d)
+      return lance
+    }
+    let t = 0
+    const arret = await harnais({
+      installation: d,
+      lancer,
+      sonder: async () => true,
+      attendre: async () => {
+        rendre?.()
+        rendre = undefined
+      },
+      maintenant: () => (t += 1000),
+    })
+    expect(versionDe(d, LIENS.courant)).toBe('v2026-10-14-1')
+    expect(parse(readFileSync(join(d, FICHIER_RETOUR), 'utf8'))).toEqual({
+      de: 'v2026-10-15-1',
+      vers: 'v2026-10-14-1',
+      raison: '3 sorties après la bascule',
+    })
+    expect(arret.raison).toMatch(/^3 sorties/)
+  })
+
+  it('retirer à la main : la courante revient à la précédente, le marqueur pour le journal ; un second retrait est refusé (rien à retirer)', () => {
+    const d = installation()
+    basculer(d)
+    expect(retirerALaMain(d)).toEqual({ de: 'v2026-10-15-1', vers: 'v2026-10-14-1' })
+    expect(versionDe(d, LIENS.courant)).toBe('v2026-10-14-1')
+    expect(parse(readFileSync(join(d, FICHIER_RETOUR), 'utf8'))).toMatchObject({
+      raison: 'retirée à la main',
+    })
+    expect(() => retirerALaMain(d)).toThrow(/déjà la version précédente/)
+  })
+
+  it('l’interface lancée écoute toujours là où la sonde la cherche : le dossier et le port du lanceur l’emportent sur des options passées après --', () => {
+    const args = argumentsInterface('/clients/a', '3777', [
+      '--port',
+      '3801',
+      '--client',
+      '/ailleurs',
+      '--modele',
+      'simule',
+    ])
+    expect(args[0]).toBe('interface')
+    const { values } = parseArgs({
+      args: args.slice(1),
+      options: {
+        client: { type: 'string' },
+        port: { type: 'string' },
+        modele: { type: 'string' },
+      },
+    })
+    expect(values).toEqual({ client: '/clients/a', port: '3777', modele: 'simule' })
+  })
+
+  it('la sonde compte ses essais, pas l’heure : une réponse au quatrième essai passe ; aucune en cinq essais : muette', async () => {
+    let appels = 0
+    const repondAuQuatrieme = (async () => {
+      appels++
+      if (appels < 4) throw new Error('ECONNREFUSED')
+      return new Response('[]', { status: 200 })
+    }) as unknown as typeof fetch
+    const options = { essais: 5, pasMs: 1000, delaiMs: 5000, attendre: async () => undefined }
+    const url = 'http://127.0.0.1:1/api/roles'
+    expect(await sonderInterface(url, { ...options, requete: repondAuQuatrieme })).toBe(true)
+    expect(appels).toBe(4)
+    let muets = 0
+    const muette = (async () => {
+      muets++
+      throw new Error('ECONNREFUSED')
+    }) as unknown as typeof fetch
+    expect(await sonderInterface(url, { ...options, requete: muette })).toBe(false)
+    expect(muets).toBe(5)
   })
 })

@@ -312,18 +312,20 @@ se réécrit à chaque changement de modèle, un test reste vrai des années.
   `geste_code` chez le client (`missions/<date>/<intention>.yaml`, depuis les
   consignes version modèle des échappées de l'intention, sans nom), puis une
   ligne `geste commandé`, puis, si le client est livré (`livraison.yaml`), la
-  pousse dans sa file git `missions-<slug>` (un échec la marque « à
-  pousser », le rattrapage suivant la pousse) ; le chantier, à l'agence,
-  code le geste sous ses portes (`pnpm agence`). À chaque ouverture de
-  l'onglet, les statuts des chantiers sont rattrapés (la file du client
-  livré, ou ses `missions/`) : une ligne `chantier` au journal par statut
-  nouveau, le dossier copié dans `chantiers/<id>.md`. La carte dit : en
-  attente de l'agence, chantier en cours, fusionné (v…) et mise à jour en
-  préparation, puis disponible (`PLAN-LIVRAISON.md` L7 ; la mise à jour
-  tirée : lot 4). La carte dit où en est la commande : mission écrite, chantier
-  du … (fusionné : disponible à la prochaine mise à jour de l'outil), puis
-  disponible quand le métier chargé porte le geste. « par » est l'identité
-  vérifiée, jamais un champ du corps.
+  marque « à pousser » ; le chantier, à l'agence, code le geste sous ses
+  portes (`pnpm agence`). Les statuts des chantiers donnent une ligne
+  `chantier` au journal par statut nouveau, et le dossier, s'il est là,
+  est copié dans `chantiers/<id>.md`. Un client non livré : ils se lisent à
+  chaque ouverture de l'onglet, dans ses `missions/`, sans git. Un client
+  livré : l'interface ne lance aucun git (une file injoignable la
+  gèlerait) ; l'ouverture de l'onglet et la commande déclenchent le
+  rattrapage à part (`pnpm mise-a-jour`, seul à écrire ces lignes), qui
+  pousse la mission marquée et tire les statuts ; la carte suit au
+  rafraîchissement. La carte dit : en attente de l'agence, en attente du
+  lendemain (la borne du jour), chantier en cours, fusionné (v…) et mise à
+  jour en préparation, puis disponible quand le métier chargé porte le
+  geste ; un autre statut se dit tel quel (`PLAN-LIVRAISON.md` L7). « par »
+  est l'identité vérifiée, jamais un champ du corps.
 - `metiers/<métier>/` — la couche métier d'un secteur :
   - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
     registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
@@ -490,18 +492,24 @@ pnpm agence [--une-fois] # l'agence prend les missions de ses clients (PLAN-LIVR
 pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
                          # chez un client livré (PLAN-LIVRAISON.md L9) : le lanceur, lancé depuis
                          # l'installation (cd <installation>/courant), qui lance pnpm interface
-                         # depuis la version courante, bascule sur la version prête quand
-                         # l'interface sort au calme (code 75), la sonde (POST /api/roles, 30 s),
-                         # revient en arrière si elle ne répond pas, ou plante trois fois dans les
-                         # dix minutes qui suivent ; trois plantages hors de cette fenêtre : arrêt
-                         # (code 0 : un humain regarde). Bascule et retour attendent qu'aucune
-                         # préparation ne tienne l'installation. Il tourne avec le code de la
-                         # version qui l'a lancé jusqu'à son redémarrage à la main. À installer
-                         # une fois, par exemple launchd (macOS) : ProgramArguments = /bin/sh -c
-                         # "cd <installation>/courant && pnpm harnais --client <dossier>",
+                         # depuis la version courante (le dossier et le port du lanceur
+                         # l'emportent sur ceux passés après --), bascule sur la version prête
+                         # quand l'interface sort au calme (code 75), la sonde (POST /api/roles,
+                         # trente essais d'une seconde), revient en arrière si elle ne répond pas,
+                         # ou plante trois fois dans les dix minutes qui suivent (en attendant,
+                         # s'il le faut, qu'une préparation rende l'installation) ; trois
+                         # plantages hors de cette fenêtre : arrêt (code 0 : un humain regarde).
+                         # Bascule et retour attendent qu'aucune préparation ne tienne
+                         # l'installation. Il tourne avec le code de la version qui l'a lancé
+                         # jusqu'à son redémarrage à la main. À installer une fois, par exemple
+                         # launchd (macOS) : ProgramArguments = /bin/sh -c "cd
+                         # <installation>/courant && pnpm harnais --client <dossier>",
                          # KeepAlive = { SuccessfulExit = false } (l'arrêt voulu n'est pas
                          # relancé) ; systemd : WorkingDirectory=<installation>/courant,
-                         # ExecStart=pnpm harnais --client <dossier>, Restart=on-failure.
+                         # ExecStart=pnpm harnais --client <dossier>, Restart=on-failure. Ni
+                         # launchd ni systemd ne lisent le PATH d'un shell : celui où sont node et
+                         # pnpm se donne (EnvironmentVariables, Environment=PATH=…), sinon
+                         # pnpm est introuvable (nvm, Homebrew).
                          # L'interface lancée à la main (pnpm interface) d'un client livré ne
                          # sort jamais pour une bascule : seule celle que le lanceur a lancée.
                          # Ce que le client voit : l'onglet « Gestes » dit « Version v…, mise à
@@ -510,14 +518,21 @@ pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
                          # disponible ; le journal dit « mise à jour : faite | refusée |
                          # retour arrière ».
 pnpm mise-a-jour [retirer] --client <dossier>
-                         # une fois, à la main (l'interface le lance d'elle-même toutes les
-                         # intervalle_minutes et dès qu'un statut arrive) : les statuts tirés
-                         # de la file, puis la prochaine version préparée à côté (signature de
+                         # une fois, à la main (l'interface d'un client livré le lance d'elle-
+                         # même, dans un processus à part : à son démarrage, toutes les
+                         # intervalle_minutes, à l'ouverture de l'onglet « Gestes » et après une
+                         # commande) : les missions marquées poussées et les statuts tirés de la
+                         # file, puis la prochaine version préparée à côté (signature de
                          # l'agence vérifiée contre <dossier>/signataires, lignée, pnpm check
                          # rejoué dans son arbre) ; la première fois, elle devient la courante.
-                         # Une version refusée ou revenue en arrière n'est jamais reprise.
-                         # retirer : courant ← precedent, à la main (l'interface le dit au
-                         # journal à son redémarrage).
+                         # Une version refusée pour de bon (signature, lignée, pnpm check rouge)
+                         # ou revenue en arrière n'est jamais reprise (un pnpm install rouge se
+                         # retente), ni aucune plus ancienne qu'une version signée qui a échoué
+                         # ici (check rouge, retour arrière : un retrait qui échoue ne fait pas
+                         # revenir le geste retiré). retirer : courant ← precedent, à la main
+                         # (refusé si la courante l'est déjà) ; l'interface lancée par le
+                         # lanceur le dit au journal, sort au moment calme suivant, et le
+                         # lanceur la relance sur la précédente.
 pnpm versionner          # une version signée sur origin/main tel quel, pour livrer le moteur
                          # sans chantier (PLAN-LIVRAISON.md L4) : l'étiquette v<AAAA-MM-JJ>-<n>,
                          # son message le manifeste en clair, l'étiquette seule poussée. Pas

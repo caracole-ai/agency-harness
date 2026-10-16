@@ -24,7 +24,7 @@ import {
 import { dossierEssai, METIER_ESSAI } from '../chantier/metier-essai.test.fixture'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { FICHIER_LIVRAISON, type Livraison } from './config'
-import { basculer, revenir } from './harnais'
+import { basculer, retirerALaMain, revenir } from './harnais'
 import {
   CALME_SECONDES,
   cible,
@@ -42,8 +42,10 @@ import {
   marquerBascule,
   marquerRetour,
   noterLivraison,
+  noterSiMarque,
   preparer,
   rattraper,
+  relanceAttendue,
   TYPE_MISE_A_JOUR,
   verrouInstallation,
 } from './mise-a-jour'
@@ -446,18 +448,89 @@ describe('le dépôt du produit chez le client (audit de la livraison, 2026-10-1
 describe('le moment calme (L8)', () => {
   const calme = {
     lanceeParLeLanceur: true,
-    suivantePrete: true,
+    relanceAttendue: true,
     requetesEnCours: 0,
     derniereActiviteMs: 0,
     maintenantMs: CALME_SECONDES * 1000 + 1,
     rattrapageEnCours: false,
   }
-  it('seulement lancée par le lanceur, une version prête, aucune requête en cours ni récente, aucun rattrapage', () => {
+  it('seulement lancée par le lanceur, une relance attendue, aucune requête en cours ni récente, aucun rattrapage', () => {
     expect(doitRelancer(calme)).toBe(true)
     expect(doitRelancer({ ...calme, lanceeParLeLanceur: false })).toBe(false)
-    expect(doitRelancer({ ...calme, suivantePrete: false })).toBe(false)
+    expect(doitRelancer({ ...calme, relanceAttendue: false })).toBe(false)
     expect(doitRelancer({ ...calme, requetesEnCours: 1 })).toBe(false)
     expect(doitRelancer({ ...calme, rattrapageEnCours: true })).toBe(false)
     expect(doitRelancer({ ...calme, maintenantMs: CALME_SECONDES * 1000 })).toBe(false)
+  })
+
+  it('une relance est attendue quand une version est prête, ou quand le code qui tourne n’est plus la courante (un retrait à la main) ; sinon non', () => {
+    const { pr, dossier, l } = installe()
+    const v1 = cible(l.installation, LIENS.courant) ?? ''
+    expect(relanceAttendue(l.installation, v1)).toBe(false)
+    pr.version('v2026-10-15-1')
+    preparer(dossier, l, ENV_ESSAI, [], commandeSimulee().commande)
+    expect(relanceAttendue(l.installation, v1)).toBe(true)
+    basculer(l.installation)
+    const v2 = cible(l.installation, LIENS.courant) ?? ''
+    expect(relanceAttendue(l.installation, v2)).toBe(false)
+    retirerALaMain(l.installation)
+    // L'interface tourne encore sur la version retirée : elle sort au calme, le lanceur la relance sur la précédente.
+    expect(relanceAttendue(l.installation, v2)).toBe(true)
+    expect(relanceAttendue(l.installation, v1)).toBe(false)
+  })
+})
+
+describe('le pas de l’interface et le plancher des versions (audit de la livraison, 2026-10-16)', () => {
+  it('à chaque pas, le dossier client ne s’ouvre que si le lanceur a laissé un marqueur', () => {
+    const { dossier, l } = installe()
+    let ouvertures = 0
+    const m = {
+      ...METIER_ESSAI,
+      ouvrir: (d: string) => {
+        ouvertures++
+        return METIER_ESSAI.ouvrir(d)
+      },
+    }
+    expect(noterSiMarque(m, dossier, l, MAINTENANT)).toEqual([])
+    expect(ouvertures).toBe(0)
+    marquerBascule(l.installation, { de: 'v2026-10-14-1', vers: 'v2026-10-15-1' })
+    expect(noterSiMarque(m, dossier, l, MAINTENANT)).toEqual(['faite (v2026-10-15-1)'])
+    expect(ouvertures).toBe(1)
+  })
+
+  it('une version signée qui échoue ici (check rouge) fait plancher : aucune plus ancienne ne se prépare après elle (le retrait qui échoue ne fait pas revenir le geste retiré) ; une plus récente, si', () => {
+    const { pr, dossier } = installe()
+    pr.version('v2026-10-15-1')
+    pr.version('v2026-10-15-2')
+    const s = METIER_ESSAI.ouvrir(dossier)
+    try {
+      const rouge = rattraper(
+        METIER_ESSAI,
+        s,
+        dossier,
+        MAINTENANT,
+        ENV_ESSAI,
+        commandeSimulee({ check: [1] }).commande,
+      )
+      expect(rouge.preparation?.refusees).toMatchObject([
+        { version: 'v2026-10-15-2', definitif: true, plancher: true },
+      ])
+      const ensuite = rattraper(
+        METIER_ESSAI,
+        s,
+        dossier,
+        MAINTENANT,
+        ENV_ESSAI,
+        commandeSimulee().commande,
+      )
+      expect(ensuite.preparation).toEqual({ refusees: [] })
+      pr.version('v2026-10-16-1')
+      expect(
+        rattraper(METIER_ESSAI, s, dossier, MAINTENANT, ENV_ESSAI, commandeSimulee().commande)
+          .preparation?.prete?.version,
+      ).toBe('v2026-10-16-1')
+    } finally {
+      METIER_ESSAI.fermer(s)
+    }
   })
 })

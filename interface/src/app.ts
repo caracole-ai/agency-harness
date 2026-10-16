@@ -233,8 +233,12 @@ export function creerApp(options: {
   version?: string
   /** Le début et la fin de chaque requête (PLAN-LIVRAISON.md L8 : le moment calme se mesure ici, requêtes en cours comprises). */
   activite?: { debut: () => void; fin: () => void }
-  /** Après le rattrapage des statuts : combien de nouveaux (un statut nouveau peut porter une version). */
-  apresStatuts?: (nouveaux: number) => void
+  /**
+   * Un client livré : déclenche le rattrapage à part (`pnpm mise-a-jour`),
+   * qui tire la file (statuts, missions à pousser) et les versions. Alors
+   * l'interface ne lance aucun git : une file injoignable ne la gèle pas.
+   */
+  rattraper?: () => void
 }): Hono {
   const { dossier, modele, metier: m } = options
   const fixe = options.maintenant ? aParis(options.maintenant) : undefined
@@ -419,14 +423,18 @@ export function creerApp(options: {
     exigerCapacite(m, identite, 'administre')
     return c.json(
       await session(identite, (s) => {
-        // Les statuts des chantiers d'abord (PLAN-LIVRAISON.md L7) : la file du client livré, ou ses
-        // missions/ ; une file injoignable n'empêche pas la liste, elle se dit dans la console.
-        try {
-          const r = rattraperStatuts(m, s, dossier, maintenant())
-          for (const p of r.problemes) console.error(`file des missions : ${p}`)
-          options.apresStatuts?.(r.nouveaux)
-        } catch (erreur) {
-          console.error(`file des missions : ${(erreur as Error).message}`)
+        // Les statuts des chantiers d'abord (PLAN-LIVRAISON.md L7). Livré : le rattrapage à part tire la
+        // file et écrit les lignes `chantier` (un seul écrivain) ; la carte suit au rafraîchissement.
+        // Non livré : les statuts que `pnpm chantier` écrit à côté des missions, lus ici, sans git.
+        if (options.rattraper) {
+          options.rattraper()
+        } else {
+          try {
+            const r = rattraperStatuts(m, s, dossier, maintenant())
+            for (const p of r.problemes) console.error(`file des missions : ${p}`)
+          } catch (erreur) {
+            console.error(`file des missions : ${(erreur as Error).message}`)
+          }
         }
         return demandesAvecEtat(
           m.journal(s).lire(),
@@ -455,11 +463,12 @@ export function creerApp(options: {
       role: identite.role,
       ...(identite.personne !== undefined ? { personne: identite.personne } : {}),
     }
-    return c.json(
-      await session(identite, (s) =>
-        commanderEtLivrer(m, s, dossier, intention, par, maintenant()),
-      ),
+    const commande = await session(identite, (s) =>
+      commanderEtLivrer(m, s, dossier, intention, par, maintenant()),
     )
+    // Livré : la mission marquée part par le rattrapage à part, aussitôt (L6).
+    options.rattraper?.()
+    return c.json(commande)
   })
 
   app.post('/api/confirmer', async (c) => {

@@ -21,6 +21,7 @@ import { type Livraison, lireLivraison } from './config'
 import { ENV_DISTANT, type Rattrapage, rattraperStatuts } from './missions'
 import { poserVerrou } from './verrou'
 import {
+  comparerVersions,
   etiquettesCandidates,
   FICHIER_SIGNATAIRES,
   lireVersion,
@@ -114,11 +115,13 @@ export function lier(installation: string, lien: string, vers: string): void {
  * Ce qu'un passage de préparation a fait : la version prête (ou qui attend
  * déjà), les versions refusées avec leur raison (`definitif` : signature,
  * lignée, `pnpm check` rouge ; sinon une panne, réseau ou config, qui se
- * retente), ou `occupee` : une autre préparation tient l'installation.
+ * retente ; `plancher` : une version signée, vérifiée, qui a échoué ici :
+ * aucune plus ancienne ne se prépare après elle), ou `occupee` : une autre
+ * préparation tient l'installation.
  */
 export interface Preparation {
   prete?: { version: string; deja: boolean }
-  refusees: { version: string; raison: string; definitif: boolean }[]
+  refusees: { version: string; raison: string; definitif: boolean; plancher?: true }[]
   occupee?: true
 }
 
@@ -151,9 +154,13 @@ function depotAJour(c: Commande, l: Livraison): string {
  * est essayée ; un `pnpm install` ou un `pnpm check` rouge : dit, son arbre
  * retiré, rien d'autre n'est essayé à ce passage. Jamais l'arbre de la
  * courante ni de la précédente n'est touché. `exclues` : les versions
- * refusées pour de bon ou revenues en arrière. Sans version courante (la
- * première installation), toutes sont candidates. Lève sur une panne (dépôt
- * injoignable, fichier `signataires` absent).
+ * refusées pour de bon ou revenues en arrière ; `plancher` : la plus récente
+ * des versions signées qui ont échoué ici (`pnpm check` rouge, retour
+ * arrière) : aucune version plus ancienne n'est préparée (un retrait dont la
+ * version échoue ici ne fait pas revenir le geste retiré par la version
+ * d'avant). Sans version courante (la première installation), toutes sont
+ * candidates. Lève sur une panne (dépôt injoignable, fichier `signataires`
+ * absent).
  */
 export function preparer(
   dossierClient: string,
@@ -161,6 +168,7 @@ export function preparer(
   env: Record<string, string | undefined>,
   exclues: string[] = [],
   c: Commande = commandeSync,
+  plancher?: string,
 ): Preparation {
   const rendre = verrouInstallation(l.installation)
   if (!rendre) return { refusees: [], occupee: true }
@@ -179,7 +187,10 @@ export function preparer(
     const refusees: Preparation['refusees'] = autres
       .filter((t) => !exclues.includes(t))
       .map((version) => ({ version, raison: `ne descend pas de ${courante}`, definitif: true }))
-    for (const version of candidates.filter((t) => !exclues.includes(t))) {
+    const admises = candidates.filter(
+      (t) => !exclues.includes(t) && (!plancher || comparerVersions(t, plancher) > 0),
+    )
+    for (const version of admises) {
       const arbre = join(l.installation, DOSSIER_VERSIONS, version)
       const reel = existsSync(arbre) ? realpathSync(arbre) : undefined
       if (reel && enService.includes(reel)) continue
@@ -204,11 +215,13 @@ export function preparer(
         const r = c(arbre, 'pnpm', etape, enfant)
         if (r.code !== 0) {
           retirer()
+          // Un install rouge peut être le réseau : il se retente ; un check rouge, non, et il fait plancher.
+          const check = etape[0] === 'check'
           refusees.push({
             version,
             raison: `pnpm ${etape[0]} rouge dans la version (${(r.erreur || r.sortie).trim().split('\n').at(-1)?.slice(0, 160) ?? '?'})`,
-            // Un install rouge peut être le réseau : il se retente ; un check rouge, non.
-            definitif: etape[0] === 'check',
+            definitif: check,
+            ...(check ? { plancher: true as const } : {}),
           })
           return { refusees }
         }
@@ -267,8 +280,8 @@ export interface Rattrapement {
   erreur?: string
 }
 
-/** Ce qu'une ligne `mise à jour : refusée` garde : le refus est-il définitif. */
-const DonneesRefus = z.looseObject({ definitif: z.boolean() })
+/** Ce qu'une ligne `mise à jour : refusée` garde : le refus est-il définitif, fait-il plancher. */
+const DonneesRefus = z.looseObject({ definitif: z.boolean(), plancher: z.boolean().optional() })
 
 /** Le marqueur de l'installation, lu par son schéma ; undefined s'il n'y est pas ou ne se lit pas. */
 function lireMarqueur<T>(
@@ -286,9 +299,11 @@ function lireMarqueur<T>(
  * Le rattrapage du client (L7, L8) : les statuts, puis, s'il est livré, la
  * prochaine version préparée. Jamais reprises : une version refusée pour de
  * bon, une version revenue en arrière (au journal, ou dont le marqueur
- * attend encore d'y être écrit : un `retirer` à la main). Un refus
- * définitif est dit une fois ; une panne d'une version (un install rouge) est
- * dite une fois par raison et se retente.
+ * attend encore d'y être écrit : un `retirer` à la main) ; ni aucune plus
+ * ancienne qu'une version signée qui a échoué ici (`pnpm check` rouge, retour
+ * arrière : le plancher). Un refus définitif est dit une fois ; une panne
+ * d'une version (un install rouge) est dite une fois par raison et se
+ * retente.
  */
 export function rattraper<S>(
   m: MetierConversation<S>,
@@ -310,20 +325,26 @@ export function rattraper<S>(
   const journal = m.journal(s)
   const lignes = journal.lire().filter((x) => x.type === TYPE_MISE_A_JOUR)
   const retour = lireMarqueur(l.installation, FICHIER_RETOUR, RetourArriere)
-  const exclues = [
-    ...lignes
-      .filter(
-        (x) =>
-          x.issue === ISSUES_MISE_A_JOUR.retour ||
-          (x.issue === ISSUES_MISE_A_JOUR.refusee &&
-            DonneesRefus.safeParse(JSON.parse(x.donnees ?? 'null')).data?.definitif === true),
-      )
-      .flatMap((x) => (x.objet ? [x.objet] : [])),
+  const refus = (x: Ligne) =>
+    x.issue === ISSUES_MISE_A_JOUR.refusee
+      ? DonneesRefus.safeParse(JSON.parse(x.donnees ?? 'null')).data
+      : undefined
+  const objets = (garder: (x: Ligne) => boolean) => [
+    ...lignes.filter(garder).flatMap((x) => (x.objet ? [x.objet] : [])),
     ...(retour ? [retour.de] : []),
   ]
+  const exclues = objets(
+    (x) => x.issue === ISSUES_MISE_A_JOUR.retour || refus(x)?.definitif === true,
+  )
+  const plancher = objets(
+    (x) => x.issue === ISSUES_MISE_A_JOUR.retour || refus(x)?.plancher === true,
+  )
+    .filter((v) => lireVersion(v) !== undefined)
+    .sort(comparerVersions)
+    .at(-1)
   let preparation: Preparation
   try {
-    preparation = preparer(dossierClient, l, env, exclues, c)
+    preparation = preparer(dossierClient, l, env, exclues, c, plancher)
   } catch (erreur) {
     return { statuts, erreur: (erreur as Error).message.slice(0, 500) }
   }
@@ -342,7 +363,7 @@ export function rattraper<S>(
         objet: r.version,
         issue: ISSUES_MISE_A_JOUR.refusee,
         motif: r.raison,
-        donnees: { definitif: r.definitif },
+        donnees: { definitif: r.definitif, ...(r.plancher ? { plancher: true } : {}) },
       })),
       maintenant.toInstant().toString(),
     )
@@ -404,6 +425,28 @@ export function noterLivraison<S>(
   return ecrites
 }
 
+/**
+ * `noterLivraison` pour l'interface qui tourne, à chaque pas : le dossier
+ * client ne s'ouvre que si le lanceur a laissé un marqueur (sinon rien à
+ * dire, rien à relire). Lève comme `ouvrir` : à l'appelant de le dire.
+ */
+export function noterSiMarque<S>(
+  m: MetierConversation<S>,
+  dossierClient: string,
+  l: Livraison,
+  maintenant: Temporal.ZonedDateTime,
+): string[] {
+  if (![FICHIER_RETOUR, FICHIER_BASCULE].some((f) => existsSync(join(l.installation, f)))) {
+    return []
+  }
+  const s = m.ouvrir(dossierClient)
+  try {
+    return noterLivraison(m, s, l, maintenant)
+  } finally {
+    m.fermer(s)
+  }
+}
+
 /** Écrit le marqueur d'un retour arrière, pour l'interface qui redémarre. */
 export const marquerRetour = (installation: string, r: RetourArriere) =>
   writeFileSync(join(installation, FICHIER_RETOUR), stringify(RetourArriere.parse(r)))
@@ -413,13 +456,32 @@ export const marquerBascule = (installation: string, b: Bascule) =>
   writeFileSync(join(installation, FICHIER_BASCULE), stringify(Bascule.parse(b)))
 
 /**
- * L'interface d'un client livré sort-elle pour la bascule (L8) : lancée par
- * le lanceur, une version prête, aucune requête en cours ni depuis
- * `CALME_SECONDES`, aucun rattrapage en cours.
+ * L'interface d'un client livré attend-elle d'être relancée (L8, L9) : une
+ * version prête attend la bascule (`courant.suivant`), ou le code qui tourne
+ * n'est plus celui de `courant` (un retour arrière à la main : `pnpm
+ * mise-a-jour retirer`) ; le lanceur relance alors sur `courant`. `racineCode` :
+ * la racine de l'arbre de version qui tourne ; disparue, la relance est due.
+ */
+export function relanceAttendue(installation: string, racineCode: string): boolean {
+  const suivant = cible(installation, LIENS.suivant)
+  if (suivant !== undefined && existsSync(join(suivant, FICHIER_PRETE))) return true
+  const courant = cible(installation, LIENS.courant)
+  if (courant === undefined) return false
+  try {
+    return courant !== realpathSync(racineCode)
+  } catch {
+    return true
+  }
+}
+
+/**
+ * L'interface d'un client livré sort-elle pour être relancée (L8) : lancée
+ * par le lanceur, une relance attendue (`relanceAttendue`), aucune requête
+ * en cours ni depuis `CALME_SECONDES`, aucun rattrapage en cours.
  */
 export function doitRelancer(x: {
   lanceeParLeLanceur: boolean
-  suivantePrete: boolean
+  relanceAttendue: boolean
   requetesEnCours: number
   derniereActiviteMs: number
   maintenantMs: number
@@ -427,7 +489,7 @@ export function doitRelancer(x: {
 }): boolean {
   return (
     x.lanceeParLeLanceur &&
-    x.suivantePrete &&
+    x.relanceAttendue &&
     x.requetesEnCours === 0 &&
     !x.rattrapageEnCours &&
     x.maintenantMs - x.derniereActiviteMs > CALME_SECONDES * 1000

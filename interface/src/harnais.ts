@@ -11,12 +11,20 @@
 import { spawn } from 'node:child_process'
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
-import { harnais, lireLivraison, sansNpm, VARIABLE_LANCEUR } from '@harnais/moteur'
+import {
+  argumentsInterface,
+  harnais,
+  lireLivraison,
+  sansNpm,
+  sonderInterface,
+  VARIABLE_LANCEUR,
+} from '@harnais/moteur'
 import { HOTE, PORT } from './app'
 
-/** Le délai de la sonde après une bascule, et son pas. */
-const SONDE_MS = 30_000
+/** La sonde après une bascule : trente essais, une seconde entre deux, chaque appel borné à cinq secondes. */
+const SONDE_ESSAIS = 30
 const PAS_SONDE_MS = 1000
+const DELAI_SONDE_MS = 5000
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -37,39 +45,33 @@ if (!l) {
 const port = values.port ?? String(PORT)
 const attendre = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
-/** L'interface répond-elle (`POST /api/roles`) dans le délai ? */
-async function sonder(): Promise<boolean> {
-  const fin = Date.now() + SONDE_MS
-  while (Date.now() < fin) {
-    try {
-      const r = await fetch(`http://${HOTE}:${port}/api/roles`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: '{}',
-      })
-      if (r.ok) return true
-    } catch {
-      // Pas encore à l'écoute.
-    }
-    await attendre(PAS_SONDE_MS)
-  }
-  return false
-}
-
 const arret = await harnais({
   installation: l.installation,
   lancer: (arbre) => {
-    const enfant = spawn(
-      'pnpm',
-      ['interface', '--client', dossier, '--port', port, ...positionals],
-      { cwd: arbre, stdio: 'inherit', env: { ...sansNpm(process.env), [VARIABLE_LANCEUR]: '1' } },
-    )
+    const enfant = spawn('pnpm', argumentsInterface(dossier, port, positionals), {
+      cwd: arbre,
+      stdio: 'inherit',
+      env: { ...sansNpm(process.env), [VARIABLE_LANCEUR]: '1' },
+    })
     return {
-      fin: new Promise((r) => enfant.on('exit', (code) => r(code))),
+      // Un lancement impossible (pnpm introuvable, un arbre disparu) est une sortie comme une autre.
+      fin: new Promise((r) => {
+        enfant.on('exit', (code) => r(code))
+        enfant.on('error', (erreur) => {
+          console.error(`harnais : ${erreur.message}`)
+          r(null)
+        })
+      }),
       arreter: () => enfant.kill('SIGTERM'),
     }
   },
-  sonder,
+  sonder: () =>
+    sonderInterface(`http://${HOTE}:${port}/api/roles`, {
+      essais: SONDE_ESSAIS,
+      pasMs: PAS_SONDE_MS,
+      delaiMs: DELAI_SONDE_MS,
+      attendre,
+    }),
   attendre,
   maintenant: () => Date.now(),
   dire: (m) => console.log(`harnais : ${m}`),

@@ -51,7 +51,8 @@ import { FICHIER_SIGNATAIRES } from './version'
 // (l'arbre d'un humain), un client livré avec son installation, le binaire
 // `claude` simulé, `pnpm` simulé, une clé de signature engendrée par
 // `ssh-keygen`. Les points 1 à 5 du critère global, dans l'ordre :
-// 1. le clic pousse la mission ; 2. l'agence la prend, fusionne, version
+// 1. le clic marque la mission, le rattrapage qu'il déclenche la pousse ;
+// 2. l'agence la prend, fusionne, version
 // signée, l'humain intact ; 3. le client tire, vérifie, prépare, bascule, le
 // journal dit « faite », la carte « disponible » ; 4. une autre clé, une
 // autre lignée refusées, un redémarrage qui échoue revient en arrière ;
@@ -154,16 +155,9 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
         '2026-10-10T08:00:00Z',
       )
 
-      // ── 1. Le clic : la mission chez le client et dans sa file ───────────
-      commanderEtLivrer(
-        METIER_ESSAI,
-        s,
-        dossier,
-        INTENTION,
-        { role: 'patron' },
-        quand('10:00'),
-        commande,
-      )
+      // ── 1. Le clic, puis le rattrapage qu'il déclenche : la mission chez le client et dans sa file
+      commanderEtLivrer(METIER_ESSAI, s, dossier, INTENTION, { role: 'patron' }, quand('10:00'))
+      rattraper(METIER_ESSAI, s, dossier, quand('10:00'), ENV_ESSAI, commande)
       const mission = join(cloneDuDistant(file), JOUR, `${INTENTION}.yaml`)
       expect(readFileSync(mission, 'utf8')).not.toMatch(/Rosalie|Vernet|A-\d/)
       expect(carte()?.chantier).toBeUndefined()

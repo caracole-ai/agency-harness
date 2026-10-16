@@ -61,7 +61,8 @@ import {
 
 // PLAN-LIVRAISON.md L1, L5 à L7 et la mesure du lot 3, avec deux dépôts nus
 // pour de vrai (le produit, la file du client) et le binaire `claude`
-// simulé : un clic pousse la mission ; `pnpm agence --une-fois` la prend,
+// simulé : un clic marque la mission, le rattrapage qu'il déclenche la
+// pousse ; `pnpm agence --une-fois` la prend,
 // écrit `en cours` puis le statut final dans la file ; le client en écrit
 // une ligne `chantier`, une seule par statut ; une mission mal formée est
 // écartée et dite ; la borne du jour fait attendre ; aucun nom ne part.
@@ -117,14 +118,21 @@ function clientLivre(livraison: Partial<Livraison> = {}) {
   return { dossier, file, installation }
 }
 
-/** Le patron clique « Créer ce geste ». */
-function cliquer(dossier: string) {
+/** Le patron clique « Créer ce geste » : la mission écrite et marquée, aucun git (l'interface n'en lance pas). */
+function cliquerSeulement(dossier: string) {
   const s = METIER_ESSAI.ouvrir(dossier)
   try {
     return commanderEtLivrer(METIER_ESSAI, s, dossier, INTENTION, { role: 'patron' }, MAINTENANT)
   } finally {
     METIER_ESSAI.fermer(s)
   }
+}
+
+/** Le clic, puis le rattrapage qu'il déclenche (le processus à part) : la mission poussée. */
+function cliquer(dossier: string) {
+  const r = cliquerSeulement(dossier)
+  rattraper(dossier)
+  return r
 }
 
 /** Le client rattrape ses statuts ; rend le rattrapage et l'état de sa commande. */
@@ -173,7 +181,7 @@ const tour = (racine: string, a: ReturnType<typeof agence>, commande: Commande) 
 
 const PLAN = { faisable: true, raison: 'un geste', plan: '-' }
 
-describe('l’aller : un clic pousse la mission (L6)', () => {
+describe('l’aller : un clic marque la mission, le rattrapage qu’il déclenche la pousse (L6)', () => {
   it('la mission écrite chez le client, la ligne `geste commandé`, la même mission dans la file, rien d’autre ; aucun nom', () => {
     const { dossier, file } = clientLivre()
     expect(cliquer(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
@@ -189,11 +197,13 @@ describe('l’aller : un clic pousse la mission (L6)', () => {
     expect(rattraper(dossier).commande?.chantier).toBeUndefined()
   })
 
-  it('une file injoignable au clic : le clic réussit, la mission est marquée, le rattrapage suivant la pousse telle que le schéma la lit', () => {
+  it('une file injoignable : le clic réussit, la mission est marquée, le rattrapage le dit et la marque reste ; la file revenue, il la pousse telle que le schéma la lit', () => {
     const { dossier, file } = clientLivre({ missions: '/nulle-part/missions.git' })
-    expect(cliquer(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
+    expect(cliquerSeulement(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
     const local = join(dossier, DOSSIER_MISSIONS, '2026-10-10', `${INTENTION}.yaml`)
-    expect(readFileSync(`${local}${SUFFIXE_A_POUSSER}`, 'utf8')).toMatch(/git/)
+    expect(readFileSync(`${local}${SUFFIXE_A_POUSSER}`, 'utf8')).toBe('à pousser\n')
+    expect(() => rattraper(dossier)).toThrow(/file injoignable|git clone/)
+    expect(existsSync(`${local}${SUFFIXE_A_POUSSER}`)).toBe(true)
     // Un commentaire ajouté à la main au fichier de la mission ne part pas : seul ce que le schéma lit part.
     appendFileSync(local, '# Rosalie a demandé\n')
     const l = lireLivraison(dossier)
@@ -531,13 +541,14 @@ describe('ce qui vient d’une file n’est jamais suivi ni cru (relecture du lo
     expect(existsSync(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.yaml`))).toBe(true)
   })
 
-  it('un livraison.yaml illisible au clic : le clic aboutit, la mission est marquée ; la config corrigée, le rattrapage la pousse', () => {
+  it('un livraison.yaml illisible : le clic aboutit, la mission est marquée, le rattrapage le dit ; la config corrigée, il la pousse', () => {
     const { dossier, file } = clientLivre()
     const l = lireLivraison(dossier)
     writeFileSync(join(dossier, FICHIER_LIVRAISON), stringify({ ...l, inconnu: 1 }))
-    expect(cliquer(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
+    expect(cliquerSeulement(dossier)).toEqual({ intention: INTENTION, le: '2026-10-10' })
     const local = join(dossier, DOSSIER_MISSIONS, '2026-10-10', `${INTENTION}.yaml`)
-    expect(readFileSync(`${local}${SUFFIXE_A_POUSSER}`, 'utf8')).toMatch(/config invalide/)
+    expect(existsSync(`${local}${SUFFIXE_A_POUSSER}`)).toBe(true)
+    expect(() => rattraper(dossier)).toThrow(/config invalide/)
     writeFileSync(join(dossier, FICHIER_LIVRAISON), stringify(l))
     expect(rattraper(dossier).r).toMatchObject({ poussees: 1, aPousser: 0 })
     expect(existsSync(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.yaml`))).toBe(true)

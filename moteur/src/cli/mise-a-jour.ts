@@ -6,20 +6,14 @@
 // installée à côté, `pnpm check` rejoué) ; la bascule se fait au redémarrage,
 // par le lanceur (`pnpm harnais`). Sans version courante (la première
 // installation), la version préparée devient la courante. `retirer` : revenir
-// à la version précédente à la main (`courant ← precedent`) ; l'interface le
-// dira au journal à son redémarrage.
+// à la version précédente à la main (`courant ← precedent`, refusé si la
+// courante l'est déjà) ; l'interface qui tourne le dit au journal, sort au
+// prochain moment calme, et le lanceur la relance sur la précédente.
 import { resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { lireLivraison } from '../livraison/config'
-import { revenir } from '../livraison/harnais'
-import {
-  cible,
-  installerPremiere,
-  LIENS,
-  rattraper,
-  verrouInstallation,
-  versionDeLArbre,
-} from '../livraison/mise-a-jour'
+import { retirerALaMain } from '../livraison/harnais'
+import { cible, installerPremiere, LIENS, rattraper } from '../livraison/mise-a-jour'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import { metierDe } from './metier'
 
@@ -38,18 +32,9 @@ try {
   const l = lireLivraison(dossier)
   if (!l) throw new Error(`${dossier} : client non livré (pas de livraison.yaml)`)
   if (positionals[0] === 'retirer') {
-    const courante = versionDeLArbre(cible(l.installation, LIENS.courant))
-    const precedente = versionDeLArbre(cible(l.installation, LIENS.precedent))
-    if (!courante || !precedente) throw new Error('aucune version précédente où revenir')
-    const rendre = verrouInstallation(l.installation)
-    if (!rendre) throw new Error('une préparation tient l’installation : réessayer dans un instant')
-    try {
-      revenir(l.installation, courante, precedente, 'retirée à la main')
-    } finally {
-      rendre()
-    }
+    const r = retirerALaMain(l.installation)
     console.log(
-      `${courante} → ${precedente} : à redémarrer (le lanceur relance sur la précédente).`,
+      `${r.de} → ${r.vers} : l'interface lancée par pnpm harnais sort au prochain moment calme, le lanceur la relance sur ${r.vers}.`,
     )
   } else {
     const m = await metierDe(dossier)
@@ -66,11 +51,14 @@ try {
       const p = r.preparation
       if (p?.occupee) console.log('une autre préparation tient l’installation : rien à ce passage')
       for (const x of p?.refusees ?? []) console.log(`${x.version} refusée : ${x.raison}`)
-      if (p?.prete && !p.prete.deja)
-        console.log(`${p.prete.version} prête : bascule au prochain moment calme`)
-      if (p?.prete?.deja) console.log(`${p.prete.version} attend déjà la bascule`)
       if (p?.prete && !cible(l.installation, LIENS.courant)) {
         console.log(`${installerPremiere(l)} installée : la première version courante`)
+      } else if (p?.prete) {
+        console.log(
+          p.prete.deja
+            ? `${p.prete.version} attend déjà la bascule`
+            : `${p.prete.version} prête : bascule au prochain moment calme`,
+        )
       }
       if (p?.refusees.some((x) => x.definitif)) process.exitCode = 1
     } finally {
