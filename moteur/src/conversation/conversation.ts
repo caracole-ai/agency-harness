@@ -19,24 +19,19 @@ import {
 } from './actions'
 import { type ConfigConversation, prixDe } from './config'
 import {
+  ambigue,
   choisirParmi,
   correspondances,
   type Designable,
   normaliserNom,
   proches,
+  refuse,
 } from './designation'
 import type { Domaine } from './domaine'
 import type { Operation } from './operation'
 import { aCapacite, IdentiteSchema, type RoleDeclare, roleDe } from './roles'
 import type { Choix, Tableau } from './tableau'
-import {
-  type Demande,
-  designer,
-  surUneLigne,
-  systemeTraduire,
-  traduire,
-  type Vocabulaire,
-} from './traduire'
+import { type Demande, surUneLigne, systemeTraduire, traduire, type Vocabulaire } from './traduire'
 
 // Le déroulé d'un tour de conversation (PLAN-ESPACES.md § 5.4, REFLEXIONS.md (2026-10-08)) :
 // la porte (qui parle, avant toute ouverture du dossier) ; sur le journal
@@ -164,6 +159,8 @@ interface PrecisionGeste {
   resolus: string[]
   champ: string
   candidats: Designable[]
+  /** La question a déjà été reposée une fois, après une réponse ambiguë : la prochaine clôt. */
+  relancee?: true
 }
 
 /** Ce qu'elle garde pour une demande nouvelle, avant l'échappée : la consigne d'origine, l'intention, la mention et les réponses déjà données. */
@@ -171,6 +168,7 @@ interface PrecisionEchappee {
   identite: Identite
   candidats: Designable[]
   echappee: { consigne: string; intention: string; mention: string; precisions: Precision[] }
+  relancee?: true
 }
 
 type PrecisionAttendue = PrecisionGeste | PrecisionEchappee
@@ -340,13 +338,59 @@ function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | u
     : undefined
 }
 
+/** La mention que la question fait préciser : en paramètre du geste, ou celle de l'échappée. */
+const mentionDe = (attendue: PrecisionAttendue) =>
+  'echappee' in attendue ? attendue.echappee.mention : String(attendue.params[attendue.champ])
+
+/** Ce que la question sert, pour la ligne du journal : le geste, ou l'intention de l'échappée. */
+const objetDe = (attendue: PrecisionAttendue) =>
+  'echappee' in attendue ? attendue.echappee.intention : attendue.action
+
+/**
+ * La réponse à « vous parlez de qui ? » qui ne choisit pas un candidat : « non »,
+ * ou un nom que plusieurs candidats portent (le prénom partagé). La question se
+ * repose une fois, numérotée ; au second échec, ou sur « non », l'abandon est
+ * dit et la question est close. Tout autre texte est une nouvelle consigne,
+ * qui se traduit comme avant : rien ici (décidé le 2026-10-18).
+ */
+function suiteDeLaQuestion<S>(
+  m: MetierConversation<S>,
+  ici: Cible,
+  tour: Tour,
+  attendue: PrecisionAttendue,
+): Avant | undefined {
+  const non = refuse(tour.consigne)
+  if (!non && !ambigue(tour.consigne, attendue.candidats)) return undefined
+  if (!non && !attendue.relancee) {
+    const texte = question(m.roles, tour, mentionDe(attendue), attendue.candidats, true)
+    ecrire(ici, tour, [
+      ligneConsigne(tour, 'precision'),
+      {
+        type: TYPE_PRECISION_ATTENDUE,
+        objet: tour.conversation,
+        issue: objetDe(attendue),
+        motif: texte,
+        donnees: { ...attendue, relancee: true },
+      },
+    ])
+    return {
+      sorte: 'reponse',
+      reponse: { sorte: 'precision', texte, candidats: attendue.candidats },
+    }
+  }
+  const tu = roleDe(m.roles, tour.identite).tutoie === true
+  const texte = `Je n'ai pas compris de qui ${tu ? 'tu parles' : 'vous parlez'}. ${tu ? 'Redis' : 'Redites'} la consigne avec le prénom et le nom.`
+  ecrire(ici, tour, [ligneConsigne(tour, 'precision', { erreur: texte })])
+  return { sorte: 'reponse', reponse: { sorte: 'je_ne_sais_pas', texte } }
+}
+
 /**
  * Avant le dossier : le plafond du mois, la réponse à une question en attente
  * (comparée à ses candidats, sans appel), sinon la traduction. Le modèle ne
  * reçoit que la consigne, la date, le rôle et ses gestes. Le plafond se vérifie
  * ici seulement, une fois par consigne : une consigne admise va à son terme
- * (`designer`, échappée), le dépassement est d'une consigne au plus, bornée
- * par les plafonds par demande.
+ * (l'échappée), le dépassement est d'une consigne au plus, bornée par les
+ * plafonds par demande.
  */
 async function avantLeDossier<S>(
   m: MetierConversation<S>,
@@ -366,8 +410,12 @@ async function avantLeDossier<S>(
     }
 
     const attendue = precisionEnAttente(journal, tour)
-    const choix = attendue ? choisirParmi(tour.consigne, attendue.candidats) : undefined
-    if (attendue && choix) return { sorte: 'precisee', precision: attendue, choix }
+    if (attendue) {
+      const choix = choisirParmi(tour.consigne, attendue.candidats)
+      if (choix) return { sorte: 'precisee', precision: attendue, choix }
+      const suite = suiteDeLaQuestion(m, ici, tour, attendue)
+      if (suite) return suite
+    }
 
     const role = tour.identite.role
     const actions = actionsDe(m.actions, role)
@@ -439,7 +487,7 @@ async function apresLeDossier<S>(
       action: action.id,
       params: { ...precision.params, [precision.champ]: choix.id },
     }
-    return agir(m, s, modele, tour, action, demande, [...precision.resolus, precision.champ])
+    return agir(m, s, tour, action, demande, [...precision.resolus, precision.champ])
   }
 
   const { demande } = avant
@@ -466,7 +514,7 @@ async function apresLeDossier<S>(
       const action = actions.find((a) => a.id === demande.action)
       if (!action)
         return refuser(`l'action ${demande.action} n'est pas ouverte à ce rôle`, { demande })
-      return agir(m, s, modele, tour, action, demande)
+      return agir(m, s, tour, action, demande)
     }
   }
 }
@@ -609,19 +657,19 @@ export type Resolution =
 /**
  * Trouve les personnes que nomment les paramètres d'une action, parmi celles
  * que ce rôle peut désigner : le code décide si c'est sûr (niveau 1) ; sinon
- * il propose une liste courte que le modèle départage (niveau 2, journalisé
- * avec son coût) ; sinon l'humain tranche (niveau 3 : une question). Un
- * homonyme exact va droit à la question : le modèle n'en sait pas plus.
+ * l'humain tranche, sur une question qui porte la liste courte des noms
+ * ressemblants, ou rien si personne ne ressemble. Aucun nom ne part au
+ * modèle, même proche (décidé le 2026-10-18 : le second appel qui départageait
+ * la liste est retiré). Un homonyme exact va droit à la question.
  */
-export async function resoudre<S>(
+export function resoudre<S>(
   m: MetierConversation<S>,
   s: S,
-  modele: Modele,
   tour: Tour,
   action: Action<S, unknown>,
   params: Record<string, unknown>,
   resolus: string[] = [],
-): Promise<Resolution> {
+): Resolution {
   const personnes = m.vocabulaire(s, tour.identite).noms.filter((n) => n.sorte === 'personne')
   const p = { ...params }
   const faits = [...resolus]
@@ -640,40 +688,11 @@ export async function resoudre<S>(
     if (typeof mention === 'string') {
       const exacts = correspondances(mention, personnes)
       if (exacts.length > 1) return precision(exacts)
-      let trouve = exacts[0]
-      // Un rôle qui ne désigne pas autrui ne désigne que lui-même (D4) : pas de niveau 2, où le modèle
-      // dirait « oui, c'est lui » pour un collègue au nom proche.
+      const trouve = exacts[0]
+      // Un rôle qui ne désigne pas autrui ne désigne que lui-même (D4) : aucun
+      // collègue au nom proche ne lui est proposé.
       if (!trouve && !aCapacite(m.roles, tour.identite, 'designe_autrui')) return precision([])
-      if (!trouve) {
-        const liste = proches(mention, personnes)
-        if (liste.length === 0) return precision([])
-        const config = m.config(s)
-        let choix: Awaited<ReturnType<typeof designer>>
-        try {
-          choix = await designer(
-            modele,
-            config.modele.effort.traduire,
-            config.plafonds.par_demande.tokens_sortie,
-            tour.consigne,
-            mention,
-            liste,
-          )
-        } catch {
-          return precision(liste)
-        }
-        ecrire(cibleDe(m, s), tour, [
-          evenementAppel(
-            m.client(s),
-            tour.conversation,
-            'designer',
-            1,
-            choix.reponse,
-            prixDe(config),
-          ),
-        ])
-        if (!choix.choix) return precision(liste)
-        trouve = choix.choix
-      }
+      if (!trouve) return precision(proches(mention, personnes))
       p[champ] = trouve.id
     }
     faits.push(champ)
@@ -687,12 +706,17 @@ const citer = (tour: Tour, mention: string) =>
     ? `« ${surUneLigne(mention)} »`
     : 'la personne nommée'
 
-/** La question du niveau 3, rendue par le code. */
+/**
+ * La question « vous parlez de qui ? », rendue par le code : un seul candidat
+ * se confirme d'un oui ; plusieurs se choisissent par leur numéro ou leur nom.
+ * `relance` : la même question, reposée après une réponse ambiguë.
+ */
 function question(
   roles: RoleDeclare[],
   tour: Tour,
   mention: string,
   candidats: Designable[],
+  relance = false,
 ): string {
   const tu = roleDe(roles, tour.identite).tutoie === true
   if (candidats.length === 0) {
@@ -702,8 +726,12 @@ function question(
   const noms = candidats.map((c) =>
     candidats.filter((x) => x.nom === c.nom).length > 1 ? `${c.nom} (${c.id})` : c.nom,
   )
-  const liste = noms.length === 1 ? noms[0] : `${noms.slice(0, -1).join(', ')} ou ${noms.at(-1)}`
-  return `${tu ? 'Tu parles' : 'Vous parlez'} de qui : ${liste} ?`
+  const debut = relance ? "Je n'ai pas compris. " : ''
+  const parles = tu ? 'Tu parles' : 'Vous parlez'
+  const seul = noms.length === 1 ? noms[0] : undefined
+  if (seul !== undefined) return `${debut}${parles} de « ${seul} » ? (oui / non)`
+  const liste = noms.map((n, i) => `${i + 1}. ${n}`).join(', ')
+  return `${debut}${parles} de qui : ${liste} ? ${tu ? 'Réponds' : 'Répondez'} par le numéro ou le nom.`
 }
 
 /**
@@ -715,7 +743,6 @@ function question(
 async function agir<S>(
   m: MetierConversation<S>,
   s: S,
-  modele: Modele,
   tour: Tour,
   action: Action<S, unknown>,
   demande: Extract<Demande, { sorte: 'action' }>,
@@ -723,7 +750,7 @@ async function agir<S>(
 ): Promise<Reponse> {
   const ici = cibleDe(m, s)
   const issue = resolus === undefined ? 'action' : 'precision'
-  const r = await resoudre(m, s, modele, tour, action, demande.params, resolus)
+  const r = resoudre(m, s, tour, action, demande.params, resolus)
   if (
     r.sorte === 'precision' &&
     r.candidats.length === 0 &&

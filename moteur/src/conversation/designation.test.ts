@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ambigue,
   CANDIDATS_MAX,
   choisirParmi,
   clePhonetique,
@@ -7,6 +8,7 @@ import {
   distance,
   formes,
   proches,
+  refuse,
 } from './designation'
 
 // Des listes synthétiques : aucune donnée du client fictif.
@@ -54,14 +56,14 @@ describe('niveau 1 : la correspondance exacte décide', () => {
   })
 })
 
-describe('niveau 2 : la liste courte, qui ne doit pas rater le bon nom', () => {
+describe('la liste courte de la question, qui ne doit pas rater le bon nom', () => {
   it('une faute de frappe ou d’oreille retrouve le bon nom en tête', () => {
     expect(ids(proches('Aisha', EQUIPE))[0]).toBe('P-1')
     expect(ids(proches('Traore A.', EQUIPE))[0]).toBe('P-1')
     expect(ids(proches('Carim', EQUIPE))[0]).toBe('P-5')
     expect(ids(proches('Jean', EQUIPE))).toContain('P-3')
   })
-  it('« Aisha » propose aussi Alicia, à deux lettres : c’est au modèle, puis à l’humain, de trancher', () => {
+  it('« Alisha » propose aussi Alicia, à deux lettres : c’est à l’humain de trancher, jamais au modèle', () => {
     expect(ids(proches('Alisha', EQUIPE))).toEqual(expect.arrayContaining(['P-1', 'P-2']))
   })
   it('rien qui ressemble : liste vide ; jamais plus de trois', () => {
@@ -92,11 +94,20 @@ describe('niveau 3 : la réponse à « vous parlez de qui ? »', () => {
     expect(choisirParmi('Aïcha Mansouri', candidats)?.id).toBe('P-4')
     expect(choisirParmi('traore', candidats)?.id).toBe('P-1')
   })
-  it('un rang', () => {
+  it('un rang, en mots ou en chiffres, au-delà de trois aussi', () => {
     expect(choisirParmi('1', candidats)?.id).toBe('P-1')
     expect(choisirParmi('la deuxième', candidats)?.id).toBe('P-4')
     expect(choisirParmi('La première.', candidats)?.id).toBe('P-1')
+    expect(choisirParmi('2e', candidats)?.id).toBe('P-4')
     expect(choisirParmi('3', candidats)).toBeUndefined()
+    const quatre = [...candidats, ALICIA, JEAN_PIERRE]
+    expect(choisirParmi('4', quatre)?.id).toBe('P-3')
+    expect(choisirParmi('5', quatre)).toBeUndefined()
+  })
+  it('« oui » accepte le seul candidat ; avec plusieurs, il ne désigne personne', () => {
+    expect(choisirParmi('oui', [AICHA])?.id).toBe('P-1')
+    expect(choisirParmi('Oui.', [AICHA])?.id).toBe('P-1')
+    expect(choisirParmi('oui', candidats)).toBeUndefined()
   })
   it('deux candidats au même nom complet : l’identifiant tranche', () => {
     const jumeaux = [AICHA, { id: 'P-9', nom: 'Aïcha Traoré', sorte: 'personne' as const }]
@@ -106,5 +117,16 @@ describe('niveau 3 : la réponse à « vous parlez de qui ? »', () => {
   it('ce qui ne désigne pas un seul candidat : rien', () => {
     expect(choisirParmi('Aïcha', candidats)).toBeUndefined()
     expect(choisirParmi('et Karim, il est où ?', candidats)).toBeUndefined()
+  })
+  it('ambiguë : une réponse que plusieurs candidats portent ; pas une consigne nouvelle', () => {
+    expect(ambigue('Aïcha', candidats)).toBe(true)
+    expect(ambigue('Traoré', candidats)).toBe(false)
+    expect(ambigue('et Karim, il est où ?', candidats)).toBe(false)
+  })
+  it('« non » refuse, quelle que soit la ponctuation ; le reste non', () => {
+    expect(refuse('non')).toBe(true)
+    expect(refuse('Non !')).toBe(true)
+    expect(refuse('non, Traoré')).toBe(false)
+    expect(refuse('oui')).toBe(false)
   })
 })

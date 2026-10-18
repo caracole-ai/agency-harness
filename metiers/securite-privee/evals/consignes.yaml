@@ -111,10 +111,13 @@ cas:
     role: patron
     consigne: "Aicha ne vient pas demain"
     attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+  # R-2 : une écriture proche sans égal exact. Aucun nom ne part au modèle,
+  # même proche (décidé le 2026-10-18) : le code pose la question, avec le
+  # seul candidat qui ressemble.
   - id: R-2
     role: patron
     consigne: "Aisha ne vient pas demain"
-    attendu: { sorte: action, action: gerer_absence, params: { agent: A-11, jour: "2026-10-11" } }
+    attendu: { sorte: precision, candidats: [A-11] }
   - id: R-3
     role: patron
     consigne: "Traoré sera absente demain."
