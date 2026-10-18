@@ -8,6 +8,14 @@ import { readFileSync, writeFileSync } from 'node:fs'
 const [, , source, sortie] = process.argv
 const md = readFileSync(source, 'utf8')
 
+// La date du relevé, lue dans l'en-tête du glossaire (« relevé sur le code le AAAA-MM-JJ »).
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+const dateReleve = (() => {
+  const m = md.match(/relevé sur le code le (\d{4})-(\d{2})-(\d{2})/)
+  if (!m) throw new Error('GLOSSAIRE.md ne dit pas « relevé sur le code le AAAA-MM-JJ »')
+  return `${Number(m[3])} ${MOIS[Number(m[2]) - 1]} ${m[1]}`
+})()
+
 // Sur une page publique, une entrée se dit sans détailler une faiblesse ouverte.
 const REECRITURES = {
   'Bac à sable':
@@ -283,7 +291,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 0
   <p class="eyebrow"><a href="/">Smart Tailor</a> · le harnais</p>
   <h1>Glossaire</h1>
   <p class="lede">L’abécédaire du harnais : chaque mot du projet, chaque commande, chaque fichier, en une ligne. Pour lire les plans et suivre le code sans se perdre.</p>
-  <p class="meta">${total} entrées · relevé sur le code le 16 octobre 2026</p>
+  <p class="meta">${total} entrées · relevé sur le code le ${dateReleve}</p>
 </div></header>
 
 <div class="barre"><div class="in">
