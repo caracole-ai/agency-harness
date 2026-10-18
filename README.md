@@ -203,7 +203,7 @@ Un dossier, une ligne. Les mots sont dans `GLOSSAIRE.md`, les décisions dans
 │   └── transport-logistique/, bureaux-etudes/, avocats-affaires/   décrits, pas codés
 ├── exemples/              deux clients fictifs, à copier avant tout essai : client-fictif (la sécurité : 13 agents, 19 vacations, des erreurs posées exprès), agence-web-fictive (vingt CSV, graine fixe) ; livraison.yaml commenté
 ├── evals/                 resultats/ (les tableaux datés d'une passe), traces/ (non versionnées), erreurs-*.md (les analyses)
-├── presentation/          la page « Schéma du harnais » et glossaire.mjs, qui génère smarttailor.fr/glossaire depuis GLOSSAIRE.md
+├── presentation/          la page « Schéma du harnais » (smarttailor.fr/schema-harnais : copiée telle quelle dans ../smart-tailor/public/schema-harnais/, la ligne des polices remplacée par celles du site) et glossaire.mjs, qui génère smarttailor.fr/glossaire depuis GLOSSAIRE.md
 ├── clients/               les notes d'entretien, ignorées par git : ce que dit un client ne part nulle part
 └── .claude/skills/entretien-metier/   le skill qui prépare l'entretien et transcrit les règles à valider, chaque citation vérifiée
 ```
