@@ -7,8 +7,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "remplacer": "cd \"${INIT_CWD:?lancer par pnpm remplacer}\" && NODE_OPTIONS=--disable-warning=ExperimentalWarning tsx \"$OLDPWD/src/cli/remplacer.ts\""
+    "test": "vitest run"
   },
   "dependencies": {
     "@harnais/moteur": "workspace:*",

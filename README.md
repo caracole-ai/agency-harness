@@ -14,7 +14,7 @@ main.
 
 | Couche | Contenu | Où | Réutilisable |
 |---|---|---|---|
-| **Moteur** | calendrier juridique, couche sémantique, contrôles par moment (pre-tool, post-tool, pre-response, stop), machine à états, approbation par jeton, journal, compteur de coût | `moteur/` — en construction selon `PLAN.md` ; existent le registre des règles, le calendrier juridique, les verdicts et l'exécution des contrôles, les premiers interdits codés de la sécurité privée (2026-10-05), et Veiller : `pnpm veiller`, la config client, le journal et le rapport (2026-10-06) ; le remplacement validé par le patron et la délégation (étape 5, 2026-10-06). `caracole-ai/agent-guardrails` n'en est pas l'amorce : il échoue ouvert, le moteur échoue fermé ; seule l'idée des moments en vient | tous métiers |
+| **Moteur** | le registre des règles et le calendrier juridique, les contrôles par moment (pre-tool, post-tool, pre-response, stop) qui échouent fermés, l'approbation par clé d'accord, le journal, la veille, la conversation et ses trois espaces (un geste, l'échappée, la commande), le chantier qui code un geste commandé, la livraison signée et tirée, le compteur de coût | `moteur/` | tous métiers |
 | **Méthode** | règles communes à tous les outils, le temps (validité à une date, calcul des délais), les archétypes (veiller, planifier, rapprocher, rédiger, chercher) et leurs questions | `methode/` | tous métiers ; c'est la spécification du moteur |
 | **Métier** | chaîne, interdits, tests types, connecteurs, escalades, vocabulaire, préférences récurrentes, données à réunir, briques à proposer | `metiers/<métier>/fiche.md` | tous les clients d'un métier |
 | **Client** | données, exceptions, savoir tacite, seuils ; ses missions commandées (`missions/<date>/<intention>.yaml`, un geste que le patron a demandé) | `clients/<client>/` — **jamais versionné** | ce client seul |
@@ -163,580 +163,129 @@ flowchart LR
 
 ## Structure
 
-- `GRILLE.md` — la grille d'une fiche métier : neuf rubriques (les bornes, le
-  bon résultat et les données, les briques à proposer), les statuts d'un fait,
-  la règle qui sépare le métier du client.
-- `GLOSSAIRE.md` — l'abécédaire : le vocabulaire du projet, les commandes,
-  les fichiers, une ligne chacun.
-- `REFLEXIONS.md` — le fil de la réflexion sur le système : décisions,
-  enseignements, pistes ouvertes, questions à trancher. À relire en début de
-  séance.
-- `methode/` — ce qui vaut dans au moins deux métiers, écrit une fois (établi
-  le 2026-09-30 en croisant les quatre métiers) :
-  - `socle.md` : les règles communes à tous les outils (G-01 à G-07), le
-    temps, les faits communs (facturation électronique, AI Act, CLOUD Act,
-    sous-traitance), le tronc commun des questions d'entretien ;
-  - `archetypes.md` : les cinq sortes de travail, leur présence par métier,
-    leurs interdits et tests types, leurs questions « si…, alors… ». Veiller
-    est le seul présent partout : c'est le premier pilote par défaut.
-- `HANDOFF.md` — l'état à la dernière passation entre deux sessions : où on
-  en est, la suite, les pièges. À lire en premier.
-- `PLAN.md` — le plan de construction du moteur, sécurité privée comme
-  premier cas (2026-10-05) : phases, décisions, vérifications.
-- `PLAN-ESPACES.md` — le plan des trois espaces (2026-10-07), qui remplace la
-  phase 6 : la conversation (une liste fermée de gestes), l'échappée (le
-  modèle sur une copie des données, résultat passé aux contrôles), la
-  réaffectation groupée, la promotion d'une demande qui revient, les évals,
-  l'interface web. Écrit lot par lot pour être exécuté sans décision à
-  prendre.
-- `PLAN-PROMOTION.md` — le plan de la promotion (2026-10-09), qui remplace
-  le § 8 du précédent : une demande nouvelle qui revient devient un **geste
-  appris**, une donnée (paramètres typés, SQL paramétré sur la copie du rôle,
-  gabarit rendu par le code), fabriquée par le modèle, vérifiée en code par
-  rejeu sur l'instantané de la copie, activée par un humain avec une clé.
-  Lots 0 (le journal
-  se souvient de chaque échappée), 1 (le geste appris, chargé et exécuté), 2
-  (la fabrication par le modèle, vérifiée en code, mesurée) et 3 (l'atelier
-  `pnpm gestes`, l'activation par le patron dans l'interface) faits le
-  2026-10-10, relus par un sous-agent indépendant, corrigés et fusionnés
-  dans `main` le 2026-10-11 (`PLAN-GENERAL.md` phase A) ; le lot 4
-  (l'écriture : un geste appris qui propose des réaffectations, traitées
-  comme une proposition d'échappée) fait le 2026-10-11, phase C du grand
-  plan (G5). **Retirée le 2026-10-15** (`REFLEXIONS.md`) : plus aucune
-  promotion automatique, un geste nouveau se construit sur commande du
-  patron ; les gestes appris, l'atelier et les instantanés sont retirés le
-  même jour : un geste est du code, écrit par le chantier.
-- `PLAN-GENERAL.md` — **le grand plan** (2026-10-10 ; phases A, B et C
-  faites le 2026-10-11 ; D en cours : session D1 faite, D2 à faire) : où on en
-  est, les décisions G1 à G11 (fusion automatique sous huit conditions en
-  code, retrait, clone de la nuit, mémoire dans le dépôt, fabrication,
-  écriture, identité, journal chaîné, authentification, sauvegarde,
-  livraison signée et tirée, veille et canal, modèles, topologie), et les
-  phases A à I dans l'ordre. Écrit pour Claude Opus 5.5 en effort élevé,
-  sans décision à prendre ; il appelle les plans ci-dessous.
-- `PLAN-PSEUDONYMES.md` — le plan des pseudonymes (2026-10-10 ; phase B de
-  `PLAN-GENERAL.md`, faite le 2026-10-11, voir `HANDOFF.md`) :
-  le fournisseur ne reçoit plus aucun nom de salarié dans l'échappée ni la
-  fabrication ; l'identifiant tient lieu de nom dans la copie, la consigne
-  est masquée par la désignation existante, le code restitue, la fuite se
-  mesure en code à chaque passe (seuil 0). Quatre lots. Reste hors du plan :
-  la traduction, qui reçoit la phrase telle qu'écrite, et son niveau 2
-  (`designer`), qui montre au modèle jusqu'à trois noms proches à départager.
-- `PLAN-LIVRAISON.md` — **le plan de la livraison** (2026-10-15 ; remplace
-  les phases E et H de `PLAN-GENERAL.md`, retire G3, remplace G8) : le
-  chantier se lance au clic du patron, à l'agence (`pnpm agence`, une file
-  git de missions masquées par client), sans nuit ni clone réservé (arbres
-  de travail depuis `origin/main`, fusion dans un arbre détaché) ; chaque
-  fusion émet une étiquette git signée (SSH) ; le harnais du client
-  (`pnpm harnais`) la tire, vérifie la signature, installe à côté, rejoue
-  `pnpm check`, bascule à un moment calme, revient en arrière si le
-  redémarrage échoue. Douze décisions L1 à L12, cinq lots. Lot 0 (le plan)
-  et lot 1 (le chantier sans clone ni dossier client, la nuit retirée) faits
-  le 2026-10-15 ; lots 2 (la version signée, `pnpm versionner`), 3 (la
-  file des missions, `pnpm agence`) et 4 (la mise à jour tirée, `pnpm
-  harnais`) faits le 2026-10-15, audités, corrigés et fusionnés le
-  2026-10-16 ; lot 5 (la mesure réelle) à faire.
-- `PLAN-RONDE.md` — le plan de la ronde de nuit et du chantier (2026-10-10,
-  construit le 2026-10-11) : chaque nuit un modèle lit un résumé fait en code de ce qui a
-  été demandé (jamais une donnée) et désigne des missions ; le chantier fait
-  coder un geste par Claude Code en mode non interactif, dans un arbre de
-  travail à part, bande métier seulement (garde en code), relu par un autre
-  modèle ; `agence.yaml` : Fable 5.1 planifie et relit, Opus 5.5 code, GLM
-  reste au quotidien. La fusion est automatique sous les conditions de
-  `PLAN-GENERAL.md` G1, dans le clone de la nuit, avec retrait ; la mémoire
-  de la nuit est dans `memoire/` (R10). Dépend du lot 1 des pseudonymes.
-  Quatre lots ; amendé le 2026-10-11 (§ 0 : au laboratoire, l'abonnement
-  claude.ai par le binaire `claude`). Phase D de `PLAN-GENERAL.md`, session
-  D1 : lots 0 (config de l'agence, carte, mémoire) et 1 (la ronde, `pnpm
-  ronde`, `pnpm evals ronde`) faits le 2026-10-11, branche `general/d-ronde` ;
-  session D2 : lot 2 (le chantier, `pnpm chantier`, la fusion et le retrait
-  dans le clone de la nuit) et lot 3 (la nuit, `pnpm nuit`) faits le
-  2026-10-11, relus, fusionnés dans `main` ; mesurés pour de vrai sur une
-  copie du client fictif et un clone de la nuit local (deux chantiers
-  fusionnés, un retiré, un refusé pour une raison écrite : passe 20 de
-  `evals/erreurs-2026-10-08.md`). **La ronde est retirée le 2026-10-15**
-  (`REFLEXIONS.md`) : aucun modèle ne cherche plus ce qui manque, le
-  chantier ne code que les missions que le patron commande.
-- `agence.yaml` — la config de l'agence (`PLAN-RONDE.md` § 4.1, sans
-  secret) : le modèle de chaque rôle du chantier (plan, implémentation, relecture)
-  et son accès (`claude` : l'abonnement par le binaire, au laboratoire ;
-  `anthropic` : la clé d'API, avant la finalisation), les prix relus dans la
-  doc d'Anthropic, les bornes du chantier, `agence` (`pnpm agence`,
-  `PLAN-LIVRAISON.md` L1 : la borne du jour, le pas de la boucle, la file de
-  chaque client ; lu au lot 3), les règles d'outils (bornées à
-  l'arbre de travail : `Write(./**)`) et les chemins autorisés au chantier,
-  écrits avec `${metier}` et résolus avec le métier de la mission ;
-  `evals_clients` donne, par métier, le client fictif de la condition 4
-  (`PLAN-METIER-2.md` M9).
-- `<dossier client>/livraison.yaml` — le client livré (`PLAN-LIVRAISON.md`
-  L5 ; un exemple commenté : `exemples/livraison.yaml`) : `depot` (le dépôt du produit, en lecture seule), `missions` (sa file
-  `missions-<slug>`, en lecture et écriture), `installation` (un chemin
-  absolu hors du dossier client : le clone de la file, un dépôt nu qui ne
-  tire du produit que ses étiquettes `v*`, les versions côte à côte),
-  `intervalle_minutes`. Les adresses sont relues à chaque rattrapage (une
-  file ou un produit déplacés se suivent) ; git vers elles ne demande rien
-  et coupe une connexion figée. Avec lui, le fichier `signataires` (la clé
-  publique de l'agence) : sans lui, aucune version ne s'installe. Sans
-  `livraison.yaml`, rien ne quitte la machine du client : `pnpm chantier
-  --mission` prend la mission à la main et écrit son statut à côté d'elle.
-  Les clés SSH des deux dépôts (une clé de déploiement par client et par
-  sens) sont dans `~/.ssh/config` de la machine, jamais dans le dépôt ni
-  dans la config.
-- `memoire/` — la mémoire des chantiers (`PLAN-RONDE.md` R10), écrite par
-  le code dans l'arbre de la fusion ou du retrait, poussée avec eux :
-  `INDEX.md` (une ligne par événement), `chantiers/`, `CONVENTIONS.md` (on y
-  ajoute, on n'en retire jamais) ; `MESURES.md` ne garde que des tables
-  écrites à la main. Aucun
-  nom ni identifiant de personne, de conversation ou d'échappée : un test de
-  `pnpm check` relit tout le dossier.
-- `metiers/<métier>/evals/` — les cas d'évals du métier (`consignes`,
-  `echappees`, en YAML ; `PLAN-METIER-2.md` M8) ; `evals/` garde
-  `resultats/`, `traces/` et les analyses `erreurs-*.md`, et les fichiers écrits depuis le
-  2026-10-12 portent le métier dans leur nom.
-- `methode/architecture-pour-modeles.md` — la carte du harnais que lisent le
-  plan, l'implémentation et la relecture d'un chantier (`PLAN-RONDE.md` R6) :
-  les bandes et qui y écrit, ce qu'est un geste, d'où vient un geste nouveau
-  (la commande du patron), ce qu'un modèle ne fait jamais, ce qu'est une
-  mission, comment finir.
-- `methode/chantier.md` — le système ajouté au plan, à l'implémentation et à
-  la relecture d'un chantier (`PLAN-RONDE.md` § 6.4) : où écrire et où
-  jamais, les conventions du dépôt, ce qu'est un geste (trois cas de
-  traduction, un test par règle ; un geste qui écrit rend des `Modification`
-  et passe par la proposition), et les trois sections de fin.
-- `moteur/` — le code générique (TypeScript, `@harnais/moteur`). Pour
-  l'instant : `src/regles/` (schéma du registre, chargement, cohérence,
-  rendu des tables de la fiche ; `verdict.ts` : plafond du verdict par le
-  statut de la règle, lecture de référence et notes), `src/controles/`
-  (exécution des contrôles, fermée en cas d'erreur), `src/cli/registre.ts`,
-  `src/temps/` (jours fériés, décompte et report des délais, « 45 jours fin
-  de mois » (`ajouter`), obligations périodiques, intervalles en heures réelles, validité d'un titre à une
-  date ; testé avec la sécurité, le transport et les avocats),
-  `src/archetypes/` (Veiller : échéances, fenêtres d'alerte et de
-  préparation, niveaux ; le déroulé d'une veille, `passe.ts` ; le rapport,
-  et les sections qu'un métier y ajoute après « Sources » ; Rapprocher en
-  v1 minimale, les écarts consommé / vendu, `ecarts.ts` ; ce qu'un métier
-  fournit, `metier.ts`), `src/config.ts` (config client
-  validée au démarrage, politique du client), `src/journal/` (SQLite en
-  ajout seul, tenu par la base), `src/archetypes/candidats.ts` (évaluer des
-  candidats par les contrôles, les classer), `src/approbation/jeton.ts` (la
-  clé d'accord : pas d'écriture sans validation de ce contenu exact au
-  journal) et `src/cli/veiller.ts`. Depuis `PLAN-ESPACES.md` :
-  `src/modele/` (l'accès au modèle derrière une interface à nous, `Modele` ;
-  l'adaptateur du SDK d'Anthropic, délai lu dans la config, un appel long
-  en flux avec une borne haute du coût quand le fournisseur ne compte pas ;
-  celui de l'abonnement, `abonnement.ts`, par le binaire de Claude Code
-  isolé : la conversation part en texte, le tour revient en
-  sortie structurée, les outils restent exécutés par le moteur ;
-  l'adaptateur simulé des tests ; le coût d'un appel et le coût du mois lu
-  dans le journal) et
-  `src/conversation/config.ts` (la section `conversation` de la config
-  client : modèle, prix, effort, plafonds de la demande et du mois),
-  `src/conversation/actions.ts` (la forme d'un geste du quotidien, les outils
-  stricts envoyés au modèle et les deux méta-outils),
-  `src/conversation/roles.ts` (`PLAN-METIER-2.md` M1 à M3 : les rôles sont
-  déclarés par le métier, `RoleDeclare` et ses capacités `voit_tout`,
-  `designe_autrui`, `propose`, `ecrit`, `valide`, `administre` ; le moteur
-  demande une capacité, jamais un rôle par son nom ; `Identite { role,
-  personne }` ; l'ancienne graphie `agent` se lit encore, par les aides de
-  ce fichier seulement, plus `pnpm parler --agent`),
-  `src/conversation/noms.ts` (`Designable`, avec sa `sorte` : personne ou
-  organisation ; `m.noms(s)` rend tout nom qui ne part jamais au modèle),
-  `src/conversation/domaine.ts` (`PLAN-METIER-2.md` M7 : le domaine que disent
-  les prompts du moteur, déclaré par le métier, et ses notions : ce que le
-  métier entend par ses mots, que l'échappée dit après les tables),
-  `src/conversation/tableau.ts` (M10 : `Tableau`, ce que l'interface montre
-  d'un métier), `src/cli/metier.ts` (M10 : `metierDe`, `moduleDe` : le
-  métier d'un dossier client, chargé depuis `config.yaml: metier` par
-  toutes les CLI et l'interface), `src/conversation/traduire.ts` (une consigne → une action,
-  une demande nouvelle ou « je ne sais pas » : un appel, aucun réessai, au
-  plafond de la demande dans la config ; le modèle ne reçoit que la phrase, sans aucun nom ni poste du client ; au
-  niveau 2 seulement, un second appel lui montre jusqu'à trois noms proches
-  de la mention à départager),
-  `src/personnes/personnes.ts` (le registre d'accès, `personnes.yaml` dans le
-  dossier du client : qui peut parler, avec quel rôle, vérifié avant toute
-  ouverture du dossier), `src/conversation/designation.ts` (la personne
-  qu'une mention désigne : le code décide si c'est sûr, sinon une liste
-  courte que le modèle départage, sinon une question au demandeur),
-  `src/conversation/conversation.ts` (le déroulé d'un tour : la porte,
-  une demande nouvelle du patron qui nomme quelqu'un d'ambigu reçoit
-  « Vous parlez de qui ? » avant tout appel d'échappée ;
-  plafond du mois et traduction sur le journal seul, puis le dossier, la
-  personne nommée, exécution ou confirmation par « oui » à la
-  reformulation, tout au journal), `src/cli/parler.ts` et
-  `src/archetypes/veille-client.ts` (la veille d'un client
-  journal compris, partagée par `pnpm veiller` et le geste `lancer_veille`),
-  `src/echappee/` (l'échappée, espace 2 : la copie SQLite jetable en lecture
-  seule, le garde-fou SQL, le contrôle « pas un chiffre, pas un nom hors des
-  données », la boucle bornée (tours, tokens, temps ; un seul outil par
-  tour demandé, que GMI ignore : chaque appel reçoit son résultat), et
-  `echappee.ts` qui assemble copie, système et journal ; chaque échappée
-  laisse au journal son identifiant `E-…`, le rôle, la consigne version
-  modèle et le texte final tel que montré (rien des données hors du
-  journal) ; `pseudonymes.ts`,
-  `PLAN-PSEUDONYMES.md`, masque les noms en identifiants dans ce qui part au
-  modèle, les restitue dans ce qui est montré et mesure une fuite, au mot
-  près ; l'argent, `PLAN-METIER-2.md` M11 : une colonne `decimales: 2` se
-  décrit « en euros, deux décimales », tout nombre non entier d'un résultat
-  SQL se rend avec deux décimales, les nombres se comparent sous une forme
-  canonique (séparateurs de milliers, virgule), les mots SQL refusés se
-  cherchent hors des chaînes). `src/archetypes/candidats.ts` expose
-  aussi `constatsApparus` (ce qu'un planning modifié fait apparaître). Une
-  proposition de l'échappée s'écrit par une réaffectation groupée
-  (`metiers/securite-privee/code/src/reaffectation.ts`) : validée par le
-  patron, acceptée par chaque agent qui reçoit une vacation, écrite d'un
-  coup sous la clé d'accord. Un geste codé qui écrit fait de même
-  (`propose: true`) : il ne fait que calculer ses modifications, que la
-  conversation traite comme une proposition d'échappée. `src/gestes/commande.ts`
-  (REFLEXIONS.md, 2026-10-15) : les demandes sans geste du journal, groupées
-  par intention, et la commande du patron (`geste commandé` au journal) ;
-  les gestes appris, l'atelier et la promotion sont retirés : un geste est
-  du code, écrit par le chantier sur commande du patron.
-  `src/agence/config.ts` (`PLAN-RONDE.md` § 4.1) charge `agence.yaml`
-  (schéma strict) et fait le préflight au moment de l'appel : sous
-  `acces: claude`, `ANTHROPIC_API_KEY` absente et `claude auth status`
-  connecté ; sous `acces: anthropic`, la clé exigée. `src/chantier/memoire.ts`
-  écrit et relit `memoire/` (R10) : une écriture qui porterait un nom ou un
-  identifiant lève, le texte libre d'un modèle y entre nettoyé.
-  `src/chantier/claude.ts` lance le binaire `claude -p`
-  (préflight, ligne de commande, délai mural, JSON lu par un schéma) ; la
-  conversation sous l'abonnement s'en sert isolée (`--setting-sources ""`),
-  le chantier avec les réglages de l'arbre seulement
-  (`--setting-sources project` : ni les hooks ni le `CLAUDE.md` de
-  l'utilisateur). Le chantier (`PLAN-RONDE.md` § 6, `PLAN-GENERAL.md` G1,
-  G2, `PLAN-LIVRAISON.md` L2, L3), à l'agence : `mission.ts` (la mission
-  d'un geste commandé : écrite par le code à la commande depuis le journal,
-  sans nom, relue entière contre les noms avant d'être écrite,
-  `missions/<date>/<id>.yaml` chez le client ; la décision en code, retirée
-  ou geste déjà codé ; ce qui part au modèle, par types ; le statut
-  `<id>.statut.yaml` que le chantier rend, lu par un schéma strict ; l'état
-  d'une commande pour l'interface), `arbre.ts` (le dépôt de l'agence comme
-  base, `origin/main` frais, un `git worktree` par mission depuis
-  `origin/main`, un arbre détaché pour la fusion, le commit ; sur la base,
-  seulement `fetch`, `worktree`, `rev-parse` : l'arbre d'un humain et son
-  `main` ne bougent pas ; jamais merge ni push), `garde.ts` (le diff depuis
-  `origin/main` dans la bande, la mémoire en ajout seul aux conventions,
-  aucun test retiré ni tu, `lignes_max`, les cas de traduction des gestes
-  nouveaux), `fusion.ts` (les huit conditions de G1, `git merge --no-ff`
-  du commit que la garde a vu, jamais la pointe de la branche, dans un
-  arbre détaché sur `origin/main`, l'étiquette, le push atomique sur
-  `main` du distant, une reprise si le push est refusé, la mémoire commise à
-  part ; le retrait par `git revert -m 1`, de même ; une version signée
-  après chaque fusion et chaque retrait, poussée avec eux, et `versionner` ;
-  le seul module qui fusionne ou pousse), `chantier.ts` (plan → implémentation → garde → `pnpm
-  check` → relecture → une reprise au plus → honnêteté → dossier → mémoire →
-  fusion → statut ; aucun dossier client lu : les noms contrôlés sont ceux
-  du client fictif du métier).
-  `src/livraison/` (`PLAN-LIVRAISON.md` L1, L4 à L9) : `version.ts` (les
-  étiquettes `v<AAAA-MM-JJ>-<n>`, signées SSH, vérifiées contre
-  `signataires` : nom, signature, lignée), `config.ts` (`livraison.yaml`),
-  `missions.ts` (la file git d'un client : la mission marquée puis poussée,
-  les statuts tirés, une ligne `chantier` par statut nouveau ; à l'agence,
-  les files tirées, le statut public poussé, le registre de la borne du
-  jour ; aucun lien suivi), `agence.ts` (un tour de `pnpm agence`, et
-  `retirerMission`), `mise-a-jour.ts` (chez le client : la version préparée
-  à côté, le plancher, les marqueurs du lanceur écrits au journal, le
-  moment calme), `harnais.ts` (le lanceur : bascule, sonde, retour
-  arrière ; `retirer` à la main), `verrou.ts` (le verrou à pid de l'agence
-  et de l'installation).
-  `src/evals/` : les contrôles binaires des évals (aucun juge LLM), lancées
-  par `pnpm evals` sur les cas écrits à la main dans `metiers/<métier>/evals/`
-  (le métier du `--client`) ; `traduction.ts` joue les cas sur des copies fraîches.
-- `interface/` — l'interface, pour la démo (`@harnais/interface`,
-  `PLAN-ESPACES.md` § 10) : `src/app.ts` (Hono : la page et ses routes JSON,
-  chaque route passe la porte avant d'ouvrir le dossier), `src/serveur.ts`
-  (`pnpm interface`, sur 127.0.0.1 seulement ; chez un client livré, le
-  rattrapage à part, les marqueurs du lanceur au journal, la sortie au
-  calme), `src/harnais.ts` (`pnpm harnais`, le lanceur), `public/` (HTML, CSS et
-  JavaScript sans framework, la charte de `presentation/`). Elle ne dépend
-  d'aucun métier : le métier se charge depuis `config.yaml: metier`
-  (`moteur/src/cli/metier.ts`, comme toutes les CLI), et ce qu'elle montre
-  du métier (demandes en cours, lignes en attente, nom de qui parle,
-  suggestions et phrases) vient de `MetierConversation.tableau`, les règles
-  de `registre` (`PLAN-METIER-2.md` M10) ; `/api/roles` (les rôles déclarés,
-  pour le sélecteur « Je suis »), `/api/entree` (sous qui la page s'ouvre :
-  le rôle sans identifiant, sinon la première personne du registre dont le
-  rôle administre ; l'agence web s'ouvre sous M-01), `/api/tableau` (le nom
-  et les textes de qui parle, ouverts à tout rôle passé par la porte) et
-  `/api/version` (au patron : la version installée, son fichier `VERSION`,
-  et le jour de sa mise à jour ; rien hors d'une installation). Cinq onglets
-  (à valider, règles, délégations proposées, gestes, journal), réservés à la
-  capacité `administre` (le patron, pour la sécurité), et
-  la conversation toujours visible ; l'identité est choisie dans le registre
-  d'accès, pas authentifiée, et la page le dit. « Gestes » (« Ce que l'outil
-  ne sait pas encore faire ») montre les **demandes sans geste** (`/api/sans-geste` : les `consigne`/`nouvelle` du
-  journal groupées par intention, les plus fréquentes d'abord, avec leurs
-  derniers résumés) ; « Créer ce geste » les commande
-  (`/api/sans-geste/commander`, aucun modèle) : le code écrit la mission
-  `geste_code` chez le client (`missions/<date>/<intention>.yaml`, depuis les
-  consignes version modèle des échappées de l'intention, sans nom), puis une
-  ligne `geste commandé`, puis, si le client est livré (`livraison.yaml`), la
-  marque « à pousser » ; le chantier, à l'agence, code le geste sous ses
-  portes (`pnpm agence`). Les statuts des chantiers donnent une ligne
-  `chantier` au journal par statut nouveau, et le dossier, s'il est là,
-  est copié dans `chantiers/<id>.md`. Un client non livré : ils se lisent à
-  chaque ouverture de l'onglet, dans ses `missions/`, sans git. Un client
-  livré : l'interface ne lance aucun git (une file injoignable la
-  gèlerait) ; l'ouverture de l'onglet et la commande déclenchent le
-  rattrapage à part (`pnpm mise-a-jour`, seul à écrire ces lignes), qui
-  pousse la mission marquée et tire les statuts ; la carte suit au
-  rafraîchissement. La carte dit : en attente de l'agence, en attente du
-  lendemain (la borne du jour), chantier en cours, fusionné (v…) et mise à
-  jour en préparation, puis disponible quand le métier chargé porte le
-  geste ; un autre statut se dit tel quel (`PLAN-LIVRAISON.md` L7). « par »
-  est l'identité vérifiée, jamais un champ du corps.
-- `metiers/<métier>/` — la couche métier d'un secteur :
-  - `fiche.md`, remplie selon la grille : fait foi. Quand le métier a un
-    registre, ses tables 1 (interdits), 2 (tests) et 4 (escalades) sont
-    **générées** : on les modifie dans le registre, jamais dans la fiche ;
-  - `regles.yaml` (interdits, escalades, avec leurs paramètres et leurs
-    lectures) et `scenarios/T-xx.yaml` (un test par fichier, avec ses
-    données rejouables) : le registre, source de ces trois tables et des
-    contrôles du moteur. La sécurité privée et l'agence web en ont un ;
-  - `code/` : le paquet du métier (`@harnais/securite-privee`) — le modèle
-    canonique (`modele.ts`), les notions (`semantique.ts`), un contrôle par
-    interdit codé (`controles.ts` : I-01 à I-05, I-20 ; I-05 en partie), les
-    échéances d'I-17 (`echeances.ts`), le connecteur CSV « format agence »
-    (`connecteurs/`, lecture et écriture du planning), la config et la
-    description pour Veiller (`veille.ts`), le remplacement validé par le
-    patron et la délégation (`remplacement.ts`, `cli/remplacer.ts`) et le
-    rejeu des scénarios (`cas.ts`). `registre:verifier` l'importe et
-    vérifie que code, registre et scénarios concordent ;
-    l'agence web a le sien (`@harnais/agence-web`, `PLAN-METIER-2.md` § 7) :
-    modèle des vingt exports, connecteur CSV en lecture seule, générateur
-    déterministe du client fictif (`cli/fictif.ts`), neuf contrôles et deux
-    veilles (I-01 à I-04, I-07, I-09 à I-14), ses échéances, ses écarts
-    (consommé / vendu par forfait et par lot, heures TMA du mois, facturé
-    contre vendu : `semantique.ts`) et deux sections du rapport (« Écarts »,
-    « À suivre, hors des règles vérifiées »), la copie par capacité et ses
-    huit gestes (`actions.ts`), ses évals (`metiers/agence-web/evals/`, 96
-    consignes, 24 échappées) ; rien ne s'écrit chez le
-    client ;
-  - `recherche-AAAA-MM-JJ.md` (et `verification-…` quand elle existe) :
-    instantanés datés, d'où viennent les lignes `texte` ;
-  - trois vues pour le terrain, qui en dérivent : `prospection.md` (l'appel
-    et le premier rendez-vous), `entretien.md` (le dirigeant, pour le devis),
-    `observation.md` (la journée sur place, avec ses branches).
+Un dossier, une ligne. Les mots sont dans `GLOSSAIRE.md`, les décisions dans
+`REFLEXIONS.md`, l'état dans `HANDOFF.md`.
 
-  Les quatre métiers des pages du site :
-  - `securite-privee/` — première cible (NAF 80.10Z), 2026-09-29 ; la seule
-    fiche dont des lignes sont relues à la source (`texte` ✓,
-    `verification-2026-09-29.md`) ;
-  - `transport-logistique/` — cible : le commissionnaire-affréteur (52.29B),
-    puis le transporteur routier ;
-  - `bureaux-etudes/` — bureaux d'études et laboratoires (71.12B, 71.20B) ;
-    AFNOR s'oppose à ce qu'une IA lise ses normes ;
-  - `avocats-affaires/` — prescripteurs et démonstration d'Attendu, pas une
-    cible d'appels (arbitrage du 2026-09-22).
-
-  Et le second métier codé, pour prouver que le moteur est agnostique
-  (`PLAN-METIER-2.md`) : `agence-web/` — une agence web fictive (dirigeant,
-  commerciale, PO, graphiste, deux développeurs), son entretien simulé et
-  confirmé, sa fiche, son registre et ses scénarios.
-- `presentation/` — la page « Schéma du harnais » (2026-10-05) : le
-  fonctionnement complet du moteur tel que décidé dans `REFLEXIONS.md`, pour
-  la mini-conférence et pour validation avant le plan ; `harness-figure.js`
-  est le port autonome de la figure animée du site (`smart-tailor`), à
-  régénérer depuis la fiche quand la piste G sera faite. Publiée sur
-  claude.ai (lien dans la conversation du 2026-10-05). Le mini-site « Le
-  harnais en clair » (trois pages pour un lecteur non technique : le projet,
-  la démo, parler à l'outil) est un autre artefact claude.ai, dont les
-  sources ne sont pas versionnées : lien dans `HANDOFF.md`. `glossaire.mjs`
-  (2026-10-16) génère depuis `GLOSSAIRE.md` la page
-  https://smarttailor.fr/glossaire (`noindex`), à régénérer d'un bloc quand
-  le glossaire change, puis déployer le site (`../smart-tailor`). Sur la page
-  publique, l'entrée « Bac à sable » est réécrite sans le détail de la
-  faiblesse ouverte.
-- `exemples/client-fictif/` — une entreprise de sécurité fictive (13 agents,
-  19 vacations, des erreurs posées exprès), sa config, son registre d'accès
-  (`personnes.yaml` : le patron et les 13 agents) et `attendu.yaml`, la
-  liste écrite à la main de ce que la veille doit trouver ; un test la
-  compare au résultat. Sert aux démonstrations : jamais de données réelles
-  ici.
-- `exemples/agence-web-fictive/` — l'agence web fictive : les vingt CSV que
-  rend son générateur (graine fixe, date de référence 2026-10-12, dix erreurs
-  posées), sa config et son registre d'accès (six personnes, cinq rôles).
-- `clients/` — les notes d'entretien, une par client, et `index.md`, la table
-  des lettres (client A, client B) sous lesquelles les fiches les citent.
-  Ignoré par git (voir `.gitignore`) : ce que dit un client chez lui ne part
-  nulle part.
-- `.claude/skills/entretien-metier/` — le skill qui prépare l'entretien, puis
-  fait de la transcription des règles à faire valider par le client, chacune
-  citée mot à mot ; `scripts/verifier_citations.py` contrôle que chaque
-  citation existe dans la transcription. Actif quand Claude Code est lancé
-  depuis ce dossier.
-
-## Commandes
-
-Node 22.12 ou plus, pnpm 10.32.1 (épinglé dans `package.json`).
-
-```sh
-pnpm install
-pnpm check               # Biome, types, tests, cohérence des registres
-pnpm registre:generer    # réécrit les tables 1, 2, 4 des fiches depuis leur registre
-pnpm registre:verifier   # identifiants, couverture interdit ↔ test, codes cités par les vues, fiche à jour
-pnpm veiller --client exemples/client-fictif --date 2026-10-06 [--sortie rapport.md]
-                         # la veille d'un client : planning contrôlé, échéances, rapport ; écrit dans son journal
-pnpm veiller --client <copie de exemples/agence-web-fictive> --date 2026-10-12
-                         # la même veille chez l'agence web (constats « à décider », échéances,
-                         # puis les sections « Écarts » et « À suivre, hors des règles vérifiées »)
-pnpm --filter @harnais/agence-web fictif --vers <dossier>
-                         # régénère les CSV du client fictif de l'agence web (refuse exemples/client-fictif)
-pnpm rapport:html rapport.md rapport.html [--bandeau "texte"]
-                         # le rapport mis en page (A4), à imprimer en PDF depuis un navigateur
-pnpm remplacer absence --client <copie> --agent A-11 --jour 2026-10-11 --maintenant 2026-10-10T21:40
-pnpm remplacer valider --client <copie> --demande D-V-17 [--agent A-1]
-pnpm remplacer reponse --client <copie> --demande D-V-17 --oui | --non
-pnpm remplacer suivre  --client <copie> --demande D-V-17
-                         # un remplacement : proposition, validation du patron, accord de
-                         # l'agent, écriture du planning ; sur une COPIE du client fictif ; un
-                         # script du métier (pnpm --filter @harnais/securite-privee remplacer),
-                         # lancé depuis la racine : les chemins relatifs restent ceux de la racine
-pnpm parler --client <copie> --role <rôle du métier> [--personne A-2] [--maintenant 2026-10-10T21:40] [--modele simule]
-            --consigne "Aïcha ne vient pas demain" [--conversation <C-…>]
-            | --confirmer <empreinte> --conversation <C-…> --oui|--non
-            | --interactif
-                         # parler à l'outil : la consigne devient un geste de la liste, ou « je ne
-                         # sais pas » ; ce qui écrit attend un « oui ». Exige la clé que nomme la
-                         # config, sauf --modele simule (aucun appel). Sur une COPIE du client fictif
-                         # Le modèle et sa clé viennent de la config (`conversation.modele`) :
-                         # sans `acces`, l'API d'Anthropic et ANTHROPIC_API_KEY ; avec `acces`, un
-                         # autre point d'accès au même format et la variable qu'il nomme, ou
-                         # `{ binaire: claude }`, l'abonnement par le binaire (ANTHROPIC_API_KEY
-                         # absente, coût estimé). Les clients fictifs désignent Sonnet 5.5 par
-                         # l'abonnement, la référence depuis le 2026-10-14 (GLM-5.3 chez GMI
-                         # Cloud avant)
-pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
-                         # les évals de la conversation (cas dans
-                         # metiers/<métier du --client>/evals/,
-                         # copie fraîche par cas) : traduire et echappee appellent le vrai
-                         # modèle (≈ 0,3 $ équivalent les deux passes) ; chaque cas a
-                         # sa colonne « fuite » : les noms du client (m.noms) partis au modèle,
-                         # comptés en code (la consigne telle qu'écrite permise à la traduction),
-                         # seuil 0 (PLAN-PSEUDONYMES.md § 7) ;
-                         # traces dans evals/traces/<horodatage>-<métier>-<quoi>/ (non versionné),
-                         # tableau dans evals/resultats/<horodatage>-<métier>-<quoi>.md
-pnpm chantier --mission <copie>/missions/2026-10-10/<id>.yaml [--sortie <dossier>] [--sans-modele] [--refaire]
-                         # le chantier d'une mission commandée (PLAN-RONDE.md § 6,
-                         # PLAN-LIVRAISON.md L2, L3), à l'agence : décidé en code (retirée,
-                         # geste déjà codé : aucun appel), puis, dans un arbre de travail de
-                         # ce dépôt parti d'origin/main (.claude/worktrees/chantier-<id> ; ni
-                         # l'arbre de qui lance ni son main ne bougent), Fable planifie, Opus
-                         # code dans la bande métier, le code garde le diff et rejoue pnpm check,
-                         # Fable relit (une reprise au plus sur un bloquant), le code mesure
-                         # l'honnêteté (trois cas par geste nouveau, pnpm evals traduire avec le
-                         # modèle du quotidien : exige sa clé) ; la mémoire, et, si les huit
-                         # conditions de G1 sont vertes, fusion --no-ff du commit que la garde a
-                         # vu (pas la pointe de la branche : un commit posé après la garde, ou un
-                         # arbre qui a changé avant les évals, refuse) dans un arbre détaché +
-                         # étiquette chantier/<id> + version signée v<AAAA-MM-JJ>-<n> + push
-                         # atomique sur main du distant. Le dossier <id>.chantier.md et le statut
-                         # <id>.statut.yaml vont dans --sortie (par défaut, à côté de la mission).
-                         # Une mission de la file d'un client, à l'agence (pnpm agence, ou une
-                         # reprise à la main : --refaire sur .claude/missions/<slug>/<date>/<id>.yaml) :
-                         # sa sortie est à l'agence (.claude/missions/_chantiers/), sans --sortie,
-                         # et la file ne reçoit que le statut public. Le métier est celui de la mission ; les
-                         # noms contrôlés, ceux de son client fictif (evals_clients). Déjà
-                         # tentée : rien, sauf --refaire (qui rouvre la branche telle quelle :
-                         # pour repartir d'origin/main, supprimer la branche chantier/<id>).
-                         # --sans-modele : la décision et ce que le plan recevrait, aucun appel
-                         # ni git.
-pnpm chantier retirer <id> --motif "<texte>"
-                         # G2 : git revert -m 1 de la fusion dans un arbre détaché sur
-                         # origin/main, sa version signée, push sur main du distant, la mémoire
-                         # (motif, et le client, le titre et les intentions que garde la mémoire
-                         # de la fusion : jamais refaite, même sous un autre nom), puis le statut
-                         # « retiré » et sa version dans la file du client qui l'avait commandée
-                         # (une file injoignable : le statut attend dans son clone, le prochain
-                         # tour de pnpm agence le pousse). Le motif, nettoyé des noms des clients
-                         # fictifs, est le même dans le commit (que tous les clients tirent avec
-                         # la version), la mémoire et le statut.
-pnpm agence [--une-fois] # l'agence prend les missions de ses clients (PLAN-LIVRAISON.md L1) :
-                         # une boucle (agence.yaml: agence.intervalle_secondes) sous un verrou
-                         # (.claude/missions/agence.lock) ; à chaque tour, la file git de chaque
-                         # client (agence.clients : slug, métier, adresse de missions-<slug>)
-                         # tirée dans .claude/missions/<slug>/ (aucun lien suivi), la mission à
-                         # prendre (le client qui a eu le moins de chantiers aujourd'hui, puis
-                         # la plus ancienne ; une mission d'un autre métier que son client :
-                         # écartée), au plus chantiers_max_par_jour chantiers par jour, comptés
-                         # au registre de l'agence (.claude/missions/chantiers.log ; au-delà :
-                         # « en attente », demain) ; préflight (binaire connecté, clé de
-                         # signature, origin joignable : sinon rien n'est écrit, la mission
-                         # attend le tour suivant), statut « en cours », le chantier ; son dossier
-                         # et son statut complets restent à l'agence
-                         # (.claude/missions/_chantiers/<slug>/<date>/), la file ne reçoit que le
-                         # statut public (le statut, sa version, son coût ; jamais le texte du
-                         # chantier : une sortie de pnpm check, un texte de modèle) ; un push qui
-                         # échoue part au tour suivant, un statut écrit mais pas commis aussi.
-                         # --une-fois : un tour (cron).
-pnpm harnais --client <dossier> [--port 3777] [-- <options de pnpm interface>]
-                         # chez un client livré (PLAN-LIVRAISON.md L9) : le lanceur, lancé depuis
-                         # l'installation (cd <installation>/courant), qui lance pnpm interface
-                         # depuis la version courante (le dossier et le port du lanceur
-                         # l'emportent sur ceux passés après --), bascule sur la version prête
-                         # quand l'interface sort au calme (code 75), la sonde (POST /api/roles,
-                         # trente essais d'une seconde), revient en arrière si elle ne répond pas,
-                         # ou plante trois fois dans les dix minutes qui suivent (en attendant,
-                         # s'il le faut, qu'une préparation rende l'installation) ; trois
-                         # plantages hors de cette fenêtre : arrêt (code 0 : un humain regarde).
-                         # Bascule et retour attendent qu'aucune préparation ne tienne
-                         # l'installation. Il tourne avec le code de la version qui l'a lancé
-                         # jusqu'à son redémarrage à la main. À installer une fois, par exemple
-                         # launchd (macOS) : ProgramArguments = /bin/sh -c "cd
-                         # <installation>/courant && pnpm harnais --client <dossier>",
-                         # KeepAlive = { SuccessfulExit = false } (l'arrêt voulu n'est pas
-                         # relancé) ; systemd : WorkingDirectory=<installation>/courant,
-                         # ExecStart=pnpm harnais --client <dossier>, Restart=on-failure. Ni
-                         # launchd ni systemd ne lisent le PATH d'un shell : celui où sont node et
-                         # pnpm se donne (EnvironmentVariables, Environment=PATH=…), sinon
-                         # pnpm est introuvable (nvm, Homebrew).
-                         # L'interface lancée à la main (pnpm interface) d'un client livré ne
-                         # sort jamais pour une bascule : seule celle que le lanceur a lancée.
-                         # Ce que le client voit : l'onglet « Gestes » dit « Version v…, mise à
-                         # jour le … » et, pour chaque commande, en attente de l'agence →
-                         # chantier en cours → fusionné (v…), mise à jour en préparation →
-                         # disponible ; le journal dit « mise à jour : faite | refusée |
-                         # retour arrière ».
-pnpm mise-a-jour [retirer] --client <dossier>
-                         # une fois, à la main (l'interface d'un client livré le lance d'elle-
-                         # même, dans un processus à part : à son démarrage, toutes les
-                         # intervalle_minutes, à l'ouverture de l'onglet « Gestes » et après une
-                         # commande) : les missions marquées poussées et les statuts tirés de la
-                         # file, puis la prochaine version préparée à côté (signature de
-                         # l'agence vérifiée contre <dossier>/signataires, lignée, pnpm check
-                         # rejoué dans son arbre) ; la première fois, elle devient la courante.
-                         # Une version refusée pour de bon (signature, lignée, pnpm check rouge)
-                         # ou revenue en arrière n'est jamais reprise (un pnpm install rouge se
-                         # retente), ni aucune plus ancienne qu'une version signée qui a échoué
-                         # ici (check rouge, retour arrière : un retrait qui échoue ne fait pas
-                         # revenir le geste retiré). retirer : courant ← precedent, à la main
-                         # (refusé si la courante l'est déjà) ; l'interface lancée par le
-                         # lanceur le dit au journal, sort au moment calme suivant, et le
-                         # lanceur la relance sur la précédente.
-pnpm versionner          # une version signée sur origin/main tel quel, pour livrer le moteur
-                         # sans chantier (PLAN-LIVRAISON.md L4) : l'étiquette v<AAAA-MM-JJ>-<n>,
-                         # son message le manifeste en clair, l'étiquette seule poussée. Pas
-                         # « pnpm version » : pnpm en a une à lui, qui masquerait le script.
-                         # Juste après un chantier, origin/main porte la mémoire au-dessus de
-                         # la version du chantier : versionner en poserait une de plus, sans
-                         # code nouveau, que chaque client installerait (une minute d'install
-                         # et de check) ; à lancer quand le moteur a changé.
-                         # La signature, pour pnpm chantier, retirer et versionner :
-                         # AGENCE_CLE_SIGNATURE = le chemin de la clé privée SSH de l'agence,
-                         # hors du dépôt (ssh-keygen -t ed25519 ; OpenSSH 8.2 au moins). Son
-                         # chemin et l'agent SSH ne passent ni au modèle ni à pnpm check
-                         # (envEnfant les retire) ; mais le code que le modèle écrit tourne sous
-                         # le même utilisateur et pourrait lire le fichier : ouvert, voir
-                         # PLAN-LIVRAISON.md, lot 2. Chaque client reçoit avec son dossier un
-                         # fichier `signataires` : « agence <clé publique> » ; chez lui, seule une
-                         # étiquette annotée qui porte son nom, signée SSH par cette clé, est
-                         # admise (verifierEtiquette, livraison/version.ts).
-                         # Sur une COPIE du client fictif
-pnpm interface --client <copie> [--port 3777] [--maintenant 2026-10-10T21:40] [--modele simule [--script <réponses.json>]]
-                         # l'interface (démo) sur http://127.0.0.1:3777 : à valider, règles,
-                         # délégations, gestes (les demandes sans geste, « Créer ce geste »), journal, et la
-                         # conversation. Exige la clé de la config, sauf
-                         # --modele simule (rejoue --script, un tableau de réponses). Sur une COPIE
 ```
+.
+├── README.md              ce fichier : la carte, la structure, comment faire tourner
+├── GLOSSAIRE.md           l'abécédaire : cent entrées, dont la table des commandes, la seule
+├── HANDOFF.md             l'état à la dernière passation, deux pages : à lire en premier
+├── REFLEXIONS.md          le fil des décisions, les pistes, ce qui reste à trancher
+├── GRILLE.md              la grille d'une fiche métier : neuf rubriques, le métier contre le client
+├── PLAN-GENERAL.md        le grand plan (décisions G1 à G11, phases) ; PLAN-LIVRAISON.md : la livraison (L1 à L12)
+├── archives/              les plans exécutés et le journal des « Fait » : lecture historique seulement
+├── agence.yaml            la config de l'agence, sans secret : modèles et prix du chantier, bornes, clients et files, chemins autorisés, client fictif des évals par métier
+├── methode/               ce qui vaut dans deux métiers : socle.md (règles communes, temps, faits communs), archetypes.md (les cinq sortes de travail), architecture-pour-modeles.md (la carte que lisent les modèles d'un chantier), chantier.md (où un chantier écrit, ce qu'est un geste), les audits datés
+├── memoire/               la mémoire des chantiers, écrite par le code, tirée par tous les clients : INDEX.md, chantiers/, CONVENTIONS.md, MESURES.md (à la main) ; un test relit qu'aucun nom n'y entre
+├── moteur/src/            le code commun, @harnais/moteur ; il n'importe aucun métier
+│   ├── regles/            le registre d'un métier : schéma, chargement, cohérence, tables de la fiche, verdicts plafonnés par le statut de la règle
+│   ├── controles/         l'exécution des contrôles, fermée en cas d'erreur
+│   ├── temps/             jours fériés, délais et reports, « 45 jours fin de mois », obligations périodiques, validité d'un titre à une date
+│   ├── archetypes/        la veille (échéances, fenêtres, passe, rapport et ses sections métier), les écarts consommé / vendu, les candidats, la veille d'un client
+│   ├── config.ts          la config d'un client, validée au démarrage
+│   ├── journal/           le journal SQLite d'un client, en ajout seul
+│   ├── approbation/       la clé d'accord : pas d'écriture sans la validation de ce contenu exact au journal
+│   ├── personnes/         le registre d'accès (personnes.yaml) et l'identité vérifiée, avant toute ouverture du dossier
+│   ├── modele/            l'accès au modèle derrière une interface à nous : l'API d'Anthropic, l'abonnement par le binaire claude, le simulé des tests, le compteur de coût
+│   ├── conversation/      un tour : la porte, la traduction (une consigne, un geste de la liste), la désignation en code, les rôles et le domaine déclarés par le métier, les noms qui ne partent jamais, l'état
+│   ├── echappee/          le deuxième espace : la copie SQLite masquée, le garde-fou SQL, la boucle bornée, le contrôle des nombres et des noms, les pseudonymes
+│   ├── gestes/            les demandes sans geste et la commande du patron (la mission écrite par le code)
+│   ├── chantier/          la mission, l'arbre de travail, la garde, le chantier, la fusion et le retrait, la mémoire, le binaire claude
+│   ├── livraison/         la version signée, la file d'un client, l'agence, la mise à jour, le lanceur, le verrou
+│   ├── agence/            agence.yaml et son préflight
+│   ├── evals/             les contrôles binaires des évals, sans juge LLM ; la traduction rejouée sur des copies fraîches
+│   └── cli/               une commande par fichier : registre, veiller, parler, evals, chantier, agence, versionner, mise-a-jour, rapport-html, metier (le métier d'un dossier client)
+├── interface/             l'interface web, @harnais/interface : src/app.ts (Hono, chaque route passe la porte), src/serveur.ts (127.0.0.1 seulement), src/harnais.ts (le lanceur), public/ (HTML, CSS, JavaScript sans framework, la charte de presentation/)
+├── metiers/<métier>/      la couche d'un secteur : fiche.md (fait foi ; ses tables 1, 2, 4 sont générées), regles.yaml et scenarios/ (le registre), code/ (le paquet du métier), evals/ (consignes.yaml, echappees.yaml), les instantanés de recherche datés, trois vues pour le terrain (prospection, entretien, observation)
+│   ├── securite-privee/   codé : modèle, notions, contrôles, échéances, connecteur CSV, le remplacement validé par le patron, ses gestes
+│   ├── agence-web/        codé : le second métier, qui prouve que le moteur est agnostique : vingt exports, neuf contrôles, deux veilles, huit gestes, ses évals
+│   └── transport-logistique/, bureaux-etudes/, avocats-affaires/   décrits, pas codés
+├── exemples/              deux clients fictifs, à copier avant tout essai : client-fictif (la sécurité : 13 agents, 19 vacations, des erreurs posées exprès), agence-web-fictive (vingt CSV, graine fixe) ; livraison.yaml commenté
+├── evals/                 resultats/ (les tableaux datés d'une passe), traces/ (non versionnées), erreurs-*.md (les analyses)
+├── presentation/          la page « Schéma du harnais » et glossaire.mjs, qui génère smarttailor.fr/glossaire depuis GLOSSAIRE.md
+├── clients/               les notes d'entretien, ignorées par git : ce que dit un client ne part nulle part
+└── .claude/skills/entretien-metier/   le skill qui prépare l'entretien et transcrit les règles à valider, chaque citation vérifiée
+```
+
+## Faire tourner
+
+Les commandes sont dans `GLOSSAIRE.md`, « Les commandes » : une table, la
+seule, qu'un test de `pnpm check` compare aux scripts de `package.json`.
+Node 22.12 ou plus, pnpm 10.32.1 (épinglé). Ce qui suit est ce que la table
+ne dit pas.
+
+### Au laboratoire
+
+Toujours sur une copie d'un client fictif. Le modèle et son accès viennent
+de la config du client (`conversation.modele`) : sans `acces`, l'API
+d'Anthropic et `ANTHROPIC_API_KEY` ; `{ binaire: claude }`, l'abonnement par
+le binaire (clé absente, coût estimé) ; `--modele simule`, aucun appel. Les
+clients fictifs désignent Sonnet 5.5 par l'abonnement. Les évals écrivent
+leurs traces dans `evals/traces/<horodatage>-<métier>-<quoi>/` et leur
+tableau dans `evals/resultats/` ; chaque cas a sa colonne « fuite », les noms
+du client partis au modèle, comptée en code, seuil 0 ; deux passes dans la
+même minute écrivent au même endroit. La chaîne entière (`agence`,
+`chantier`, `versionner`) se rejoue dans un laboratoire : un dossier
+temporaire, un dépôt nu, une clé jetable, une copie du client fictif
+(recette sous le lot 4 de `PLAN-LIVRAISON.md`). Jamais dans ce dépôt : ces
+commandes poussent sur `origin`.
+
+### À l'agence
+
+`pnpm agence` est une boucle sous verrou. À chaque tour, la file git de
+chaque client est tirée dans `.claude/missions/<slug>/` ; la mission à
+prendre est celle du client qui a eu le moins de chantiers aujourd'hui, puis
+la plus ancienne, au plus `chantiers_max_par_jour` par jour ; une mission
+d'un autre métier que son client est écartée. Préflight (binaire connecté,
+clé de signature, `origin` joignable : sinon rien n'est écrit), statut « en
+cours », puis le chantier : la décision en code (retirée, geste déjà codé :
+aucun appel) ; un arbre de travail de ce dépôt parti d'`origin/main` (ni
+l'arbre de qui lance ni son `main` ne bougent) ; Fable planifie, Opus code
+dans la bande du métier ; la garde ; `pnpm check` rejoué ; Fable relit, une
+reprise au plus ; l'honnêteté (`pnpm evals traduire`, trois cas par geste) ;
+le rejeu (`pnpm evals rejeu`) ; la mémoire ; et, les neuf conditions vertes,
+la fusion `--no-ff` du commit gardé dans un arbre détaché, l'étiquette
+`chantier/<métier>/<id>`, la version signée, le push atomique sur `main` du
+distant. Le dossier et le statut complets restent à l'agence
+(`.claude/missions/_chantiers/<slug>/<date>/`) ; la file reçoit le statut
+public. `pnpm chantier retirer <métier>/<id> --motif` défait une fusion (`git revert
+-m 1`), pose une version, écrit la mémoire et le statut « retiré ». `pnpm
+versionner` pose une version sans chantier : quand le moteur a changé, pas
+juste après un chantier. La signature : `AGENCE_CLE_SIGNATURE` est le chemin
+de la clé privée SSH de l'agence, hors du dépôt (`ssh-keygen -t ed25519`,
+OpenSSH 8.2 au moins) ; son chemin et l'agent SSH ne passent ni au modèle ni
+à `pnpm check`, mais le code que le modèle écrit tourne sous le même
+utilisateur et pourrait lire le fichier : ouvert (`HANDOFF.md`, « avant un
+client réel »).
+
+### Chez un client livré
+
+Le dossier porte `livraison.yaml` et `signataires` ; les clés SSH des deux
+dépôts (une clé de déploiement par client et par sens) sont dans
+`~/.ssh/config`, jamais dans le dépôt ni dans la config. Une seule chose
+s'installe à la main, le lanceur, lancé depuis l'installation : launchd
+(macOS) avec `ProgramArguments = /bin/sh -c "cd <installation>/courant &&
+pnpm harnais --client <dossier>"` et `KeepAlive = { SuccessfulExit = false }`
+(l'arrêt voulu n'est pas relancé) ; systemd avec
+`WorkingDirectory=<installation>/courant`, `ExecStart=pnpm harnais --client
+<dossier>`, `Restart=on-failure`. Ni l'un ni l'autre ne lisent le PATH d'un
+shell : celui où sont node et pnpm se donne, sinon pnpm est introuvable.
+L'interface lance le rattrapage (`pnpm mise-a-jour`) dans un processus à
+part : à son démarrage, toutes les `intervalle_minutes`, à l'ouverture de
+l'onglet « Gestes », après une commande ; il pousse les missions marquées,
+tire les statuts, prépare la version suivante à côté (signature vérifiée
+contre `signataires`, lignée, `pnpm check` rejoué dans son arbre). Une
+version refusée pour de bon, ou revenue en arrière, n'est jamais reprise, ni
+aucune plus ancienne. Quand une version est prête, l'interface sort au
+moment calme (code 75) ; le lanceur bascule, sonde (`POST /api/roles`,
+trente essais d'une seconde), revient en arrière sans réponse ou sur trois
+plantages dans les dix minutes ; trois plantages hors de cette fenêtre :
+arrêt, un humain regarde. `pnpm mise-a-jour retirer` revient à la
+précédente à la main. Ce que le client voit : l'onglet « Gestes » dit
+« Version v…, mise à jour le … » et, pour chaque commande, en attente de
+l'agence, chantier en cours, fusionné (v…), mise à jour en préparation,
+disponible ; le journal dit « mise à jour : faite, refusée, retour arrière ».
 
 ## Le déroulé d'un rendez-vous
 

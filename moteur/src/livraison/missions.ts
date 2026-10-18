@@ -60,7 +60,7 @@ import { FICHIER_LIVRAISON, type Livraison, lireLivraison } from './config'
 export const DOSSIER_FILES = join('.claude', 'missions')
 /** Le verrou de `pnpm agence` (L1), à côté des files : le pid de qui tourne. */
 export const FICHIER_VERROU = 'agence.lock'
-/** Les chantiers que l'agence a lancés, une ligne chacun (`jour`, client, mission) : la borne du jour se compte ici, jamais sur ce qu'un client écrit (L1). */
+/** Les chantiers que l'agence a lancés, une ligne chacun (`jour`, client, clé `<métier>/<id>` de la mission) : la borne du jour se compte ici, jamais sur ce qu'un client écrit (L1). */
 const FICHIER_CHANTIERS = 'chantiers.log'
 /**
  * À l'agence, à côté des files mais hors de leurs clones (jamais poussé) :
@@ -489,10 +489,10 @@ export function aPrendre(
     )
 }
 
-/** Note un chantier lancé par l'agence (L1) : le jour, le client, la mission. */
-export function noterChantier(racine: string, jour: string, slug: string, id: string): void {
+/** Note un chantier lancé par l'agence (L1) : le jour, le client, la clé de la mission. */
+export function noterChantier(racine: string, jour: string, slug: string, cle: string): void {
   mkdirSync(join(racine, DOSSIER_FILES), { recursive: true })
-  appendFileSync(join(racine, DOSSIER_FILES, FICHIER_CHANTIERS), `${jour}\t${slug}\t${id}\n`)
+  appendFileSync(join(racine, DOSSIER_FILES, FICHIER_CHANTIERS), `${jour}\t${slug}\t${cle}\n`)
 }
 
 /** Les chantiers que l'agence a lancés ce jour, en tout et par client : son propre registre, jamais une file. */

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import {
   accueillir,
   aParis,
+  CONTROLE_OK,
   chargerPersonnes,
   copieClient,
   type Designable,
@@ -440,7 +441,11 @@ describe('l’échappée : elle répond, ne propose jamais, et ne voit aucun nom
       ],
       'Qui a accès à la prod de Céramiques Orsini, et Julie Okafor y est encore ?',
     )
-    expect(r).toEqual({ sorte: 'resultat', texte: 'Céramiques Orsini a deux domaines.' })
+    expect(r).toEqual({
+      sorte: 'resultat',
+      texte: 'Céramiques Orsini a deux domaines.',
+      controle: CONTROLE_OK,
+    })
     expect(modele.appels).toHaveLength(9)
     for (const appel of modele.appels.slice(1)) {
       expect(fuites(appel.systeme, noms)).toEqual([])

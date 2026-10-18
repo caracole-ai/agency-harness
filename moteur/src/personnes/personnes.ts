@@ -39,6 +39,11 @@ declare const PORTE: unique symbol
  * Une identité passée par `recevoir` : seule cette fonction en construit une.
  * Ouvrir une session pour quelqu'un, traiter sa consigne, confirmer pour lui,
  * tout l'exige : un point d'entrée qui oublierait la porte ne compile pas.
+ * La marque est un type, rien à l'exécution : une copie par étalement
+ * (`{ ...identite, personne }`) la garde aux yeux du compilateur sans être
+ * passée par la porte. On ne copie donc jamais une identité vérifiée, on la
+ * passe telle quelle ; le risque est accepté (décidé le 2026-10-18), aucun
+ * contrôle à l'exécution ne le double.
  */
 export type IdentiteVerifiee = Identite & { readonly [PORTE]: true }
 
@@ -52,7 +57,7 @@ const borne = (valeur: unknown) => String(valeur).slice(0, 80)
 /**
  * La porte : la forme de l'identité reçue, contre les rôles du métier, puis
  * sa présence au registre d'accès. Ne lit rien d'autre. L'identifiant se lit
- * sous ses deux graphies par `identifiantRecu` (PLAN-METIER-2.md, M2).
+ * par `identifiantRecu` (`personne`, rien d'autre).
  */
 export function recevoir(roles: RoleDeclare[], personnes: Personne[], demandeur: unknown): Accueil {
   const refus = (motif: string): Accueil => ({ sorte: 'refus', motif })

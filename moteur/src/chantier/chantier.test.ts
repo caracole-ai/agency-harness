@@ -58,6 +58,8 @@ const PLAN_VERT: Scenario['plan'] = {
   plan: '- metiers/essai/code/src/simulation.ts\n- trois cas',
 }
 const CLIENT = 'client-essai'
+/** La clé de la mission d'essai dans le dépôt de l'agence : `<métier>/<id>`. */
+const CLE = 'essai/simuler_absence'
 
 const git = (cwd: string, ...args: string[]) =>
   spawnSync('git', args, { cwd, encoding: 'utf8' }).stdout.trim()
@@ -103,16 +105,16 @@ const retirer = (racine: string, commande: Commande = commandeSync) =>
   retirerFusion({
     commande,
     racine,
-    id: 'simuler_absence',
+    cle: CLE,
     motif: 'doublon',
     version: { cle: CLE_ESSAI.privee, jour: '2026-10-12' },
-    ecrireRetrait: (arbre) =>
+    ecrireRetrait: (arbre, cle) =>
       ecrireRetrait(
         arbre,
         {
           date: '2026-10-12',
           client: CLIENT,
-          id: 'simuler_absence',
+          cle,
           titre: MISSION_ESSAI.titre,
           intentions: MISSION_ESSAI.intentions,
           motif: 'doublon',
@@ -131,32 +133,37 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     expect(issue.sorte).toBe('fait')
     if (issue.sorte !== 'fait') return
     expect(issue.issue).toBe('fusionné')
-    // La condition 4 mesure sur le client des évals du métier de la mission (PLAN-METIER-2.md M9).
-    expect(emises.find((x) => x.commande === 'pnpm' && x.args[0] === 'evals')?.args).toEqual([
-      'evals',
-      'traduire',
-      '--client',
-      CLIENT_EVALS_ESSAI,
+    // Les conditions 4 et 5 mesurent sur le client des évals du métier de la mission (PLAN-METIER-2.md M9) :
+    // la traduction, puis le rejeu des gestes nouveaux de la branche.
+    expect(
+      emises.filter((x) => x.commande === 'pnpm' && x.args[0] === 'evals').map((x) => x.args),
+    ).toEqual([
+      ['evals', 'traduire', '--client', CLIENT_EVALS_ESSAI],
+      ['evals', 'rejeu', '--client', CLIENT_EVALS_ESSAI, '--gestes', 'simuler_absence_code'],
     ])
     expect(issue.conditions.map((k) => [k.id, k.ok])).toEqual([
       ['chemins', true],
       ['tests', true],
       ['check', true],
       ['honnetete', true],
+      ['rejeu', true],
       ['relecture', true],
       ['bornes', true],
       ['lignes', true],
       ['memoire', true],
     ])
+    expect(issue.conditions.find((k) => k.id === 'rejeu')?.mesure).toBe(
+      'simuler_absence_code ; pnpm evals rejeu : 3/3 fidèle(s), 0 non mesurable(s)',
+    )
     // Plan, implémentation, relecture : trois appels ; le coût additionné.
     expect(appels().map((a) => a.role)).toEqual(['plan', 'implementation', 'relecture'])
     expect(issue.cout).toBeCloseTo(1.5)
     expect(issue.conditions.find((k) => k.id === 'honnetete')?.mesure).toMatch(/en écart : R-2$/)
     expect(issue.conditions.find((k) => k.id === 'memoire')?.mesure).toBe(
-      'écrite : memoire/chantiers/2026-10-11-simuler_absence.md',
+      'écrite : memoire/chantiers/essai/2026-10-11-simuler_absence.md',
     )
-    // Sur le distant : une fusion (deux parents), étiquetée ; la mémoire est le commit d'après.
-    const fusion = git(depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    // Sur le distant : une fusion (deux parents), étiquetée par la clé de la mission ; la mémoire est le commit d'après.
+    const fusion = git(depots.origine, 'rev-parse', `${refEtiquette(CLE)}^{commit}`)
     expect(git(depots.origine, 'rev-list', '--parents', '-n', '1', fusion).split(' ')).toHaveLength(
       3,
     )
@@ -164,19 +171,17 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     // L'humain : ni sa tête, ni sa branche, ni son main, ni son arbre ; aucun arbre de travail ne reste, la branche reste.
     expect(etatHumain(depots.racine)).toEqual(humain)
     expect(arbresRestants(depots.racine)).toEqual([])
-    expect(git(depots.racine, 'branch', '--list', 'chantier/simuler_absence')).toContain(
-      'chantier/',
-    )
+    expect(git(depots.racine, 'branch', '--list', `chantier/${CLE}`)).toContain('chantier/')
     // La mémoire du distant : l'entrée et sa ligne d'index, le client en slug, sans nom ni identifiant d'échappée.
     const distant = cloneDuDistant(depots.origine)
     expect(lireIndex(distant).at(-1)).toMatchObject({
       client: CLIENT,
       sorte: 'fusion',
-      id: 'simuler_absence',
+      cle: CLE,
       issue: 'fusionné',
     })
     const entree = readFileSync(
-      join(distant, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md'),
+      join(distant, 'memoire', 'chantiers', 'essai', '2026-10-11-simuler_absence.md'),
       'utf8',
     )
     expect(entree).toContain('un geste nouveau a ses trois cas dès sa naissance')
@@ -200,7 +205,7 @@ describe('G1 : huit conditions vertes, la fusion', () => {
       undefined,
     )
     expect(git(depots.origine, 'cat-file', 'tag', 'v2026-10-11-1')).toContain(
-      `sorte: chantier\nchantier: simuler_absence\nclient: ${CLIENT}\ngeste: simuler_absence (ajouté)\ncommit: ${fusion}`,
+      `sorte: chantier\nchantier: ${CLE}\nclient: ${CLIENT}\ngeste: simuler_absence (ajouté)\ncommit: ${fusion}`,
     )
     // La clé n'est jamais dans l'environnement d'un modèle, ni du code qu'il a écrit (§ 0.4).
     expect(appels().map((a) => a.cle)).toEqual([false, false, false])
@@ -219,7 +224,7 @@ describe('G1 : huit conditions vertes, la fusion', () => {
       for (const personnes of fictives) expect(fuites(a.entree, personnes)).toEqual([])
       expect(a.args[a.args.indexOf('--setting-sources') + 1]).toBe('project')
       expect(a.args[a.args.indexOf('--permission-mode') + 1]).toBe('dontAsk')
-      expect(a.cwd).toMatch(/chantier-simuler_absence$/)
+      expect(a.cwd).toMatch(/chantier-essai-simuler_absence$/)
     }
     const [plan, impl, relecture] = appels()
     // Les cas de traduction s'écrivent dans les consignes du métier de la mission (PLAN-METIER-2.md M8).
@@ -246,7 +251,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
     expect(statut(r.sortie)?.version).toBeUndefined()
     expect(lireIndex(cloneDuDistant(r.depots.origine)).at(-1)).toMatchObject({
       sorte: 'refus',
-      id: 'simuler_absence',
+      cle: CLE,
     })
     expect(etatHumain(r.depots.racine)).toEqual(r.humain)
     expect(statut(r.sortie)).toMatchObject({ statut: 'refusé', issue: r.issue.issue })
@@ -267,9 +272,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
       },
       'chemins',
     )
-    expect(git(r.depots.racine, 'branch', '--list', 'chantier/simuler_absence')).toContain(
-      'chantier/',
-    )
+    expect(git(r.depots.racine, 'branch', '--list', `chantier/${CLE}`)).toContain('chantier/')
     // Pas de relecture d'un diff hors bande : rien n'est dépensé de plus.
     expect(r.appels().map((a) => a.role)).toEqual(['plan', 'implementation'])
   })
@@ -368,6 +371,69 @@ describe('G1 : une condition rouge, aucun merge', () => {
     )
   })
 
+  it('5. le rejeu en écart (le geste ne rend pas un nombre que l’échappée cite) : refusé, les cas nommés', async () => {
+    const r = await refuse(
+      {
+        pnpm: {
+          rejeu: {
+            sortie:
+              'S-1 : ok\nS-2 : écart (nombres de l’échappée absents du geste : 24)\nS-3 : ok\n\nrejeu : 2/3 fidèle(s), 0 non mesurable(s), coût 0.0300 $\nEn écart',
+            code: 1,
+          },
+        },
+      },
+      'rejeu',
+    )
+    expect(r.issue.sorte === 'fait' && r.issue.conditions.find((k) => k.id === 'rejeu')).toEqual({
+      id: 'rejeu',
+      ok: false,
+      mesure:
+        'simuler_absence_code ; pnpm evals rejeu : 2/3 fidèle(s), 0 non mesurable(s) ; en écart : S-2',
+    })
+    // La traduction a été mesurée avant, le rejeu après ; la relecture a eu lieu : le refus vient du seul rejeu.
+    expect(r.appels().map((a) => a.role)).toEqual(['plan', 'implementation', 'relecture'])
+  })
+
+  it('5. le rejeu sans compte (pnpm evals rejeu en panne) : refusé', async () => {
+    await refuse({ pnpm: { rejeu: { sortie: 'boum', code: 1 } } }, 'rejeu')
+  })
+
+  it('5. aucun cas mesurable (l’échappée abandonne ou propose) : vert, et la mesure le dit', async () => {
+    const { issue } = await lancer({
+      pnpm: {
+        rejeu: {
+          sortie:
+            'S-1 : non mesurable : l’échappée a abandonné\n\nrejeu : 0/0 fidèle(s), 3 non mesurable(s), coût 0.0000 $\nFidèle.',
+          code: 0,
+        },
+      },
+    })
+    expect(issue.sorte === 'fait' && issue.issue).toBe('fusionné')
+    expect(issue.sorte === 'fait' && issue.conditions.find((k) => k.id === 'rejeu')).toEqual({
+      id: 'rejeu',
+      ok: true,
+      mesure: 'simuler_absence_code ; pnpm evals rejeu : 0/0 fidèle(s), 3 non mesurable(s)',
+    })
+  })
+
+  it('5. la traduction sous le seuil : le rejeu n’est pas lancé', async () => {
+    const r = await refuse(
+      {
+        pnpm: {
+          evals: {
+            sortie: '\n50/62 (81 %, seuil 95 %), fuite 0 cas (seuil 0), coût 0.1 $\nSous le seuil',
+            code: 1,
+          },
+        },
+      },
+      'honnetete',
+    )
+    expect(r.emises.some((x) => x.commande === 'pnpm' && x.args[1] === 'rejeu')).toBe(false)
+    expect(
+      r.issue.sorte === 'fait' && r.issue.conditions.find((k) => k.id === 'rejeu')?.mesure,
+    ).toBe('non mesuré (une condition précédente est rouge)')
+  })
+
   it('5. un bloquant à la relecture : une reprise, pas deux ; encore un bloquant, refusé', async () => {
     const bloquant = {
       constats: [
@@ -431,18 +497,27 @@ describe('G1 : une condition rouge, aucun merge', () => {
 
   it('8. une entrée de mémoire qui porterait un nom : refusé, rien de fusionné, l’entrée à moitié écrite ne part pas', () => {
     const depots = creerDepots()
-    git(depots.racine, 'branch', 'chantier/x')
+    git(depots.racine, 'branch', 'chantier/essai/x')
     const humain = etatHumain(depots.racine)
     const verte = (id: IdCondition): Condition => ({ id, ok: true, mesure: 'vert' })
     let essais = 0
     const r = conclure({
       commande: commandeSync,
       racine: depots.racine,
-      id: 'x',
+      cle: 'essai/x',
       titre: 'x',
-      commit: git(depots.racine, 'rev-parse', 'chantier/x'),
+      commit: git(depots.racine, 'rev-parse', 'chantier/essai/x'),
       conditions: (
-        ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+        [
+          'chemins',
+          'tests',
+          'check',
+          'honnetete',
+          'rejeu',
+          'relecture',
+          'bornes',
+          'lignes',
+        ] as const
       ).map(verte),
       personnes: PERSONNES_ESSAI,
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
@@ -453,7 +528,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
           {
             date: '2026-10-11',
             client: 'c',
-            id: `x-${sorte}`,
+            cle: `essai/x_${sorte}`,
             titre: 'x',
             intentions: [],
             motif: 'm',
@@ -468,7 +543,7 @@ describe('G1 : une condition rouge, aucun merge', () => {
     expect(r.sorte === 'refuse' && r.rouges.map((k) => k.id)).toEqual(['memoire'])
     expect(essais).toBe(2)
     expect(git(depots.origine, 'log', '--merges', '--oneline', 'main')).toBe('')
-    expect(lireIndex(cloneDuDistant(depots.origine)).map((e) => e.id)).toEqual(['x-refus'])
+    expect(lireIndex(cloneDuDistant(depots.origine)).map((e) => e.cle)).toEqual(['essai/x_refus'])
     expect(etatHumain(depots.racine)).toEqual(humain)
   })
 })
@@ -489,14 +564,15 @@ describe('G2 : le retrait défait la fusion', () => {
       undefined,
     )
     expect(git(depots.origine, 'cat-file', 'tag', 'v2026-10-12-1')).toContain(
-      `sorte: retrait\nchantier: simuler_absence\nclient: ${CLIENT}\ngeste: simuler_absence (retiré)`,
+      `sorte: retrait\nchantier: ${CLE}\nclient: ${CLIENT}\ngeste: simuler_absence (retiré)`,
     )
+    expect(r.cle).toBe(CLE)
     // La mémoire de la fusion reste ; le retrait s'ajoute, intentions comprises.
-    expect(existsSync(join(distant, 'memoire', 'chantiers', '2026-10-11-simuler_absence.md'))).toBe(
-      true,
-    )
+    expect(
+      existsSync(join(distant, 'memoire', 'chantiers', 'essai', '2026-10-11-simuler_absence.md')),
+    ).toBe(true)
     expect(missionsRetirees(distant)).toEqual([
-      { id: 'simuler_absence', intentions: ['simuler_absence'] },
+      { cle: CLE, metier: 'essai', id: 'simuler_absence', intentions: ['simuler_absence'] },
     ])
     expect(() => retirer(depots.racine)).toThrow(/déjà retirée/)
     expect(etatHumain(depots.racine)).toEqual(humain)
@@ -519,7 +595,7 @@ describe('G2 : le retrait défait la fusion', () => {
     expect(lireStatut(join(e.sortie, 'simuler_absence_bis.statut.yaml'))?.statut).toBe('écartée')
     expect(e.appels().filter((a) => a.role === 'plan')).toHaveLength(1)
     // Écartée avant que la branche existe : rien ne reste, et la relancer l'écarte encore.
-    expect(git(e.depots.racine, 'branch', '--list', 'chantier/simuler_absence_bis')).toBe('')
+    expect(git(e.depots.racine, 'branch', '--list', 'chantier/essai/simuler_absence_bis')).toBe('')
     expect(arbresRestants(e.depots.racine)).toEqual([])
     expect((await faireChantier(METIER_ESSAI, { ...e.options, mission: bis.fichier })).sorte).toBe(
       'decision',
@@ -548,18 +624,18 @@ describe('G2 : le retrait défait la fusion', () => {
 
 describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
   const vertes = (
-    ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+    ['chemins', 'tests', 'check', 'honnetete', 'rejeu', 'relecture', 'bornes', 'lignes'] as const
   ).map((id): Condition => ({ id, ok: true, mesure: 'vert' }))
   const entree =
-    (id: string) =>
+    (cle: string) =>
     (arbre: string, sorte: 'fusion' | 'refus', issue: string): string =>
       ecrireChantier(
         arbre,
         {
           date: '2026-10-11',
           client: CLIENT,
-          id,
-          titre: id,
+          cle,
+          titre: cle,
           sections: [],
           appris: '',
           sorte,
@@ -571,7 +647,7 @@ describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
   it('en conflit avec origin/main : échoué, ni fusion ni étiquette ni mémoire poussées, rien ne reste', () => {
     const depots = creerDepots()
     const fichier = 'metiers/essai/code/src/actions.ts'
-    git(depots.racine, 'checkout', '-q', '-b', 'chantier/x')
+    git(depots.racine, 'checkout', '-q', '-b', 'chantier/essai/x')
     spawnSync('sh', ['-c', `echo "export const A = 1" > ${fichier}`], { cwd: depots.racine })
     git(depots.racine, 'commit', '-q', '-am', 'x')
     git(depots.racine, 'checkout', '-q', 'main')
@@ -590,13 +666,13 @@ describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
     const r = conclure({
       commande: commandeSync,
       racine: depots.racine,
-      id: 'x',
+      cle: 'essai/x',
       titre: 'x',
-      commit: git(depots.racine, 'rev-parse', 'chantier/x'),
+      commit: git(depots.racine, 'rev-parse', 'chantier/essai/x'),
       conditions: vertes,
       personnes: PERSONNES_ESSAI,
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
-      ecrireEntree: entree('x'),
+      ecrireEntree: entree('essai/x'),
     })
     expect(r.sorte === 'echec' && r.raison).toMatch(/^fusion impossible/)
     expect(git(depots.origine, 'rev-parse', 'main')).toBe(tete)
@@ -609,25 +685,25 @@ describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
   it('déjà sur origin/main (la réponse d’un push perdue) : fusionné, la même fusion, rien de plus poussé ; les étiquettes reviennent du distant', async () => {
     const e = await lancer()
     const tete = git(e.depots.origine, 'rev-parse', 'main')
-    const fusion = git(e.depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    const fusion = git(e.depots.origine, 'rev-parse', `${refEtiquette(CLE)}^{commit}`)
     // La réponse perdue : rien n'est connu ici que le distant ne dise (ni l'étiquette du chantier ni la version).
-    git(e.depots.racine, 'tag', '-d', 'chantier/simuler_absence', 'v2026-10-11-1')
+    git(e.depots.racine, 'tag', '-d', `chantier/${CLE}`, 'v2026-10-11-1')
     const r = conclure({
       commande: commandeSync,
       racine: e.depots.racine,
-      id: 'simuler_absence',
+      cle: CLE,
       titre: 'x',
-      commit: git(e.depots.racine, 'rev-parse', 'chantier/simuler_absence'),
+      commit: git(e.depots.racine, 'rev-parse', `chantier/${CLE}`),
       conditions: vertes,
       personnes: PERSONNES_ESSAI,
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
-      ecrireEntree: entree('simuler_absence'),
+      ecrireEntree: entree(CLE),
     })
     expect(r).toEqual({
       sorte: 'fusionne',
       fusion,
       version: 'v2026-10-11-1',
-      memoire: 'memoire/chantiers/2026-10-11-simuler_absence.md',
+      memoire: 'memoire/chantiers/essai/2026-10-11-simuler_absence.md',
     })
     expect(git(e.depots.origine, 'tag', '--list', 'v*')).toBe('v2026-10-11-1')
     expect(git(e.depots.origine, 'rev-parse', 'main')).toBe(tete)
@@ -661,26 +737,35 @@ describe('ce qui se fusionne est ce que la garde a vu (audit de la livraison, 20
     expect(git(r.depots.origine, 'tag', '--list')).toBe('')
   })
 
-  it('une étiquette chantier/<id> restée locale (une fusion tuée avant le push) ne bloque pas la reprise', () => {
+  it('une étiquette chantier/<métier>/<id> restée locale (une fusion tuée avant le push) ne bloque pas la reprise', () => {
     const depots = creerDepots()
-    git(depots.racine, 'checkout', '-q', '-b', 'chantier/x')
+    git(depots.racine, 'checkout', '-q', '-b', 'chantier/essai/x')
     spawnSync('sh', ['-c', 'echo "export const B = 1" > metiers/essai/code/src/b.ts'], {
       cwd: depots.racine,
     })
     git(depots.racine, 'add', '-A')
     git(depots.racine, 'commit', '-q', '-m', 'x')
     git(depots.racine, 'checkout', '-q', 'main')
-    const garde = git(depots.racine, 'rev-parse', 'refs/heads/chantier/x')
+    const garde = git(depots.racine, 'rev-parse', 'refs/heads/chantier/essai/x')
     // L'étiquette d'une fusion tuée avant le push : sur un commit que le distant n'a jamais eu.
-    git(depots.racine, 'tag', 'chantier/x', garde)
+    git(depots.racine, 'tag', 'chantier/essai/x', garde)
     const r = conclure({
       commande: commandeSync,
       racine: depots.racine,
-      id: 'x',
+      cle: 'essai/x',
       titre: 'x',
       commit: garde,
       conditions: (
-        ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+        [
+          'chemins',
+          'tests',
+          'check',
+          'honnetete',
+          'rejeu',
+          'relecture',
+          'bornes',
+          'lignes',
+        ] as const
       ).map((id): Condition => ({ id, ok: true, mesure: 'vert' })),
       personnes: PERSONNES_ESSAI,
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
@@ -690,7 +775,7 @@ describe('ce qui se fusionne est ce que la garde a vu (audit de la livraison, 20
           {
             date: '2026-10-11',
             client: CLIENT,
-            id: 'x',
+            cle: 'essai/x',
             titre: 'x',
             sections: [],
             appris: '',
@@ -701,7 +786,7 @@ describe('ce qui se fusionne est ce que la garde a vu (audit de la livraison, 20
         ),
     })
     expect(r.sorte).toBe('fusionne')
-    const fusion = git(depots.origine, 'rev-parse', 'refs/tags/chantier/x^{commit}')
+    const fusion = git(depots.origine, 'rev-parse', 'refs/tags/chantier/essai/x^{commit}')
     expect(git(depots.origine, 'rev-list', '--parents', '-n', '1', fusion).split(' ')).toHaveLength(
       3,
     )
@@ -734,9 +819,7 @@ describe('un push refusé à la fusion', () => {
     expect(git(depots.origine, 'log', '--oneline', 'main').split('\n')).toHaveLength(1)
     expect(git(depots.origine, 'tag', '--list')).toBe('')
     expect(git(depots.racine, 'tag', '--list')).toBe('')
-    expect(git(depots.racine, 'branch', '--list', 'chantier/simuler_absence')).toContain(
-      'chantier/',
-    )
+    expect(git(depots.racine, 'branch', '--list', `chantier/${CLE}`)).toContain('chantier/')
     expect(etatHumain(depots.racine)).toEqual(humain)
     expect(arbresRestants(depots.racine)).toEqual([])
   })
@@ -799,7 +882,7 @@ describe('un push refusé à la fusion', () => {
       'v2026-10-11-1',
       'v2026-10-11-2',
     ])
-    const fusion = git(depots.origine, 'rev-parse', `${refEtiquette('simuler_absence')}^{commit}`)
+    const fusion = git(depots.origine, 'rev-parse', `${refEtiquette(CLE)}^{commit}`)
     // La fusion part du commit poussé entre-temps : rien de ce qu'il a apporté n'est perdu.
     expect(git(depots.origine, 'log', '-1', '--format=%s', `${fusion}^1`)).toBe(
       'poussé entre-temps',

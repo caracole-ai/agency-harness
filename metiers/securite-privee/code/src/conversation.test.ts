@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   accueillir,
+  CONTROLE_OK,
+  CONTROLE_RETIRE,
   chargerPersonnes,
   confirmer,
   FICHIER_PERSONNES,
@@ -226,9 +228,9 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
     CONVERSATION.fermer(s)
     const ouvrir = vi.spyOn(CONVERSATION, 'ouvrir')
     const demandes = [
-      { role: 'agent', agent: 'A-99' },
+      { role: 'agent', personne: 'A-99' },
       { role: 'x' },
-      { role: 'patron', agent: 'A-1' },
+      { role: 'patron', personne: 'A-1' },
     ]
     try {
       const refus = demandes.map((demandeur) =>
@@ -253,7 +255,7 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
       [TYPE_ACCES_REFUSE, "le patron parle en son nom : pas d'identifiant"],
     ])
     expect(JSON.parse(lignes[0]?.donnees ?? '{}')).toEqual({
-      identite: '{"role":"agent","agent":"A-99"}',
+      identite: '{"role":"agent","personne":"A-99"}',
       canal: 'terminal',
     })
   })
@@ -701,42 +703,51 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
       { role: 'user', content: messageConsigne(consigne, maintenant) },
     ])
   })
-  it('« Aisha » : le code propose une liste courte, le modèle désigne A-11 dans un second appel, journalisé', async () => {
+  it('« Aisha » : aucun nom ne part au modèle, même proche ; le code pose la question avec le seul candidat qui ressemble, « oui » reprend le geste sans appel', async () => {
     const s = session()
     const { r, modele, conversation } = await tour(
       s,
       PATRON,
-      [
-        { outil: 'gerer_absence', entree: { agent: 'Aisha', jour: '2026-10-11' } },
-        { outil: 'designer', entree: { personne: 'A-11' } },
-      ],
+      outil('gerer_absence', { agent: 'Aisha', jour: '2026-10-11' }),
       'Aisha ne vient pas demain',
     )
-    expect(r.sorte).toBe('resultat')
-    expect(r.texte).toContain('Aïcha Traoré')
-    const second = JSON.stringify(modele.appels[1]?.messages)
-    expect(second).toContain('A-11 — Aïcha Traoré')
-    expect(second.split(' — ').length - 1).toBeLessThanOrEqual(3)
+    expect(r).toEqual({
+      sorte: 'precision',
+      texte: 'Vous parlez de « Aïcha Traoré » ? (oui / non)',
+      candidats: [{ id: 'A-11', nom: 'Aïcha Traoré', sorte: 'personne' }],
+    })
+    expect(modele.appels).toHaveLength(1)
+    expect(JSON.stringify(modele.appels[0])).not.toContain('Aïcha')
     expect(
       lignes(s, conversation)
         .filter((l) => l.type === TYPE_APPEL)
         .map((l) => l.issue),
-    ).toEqual(['traduire', 'designer'])
+    ).toEqual(['traduire'])
+    expect(s.journal.historique('D-V-17')).toEqual([])
+
+    const oui = await tour(s, PATRON, [], 'Oui', conversation)
+    expect(oui.r.sorte).toBe('resultat')
+    expect(oui.r.texte).toContain('Aïcha Traoré')
+    expect(oui.modele.appels).toHaveLength(0)
   })
-  it('le modèle répond aucun : la question, rien d’exécuté', async () => {
+  it('« non » à la question : l’abandon est dit, rien d’exécuté ; la consigne suivante se traduit', async () => {
     const s = session()
-    const { r } = await tour(
+    const premier = await tour(
       s,
       PATRON,
-      [
-        { outil: 'gerer_absence', entree: { agent: 'Aisha', jour: '2026-10-11' } },
-        { outil: 'designer', entree: { personne: 'aucun' } },
-      ],
+      outil('gerer_absence', { agent: 'Aisha', jour: '2026-10-11' }),
       'Aisha ne vient pas demain',
     )
-    expect(r.sorte).toBe('precision')
-    expect(r.texte).toMatch(/^Vous parlez de qui : .*Aïcha Traoré.* \?$/)
+    const non = await tour(s, PATRON, [{ texte: 'x' }], 'Non', premier.conversation)
+    expect(non.r).toEqual({
+      sorte: 'je_ne_sais_pas',
+      texte:
+        "Je n'ai pas compris de qui vous parlez. Redites la consigne avec le prénom et le nom.",
+    })
+    expect(non.modele.appels).toHaveLength(0)
     expect(s.journal.historique('D-V-17')).toEqual([])
+    const suite = await tour(s, PATRON, [{ texte: 'x' }], 'Oui', premier.conversation)
+    expect(suite.modele.appels).toHaveLength(1)
   })
   it('personne ne ressemble : la question, sans second appel', async () => {
     const s = session()
@@ -764,7 +775,8 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
     )
     expect(premier.r).toEqual({
       sorte: 'precision',
-      texte: 'Vous parlez de qui : Aïcha Traoré ou Aïcha Mansouri ?',
+      texte:
+        'Vous parlez de qui : 1. Aïcha Traoré, 2. Aïcha Mansouri ? Répondez par le numéro ou le nom.',
       candidats: [
         { id: 'A-11', nom: 'Aïcha Traoré', sorte: 'personne' },
         { id: 'A-14', nom: 'Aïcha Mansouri', sorte: 'personne' },
@@ -790,6 +802,51 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
     const encore = await tour(s, PATRON, [{ texte: 'x' }], 'Traoré', premier.conversation)
     expect(encore.modele.appels).toHaveLength(1)
   })
+  it('le prénom partagé en réponse : la question est reposée une fois, numérotée, sans appel ; puis l’abandon est dit, et la question est close', async () => {
+    const s = session(avecHomonyme)
+    const premier = await tour(
+      s,
+      PATRON,
+      outil('gerer_absence', { agent: 'Aïcha', jour: '2026-10-11' }),
+      'Aïcha ne vient pas demain',
+    )
+    const encore = await tour(s, PATRON, [{ texte: 'x' }], 'Aïcha', premier.conversation)
+    expect(encore.r).toMatchObject({
+      sorte: 'precision',
+      texte:
+        "Je n'ai pas compris. Vous parlez de qui : 1. Aïcha Traoré, 2. Aïcha Mansouri ? Répondez par le numéro ou le nom.",
+    })
+    expect(encore.modele.appels).toHaveLength(0)
+    expect(lignes(s, premier.conversation).at(-1)?.type).toBe(TYPE_PRECISION_ATTENDUE)
+
+    // Le numéro répond à la question reposée.
+    const un = await tour(s, PATRON, [], '1', premier.conversation)
+    expect(un.r.sorte).toBe('resultat')
+    expect(un.r.texte).toContain('Aïcha Traoré')
+    expect(un.modele.appels).toHaveLength(0)
+  })
+  it('le prénom partagé deux fois : l’abandon est dit, rien d’exécuté, et la consigne suivante se traduit', async () => {
+    const s = session(avecHomonyme)
+    const premier = await tour(
+      s,
+      PATRON,
+      outil('gerer_absence', { agent: 'Aïcha', jour: '2026-10-11' }),
+      'Aïcha ne vient pas demain',
+    )
+    await tour(s, PATRON, [{ texte: 'x' }], 'Aïcha', premier.conversation)
+    const fin = await tour(s, PATRON, [{ texte: 'x' }], 'Aïcha', premier.conversation)
+    expect(fin.r).toEqual({
+      sorte: 'je_ne_sais_pas',
+      texte:
+        "Je n'ai pas compris de qui vous parlez. Redites la consigne avec le prénom et le nom.",
+    })
+    expect(fin.modele.appels).toHaveLength(0)
+    expect(s.journal.historique('D-V-17')).toEqual([])
+    const consignes = lignes(s, premier.conversation).filter((l) => l.type === 'consigne')
+    expect(consignes.map((l) => l.issue)).toEqual(['action', 'precision', 'precision'])
+    const suite = await tour(s, PATRON, [{ texte: 'x' }], 'Aïcha', premier.conversation)
+    expect(suite.modele.appels).toHaveLength(1)
+  })
   it('une réponse qui ne désigne aucun candidat : traitée comme une nouvelle consigne', async () => {
     const s = session(avecHomonyme)
     const premier = await tour(
@@ -808,7 +865,7 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
     expect(suite.modele.appels).toHaveLength(1)
     expect(suite.r.texte).toContain('Sophie Marchand — carte professionnelle')
   })
-  it('un agent : pas de niveau 2, un nom proche du sien ne le désigne pas', async () => {
+  it('un agent : un nom proche du sien ne le désigne pas, et aucun collègue ne lui est proposé', async () => {
     const s = session()
     const { r, modele } = await tour(
       s,
@@ -956,7 +1013,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
       [nouvelle, heures, repondre('A-1 a fait 24 heures.')],
       consigne,
     )
-    expect(r).toEqual({ sorte: 'resultat', texte: 'Karim Haddad a fait 24 heures.' })
+    expect(r).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad a fait 24 heures.',
+      controle: CONTROLE_OK,
+    })
     const [, ...apres] = echappe(modele.appels)
     expect(apres.length).toBe(2)
     for (const m of apres) expect(m).not.toContain('Karim')
@@ -977,7 +1038,7 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     const premier = await tour(s, PATRON, [nouvelle], consigne)
     expect(premier.r).toEqual({
       sorte: 'precision',
-      texte: 'Vous parlez de qui : Karim Haddad ?',
+      texte: 'Vous parlez de « Karim Haddad » ? (oui / non)',
       candidats: [{ id: 'A-1', nom: 'Karim Haddad', sorte: 'personne' }],
     })
     expect(premier.modele.appels).toHaveLength(1)
@@ -991,7 +1052,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
       '1',
       premier.conversation,
     )
-    expect(reponse.r).toEqual({ sorte: 'resultat', texte: 'Karim Haddad a fait 24 heures.' })
+    expect(reponse.r).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad a fait 24 heures.',
+      controle: CONTROLE_OK,
+    })
     expect(reponse.modele.appels).toHaveLength(2)
     expect(echappe(reponse.modele.appels)[0]).toContain(
       "Combien d'heures a fait A-1 cette semaine ?",
@@ -1016,7 +1081,8 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     const premier = await tour(s, PATRON, [nouvelle], "Combien d'heures a fait Aïcha ?")
     expect(premier.r).toMatchObject({
       sorte: 'precision',
-      texte: 'Vous parlez de qui : Aïcha Traoré ou Aïcha Mansouri ?',
+      texte:
+        'Vous parlez de qui : 1. Aïcha Traoré, 2. Aïcha Mansouri ? Répondez par le numéro ou le nom.',
     })
     const reponse = await tour(
       s,
@@ -1025,7 +1091,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
       'Mansouri',
       premier.conversation,
     )
-    expect(reponse.r).toEqual({ sorte: 'resultat', texte: 'Aïcha Mansouri : aucune heure.' })
+    expect(reponse.r).toEqual({
+      sorte: 'resultat',
+      texte: 'Aïcha Mansouri : aucune heure.',
+      controle: CONTROLE_OK,
+    })
     expect(echappe(reponse.modele.appels)[0]).toContain("Combien d'heures a fait A-14 ?")
   })
 
@@ -1052,6 +1122,7 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     expect(r).toEqual({
       sorte: 'resultat',
       texte: 'Je ne vois que tes heures : Julien Lefèvre, 16 heures.',
+      controle: CONTROLE_OK,
     })
     const [, ...apres] = echappe(modele.appels)
     for (const m of apres) {
@@ -1062,5 +1133,22 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     expect(echappeeDe(s, conversation).donnees.consigne_modele).toBe(
       "Combien d'heures a fait A-1 cette semaine ?",
     )
+  })
+
+  it('un chiffre absent des données : le résumé est retiré, et la réponse le dit au demandeur (REFLEXIONS.md, 2026-10-18)', async () => {
+    const s = session()
+    const { r, conversation } = await tour(
+      s,
+      PATRON,
+      [nouvelle, heures, repondre('A-1 a fait 999 heures.')],
+      "Combien d'heures a fait Karim cette semaine ?",
+    )
+    expect(r).toMatchObject({ sorte: 'resultat', controle: CONTROLE_RETIRE })
+    expect(r.texte).not.toContain('999')
+    expect(r.texte).toContain('Karim Haddad')
+    // Le journal garde le contrôle ; le texte gardé est celui montré (les tableaux), le résumé retiré reste dans la ligne de l'outil.
+    const { donnees } = echappeeDe(s, conversation)
+    expect(donnees.controle_reponse).toBe(CONTROLE_RETIRE)
+    expect(donnees.texte).not.toContain('999')
   })
 })

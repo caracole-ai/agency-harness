@@ -1,5 +1,7 @@
 # Plan général — où on en est, et tout ce qui reste, dans l'ordre
 
+> **Depuis le 2026-10-18** (lot « ménage », `REFLEXIONS.md` « Décidé ») : G1 compte **neuf conditions**, la neuvième est le rejeu ; `retirer` prend `<métier>/<id>`. Ce plan garde ses « huit » et ses `<id>` d'époque.
+
 > **Amendé le 2026-10-15** : la promotion automatique est retirée
 > (`REFLEXIONS.md`). Les mentions de `pnpm promotions`, de la fabrication,
 > de l'état « promotion en cours » et de `evals promotion` décrivent l'état
@@ -93,25 +95,6 @@ distance, les sécurités d'avant un client réel.
 7. **Doc à chaque lot** : README (structure, commandes), `HANDOFF.md` (état,
    choix, pièges). Le mini-site et la présentation sont relus **une fois par
    phase**, à la fin, pour dire « construit » là où ils disent « décidé ».
-
----
-
-## 1. Où on en est (le 2026-10-10 au soir)
-
-| État | Quoi | Où |
-|---|---|---|
-| **Fait, fusionné sur `main`, poussé** | `PLAN.md` phases 0 à 6 (registre, calendrier, contrôles, Veiller, remplacement avec clé, interface) ; `PLAN-ESPACES.md` lots 0 à 7 (traduction, 9 gestes, échappée sur copie, proposition, réaffectation groupée, promotion-comptage, évals, interface web) ; identité avant le dossier et modèle sans aucun nom (2026-10-08) ; corrections des passes GLM | `main` (`dd13bdc` le dernier) |
-| **Mesuré, GLM-5.3** | traduction 58/60 (97 %) ; échappée 41/42 sur trois passes ; 130 cas réels sans écriture ni infraction | `evals/resultats/`, `evals/erreurs-2026-10-08.md` |
-| **Fait, pas fusionné** | `PLAN-PROMOTION.md` lots 0 à 3 : le journal se souvient de l'échappée, le geste appris (donnée YAML, clé), la fabrication par le modèle vérifiée par rejeu, l'atelier `pnpm gestes` et l'activation par le patron dans l'interface | branches `promotion/lot-0` → `lot-3`, chacune sur la précédente, **non poussées** |
-| **Mesuré et en échec** | l'éval de fabrication : 0/3 (deux gestes justes écartés au rejeu parce que GLM répond plus long que la question) | tranché au § 2, G4 |
-| **Écrit, pas codé** | `PLAN-PSEUDONYMES.md` (4 lots), `PLAN-RONDE.md` (4 lots, amendé), ce plan | arbre de travail, non commité |
-| **Pas commencé** | `PLAN-PROMOTION.md` lot 4 (l'écriture par un geste appris) ; `PLAN.md` phase 7 (veille des textes, canal fabricant) ; l'authentification d'un canal ; le chaînage du journal ; la mise à jour à distance ; les six choix ouverts de l'identité ; la sauvegarde chiffrée de `clients/` | § 3, phases C, F, G, H |
-| **À Lionel, humain** | relire les 74 phrases des évals comme un patron ; le juriste (RGPD art. 22, sous-traitant) ; l'entretien chez un dirigeant ; les données fictives cohérentes avec les phrases de démo ; un compte API PISTE (Légifrance) ; le compte Anthropic et sa clé ; relire la mémoire de la nuit après coup | § 3, phase I |
-
-Ce que le code sait faire ce soir et que le discours ne dit pas encore : le
-mini-site et la présentation décrivent la promotion d'avant le lot 2 ; ils
-disent « décidé » pour les pseudonymes et la ronde. C'est voulu : on ne dit
-« construit » qu'après mesure (§ 0.7).
 
 ---
 

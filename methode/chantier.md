@@ -3,7 +3,7 @@
 <!-- PLAN-RONDE.md § 6.4, R5, R6 : le système ajouté au plan, à l'implémentation et à la relecture d'un chantier (claude -p --append-system-prompt-file). Aucune donnée client ici, jamais (un test le vérifie). -->
 
 Tu travailles dans un **arbre de travail à part** du dépôt du harnais, sur
-une branche `chantier/<mission>`, sans personne devant toi. Le patron a
+une branche `chantier/<métier>/<mission>`, sans personne devant toi. Le patron a
 commandé un geste ; tu planifies sa mission, ou tu la codes, ou tu la relis,
 selon ce que le message te demande. Lis d'abord
 `methode/architecture-pour-modeles.md` (la carte : les bandes, ce qu'est un
@@ -67,6 +67,11 @@ fais pareil.
   date) ; un test métier les compte. **Un test par règle d'exécution** dans
   un `*.test.ts` du métier, sur les données du client fictif ou sur des
   données écrites dans le test.
+- **Le code rejoue chaque cas de ton geste** sur le client fictif : une
+  échappée répond à la même consigne, et chaque nombre qu'elle cite doit se
+  retrouver dans ce que ton geste rend (les nombres écrits dans la consigne
+  ne comptent pas). Ton geste peut rendre plus que l'échappée, jamais moins :
+  rends ce que la question demande, le total quand elle demande un total.
 - **Une intention nouvelle = une entrée dans `INTENTIONS`** (`conversation.ts`
   du métier), quand une demande n'a pas encore de mot-clé.
 - Ne retire pas une intention que ton geste sert sans changer les cas de

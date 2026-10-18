@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
+import { relative } from 'node:path'
 import type { Designable } from '../conversation/designation'
 import {
   comparerVersions,
@@ -23,20 +23,22 @@ import {
   retirerArbre,
   verifierBase,
 } from './arbre'
+import { lireCle, nomArbre } from './cle'
 import {
-  DOSSIER_CHANTIERS_MEMOIRE,
+  cheminEntree,
   DOSSIER_MEMOIRE,
   interdits,
   lireIndex,
   missionFusionnee,
   missionsRetirees,
+  resoudreCle,
 } from './memoire'
 
 // La fusion automatique et son retrait (PLAN-GENERAL.md G1, G2 ;
 // PLAN-LIVRAISON.md L2). Le seul module qui fusionne et qui pousse, et
 // seulement dans un arbre détaché sur `origin/main` frais, jeté après : ni
 // `main` du dépôt de base ni l'arbre d'un humain ne bougent, le push vise
-// `main` du distant. Huit conditions, toutes mesurées en code, aucune par un
+// `main` du distant. Neuf conditions, toutes mesurées en code, aucune par un
 // prompt ; une seule rouge et rien n'est fusionné : la branche reste, la
 // mémoire dit pourquoi. La mémoire se commet toujours à part, après la
 // fusion : `git revert -m 1` de la fusion ne la défait jamais. Un push refusé
@@ -48,12 +50,13 @@ import {
 // étiquette `origin/main` tel quel. Un refus n'en pose pas : rien n'a changé
 // dans le code.
 
-/** Les huit conditions de G1, dans l'ordre du plan. */
+/** Les neuf conditions de G1, dans l'ordre du plan ; la neuvième, le rejeu, décidée le 2026-10-18, suit l'honnêteté. */
 export const CONDITIONS = {
   chemins: 'le diff est dans les chemins autorisés',
   tests: "aucun test existant n'a disparu",
   check: 'pnpm check vert, rejoué par le code',
   honnetete: 'trois cas de traduction par geste nouveau, traduction au seuil',
+  rejeu: "chaque nombre que l'échappée cite se retrouve dans ce que le geste rend",
   relecture: 'aucun bloquant après au plus une reprise',
   bornes: 'tours et budget dans les bornes',
   lignes: 'le diff ne dépasse pas lignes_max',
@@ -69,11 +72,11 @@ export interface Condition {
   mesure: string
 }
 
-/** Le préfixe des étiquettes posées sur une fusion (G1). */
-export const refEtiquette = (id: string) => `refs/tags/chantier/${id}`
+/** L'étiquette posée sur une fusion (G1), par la clé de la mission : `refs/tags/chantier/<métier>/<id>`. */
+export const refEtiquette = (cle: string) => `refs/tags/chantier/${cle}`
 
 /**
- * `memoire` : le chemin de l'entrée dans le dépôt (`memoire/chantiers/<date>-<id>.md`) ;
+ * `memoire` : le chemin de l'entrée dans le dépôt (`memoire/chantiers/<métier>/<date>-<id>.md`) ;
  * `version` : l'étiquette signée posée sur la fusion (absente d'une fusion d'avant les versions).
  */
 export type IssueFusion =
@@ -210,22 +213,23 @@ function avecReprise<T>(
 
 /**
  * Conclut un chantier : dans un arbre détaché sur `origin/main`.
- * `conditions` : les sept premières, mesurées par le chantier ; la huitième
+ * `conditions` : les huit premières, mesurées par le chantier ; la neuvième
  * se mesure ici, sur l'entrée de mémoire écrite par `ecrireEntree` dans cet
- * arbre. Huit vertes : `git merge --no-ff` du commit gardé de `chantier/<id>`
- * (jamais la pointe de la branche : le code du modèle tourne après la garde,
- * dans `pnpm check` et `pnpm evals`), l'étiquette `chantier/<id>` sur la
- * fusion, la mémoire commise à part, `git push` sur `main` du distant avec
- * l'étiquette. Sinon : rien de fusionné, la mémoire du refus commise et
- * poussée.
+ * arbre. Neuf vertes : `git merge --no-ff` du commit gardé de
+ * `chantier/<métier>/<id>` (jamais la pointe de la branche : le code du modèle
+ * tourne après la garde, dans `pnpm check` et `pnpm evals`), l'étiquette
+ * `chantier/<métier>/<id>` sur la fusion, la mémoire commise à part, `git
+ * push` sur `main` du distant avec l'étiquette. Sinon : rien de fusionné, la
+ * mémoire du refus commise et poussée.
  */
 export function conclure(o: {
   commande: Commande
   /** Le dépôt de base (L2). */
   racine: string
-  id: string
+  /** La clé de la mission : `<métier>/<id>`. */
+  cle: string
   titre: string
-  /** Le commit de `chantier/<id>` sur lequel la garde a porté : lui seul se fusionne. */
+  /** Le commit de `chantier/<métier>/<id>` sur lequel la garde a porté : lui seul se fusionne. */
   commit: string | undefined
   conditions: Condition[]
   /** Écrit l'entrée de mémoire dans cet arbre avec cette sorte et cette issue ; rend son chemin, lève si elle porterait un nom. */
@@ -235,22 +239,22 @@ export function conclure(o: {
   version: OptionsVersion & { client: string }
 }): IssueFusion {
   const c = o.commande
-  if (!brancheExiste(c, o.racine, o.id)) {
-    return { sorte: 'echec', raison: `branche ${refBranche(o.id)} absente` }
+  if (!brancheExiste(c, o.racine, o.cle)) {
+    return { sorte: 'echec', raison: `branche ${refBranche(o.cle)} absente` }
   }
-  const sept = IDS_CONDITIONS.filter((id) => id !== 'memoire').map(
+  const avantMemoire = IDS_CONDITIONS.filter((id) => id !== 'memoire').map(
     (id): Condition =>
       o.conditions.find((x) => x.id === id) ?? { id, ok: false, mesure: 'non mesurée' },
   )
-  const rouges = sept.filter((x) => !x.ok)
-  const etiquette = refEtiquette(o.id).replace('refs/tags/', '')
+  const rouges = avantMemoire.filter((x) => !x.ok)
+  const etiquette = refEtiquette(o.cle).replace('refs/tags/', '')
   let enRoute = 'fusion défaite'
 
   const refuser = (arbre: string, toutes: Condition[]): Tentative<IssueFusion> => {
     enRoute = 'mémoire du refus non poussée'
     const rougesToutes = toutes.filter((x) => !x.ok)
     const memoire = o.ecrireEntree(arbre, 'refus', raisonRefus(rougesToutes))
-    commettreMemoire(c, arbre, `Mémoire : chantier ${o.id} refusé`)
+    commettreMemoire(c, arbre, `Mémoire : chantier ${o.cle} refusé`)
     const refus = pousser(c, arbre, [SUR_MAIN])
     return refus === undefined
       ? { fini: { sorte: 'refuse', rouges: rougesToutes, memoire: relative(arbre, memoire) } }
@@ -260,19 +264,22 @@ export function conclure(o: {
   return avecReprise(
     c,
     o.racine,
-    `fusion-${o.id}`,
+    nomArbre('fusion', o.cle),
     (arbre): Tentative<IssueFusion> => {
       if (rouges.length > 0) {
-        return refuser(arbre, [...sept, { id: 'memoire', ok: true, mesure: 'non mesurée (refus)' }])
+        return refuser(arbre, [
+          ...avantMemoire,
+          { id: 'memoire', ok: true, mesure: 'non mesurée (refus)' },
+        ])
       }
-      // Condition 8 : l'entrée existe et ne porte aucun nom ; écrite avant la fusion, commise après.
+      // Condition 9 : l'entrée existe et ne porte aucun nom ; écrite avant la fusion, commise après.
       let memoire: string
       try {
         memoire = o.ecrireEntree(arbre, 'fusion', 'fusionné')
       } catch (erreur) {
         oublierMemoire(c, arbre)
         return refuser(arbre, [
-          ...sept,
+          ...avantMemoire,
           { id: 'memoire', ok: false, mesure: (erreur as Error).message.slice(0, 200) },
         ])
       }
@@ -281,7 +288,7 @@ export function conclure(o: {
       if (!propre) {
         oublierMemoire(c, arbre)
         return refuser(arbre, [
-          ...sept,
+          ...avantMemoire,
           { id: 'memoire', ok: false, mesure: "l'entrée manque ou porte un nom" },
         ])
       }
@@ -297,10 +304,10 @@ export function conclure(o: {
           'rev-parse',
           '--verify',
           '--quiet',
-          `${refEtiquette(o.id)}^{commit}`,
+          `${refEtiquette(o.cle)}^{commit}`,
         ])
         const entree = lireIndex(arbre)
-          .filter((e) => e.sorte === 'fusion' && e.id === o.id)
+          .filter((e) => e.sorte === 'fusion' && e.cle === o.cle)
           .at(-1)
         oublierMemoire(c, arbre)
         if (
@@ -314,22 +321,18 @@ export function conclure(o: {
               sorte: 'fusionne',
               fusion: posee.sortie.trim(),
               ...(version ? { version } : {}),
-              memoire: join(
-                DOSSIER_MEMOIRE,
-                DOSSIER_CHANTIERS_MEMOIRE,
-                `${entree.date}-${o.id}.md`,
-              ),
+              memoire: cheminEntree(entree.date, o.cle),
             },
           }
         }
         return {
           fini: {
             sorte: 'echec',
-            raison: `${branche(o.id)} est déjà dans ${REF_DISTANTE} sans fusion étiquetée : rien n'est refait`,
+            raison: `${branche(o.cle)} est déjà dans ${REF_DISTANTE} sans fusion étiquetée : rien n'est refait`,
           },
         }
       }
-      const message = `Chantier ${o.id} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : huit conditions vertes.`
+      const message = `Chantier ${o.cle} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : neuf conditions vertes.`
       const fusion = c(arbre, 'git', ['merge', '--no-ff', '-m', message, o.commit])
       if (fusion.code !== 0) {
         return {
@@ -353,11 +356,12 @@ export function conclure(o: {
         git(c, arbre, ['tag', '-f', etiquette, sha])
         version = poserVersion(c, arbre, sha, o.version, {
           sorte: 'chantier',
-          chantier: o.id,
+          chantier: o.cle,
+          geste: lireCle(o.cle).id,
           client: o.version.client,
         })
-        commettreMemoire(c, arbre, `Mémoire : chantier ${o.id} fusionné`)
-        const refus = pousser(c, arbre, [SUR_MAIN, refEtiquette(o.id), refTag(version)])
+        commettreMemoire(c, arbre, `Mémoire : chantier ${o.cle} fusionné`)
+        const refus = pousser(c, arbre, [SUR_MAIN, refEtiquette(o.cle), refTag(version)])
         if (refus === undefined) {
           return {
             fini: { sorte: 'fusionne', fusion: sha, memoire: relative(arbre, memoire), version },
@@ -382,73 +386,79 @@ export function conclure(o: {
 
 /**
  * Le retrait (G2), dans un arbre détaché sur `origin/main` : `git revert -m
- * 1` de la fusion étiquetée `chantier/<id>`, la ligne `retrait` de la mémoire
- * (écrite par `ecrireRetrait` dans cet arbre) dans le même commit, sa version
- * signée, puis `git push` sur `main` du distant. Lève si la mission n'a pas été fusionnée, si
- * elle a déjà été retirée (la mémoire d'`origin/main` le dit), ou si le
- * retrait n'a pas pu être poussé : alors rien n'est retiré.
+ * 1` de la fusion étiquetée `chantier/<métier>/<id>`, la ligne `retrait` de
+ * la mémoire (écrite par `ecrireRetrait` dans cet arbre) dans le même commit,
+ * sa version signée, puis `git push` sur `main` du distant. La mission se
+ * nomme par sa clé, ou par son seul identifiant quand un seul métier l'a
+ * fusionné (`resoudreCle`, sur la mémoire d'`origin/main`). Lève si la
+ * mission n'a pas été fusionnée, si elle a déjà été retirée (la mémoire
+ * d'`origin/main` le dit), ou si le retrait n'a pas pu être poussé : alors
+ * rien n'est retiré.
  */
 export function retirerFusion(o: {
   commande: Commande
   /** Le dépôt de base (L2). */
   racine: string
-  id: string
+  /** La clé `<métier>/<id>`, ou l'identifiant seul s'il ne désigne qu'une fusion. */
+  cle: string
   motif: string
-  ecrireRetrait: (arbre: string) => void
+  /** Écrit la ligne `retrait` dans cet arbre, pour la mission de cette clé. */
+  ecrireRetrait: (arbre: string, cle: string) => void
   version: OptionsVersion
-}): { revert: string; version: string } {
+}): { revert: string; version: string; cle: string } {
   const c = o.commande
   return avecReprise(
     c,
     o.racine,
-    `retrait-${o.id}`,
-    (arbre): Tentative<{ revert: string; version: string }> => {
-      if (missionsRetirees(arbre).some((x) => x.id === o.id)) {
-        throw new Error(`${o.id} : déjà retirée (mémoire)`)
+    nomArbre('retrait', o.cle),
+    (arbre): Tentative<{ revert: string; version: string; cle: string }> => {
+      const cle = resoudreCle(arbre, o.cle)
+      if (missionsRetirees(arbre).some((x) => x.cle === cle)) {
+        throw new Error(`${cle} : déjà retirée (mémoire)`)
       }
       const etiquette = c(arbre, 'git', [
         'rev-parse',
         '--verify',
         '--quiet',
-        `${refEtiquette(o.id)}^{commit}`,
+        `${refEtiquette(cle)}^{commit}`,
       ])
       if (etiquette.code !== 0) {
-        throw new Error(`${o.id} : aucune fusion à retirer (pas d'étiquette)`)
+        throw new Error(`${cle} : aucune fusion à retirer (pas d'étiquette)`)
       }
       const sha = etiquette.sortie.trim()
       const parents = git(c, arbre, ['rev-list', '--parents', '-n', '1', sha]).trim().split(' ')
-      if (parents.length !== 3)
-        throw new Error(`${o.id} : l'étiquette ne pointe pas sur une fusion`)
+      if (parents.length !== 3) throw new Error(`${cle} : l'étiquette ne pointe pas sur une fusion`)
       if (c(arbre, 'git', ['merge-base', '--is-ancestor', sha, 'HEAD']).code !== 0) {
-        throw new Error(`${o.id} : la fusion n'est pas sur ${REF_DISTANTE}`)
+        throw new Error(`${cle} : la fusion n'est pas sur ${REF_DISTANTE}`)
       }
       try {
         git(c, arbre, ['revert', '-m', '1', '--no-commit', sha])
-        o.ecrireRetrait(arbre)
+        o.ecrireRetrait(arbre, cle)
         git(c, arbre, ['add', '--', DOSSIER_MEMOIRE])
         git(c, arbre, [
           'commit',
           '-m',
-          `Chantier ${o.id} : retiré\n\nRetrait (PLAN-GENERAL.md G2) : git revert -m 1 de ${sha.slice(0, 12)}. Motif : ${o.motif}`,
+          `Chantier ${cle} : retiré\n\nRetrait (PLAN-GENERAL.md G2) : git revert -m 1 de ${sha.slice(0, 12)}. Motif : ${o.motif}`,
         ])
       } catch (erreur) {
         // Un conflit, une mémoire qui porterait un nom : l'arbre est jeté, rien n'est retiré.
-        throw new Error(`${o.id} : retrait défait (${(erreur as Error).message.slice(0, 300)})`)
+        throw new Error(`${cle} : retrait défait (${(erreur as Error).message.slice(0, 300)})`)
       }
       const revert = git(c, arbre, ['rev-parse', 'HEAD']).trim()
-      const client = missionFusionnee(arbre, o.id)?.client
+      const client = missionFusionnee(arbre, cle)?.client
       const version = poserVersion(c, arbre, revert, o.version, {
         sorte: 'retrait',
-        chantier: o.id,
+        chantier: cle,
+        geste: lireCle(cle).id,
         ...(client ? { client } : {}),
       })
       const refus = pousser(c, arbre, [SUR_MAIN, refTag(version)])
-      if (refus === undefined) return { fini: { revert, version } }
+      if (refus === undefined) return { fini: { revert, version, cle } }
       oterEtiquettes(c, arbre, [version])
       return { pushRefuse: refus }
     },
     (raison) => {
-      throw new Error(`${o.id} : retrait défait (push refusé deux fois : ${raison})`)
+      throw new Error(`${o.cle} : retrait défait (push refusé deux fois : ${raison})`)
     },
   )
 }

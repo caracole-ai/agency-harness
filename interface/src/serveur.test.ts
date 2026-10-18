@@ -14,6 +14,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   type Choix,
+  CONTROLE_OK,
+  CONTROLE_RETIRE,
   DOSSIER_MISSIONS,
   ecrireStatut,
   FICHIER_LIVRAISON,
@@ -22,6 +24,7 @@ import {
   Journal,
   type Ligne,
   lireMission,
+  MOTS_CONTROLE,
   metierDe,
   modeleSimule,
   type Reponse,
@@ -89,11 +92,31 @@ interface Etat {
   }
   regles: { id: string; nom: string; interdit: string; statut: string }[]
   ia: { coutMois: number; plafond: number; appels: number }
+  echappees: {
+    jours: number
+    echappees: number
+    relues: number
+    retirees: number
+    propositions: number
+    abandons: number
+  }
+  motsControle: Record<string, string>
 }
 
 describe('POST /api/etat', async () => {
   const r = await lire(app(), '/api/etat')
   const etat = (await r.json()) as Etat
+  it('compte zéro échappée sur un journal vierge, et porte les mots du contrôle', () => {
+    expect(etat.echappees).toEqual({
+      jours: 30,
+      echappees: 0,
+      relues: 0,
+      retirees: 0,
+      propositions: 0,
+      abandons: 0,
+    })
+    expect(etat.motsControle).toEqual(MOTS_CONTROLE)
+  })
   it('rend le client fictif, ses agents et ses 21 règles', () => {
     expect(r.status).toBe(200)
     expect(etat.client).toBe('client fictif (sécurité privée)')
@@ -118,7 +141,7 @@ describe('POST /api/etat', async () => {
         issue: 'mes_titres',
         motif: 'Je montre tes titres et leurs échéances.',
         donnees: {
-          identite: { role: 'agent', agent: 'A-2' },
+          identite: { role: 'agent', personne: 'A-2' },
           demande: { sorte: 'action', action: 'mes_titres', params: {} },
           empreinte: 'e',
         },
@@ -133,6 +156,86 @@ describe('POST /api/etat', async () => {
     expect(lu.aValider.confirmations).toMatchObject([
       { identite: { role: 'agent', personne: 'A-2' }, nom: 'Julien Lefèvre' },
     ])
+  })
+})
+
+describe('le contrôle des chiffres, mesuré et dit (REFLEXIONS.md, décidé le 2026-10-18)', () => {
+  /** Une ligne `echappee` telle que `echappee.ts` l'écrit, sans aucun nom. */
+  const echappee = (conversation: string, issue: string, donnees: Record<string, unknown>) => ({
+    type: TYPE_ECHAPPEE,
+    client: 'client fictif (sécurité privée)',
+    objet: conversation,
+    issue,
+    motif: 'une consigne',
+    donnees: {
+      echappee: `E-${conversation}`,
+      intention: 'heures_par_agent',
+      role: 'patron',
+      tours: 2,
+      ...donnees,
+    },
+  })
+
+  it('/api/etat compte, sur 30 jours, les réponses relues, retirées et les abandons', async () => {
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [
+        echappee('C-1', 'reponse', { controle_reponse: CONTROLE_OK, texte: 'x' }),
+        echappee('C-2', 'reponse', { controle_reponse: CONTROLE_RETIRE, texte: 'x' }),
+        echappee('C-3', 'abandon', { abandon: 'plafond de tours atteint' }),
+      ],
+      '2026-10-09T08:00:00Z',
+    )
+    // Hors de la fenêtre : ne compte pas.
+    j.ecrire(
+      [echappee('C-0', 'reponse', { controle_reponse: CONTROLE_OK, texte: 'x' })],
+      '2026-08-01T08:00:00Z',
+    )
+    j.fermer()
+    const etat = (await (await lire(app([], dossier), '/api/etat')).json()) as Etat
+    expect(etat.echappees).toEqual({
+      jours: 30,
+      echappees: 3,
+      relues: 1,
+      retirees: 1,
+      propositions: 0,
+      abandons: 1,
+    })
+  })
+
+  const nouvelle: Scripte = {
+    outil: 'demande_nouvelle',
+    entree: { intention: 'heures_par_agent', resume: 'x' },
+  }
+  const heures: Scripte = {
+    outil: 'requete',
+    entree: {
+      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent",
+    },
+  }
+  const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+  const consigne = async (a: ReturnType<typeof app>) =>
+    (await (
+      await poster(a, '/api/consigne', {
+        identite: PATRON,
+        consigne: "Combien d'heures a fait Karim cette semaine ?",
+      })
+    ).json()) as { reponse: Reponse }
+
+  it('/api/consigne : une réponse relue porte son contrôle, « ok »', async () => {
+    const { reponse } = await consigne(app([nouvelle, heures, repondre('A-1 a fait 24 heures.')]))
+    expect(reponse).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad a fait 24 heures.',
+      controle: CONTROLE_OK,
+    })
+  })
+
+  it('/api/consigne : un chiffre absent des données : le résumé retiré, le contrôle le dit', async () => {
+    const { reponse } = await consigne(app([nouvelle, heures, repondre('A-1 a fait 999 heures.')]))
+    expect(reponse).toMatchObject({ sorte: 'resultat', controle: CONTROLE_RETIRE })
+    expect(reponse.texte).not.toContain('999')
   })
 })
 
@@ -173,13 +276,13 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
     expect(patron.nom).toBe('le patron')
     expect(patron.textes.suggestions).toContain('Lance la veille')
     expect(patron.textes.accueil).toMatch(/^Bonjour\. Dites-moi ce qui se passe/)
-    const r = await lire(a, '/api/tableau', { role: 'agent', agent: 'A-2' })
+    const r = await lire(a, '/api/tableau', { role: 'agent', personne: 'A-2' })
     expect(r.status).toBe(200)
     const julien = (await r.json()) as Pick<Tableau, 'nom' | 'textes'>
     expect(julien.nom).toBe('Julien Lefèvre')
     expect(julien.textes.accueil).toMatch(/^Bonjour Julien\. /)
     expect(julien.textes.suggestions).toContain('Mes titres')
-    expect((await lire(a, '/api/tableau', { role: 'agent', agent: 'A-99' })).status).toBe(403)
+    expect((await lire(a, '/api/tableau', { role: 'agent', personne: 'A-99' })).status).toBe(403)
   })
   it('/api/etat : une délégation proposée est en attente, avec ses conditions en mots', async () => {
     const dossier = copie()
@@ -229,14 +332,14 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
     const ouvrir = vi.spyOn(METIER, 'ouvrir')
     try {
       const r = await poster(a, '/api/consigne', {
-        identite: { role: 'agent', agent: 'A-99' },
+        identite: { role: 'agent', personne: 'A-99' },
         consigne: 'mon planning',
       })
       expect(r.status).toBe(403)
       expect(((await r.json()) as { erreur: string }).erreur).toBe(
         "inconnu au registre d'accès : A-99",
       )
-      expect((await lire(a, '/api/etat', { role: 'agent', agent: 'A-99' })).status).toBe(403)
+      expect((await lire(a, '/api/etat', { role: 'agent', personne: 'A-99' })).status).toBe(403)
       expect((await lire(a, '/api/journal', { role: 'roi' })).status).toBe(403)
       expect(ouvrir).not.toHaveBeenCalled()
     } finally {
@@ -249,13 +352,13 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
       horodatage: '2026-10-10T19:40:00Z',
     })
     expect(JSON.parse(refus[0]?.donnees ?? '{}')).toEqual({
-      identite: '{"role":"agent","agent":"A-99"}',
+      identite: '{"role":"agent","personne":"A-99"}',
       canal: 'web',
     })
   })
   it('tout le planning et tout le journal : au patron seul, un agent reçoit 403', async () => {
     const a = app()
-    const julien = { role: 'agent', agent: 'A-2' }
+    const julien = { role: 'agent', personne: 'A-2' }
     for (const route of ['/api/etat', '/api/journal']) {
       const r = await lire(a, route, julien)
       expect(r.status).toBe(403)
@@ -271,7 +374,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
       readFileSync(chemin, 'utf8').replace('  - { role: agent, agent: A-2 }\n', ''),
     )
     const r = await poster(a, '/api/consigne', {
-      identite: { role: 'agent', agent: 'A-2' },
+      identite: { role: 'agent', personne: 'A-2' },
       consigne: 'mon planning',
     })
     expect(r.status).toBe(403)
@@ -421,7 +524,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
 
   it('la liste est au patron seul : par intention, les plus fréquentes d’abord, avec les résumés et la dernière date', async () => {
     const a = app([], copieAvecDemandes())
-    expect((await lire(a, '/api/sans-geste', { role: 'agent', agent: 'A-2' })).status).toBe(403)
+    expect((await lire(a, '/api/sans-geste', { role: 'agent', personne: 'A-2' })).status).toBe(403)
     const r = await lire(a, '/api/sans-geste')
     expect(r.status).toBe(200)
     expect(await r.json()).toEqual([
@@ -445,7 +548,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     expect(
       (
         await poster(a, '/api/sans-geste/commander', {
-          identite: { role: 'agent', agent: 'A-2' },
+          identite: { role: 'agent', personne: 'A-2' },
           intention: 'remise_des_cles',
         })
       ).status,
@@ -608,7 +711,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       version: 'v2026-10-10-2',
       le: '2026-10-10',
     })
-    expect((await lire(installee, '/api/version', { role: 'agent', agent: 'A-2' })).status).toBe(
+    expect((await lire(installee, '/api/version', { role: 'agent', personne: 'A-2' })).status).toBe(
       403,
     )
   })

@@ -1,5 +1,7 @@
 # Plan de la livraison — le chantier au clic, la version signée, la mise à jour tirée
 
+> **Depuis le 2026-10-18** (lot « ménage », `REFLEXIONS.md` « Décidé ») : la garde a **neuf conditions**, la neuvième est le rejeu (`pnpm evals rejeu`) ; la branche, l'étiquette et l'arbre d'un chantier portent le métier, `chantier/<métier>/<id>` ; `retirer` prend `<métier>/<id>` ; l'espace de noms (§ sous le lot 3) et les tiers (§ sous le lot 3, « à Lionel ») sont faits. Ce plan garde ses « huit » et ses `chantier/<id>` d'époque.
+
 Écrit le 2026-10-15 sur trois décisions de Lionel du même jour
 (`REFLEXIONS.md`, « Décidé ») :
 

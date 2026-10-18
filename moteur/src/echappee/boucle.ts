@@ -30,6 +30,18 @@ export interface BornesEchappee {
 
 export const CONTROLE_OK = 'ok'
 export const CONTROLE_RETIRE = 'résumé du modèle retiré'
+/** Ce que le contrôle a dit d'une réponse : ses chiffres et ses noms venaient des données, ou le résumé a été retiré. */
+export type ControleReponse = typeof CONTROLE_OK | typeof CONTROLE_RETIRE
+/**
+ * Ce que le demandeur lit sous une réponse d'échappée, selon le contrôle :
+ * le code a relu les chiffres, ou il a retiré le résumé et montré les
+ * tableaux (REFLEXIONS.md, décidé le 2026-10-18). Rendu par l'interface et
+ * par `pnpm parler`, jamais écrit dans le `texte` lui-même.
+ */
+export const MOTS_CONTROLE: Record<ControleReponse, string> = {
+  [CONTROLE_OK]: 'Chiffres relus par le harnais.',
+  [CONTROLE_RETIRE]: 'Le modèle a avancé un chiffre absent de vos données : voici les tableaux.',
+}
 /** Le motif d'abandon montré quand celui du modèle cite une donnée non vérifiée. */
 export const MOTIF_RETIRE = "le modèle s'est arrêté sans réponse vérifiable"
 
@@ -54,7 +66,7 @@ export type IssueEchappee =
   | {
       sorte: 'reponse'
       texte: string
-      controle: typeof CONTROLE_OK | typeof CONTROLE_RETIRE
+      controle: ControleReponse
       tours: number
       usage: UsageModele
     }

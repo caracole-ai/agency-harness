@@ -6,10 +6,7 @@ import { EFFORTS, type PrixModele } from '../modele/modele'
 // démarrage : un plafond absent n'est jamais « infini »
 // (PLAN-ESPACES.md § 4.5).
 
-/** Comment la clé se présente : l'en-tête d'Anthropic, ou `Authorization: Bearer`. */
-export const AUTHENTIFICATIONS = ['x-api-key', 'bearer'] as const
-
-/** La variable d'environnement de la clé quand la config ne nomme pas de point d'accès. */
+/** La variable d'environnement de la clé quand la config ne nomme pas de binaire. */
 export const VARIABLE_CLE_ANTHROPIC = 'ANTHROPIC_API_KEY'
 
 export const ConversationSchema = z.strictObject({
@@ -24,22 +21,12 @@ export const ConversationSchema = z.strictObject({
     }),
     effort: z.strictObject({ traduire: z.enum(EFFORTS), echappee: z.enum(EFFORTS) }),
     /**
-     * Un point d'accès au format Anthropic autre que celui d'Anthropic (GMI
-     * Cloud…), ou l'abonnement claude.ai par le binaire de Claude Code (son nom
-     * ou un chemin ; aucune clé, ANTHROPIC_API_KEY absente : PLAN-RONDE.md § 0.a).
-     * Absent : l'API d'Anthropic, la clé dans `ANTHROPIC_API_KEY`.
+     * L'abonnement claude.ai par le binaire de Claude Code (son nom ou un
+     * chemin ; aucune clé, ANTHROPIC_API_KEY absente : PLAN-RONDE.md § 0.a).
+     * Absent : l'API d'Anthropic, la clé dans `ANTHROPIC_API_KEY`. Un seul
+     * fournisseur, aucun autre point d'accès (2026-10-18).
      */
-    acces: z
-      .union([
-        z.strictObject({
-          url: z.url(),
-          authentification: z.enum(AUTHENTIFICATIONS),
-          /** Le nom de la variable d'environnement qui porte la clé, jamais la clé elle-même. */
-          variable_cle: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
-        }),
-        z.strictObject({ binaire: z.string().min(1) }),
-      ])
-      .optional(),
+    acces: z.strictObject({ binaire: z.string().min(1) }).optional(),
   }),
   plafonds: z.strictObject({
     par_demande: z.strictObject({

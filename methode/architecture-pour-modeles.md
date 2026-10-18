@@ -47,8 +47,9 @@ ressemblent ; s'il clique « Créer ce geste », le code écrit une mission
 (`missions/<date>/<intention>.yaml` chez le client) depuis les demandes
 réelles, des places à la place des noms. À l'agence, un chantier la code dans
 la bande métier : plan, implémentation, garde du diff, `pnpm check`,
-relecture, mesure de la traduction, puis fusion si les huit conditions sont
-vertes. Le geste porte l'identifiant de la mission. Aucun modèle ne cherche
+relecture, mesure de la traduction, rejeu du geste contre l'échappée, puis
+fusion si les neuf conditions sont vertes. Le geste porte l'identifiant de
+la mission. Aucun modèle ne cherche
 lui-même ce qui manque.
 
 ## Les trois espaces d'une demande

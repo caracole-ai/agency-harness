@@ -197,7 +197,8 @@ describe('la signature (L4, mesure du lot 2)', () => {
     const message = rendreManifeste('v2026-10-15-1', {
       sorte: 'chantier',
       commit,
-      chantier: 'remise_des_cles',
+      chantier: 'securite-privee/remise_des_cles',
+      geste: 'remise_des_cles',
       client: 'client-fictif',
     })
     signerEtiquette(commandeSync, depot, 'v2026-10-15-1', commit, message, agence.privee)
@@ -207,7 +208,7 @@ describe('la signature (L4, mesure du lot 2)', () => {
         'Version v2026-10-15-1',
         '',
         'sorte: chantier',
-        'chantier: remise_des_cles',
+        'chantier: securite-privee/remise_des_cles',
         'client: client-fictif',
         'geste: remise_des_cles (ajouté)',
         `commit: ${commit}`,

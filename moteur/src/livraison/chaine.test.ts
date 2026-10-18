@@ -339,8 +339,10 @@ describe('la chaîne entière (L12), le binaire simulé', () => {
           .at(-1),
       ).toMatchObject({ objet: INTENTION, issue: 'retiré' })
       const memoire = cloneDuDistant(depots.origine)
+      // La mémoire connaît la mission par sa clé ; `retirerMission` a reçu l'identifiant seul.
+      expect(retrait.mission).toBe(`essai/${INTENTION}`)
       expect(readFileSync(join(memoire, 'memoire', 'INDEX.md'), 'utf8')).toMatch(
-        new RegExp(`retrait · ${INTENTION}`),
+        new RegExp(`retrait · essai/${INTENTION}`),
       )
       // `git grep` sort en 1 quand il ne trouve rien : lu sans le lever.
       const cite = spawnSync('git', ['grep', '-l', 'Rosalie', 'HEAD', '--', 'memoire'], {

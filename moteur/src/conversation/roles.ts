@@ -4,7 +4,9 @@ import { z } from 'zod'
 // § 3.1, M1, M2, M3) : une liste de `RoleDeclare`, que la porte, le registre
 // d'accès et la conversation lisent à l'exécution. Le moteur ne teste jamais
 // un rôle par son nom : il demande une capacité. L'identifiant de qui parle
-// s'écrit `personne` ; l'ancienne graphie `agent` se lit encore (M2).
+// s'écrit `personne`. Seul `IdentiteSchema` lit encore l'ancienne graphie
+// `agent` : le registre du client fictif (`exemples/client-fictif/personnes.yaml`)
+// la porte toujours ; elle part avec sa réécriture (2026-10-18).
 
 export const CAPACITES = [
   'voit_tout',
@@ -52,7 +54,7 @@ export const quiParle = (roles: RoleDeclare[], identite: Identite): string => {
   return role.identifie ? `${role.enMots} ${identite.personne ?? '?'}` : role.enMots
 }
 
-/** Lit `{ role, personne?, agent? }` et rend `{ role, personne? }` : la lecture des deux graphies, partout. */
+/** Lit `{ role, personne?, agent? }` et rend `{ role, personne? }` : `agent` ne survit que pour le registre du client fictif et les lignes de journal écrites avant M2. */
 export const IdentiteSchema: z.ZodType<Identite> = z
   .strictObject({
     role: z.string().min(1),
@@ -68,43 +70,17 @@ export const IdentiteSchema: z.ZodType<Identite> = z
   })
 
 /**
- * L'identifiant d'une identité reçue de l'extérieur, sous ses deux graphies
- * (M2) : rend l'identifiant (ou rien), ou le motif d'un refus de forme.
+ * L'identifiant d'une identité reçue de l'extérieur (`personne`) : rend
+ * l'identifiant (ou rien), ou le motif d'un refus de forme.
  */
 export function identifiantRecu(
   d: Record<string, unknown>,
 ): { id: string | undefined } | { motif: string } {
-  const { personne, agent } = d
-  if ([personne, agent].some((v) => v !== undefined && typeof v !== 'string')) {
+  const { personne } = d
+  if (personne !== undefined && typeof personne !== 'string') {
     return { motif: "l'identifiant doit être un texte" }
   }
-  if (personne !== undefined && agent !== undefined && personne !== agent) {
-    return { motif: 'deux identifiants différents' }
-  }
-  return { id: (personne ?? agent) as string | undefined }
-}
-
-/** Qui parle dans une ligne persistée qu'on ne réécrit pas : `personne`, sinon l'ancienne graphie (M2). */
-export const personneLue = (d: { personne?: string; agent?: string }): string | undefined =>
-  d.personne ?? d.agent
-
-/** Les champs de qui parle dans un fichier qu'on ne réécrit pas (cas d'éval) : `personne`, et l'ancienne graphie, encore lue (M2). À étendre dans un schéma, puis `avecPersonne`. */
-export const CHAMPS_PERSONNE = {
-  agent: z.string().optional(),
-  personne: z.string().optional(),
-}
-
-/**
- * Qui parle dans un cas : `personne`, ou `agent`, la graphie des fichiers
- * d'avant, qu'on ne réécrit pas (PLAN-METIER-2.md M2) ; rend `personne`.
- */
-export function avecPersonne<C extends { agent?: string; personne?: string }>({
-  agent,
-  personne,
-  ...cas
-}: C) {
-  const qui = personne ?? agent
-  return { ...cas, ...(qui !== undefined ? { personne: qui } : {}) }
+  return { id: personne }
 }
 
 const cle = (i: Identite) => (i.personne === undefined ? i.role : `${i.role} ${i.personne}`)

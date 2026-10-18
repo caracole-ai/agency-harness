@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process'
 import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync } from 'node:fs'
 import { isAbsolute, join, resolve } from 'node:path'
+import { nomArbre } from './cle'
 
 // Les arbres de travail du chantier (PLAN-LIVRAISON.md L2) : le dépôt de base
 // est celui de l'agence (la racine du code qui tourne), qui peut être l'arbre
@@ -8,8 +9,9 @@ import { isAbsolute, join, resolve } from 'node:path'
 // `rev-parse` (la fusion pose ses étiquettes et pousse depuis ses arbres) :
 // jamais il n'y extrait, ne remet, ne fusionne ni ne nettoie ; son arbre et
 // sa branche `main` ne bougent pas. Un chantier part d'`origin/main` frais, dans
-// `.claude/worktrees/chantier-<id>` sur la branche `chantier/<id>` ; la fusion
-// et le retrait se font dans un arbre détaché sur `origin/main`, jeté après.
+// `.claude/worktrees/chantier-<métier>-<id>` sur la branche
+// `chantier/<métier>/<id>` (la clé de la mission, `cle.ts`) ; la fusion et le
+// retrait se font dans un arbre détaché sur `origin/main`, jeté après.
 // Ce module ne fusionne ni ne pousse jamais : c'est `fusion.ts`, seul.
 
 /** Lance une commande, rend son code et ses sorties ; injectable pour les tests (les commandes émises se capturent). */
@@ -51,13 +53,14 @@ export const BRANCHE_PRINCIPALE = 'main'
 export const DISTANT = 'origin'
 /** Le point de départ de tout arbre : `main` du distant, tel que le dernier `fetch` l'a vu. */
 export const REF_DISTANTE = `${DISTANT}/${BRANCHE_PRINCIPALE}`
-export const branche = (id: string) => `chantier/${id}`
-export const refBranche = (id: string) => `refs/heads/${branche(id)}`
+/** La branche d'un chantier, par sa clé : `chantier/<métier>/<id>`. */
+export const branche = (cle: string) => `chantier/${cle}`
+export const refBranche = (cle: string) => `refs/heads/${branche(cle)}`
 /** Les arbres de travail, dans le dépôt de base. */
 export const DOSSIER_ARBRES = join('.claude', 'worktrees')
-/** L'arbre d'un chantier, ou un arbre détaché nommé (`fusion-<id>`, `retrait-<id>`). */
+/** L'arbre d'un chantier, ou un arbre détaché nommé (`fusion-<métier>-<id>`, `retrait-<métier>-<id>`). */
 export const cheminArbre = (racine: string, nom: string) => join(racine, DOSSIER_ARBRES, nom)
-const nomChantier = (id: string) => `chantier-${id}`
+const nomChantier = (cle: string) => nomArbre('chantier', cle)
 
 const reel = (chemin: string) => realpathSync(chemin)
 
@@ -88,8 +91,8 @@ export function verifierBase(c: Commande, racine: string): void {
   git(c, racine, ['worktree', 'prune'])
 }
 
-export const brancheExiste = (c: Commande, racine: string, id: string): boolean =>
-  c(racine, 'git', ['rev-parse', '--verify', '--quiet', refBranche(id)]).code === 0
+export const brancheExiste = (c: Commande, racine: string, cle: string): boolean =>
+  c(racine, 'git', ['rev-parse', '--verify', '--quiet', refBranche(cle)]).code === 0
 
 /** Ce dossier de la base (relatif) ne se voit pas dans `git status` : une exclusion locale, idempotente (`.git/info/exclude`). */
 export function exclure(c: Commande, racine: string, dossier: string): void {
@@ -106,38 +109,43 @@ export function exclure(c: Commande, racine: string, dossier: string): void {
 /** Les arbres de travail ne se voient pas dans `git status` de la base. */
 const exclureArbres = (c: Commande, racine: string) => exclure(c, racine, DOSSIER_ARBRES)
 
-/** `branche` : l'arbre est déjà sur `chantier/<id>` (`refaire`) ; sinon il est détaché, et `brancher` crée la branche une fois le chantier décidé. */
+/** `branche` : l'arbre est déjà sur `chantier/<métier>/<id>` (`refaire`) ; sinon il est détaché, et `brancher` crée la branche une fois le chantier décidé. */
 export type ArbreOuvert =
   | { sorte: 'ouvert'; chemin: string; branche: boolean }
   | { sorte: 'deja_tentee' }
 
 /**
- * `git worktree add --detach .claude/worktrees/chantier-<id> origin/main`,
+ * `git worktree add --detach .claude/worktrees/chantier-<métier>-<id> origin/main`,
  * après `verifierBase` : la mémoire d'`origin/main` s'y lit avant que la
  * branche existe (une mission écartée ne laisse rien). Une branche
- * `chantier/<id>` qui existe : la mission a déjà été tentée, rien n'est
- * fait, sauf `refaire`, qui supprime l'arbre (pas la branche) et le rouvre
- * sur la branche telle qu'elle est.
+ * `chantier/<métier>/<id>` qui existe : la mission a déjà été tentée, rien
+ * n'est fait, sauf `refaire`, qui supprime l'arbre (pas la branche) et le
+ * rouvre sur la branche telle qu'elle est.
  */
-export function ouvrirArbre(c: Commande, racine: string, id: string, refaire = false): ArbreOuvert {
+export function ouvrirArbre(
+  c: Commande,
+  racine: string,
+  cle: string,
+  refaire = false,
+): ArbreOuvert {
   exclureArbres(c, racine)
-  const chemin = cheminArbre(racine, nomChantier(id))
-  const existe = brancheExiste(c, racine, id)
+  const chemin = cheminArbre(racine, nomChantier(cle))
+  const existe = brancheExiste(c, racine, cle)
   if (existe && !refaire) return { sorte: 'deja_tentee' }
   retirerArbre(c, racine, chemin)
   git(
     c,
     racine,
     existe
-      ? ['worktree', 'add', chemin, branche(id)]
+      ? ['worktree', 'add', chemin, branche(cle)]
       : ['worktree', 'add', '--detach', chemin, REF_DISTANTE],
   )
   return { sorte: 'ouvert', chemin, branche: existe }
 }
 
-/** Le chantier décidé : la branche `chantier/<id>` créée dans son arbre, là où il est (`origin/main`). */
-export function brancher(c: Commande, arbre: string, id: string): void {
-  git(c, arbre, ['switch', '--quiet', '--no-track', '--create', branche(id)])
+/** Le chantier décidé : la branche `chantier/<métier>/<id>` créée dans son arbre, là où il est (`origin/main`). */
+export function brancher(c: Commande, arbre: string, cle: string): void {
+  git(c, arbre, ['switch', '--quiet', '--no-track', '--create', branche(cle)])
 }
 
 /** Un arbre détaché sur `origin/main` (`.claude/worktrees/<nom>`), après `verifierBase` : la fusion et le retrait s'y font, sans qu'aucune branche locale ne bouge. */
@@ -156,8 +164,8 @@ export function retirerArbre(c: Commande, racine: string, chemin: string): void 
 }
 
 /** Retire l'arbre d'un chantier ; la branche reste (elle porte le travail, fusionné ou non). */
-export const fermerArbre = (c: Commande, racine: string, id: string): void =>
-  retirerArbre(c, racine, cheminArbre(racine, nomChantier(id)))
+export const fermerArbre = (c: Commande, racine: string, cle: string): void =>
+  retirerArbre(c, racine, cheminArbre(racine, nomChantier(cle)))
 
 /**
  * Tout ce que l'arbre porte de nouveau, en un commit sur sa branche, avec la

@@ -18,6 +18,7 @@ import {
   verifierRegistre,
 } from '../conversation/conversation'
 import { idConversation } from '../conversation/id'
+import { MOTS_CONTROLE } from '../echappee/boucle'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
@@ -30,7 +31,6 @@ const { values } = parseArgs({
     client: { type: 'string' },
     role: { type: 'string' },
     personne: { type: 'string' },
-    agent: { type: 'string' },
     maintenant: { type: 'string' },
     modele: { type: 'string' },
     consigne: { type: 'string' },
@@ -54,9 +54,7 @@ if (modes.filter(Boolean).length !== 1) usage()
 const dossier = resolve(values.client as string)
 const m = await metierDe(dossier)
 if (!m.roles.some((r) => r.id === values.role)) usage()
-// `--agent` : l'ancienne graphie de `--personne`, encore lue (PLAN-METIER-2.md, M2).
-if (values.personne && values.agent && values.personne !== values.agent) usage()
-const personne = values.personne ?? values.agent
+const personne = values.personne
 
 const demandeur = {
   role: values.role as string,
@@ -103,6 +101,7 @@ function entrer(conversation?: string): IdentiteVerifiee | undefined {
 
 function afficher(r: Reponse, conversation: string): void {
   console.log(`Réponse (${r.sorte}) : ${r.texte}`)
+  if (r.sorte === 'resultat' && r.controle) console.log(MOTS_CONTROLE[r.controle])
   if (r.sorte === 'precision' && r.candidats.length > 0 && !values.interactif) {
     console.log(
       `\nRépondre : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.personne ? ` --personne ${demandeur.personne}` : ''} --conversation ${conversation} --consigne "<le nom, ou son rang>"`,
