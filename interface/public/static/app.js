@@ -281,7 +281,14 @@ function rendreValider() {
 }
 
 function carteConfirmation(c) {
-  const conf = { conversation: c.conversation, empreinte: c.empreinte, identite: c.identite }
+  // `texte` et `sorte` : ce que « Répondre en tant que X » remontre dans la conversation de la question.
+  const conf = {
+    conversation: c.conversation,
+    empreinte: c.empreinte,
+    identite: c.identite,
+    texte: c.texte,
+    sorte: c.sorte,
+  }
   const sorte = c.sorte === 'proposition' ? SORTES.proposition : SORTES.confirmation
   return el(
     'li',
@@ -314,7 +321,8 @@ function zoneReponse(conf, nom, choix = []) {
         classe: 'bouton bouton--outil bouton--petit',
         type: 'button',
         texte: `Répondre en tant que ${nom}`,
-        onclick: () => changerIdentite(conf.identite),
+        // La question est posée dans sa conversation : on y passe, avec la question et son Oui / Non.
+        onclick: () => changerIdentite(conf.identite, { ...conf, nom, choix }),
       }),
     )
   }
@@ -877,21 +885,42 @@ async function choisir(conf, choix) {
   }
 }
 
-async function changerIdentite(identite) {
+/**
+ * Changer de « Je suis ». Sans `question`, une conversation neuve ; avec une
+ * question en attente (« Répondre en tant que X »), la conversation où elle
+ * est posée continue, et la question revient dans le fil avec son Oui / Non :
+ * une question appartient à qui elle a été posée, et se répond là.
+ */
+async function changerIdentite(identite, question) {
   if (memeIdentite(identite, ici.identite)) return
   ici.identite = identite
-  ici.conversation = undefined
+  ici.conversation = question?.conversation
   ici.attente = null
   $('identite').value = cleIdentite(identite)
   const role = roleDe(identite)
+  const qui = role?.identifie
+    ? `${nomDe(identite)} (${identite.personne})`
+    : sansArticle(role?.enMots ?? identite.role)
   note(
-    role?.identifie
-      ? `Vous parlez maintenant en tant que ${nomDe(identite)} (${identite.personne}). Nouvelle conversation.`
-      : `Vous parlez maintenant en tant que ${sansArticle(role?.enMots ?? identite.role)}. Nouvelle conversation.`,
+    question
+      ? `Vous parlez maintenant en tant que ${qui}, dans la conversation où la question vous est posée.`
+      : `Vous parlez maintenant en tant que ${qui}. Nouvelle conversation.`,
   )
   await chargerTableau()
   if (identite !== ici.identite) return
-  accueil()
+  if (question) {
+    bulleOutil(
+      {
+        sorte: question.sorte === 'proposition' ? 'proposition' : 'confirmation',
+        texte: question.texte,
+        empreinte: question.empreinte,
+        choix: question.choix,
+      },
+      { conversation: question.conversation, identite },
+    )
+  } else {
+    accueil()
+  }
   rendreSuggestions()
   rafraichir()
 }

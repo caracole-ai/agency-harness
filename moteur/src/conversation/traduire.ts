@@ -8,7 +8,6 @@ import {
   type Intention,
   JE_NE_SAIS_PAS,
   JeNeSaisPas,
-  schemaJson,
 } from './actions'
 import type { Designable } from './designation'
 import type { Domaine } from './domaine'
@@ -85,26 +84,13 @@ export function messageConsigne(consigne: string, maintenant: Temporal.ZonedDate
   return `Maintenant : ${date} (${jourSemaine(maintenant)}).\n<consigne>${consigne}</consigne>`
 }
 
-/**
- * `"null"` ou `"None"` écrit en texte au lieu de `null` (GMI ignore `strict` :
- * vu quatre fois sur deux passes) se relit comme `null`, d'abord : une mention
- * est un texte libre, « null » y passerait pour un nom. Si cette lecture
- * échoue (un champ qui refuse `null`), l'entrée telle quelle est lue.
- */
-function nullEnTexte(entree: unknown): unknown {
-  if (typeof entree !== 'object' || entree === null || Array.isArray(entree)) return entree
-  return Object.fromEntries(
-    Object.entries(entree).map(([cle, v]) => [cle, v === 'null' || v === 'None' ? null : v]),
-  )
-}
-
 /** Lit la réponse du modèle, dans l'ordre du plan, sans réessai. */
 function lire(message: Anthropic.Message, schemas: Map<string, z.ZodType<unknown>>): Demande {
   if (message.stop_reason === 'refusal') return { sorte: 'inconnue', raison: 'le modèle a refusé' }
   if (message.stop_reason === 'max_tokens') return { sorte: 'inconnue', raison: 'réponse tronquée' }
   const blocs = message.content.filter((b) => b.type === 'tool_use')
-  // Un fournisseur peut ignorer « un seul outil » (GMI le fait) : plusieurs
-  // actions ne se départagent pas, aucune n'est retenue.
+  // Un seul outil par tour est demandé ; plusieurs actions quand même ne se
+  // départagent pas, aucune n'est retenue : l'échec est dit.
   if (blocs.length > 1) return { sorte: 'inconnue', raison: 'le modèle a choisi plusieurs actions' }
   const bloc = blocs[0]
   if (!bloc) return { sorte: 'inconnue', raison: "le modèle n'a choisi aucune action" }
@@ -120,8 +106,7 @@ function lire(message: Anthropic.Message, schemas: Map<string, z.ZodType<unknown
   }
   const schema = schemas.get(bloc.name)
   if (!schema) return { sorte: 'inconnue', raison: `action inconnue : ${bloc.name}` }
-  const relue = schema.safeParse(nullEnTexte(bloc.input))
-  const r = relue.success ? relue : schema.safeParse(bloc.input)
+  const r = schema.safeParse(bloc.input)
   if (!r.success) {
     return { sorte: 'inconnue', raison: `paramètres invalides : ${z.prettifyError(r.error)}` }
   }
@@ -153,73 +138,4 @@ export async function traduire(
     unSeulOutil: true,
   })
   return { demande: lire(reponse.message, schemas), reponse }
-}
-
-export const DESIGNER = 'designer'
-export const AUCUN = 'aucun'
-
-/** Le système du second appel : départager une liste courte, sans jamais deviner. */
-export const SYSTEME_DESIGNER = [
-  'Une consigne nomme une personne ; l’outil a trouvé, dans ses données, des personnes au nom proche de la mention.',
-  `Tu choisis l’identifiant de la personne que la mention désigne, seulement si tu n’as aucun doute (une faute de frappe, un accent oublié). Sinon, ${AUCUN} : l’outil posera la question au demandeur.`,
-  'Tu ne réponds jamais toi-même. Réponds par un appel d’outil, jamais par du texte.',
-  '',
-  FRONTIERE,
-].join('\n')
-
-/** L'outil du second appel : l'énumération des identifiants candidats, plus `aucun`. */
-export function outilDesigner(candidats: Designable[]): Anthropic.Tool {
-  const Choix = z.strictObject({
-    personne: z
-      .enum([...candidats.map((c) => c.id), AUCUN])
-      .describe(`l’identifiant de la personne désignée, ou ${AUCUN}`),
-  })
-  return {
-    name: DESIGNER,
-    description: 'Désigner la personne dont parle la consigne parmi les candidats, ou aucun.',
-    input_schema: schemaJson(Choix),
-    strict: true,
-  }
-}
-
-/** Le message du second appel : la consigne, la mention et les candidats, ces deux-là entre les balises des données. */
-export function messageDesigner(
-  consigne: string,
-  mention: string,
-  candidats: Designable[],
-): string {
-  return [
-    `<consigne>${consigne}</consigne>`,
-    `La mention : ${entreDonnees(surUneLigne(mention))}`,
-    'Les candidats :',
-    entreDonnees(candidats.map((c) => `${c.id} — ${surUneLigne(c.nom)}`).join('\n')),
-  ].join('\n')
-}
-
-/**
- * Le second appel, minuscule : le modèle départage les candidats du niveau 2.
- * Le code vérifie que le choix est unique et dans la liste ; tout le reste vaut `aucun`.
- */
-export async function designer(
-  modele: Modele,
-  effort: Effort,
-  /** Comme pour `traduire` : le plafond de la demande dans la config. */
-  maxTokens: number,
-  consigne: string,
-  mention: string,
-  candidats: Designable[],
-): Promise<{ choix: Designable | undefined; reponse: ReponseModele }> {
-  const reponse = await modele.appeler({
-    systeme: SYSTEME_DESIGNER,
-    messages: [{ role: 'user', content: messageDesigner(consigne, mention, candidats) }],
-    outils: [outilDesigner(candidats)],
-    effort,
-    maxTokens,
-    unSeulOutil: true,
-  })
-  // Plusieurs appels, même à `designer` : le modèle hésite, l'humain tranche.
-  const blocs = reponse.message.content.filter((b) => b.type === 'tool_use')
-  const bloc = blocs.length === 1 && blocs[0]?.name === DESIGNER ? blocs[0] : undefined
-  const id = (bloc?.input as { personne?: unknown } | null | undefined)?.personne
-  return { choix: candidats.find((c) => c.id === id), reponse }
 }

@@ -2,15 +2,16 @@
 // liste des noms (REFLEXIONS.md, décidé le 2026-10-08). Le modèle rend la mention telle
 // qu'écrite (« Aicha ») ; le code la compare aux personnes que le rôle peut
 // désigner. Niveau 1 : une seule correspondance exacte, aux accents, à la
-// casse, aux espaces et aux tirets près, décide. Niveau 2 : une liste courte
-// de noms ressemblants, au seuil large, que le modèle départage ; elle ne
-// décide jamais seule. Le reste (niveau 3) revient à l'humain.
+// casse, aux espaces et aux tirets près, décide. Sinon, une liste courte de
+// noms ressemblants, au seuil large, revient au demandeur dans la question
+// « vous parlez de qui ? » : aucun nom ne part au modèle, même proche (décidé
+// le 2026-10-18 ; le second appel qui départageait cette liste est retiré).
 
 import type { Designable } from './noms'
 
 export type { Designable } from './noms'
 
-/** Au plus ce nombre de candidats proposés au niveau 2. */
+/** Au plus ce nombre de candidats proposés dans la question. */
 export const CANDIDATS_MAX = 3
 
 /** Sans accents ni casse, les espaces et les tirets réduits à une espace. */
@@ -92,7 +93,7 @@ export function distance(a: string, b: string): number {
   return at(a.length, b.length)
 }
 
-/** Au niveau 2, chaque mot du nom compte aussi (« Jean » rapproche « Jean-Pierre »), sauf les mots de moins de 3 lettres. */
+/** Pour la liste courte, chaque mot du nom compte aussi (« Jean » rapproche « Jean-Pierre »), sauf les mots de moins de 3 lettres. */
 const formesLarges = (nom: string) => [
   ...new Set([
     ...formes(nom),
@@ -106,9 +107,10 @@ const formesLarges = (nom: string) => [
 const seuil = (forme: string) => Math.max(2, Math.ceil(forme.length * 0.4))
 
 /**
- * Niveau 2 : les personnes dont un nom ressemble à la mention (même clé
+ * La liste courte : les personnes dont un nom ressemble à la mention (même clé
  * phonétique, ou distance sous le seuil), les plus proches d'abord, au plus
- * `CANDIDATS_MAX`. Une liste vide : personne ne ressemble.
+ * `CANDIDATS_MAX`. Une liste vide : personne ne ressemble. Elle ne décide
+ * jamais : c'est la question qui la montre, et le demandeur qui choisit.
  */
 export function proches<P extends Designable>(mention: string, personnes: P[]): P[] {
   const m = normaliserNom(mention)
@@ -140,23 +142,51 @@ export function proches<P extends Designable>(mention: string, personnes: P[]): 
 }
 
 const ORDINAUX: [RegExp, number][] = [
-  [/^(1|1er|1re|1ere|premier|premiere)$/, 1],
-  [/^(2|2e|2eme|deuxieme|second|seconde)$/, 2],
-  [/^(3|3e|3eme|troisieme)$/, 3],
+  [/^(premier|premiere)$/, 1],
+  [/^(deuxieme|second|seconde)$/, 2],
+  [/^(troisieme)$/, 3],
 ]
+/** Un rang écrit en chiffres : « 2 », « 2e », « 1er », « 3ème ». */
+const RANG_EN_CHIFFRES = /^(\d+)(er|re|ere|e|eme)?$/
+
+/** Un mot de réponse, sans article, ni ponctuation finale, ni accents ni casse. */
+const motDe = (reponse: string) =>
+  normaliserNom(reponse)
+    .replace(/^(le|la|l')\s*/, '')
+    .replace(/[.!]+$/, '')
+    .trim()
+
+/** Le rang que désigne une réponse (« 1 », « la première », « 2e »), s'il y en a un. */
+function rangDe(reponse: string): number | undefined {
+  const mot = motDe(reponse)
+  const chiffres = RANG_EN_CHIFFRES.exec(mot)
+  if (chiffres?.[1]) return Number(chiffres[1])
+  return ORDINAUX.find(([forme]) => forme.test(mot))?.[1]
+}
+
+/** « Oui » : accepte le seul candidat de la question. */
+const OUI = /^oui$/
+/** « Non » : aucun des candidats ; la question est close. */
+const NON = /^non$/
 
 /**
  * La réponse à « vous parlez de qui ? » : un nom que le niveau 1 retrouve
- * parmi les candidats, ou leur rang (« 1 », « la première »). Rien d'autre :
- * une réponse qui ne désigne pas un seul candidat est une nouvelle consigne.
+ * parmi les candidats, leur rang (« 1 », « la première », « 2e »), ou « oui »
+ * quand il n'y a qu'un candidat. Rien d'autre : une réponse qui ne désigne pas
+ * un seul candidat est ambiguë (`ambigue`), un refus (`refuse`), ou une
+ * nouvelle consigne.
  */
 export function choisirParmi<P extends Designable>(reponse: string, candidats: P[]): P | undefined {
   const exacts = correspondances(reponse, candidats)
   if (exacts.length === 1) return exacts[0]
-  const mot = normaliserNom(reponse)
-    .replace(/^(le|la|l')\s*/, '')
-    .replace(/[.!]+$/, '')
-    .trim()
-  const rang = ORDINAUX.find(([forme]) => forme.test(mot))?.[1]
+  if (candidats.length === 1 && OUI.test(motDe(reponse))) return candidats[0]
+  const rang = rangDe(reponse)
   return rang === undefined ? undefined : candidats[rang - 1]
 }
+
+/** Une réponse que plusieurs candidats portent (le prénom partagé) : la question se repose, numérotée. */
+export const ambigue = (reponse: string, candidats: Designable[]) =>
+  correspondances(reponse, candidats).length > 1
+
+/** « Non » à la question : aucun des candidats, rien ne s'exécute. */
+export const refuse = (reponse: string) => NON.test(motDe(reponse))

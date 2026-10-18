@@ -220,7 +220,7 @@ export async function jouerTraduction<S>(
                 maintenant: c.quand,
                 conversation: `C-eval-${c.id}`,
               }
-              const r = await resoudre(m, s, modele, tour, action, demande.params)
+              const r = resoudre(m, s, tour, action, demande.params)
               return r.sorte === 'resolue'
                 ? { ...demande, params: r.params }
                 : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
