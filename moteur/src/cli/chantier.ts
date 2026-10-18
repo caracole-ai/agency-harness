@@ -3,10 +3,10 @@
 // Le chantier d'une mission commandée par le patron (PLAN-RONDE.md § 6.3, R5 ;
 // PLAN-GENERAL.md G1, G2 ; PLAN-LIVRAISON.md L2, L3), à l'agence : décidé en
 // code (retirée, geste déjà actif : aucun appel), puis plan, implémentation,
-// garde, `pnpm check`, relecture, une reprise au plus, honnêteté, dans un
-// arbre de travail parti d'`origin/main` (`.claude/worktrees/chantier-<métier>-<id>`
+// garde, `pnpm check`, relecture, une reprise au plus, honnêteté, rejeu, dans
+// un arbre de travail parti d'`origin/main` (`.claude/worktrees/chantier-<métier>-<id>`
 // de ce dépôt, dont ni l'arbre ni `main` ne bougent) ; la mémoire, et la fusion
-// sur `main` du distant si les huit conditions sont vertes. Le dossier
+// sur `main` du distant si les neuf conditions sont vertes. Le dossier
 // `<id>.chantier.md` et le statut `<id>.statut.yaml` vont dans `--sortie`
 // (par défaut, à côté de la mission) ; une mission de la file d'un client, à
 // l'agence (une reprise à la main, `--refaire`), sort à l'agence comme sous

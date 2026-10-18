@@ -133,23 +133,28 @@ describe('G1 : huit conditions vertes, la fusion', () => {
     expect(issue.sorte).toBe('fait')
     if (issue.sorte !== 'fait') return
     expect(issue.issue).toBe('fusionné')
-    // La condition 4 mesure sur le client des évals du métier de la mission (PLAN-METIER-2.md M9).
-    expect(emises.find((x) => x.commande === 'pnpm' && x.args[0] === 'evals')?.args).toEqual([
-      'evals',
-      'traduire',
-      '--client',
-      CLIENT_EVALS_ESSAI,
+    // Les conditions 4 et 5 mesurent sur le client des évals du métier de la mission (PLAN-METIER-2.md M9) :
+    // la traduction, puis le rejeu des gestes nouveaux de la branche.
+    expect(
+      emises.filter((x) => x.commande === 'pnpm' && x.args[0] === 'evals').map((x) => x.args),
+    ).toEqual([
+      ['evals', 'traduire', '--client', CLIENT_EVALS_ESSAI],
+      ['evals', 'rejeu', '--client', CLIENT_EVALS_ESSAI, '--gestes', 'simuler_absence_code'],
     ])
     expect(issue.conditions.map((k) => [k.id, k.ok])).toEqual([
       ['chemins', true],
       ['tests', true],
       ['check', true],
       ['honnetete', true],
+      ['rejeu', true],
       ['relecture', true],
       ['bornes', true],
       ['lignes', true],
       ['memoire', true],
     ])
+    expect(issue.conditions.find((k) => k.id === 'rejeu')?.mesure).toBe(
+      'simuler_absence_code ; pnpm evals rejeu : 3/3 fidèle(s), 0 non mesurable(s)',
+    )
     // Plan, implémentation, relecture : trois appels ; le coût additionné.
     expect(appels().map((a) => a.role)).toEqual(['plan', 'implementation', 'relecture'])
     expect(issue.cout).toBeCloseTo(1.5)
@@ -366,6 +371,69 @@ describe('G1 : une condition rouge, aucun merge', () => {
     )
   })
 
+  it('5. le rejeu en écart (le geste ne rend pas un nombre que l’échappée cite) : refusé, les cas nommés', async () => {
+    const r = await refuse(
+      {
+        pnpm: {
+          rejeu: {
+            sortie:
+              'S-1 : ok\nS-2 : écart (nombres de l’échappée absents du geste : 24)\nS-3 : ok\n\nrejeu : 2/3 fidèle(s), 0 non mesurable(s), coût 0.0300 $\nEn écart',
+            code: 1,
+          },
+        },
+      },
+      'rejeu',
+    )
+    expect(r.issue.sorte === 'fait' && r.issue.conditions.find((k) => k.id === 'rejeu')).toEqual({
+      id: 'rejeu',
+      ok: false,
+      mesure:
+        'simuler_absence_code ; pnpm evals rejeu : 2/3 fidèle(s), 0 non mesurable(s) ; en écart : S-2',
+    })
+    // La traduction a été mesurée avant, le rejeu après ; la relecture a eu lieu : le refus vient du seul rejeu.
+    expect(r.appels().map((a) => a.role)).toEqual(['plan', 'implementation', 'relecture'])
+  })
+
+  it('5. le rejeu sans compte (pnpm evals rejeu en panne) : refusé', async () => {
+    await refuse({ pnpm: { rejeu: { sortie: 'boum', code: 1 } } }, 'rejeu')
+  })
+
+  it('5. aucun cas mesurable (l’échappée abandonne ou propose) : vert, et la mesure le dit', async () => {
+    const { issue } = await lancer({
+      pnpm: {
+        rejeu: {
+          sortie:
+            'S-1 : non mesurable : l’échappée a abandonné\n\nrejeu : 0/0 fidèle(s), 3 non mesurable(s), coût 0.0000 $\nFidèle.',
+          code: 0,
+        },
+      },
+    })
+    expect(issue.sorte === 'fait' && issue.issue).toBe('fusionné')
+    expect(issue.sorte === 'fait' && issue.conditions.find((k) => k.id === 'rejeu')).toEqual({
+      id: 'rejeu',
+      ok: true,
+      mesure: 'simuler_absence_code ; pnpm evals rejeu : 0/0 fidèle(s), 3 non mesurable(s)',
+    })
+  })
+
+  it('5. la traduction sous le seuil : le rejeu n’est pas lancé', async () => {
+    const r = await refuse(
+      {
+        pnpm: {
+          evals: {
+            sortie: '\n50/62 (81 %, seuil 95 %), fuite 0 cas (seuil 0), coût 0.1 $\nSous le seuil',
+            code: 1,
+          },
+        },
+      },
+      'honnetete',
+    )
+    expect(r.emises.some((x) => x.commande === 'pnpm' && x.args[1] === 'rejeu')).toBe(false)
+    expect(
+      r.issue.sorte === 'fait' && r.issue.conditions.find((k) => k.id === 'rejeu')?.mesure,
+    ).toBe('non mesuré (une condition précédente est rouge)')
+  })
+
   it('5. un bloquant à la relecture : une reprise, pas deux ; encore un bloquant, refusé', async () => {
     const bloquant = {
       constats: [
@@ -440,7 +508,16 @@ describe('G1 : une condition rouge, aucun merge', () => {
       titre: 'x',
       commit: git(depots.racine, 'rev-parse', 'chantier/essai/x'),
       conditions: (
-        ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+        [
+          'chemins',
+          'tests',
+          'check',
+          'honnetete',
+          'rejeu',
+          'relecture',
+          'bornes',
+          'lignes',
+        ] as const
       ).map(verte),
       personnes: PERSONNES_ESSAI,
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },
@@ -547,7 +624,7 @@ describe('G2 : le retrait défait la fusion', () => {
 
 describe('une fusion qui ne peut pas, ou n’a plus à, se faire', () => {
   const vertes = (
-    ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+    ['chemins', 'tests', 'check', 'honnetete', 'rejeu', 'relecture', 'bornes', 'lignes'] as const
   ).map((id): Condition => ({ id, ok: true, mesure: 'vert' }))
   const entree =
     (cle: string) =>
@@ -679,7 +756,16 @@ describe('ce qui se fusionne est ce que la garde a vu (audit de la livraison, 20
       titre: 'x',
       commit: garde,
       conditions: (
-        ['chemins', 'tests', 'check', 'honnetete', 'relecture', 'bornes', 'lignes'] as const
+        [
+          'chemins',
+          'tests',
+          'check',
+          'honnetete',
+          'rejeu',
+          'relecture',
+          'bornes',
+          'lignes',
+        ] as const
       ).map((id): Condition => ({ id, ok: true, mesure: 'vert' })),
       personnes: PERSONNES_ESSAI,
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-11', client: CLIENT },

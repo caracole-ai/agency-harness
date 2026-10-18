@@ -6,6 +6,7 @@ import { schemaJson } from '../conversation/actions'
 import type { MetierConversation } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import type { Domaine } from '../conversation/domaine'
+import { MOTIF_REJEU } from '../evals/rejeu'
 import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -55,9 +56,11 @@ import {
 // du diff, `pnpm check` rejoué par le code, la relecture (`chantier.revue`,
 // lecture seule, constats structurés), une reprise au plus sur un `bloquant`,
 // le test d'honnêteté (les cas de traduction de chaque geste nouveau, et
-// `pnpm evals traduire` avec le modèle du quotidien) ; l'entrée de mémoire, la
-// fusion par `fusion.ts` si les huit conditions sont vertes, et dans le
-// dossier de sortie `<id>.chantier.md` et `<id>.statut.yaml`. Le chantier ne
+// `pnpm evals traduire` avec le modèle du quotidien), le rejeu (`pnpm evals
+// rejeu` : chaque cas du geste nouveau contre une échappée sur la même
+// consigne, `evals/rejeu.ts`) ; l'entrée de mémoire, la fusion par
+// `fusion.ts` si les neuf conditions sont vertes, et dans le dossier de
+// sortie `<id>.chantier.md` et `<id>.statut.yaml`. Le chantier ne
 // connaît aucun dossier client : ni son journal, ni ses noms ; il se contrôle
 // contre les noms du client fictif du métier, les seuls connus à l'agence. Le
 // modèle ne reçoit aucune donnée du client : la mission par types (R3), la
@@ -346,6 +349,7 @@ export async function faireChantier<S>(
   /** Le commit sur lequel la dernière garde a porté : lui seul se fusionne. */
   let gardee: string | undefined
   let honnetete: { ok: boolean; mesure: string } | undefined
+  let rejeu: { ok: boolean; mesure: string } | undefined
   let fusion: IssueFusion | undefined
   let derniereLecture: Relecture | undefined
   let issue: string = ISSUES_CHANTIER.echoue
@@ -565,6 +569,16 @@ export async function faireChantier<S>(
     const bouge = arbreBouge(c, cwd, gardee)
     if (garde?.chemins.ok && !bouge && check?.ok && relu && bloquantsRestants === 0) {
       honnetete = mesurerHonnetete(c, cwd, o.env, mission.metier, ch.evals_clients[mission.metier])
+      // Le rejeu (condition 5) ne se mesure que sur des gestes dont la traduction tient.
+      if (honnetete.ok) {
+        rejeu = mesurerRejeu(
+          c,
+          cwd,
+          o.env,
+          ch.evals_clients[mission.metier],
+          casParGesteNouveau(c, cwd, mission.metier).map((g) => g.geste),
+        )
+      }
     }
 
     const echecsBornes = etapes.filter(
@@ -604,6 +618,11 @@ export async function faireChantier<S>(
         id: 'honnetete',
         ok: honnetete?.ok === true,
         mesure: honnetete?.mesure ?? 'non mesurée (une condition précédente est rouge)',
+      },
+      {
+        id: 'rejeu',
+        ok: rejeu?.ok === true,
+        mesure: rejeu?.mesure ?? 'non mesuré (une condition précédente est rouge)',
       },
       {
         id: 'relecture',
@@ -656,6 +675,7 @@ export async function faireChantier<S>(
               garde,
               check,
               honnetete,
+              rejeu,
               constats,
               issue: issueMemoire,
               personnes,
@@ -670,7 +690,7 @@ export async function faireChantier<S>(
         : fusion.sorte === 'refuse'
           ? raisonRefus(fusion.rouges)
           : `${ISSUES_CHANTIER.echoue} : ${fusion.raison}`
-    // La huitième, toujours au dossier : rouge si c'est elle qui refuse, sinon l'entrée écrite.
+    // La neuvième, toujours au dossier : rouge si c'est elle qui refuse, sinon l'entrée écrite.
     conditions.push(
       fusion.sorte === 'echec'
         ? { id: 'memoire', ok: false, mesure: 'non écrite' }
@@ -788,12 +808,59 @@ function mesurerHonnetete(
   }
   const [, ok, total, taux, seuil, fuite] = compte
   // Les cas en écart, nommés : les traces partent avec l'arbre, l'analyse d'erreurs en a besoin.
-  const ecarts = [...`${r.sortie}`.matchAll(/^(\S+) : écart/gm)].map((x) => x[1])
-  // Au seuil : le taux seul décide ; la fuite se dit, elle
-  // vient du niveau 2 de la désignation, hors du chantier (point laissé à Lionel).
+  const ecarts = casEnEcart(r.sortie)
+  // Au seuil : le taux seul décide ; la fuite se dit.
   return {
     ok: Number(total) > 0 && Number(ok) / Number(total) >= Number(seuil) / 100,
     mesure: `${gestes} ; pnpm evals traduire : ${ok}/${total} (${taux} %, seuil ${seuil} %), fuite ${fuite}${ecarts.length > 0 ? ` ; en écart : ${ecarts.join(', ')}` : ''}`,
+  }
+}
+
+/** Les cas qu'une passe d'évals dit en écart, par leur identifiant. */
+const casEnEcart = (sortie: string) =>
+  [...sortie.matchAll(/^(\S+) : écart/gm)].flatMap((x) => (x[1] ? [x[1]] : []))
+
+/**
+ * Condition 5 de G1, le rejeu (décidé le 2026-10-18) : `pnpm evals rejeu` dans
+ * l'arbre, sur le client des évals du métier, pour les gestes nouveaux de la
+ * branche : chaque cas de traduction du geste contre une échappée sur la même
+ * consigne ; chaque nombre que l'échappée cite doit être dans ce que le geste
+ * rend. Un cas que l'échappée ne sait pas mesurer (abandon, proposition,
+ * résumé retiré) se dit et ne compte pas : aucun cas mesurable, la condition
+ * est verte et le dit. Aucun geste nouveau : rien à rejouer.
+ */
+function mesurerRejeu(
+  c: Commande,
+  arbre: string,
+  env: Record<string, string | undefined>,
+  client: string | undefined,
+  gestes: string[],
+): { ok: boolean; mesure: string } {
+  if (gestes.length === 0) return { ok: true, mesure: 'aucun geste nouveau : rien à rejouer' }
+  if (client === undefined) return { ok: false, mesure: AUCUN_CLIENT_EVALS }
+  const r = c(
+    arbre,
+    'pnpm',
+    ['evals', 'rejeu', '--client', client, '--gestes', gestes.join(',')],
+    envEnfant(env),
+  )
+  const compte = MOTIF_REJEU.exec(`${r.sortie}\n${r.erreur}`)
+  if (!compte) {
+    return {
+      ok: false,
+      mesure: `${gestes.join(', ')} ; pnpm evals rejeu n'a pas rendu de compte (${fin(
+        r.erreur || r.sortie,
+        2,
+      )
+        .replace(/\s+/g, ' ')
+        .slice(0, 200)})`,
+    }
+  }
+  const [, fideles, mesurables, nonMesurables] = compte
+  const ecarts = casEnEcart(r.sortie)
+  return {
+    ok: Number(fideles) === Number(mesurables),
+    mesure: `${gestes.join(', ')} ; pnpm evals rejeu : ${fideles}/${mesurables} fidèle(s), ${nonMesurables} non mesurable(s)${ecarts.length > 0 ? ` ; en écart : ${ecarts.join(', ')}` : ''}`,
   }
 }
 
@@ -804,6 +871,7 @@ function sectionsMemoire(x: {
   garde: Garde | undefined
   check: { ok: boolean } | undefined
   honnetete: { mesure: string } | undefined
+  rejeu: { mesure: string } | undefined
   constats: Constat[]
   issue: string
   personnes: Designable[]
@@ -823,6 +891,7 @@ function sectionsMemoire(x: {
         `- fichiers de test touchés : ${(x.garde?.testsTouches ?? []).join(', ') || 'aucun'}`,
         `- pnpm check rejoué par le code : ${x.check ? (x.check.ok ? 'vert' : 'rouge') : 'non lancé'}`,
         `- honnêteté : ${x.honnetete?.mesure ?? 'non mesurée'}`,
+        `- rejeu : ${x.rejeu?.mesure ?? 'non mesuré'}`,
       ].join('\n'),
     },
     {

@@ -67,6 +67,11 @@ fais pareil.
   date) ; un test métier les compte. **Un test par règle d'exécution** dans
   un `*.test.ts` du métier, sur les données du client fictif ou sur des
   données écrites dans le test.
+- **Le code rejoue chaque cas de ton geste** sur le client fictif : une
+  échappée répond à la même consigne, et chaque nombre qu'elle cite doit se
+  retrouver dans ce que ton geste rend (les nombres écrits dans la consigne
+  ne comptent pas). Ton geste peut rendre plus que l'échappée, jamais moins :
+  rends ce que la question demande, le total quand elle demande un total.
 - **Une intention nouvelle = une entrée dans `INTENTIONS`** (`conversation.ts`
   du métier), quand une demande n'a pas encore de mot-clé.
 - Ne retire pas une intention que ton geste sert sans changer les cas de

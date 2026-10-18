@@ -38,7 +38,7 @@ import {
 // PLAN-LIVRAISON.md L2). Le seul module qui fusionne et qui pousse, et
 // seulement dans un arbre détaché sur `origin/main` frais, jeté après : ni
 // `main` du dépôt de base ni l'arbre d'un humain ne bougent, le push vise
-// `main` du distant. Huit conditions, toutes mesurées en code, aucune par un
+// `main` du distant. Neuf conditions, toutes mesurées en code, aucune par un
 // prompt ; une seule rouge et rien n'est fusionné : la branche reste, la
 // mémoire dit pourquoi. La mémoire se commet toujours à part, après la
 // fusion : `git revert -m 1` de la fusion ne la défait jamais. Un push refusé
@@ -50,12 +50,13 @@ import {
 // étiquette `origin/main` tel quel. Un refus n'en pose pas : rien n'a changé
 // dans le code.
 
-/** Les huit conditions de G1, dans l'ordre du plan. */
+/** Les neuf conditions de G1, dans l'ordre du plan ; la neuvième, le rejeu, décidée le 2026-10-18, suit l'honnêteté. */
 export const CONDITIONS = {
   chemins: 'le diff est dans les chemins autorisés',
   tests: "aucun test existant n'a disparu",
   check: 'pnpm check vert, rejoué par le code',
   honnetete: 'trois cas de traduction par geste nouveau, traduction au seuil',
+  rejeu: "chaque nombre que l'échappée cite se retrouve dans ce que le geste rend",
   relecture: 'aucun bloquant après au plus une reprise',
   bornes: 'tours et budget dans les bornes',
   lignes: 'le diff ne dépasse pas lignes_max',
@@ -212,9 +213,9 @@ function avecReprise<T>(
 
 /**
  * Conclut un chantier : dans un arbre détaché sur `origin/main`.
- * `conditions` : les sept premières, mesurées par le chantier ; la huitième
+ * `conditions` : les huit premières, mesurées par le chantier ; la neuvième
  * se mesure ici, sur l'entrée de mémoire écrite par `ecrireEntree` dans cet
- * arbre. Huit vertes : `git merge --no-ff` du commit gardé de
+ * arbre. Neuf vertes : `git merge --no-ff` du commit gardé de
  * `chantier/<métier>/<id>` (jamais la pointe de la branche : le code du modèle
  * tourne après la garde, dans `pnpm check` et `pnpm evals`), l'étiquette
  * `chantier/<métier>/<id>` sur la fusion, la mémoire commise à part, `git
@@ -241,11 +242,11 @@ export function conclure(o: {
   if (!brancheExiste(c, o.racine, o.cle)) {
     return { sorte: 'echec', raison: `branche ${refBranche(o.cle)} absente` }
   }
-  const sept = IDS_CONDITIONS.filter((id) => id !== 'memoire').map(
+  const avantMemoire = IDS_CONDITIONS.filter((id) => id !== 'memoire').map(
     (id): Condition =>
       o.conditions.find((x) => x.id === id) ?? { id, ok: false, mesure: 'non mesurée' },
   )
-  const rouges = sept.filter((x) => !x.ok)
+  const rouges = avantMemoire.filter((x) => !x.ok)
   const etiquette = refEtiquette(o.cle).replace('refs/tags/', '')
   let enRoute = 'fusion défaite'
 
@@ -266,16 +267,19 @@ export function conclure(o: {
     nomArbre('fusion', o.cle),
     (arbre): Tentative<IssueFusion> => {
       if (rouges.length > 0) {
-        return refuser(arbre, [...sept, { id: 'memoire', ok: true, mesure: 'non mesurée (refus)' }])
+        return refuser(arbre, [
+          ...avantMemoire,
+          { id: 'memoire', ok: true, mesure: 'non mesurée (refus)' },
+        ])
       }
-      // Condition 8 : l'entrée existe et ne porte aucun nom ; écrite avant la fusion, commise après.
+      // Condition 9 : l'entrée existe et ne porte aucun nom ; écrite avant la fusion, commise après.
       let memoire: string
       try {
         memoire = o.ecrireEntree(arbre, 'fusion', 'fusionné')
       } catch (erreur) {
         oublierMemoire(c, arbre)
         return refuser(arbre, [
-          ...sept,
+          ...avantMemoire,
           { id: 'memoire', ok: false, mesure: (erreur as Error).message.slice(0, 200) },
         ])
       }
@@ -284,7 +288,7 @@ export function conclure(o: {
       if (!propre) {
         oublierMemoire(c, arbre)
         return refuser(arbre, [
-          ...sept,
+          ...avantMemoire,
           { id: 'memoire', ok: false, mesure: "l'entrée manque ou porte un nom" },
         ])
       }
@@ -328,7 +332,7 @@ export function conclure(o: {
           },
         }
       }
-      const message = `Chantier ${o.cle} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : huit conditions vertes.`
+      const message = `Chantier ${o.cle} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : neuf conditions vertes.`
       const fusion = c(arbre, 'git', ['merge', '--no-ff', '-m', message, o.commit])
       if (fusion.code !== 0) {
         return {
