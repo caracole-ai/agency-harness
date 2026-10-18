@@ -1,4 +1,4 @@
-# Handoff — 2026-10-16
+# Handoff — 2026-10-18
 
 Pour reprendre dans une session neuve : deux pages, l'état et la suite. Les
 décisions et leur fil sont dans `REFLEXIONS.md`, les plans dans `PLAN-*.md`,
@@ -33,7 +33,9 @@ pour de vrai, deux fois, la dernière sur la pointe finale.
 **Prochaine session : le lot 5** (la mesure réelle, avec les vrais modèles,
 la clé de l'agence et un bac à sable : voir « Ouvert, avant un client
 réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
-(`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte.
+(`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **Sans la clé, la
+session fait le lot « ménage »** (« Ouvert », tranché le 2026-10-18) : il
+n'attend personne.
 
 - **Ne jamais lancer `pnpm agence`, `pnpm chantier` ni `pnpm versionner`
   dans ce dépôt pour un essai** : ils poussent sur `origin` (GitHub). Le
@@ -53,7 +55,11 @@ réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
   quotidien, Fable et Opus au chantier) : les dollars affichés sont des
   équivalents API, rien n'est facturé ; la contrainte est le quota.
 
-## Ouvert, avant un client réel (à Lionel ; le détail sous les lots 2 et 3 du plan)
+## Ouvert, avant un client réel : les trois décisions qui restent à Lionel
+
+Le détail est sous les lots 2 et 3 du plan. Tout le reste a été tranché le
+2026-10-18 (`REFLEXIONS.md`, « Décidé »). Recommandation de Claude : le
+chemin simple, dans les trois cas.
 
 - **Le bac à sable, aggravé** : le code du modèle (`pnpm check`, `pnpm
   evals`) lit la clé, `~/.ssh`, le trousseau, écrit dans le `.git` commun,
@@ -67,8 +73,6 @@ réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
 - **Le slug du client**, dans `memoire/INDEX.md` et le manifeste de chaque
   version, que tous les clients lisent. Chemin simple : y nommer le métier ;
   le client reste au registre local de l'agence (`chantiers.log`).
-- **L'espace de noms** `chantier/<métier>/<id>`. Chemin simple : le métier
-  passé avec l'identifiant dans `arbre.ts`, `fusion.ts` et la mémoire.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 
@@ -99,23 +103,49 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 
 ## Ouvert
 
-- À Lionel, sur `heures_par_agent` : relire ses 7 cas de traduction et
-  N-1/N-2 réétiquetés (l'exception prévue par la garde) ; E-01/E-02 de
-  `echappees.yaml` gardent l'intention `heures_par_agent` (une étiquette) ;
-  « fuite 1 » de sa passe `evals traduire` non lue ; l'arrondi des heures
-  recopié de `remplacement.ts`.
-- Le niveau 2 de `designer` envoie au modèle les candidats avec leur nom,
-  contre « aucun nom ne part au modèle ».
-- À Lionel : la bascule vers la clé d'API avant un client réel (après le
-  plan de la livraison) ; aligner le
-  départage de `gerer_absence` (par nom) sur celui des propositions (par
-  numéro) ; les trois arbres `.claude/worktrees/agent-*` d'anciennes
-  sessions (`git worktree remove`).
-- Agence : `facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur),
-  17 tests au lieu de 23, le piège `lots.nom`.
-- Une fuite comptée à tort sur exception.
-- Non relus : le mini-site (https://claude.ai/artifact/TustZJh4FbAG17ZcDjBG52)
-  et la présentation (https://claude.ai/artifact/B8Dj1EJySsdZ6bJAyJCsN2).
+**Le lot « ménage », tranché le 2026-10-18** (`REFLEXIONS.md`, « Décidé »,
+les quatre lignes du 18). Sans modèle, `pnpm check` seul, une branche, une
+fusion ; dans cet ordre :
+
+1. Le dépôt : fait le jour même (45 branches supprimées, `git cherry` vide
+   sur les cinq non fusionnées ; restent `main` et les trois extraites dans
+   un worktree) ; les trois worktrees : Lionel, ci-dessous.
+2. GMI et ce qui n'existait que pour lui (`flux`, `usageBorne`,
+   `nullEnTexte`), la compat `agent` (`roles.ts`, `parler.ts --agent`,
+   `evals.ts`), `pnpm remplacer` : retirés. `unSeulOutil` reste.
+3. Les plans exécutés, `SESSION-D.md`, les « Fait » de REFLEXIONS →
+   `archives/`, les renvois du README suivent ; le § 10 de
+   `PLAN-METIER-2.md` → « À trancher » ; le § 1 de `PLAN-GENERAL.md`
+   supprimé ; `evals/resultats/` réduit aux cités et aux `apparie-*`.
+4. Le niveau 2 de `designer` retiré (la question en code, « Vous parlez de
+   X ? » ou la liste numérotée) ; le départage par numéro, `gerer_absence`
+   compris ; « Répondre en tant que X » ouvre la conversation de la
+   question ; un commentaire sur `IdentiteVerifiee`.
+5. L'espace de noms `chantier/<métier>/<id>` ; le contrôle des noms étendu
+   aux tiers que le métier déclare.
+6. Une passe `pnpm evals traduire` sur le client fictif (le point 4 touche
+   ce que le modèle lit) : R-2 devient une question, son étiquette suit.
+
+**Reste à Lionel, sans être une décision** : créer la clé de l'agence ; la
+date de la bascule vers la clé d'API ; les étiquettes (`heures_par_agent` :
+ses 7 cas et N-1/N-2 réétiquetés ; E-01/E-02 de `echappees.yaml` ; AP-4 ;
+le repli qui montre les cellules piégées ; R-2) ; supprimer `~/harnais-nuit`,
+`~/harnais-nuit-origine.git` et les trois worktrees, sales de copies
+dépassées :
+
+```sh
+git worktree remove --force .claude/worktrees/agent-a2eb82aa7f784e5ca
+git worktree remove --force .claude/worktrees/agent-a6d92e76e85884008
+git worktree remove --force .claude/worktrees/agent-afb90b024f1dbbeaf
+git worktree prune
+git branch -d travail-lot5 travail-lot7 worktree-agent-a2eb82aa7f784e5ca worktree-agent-a6d92e76e85884008 worktree-agent-afb90b024f1dbbeaf
+```
+
+**Reste à faire, sans décision** : « fuite 1 » de la passe `evals traduire`
+de `heures_par_agent`, non lue ; une fuite comptée à tort sur exception ;
+l'arrondi des heures recopié de `remplacement.ts` ; agence :
+`facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur), 17 tests
+au lieu de 23, le piège `lots.nom`.
 
 ## Décisions à respecter (le détail : `REFLEXIONS.md`, « Décidé »)
 

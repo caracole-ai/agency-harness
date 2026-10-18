@@ -437,6 +437,11 @@ tests) : vide tant que la phase E ne tourne pas, utile dès la première nuit.
 
 ## Décisions à Lionel
 
+> Tranchées le 2026-10-18 par Claude, sur délégation de Lionel : le point 1
+> fait le 15, les points 2 à 6 retenus (`REFLEXIONS.md`, « Décidé »,
+> 2026-10-18). Un écart : les plans vont dans `archives/`, pas seulement
+> dans `git show`, parce que le README les cite.
+
 1. Promotion : retirer (≈ 2 000 + 2 500 lignes) ou isoler en feuille ; dans
    les deux cas, défaire d'abord le couplage ronde → promotion.
 2. Fournisseur : « Anthropic par clé ou abonnement, rien d'autre » (GMI,
