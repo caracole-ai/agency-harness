@@ -36,6 +36,18 @@ export interface LancementClaude {
    * hooks ni son `CLAUDE.md`) : le chantier (§ 4.2). Absent : ceux du binaire.
    */
   reglages?: 'aucun' | 'projet'
+  /**
+   * true : `--output-format stream-json`, pour lire aussi les appels d'outil que
+   * le modèle a tentés en cours de route (`tentatives`). L'abonnement s'en sert :
+   * ses outils ne sont pas ceux du binaire, et un appel direct échoue.
+   */
+  flux?: boolean
+}
+
+/** Un appel d'outil que le modèle a tenté dans le binaire, hors de la sortie structurée. */
+export interface Tentative {
+  nom: string
+  entree: unknown
 }
 
 export interface IssueClaude {
@@ -54,6 +66,45 @@ export interface IssueClaude {
   /** Pourquoi `ok` est faux. */
   raison?: string
   dureeMs: number
+  /** En flux seulement : les appels d'outil tentés, dans l'ordre, hors de la sortie structurée. */
+  tentatives?: Tentative[]
+}
+
+/** L'outil par lequel le binaire rend la sortie structurée : ce n'est pas une tentative. */
+export const OUTIL_SORTIE_STRUCTUREE = 'StructuredOutput'
+
+/** Un événement `assistant` du flux, au minimum : ses blocs d'appel d'outil. */
+const EvenementAssistant = z.looseObject({
+  type: z.literal('assistant'),
+  message: z.looseObject({
+    content: z.array(
+      z.looseObject({ type: z.string(), name: z.string().optional(), input: z.unknown() }),
+    ),
+  }),
+})
+
+/** Le flux lu ligne à ligne : l'événement `result` (le même que la sortie JSON) et les tentatives. */
+function lireFlux(sortie: string): { resultat: unknown; tentatives: Tentative[] } {
+  let resultat: unknown
+  const tentatives: Tentative[] = []
+  for (const ligne of sortie.split('\n')) {
+    if (ligne.trim() === '') continue
+    let e: unknown
+    try {
+      e = JSON.parse(ligne)
+    } catch {
+      continue
+    }
+    if ((e as { type?: unknown }).type === 'result') resultat = e
+    const a = EvenementAssistant.safeParse(e)
+    if (!a.success) continue
+    for (const b of a.data.message.content) {
+      if (b.type === 'tool_use' && b.name !== undefined && b.name !== OUTIL_SORTIE_STRUCTUREE) {
+        tentatives.push({ nom: b.name, entree: b.input })
+      }
+    }
+  }
+  return { resultat, tentatives }
 }
 
 /** Ce que le JSON de `claude -p --output-format json` doit porter, au minimum (§ 4.2). */
@@ -137,7 +188,7 @@ export function argumentsClaude(l: LancementClaude): string[] {
   return [
     '-p',
     '--output-format',
-    'json',
+    ...(l.flux ? ['stream-json', '--verbose'] : ['json']),
     '--model',
     l.modele,
     '--effort',
@@ -202,8 +253,9 @@ export async function lancerClaude(
   const dureeMs = Date.now() - debut
   if (r.delai) return echec(`délai mural dépassé (${Math.round(l.delaiMs / 1000)} s)`, dureeMs)
   let json: z.infer<typeof SortieClaude> | undefined
+  const flux = l.flux ? lireFlux(r.sortie) : undefined
   try {
-    json = SortieClaude.parse(JSON.parse(r.sortie))
+    json = SortieClaude.parse(flux ? flux.resultat : JSON.parse(r.sortie))
   } catch {
     json = undefined
   }
@@ -231,6 +283,7 @@ export async function lancerClaude(
         }
       : {}),
     ...(json.structured_output !== undefined ? { sortie: json.structured_output } : {}),
+    ...(flux ? { tentatives: flux.tentatives } : {}),
   }
   const raison =
     r.code !== 0

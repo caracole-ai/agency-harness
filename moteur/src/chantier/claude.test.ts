@@ -21,7 +21,9 @@ const connecte: Executer = () => ({ code: 0, sortie: '{"loggedIn":true}', erreur
 const dossier = mkdtempSync(join(tmpdir(), 'claude-'))
 
 /** Un faux binaire : il répond à `auth status`, écrit ses arguments et son entrée, et rend `sortie`. */
+/** Un binaire simulé ; une chaîne est écrite telle quelle (un flux), un objet en JSON. */
 function binaire(sortie: unknown, opts: { code?: number; attendreMs?: number } = {}): string {
+  const texte = typeof sortie === 'string' ? sortie : JSON.stringify(sortie)
   const chemin = join(dossier, `claude-${Math.random().toString(16).slice(2)}.mjs`)
   writeFileSync(
     chemin,
@@ -33,7 +35,7 @@ let entree = ''
 process.stdin.on('data', (d) => { entree += d })
 process.stdin.on('end', () => {
   writeFileSync(${JSON.stringify(`${chemin}.recu.json`)}, JSON.stringify({ args, entree }))
-  setTimeout(() => { process.stdout.write(${JSON.stringify(JSON.stringify(sortie))}); process.exit(${opts.code ?? 0}) }, ${opts.attendreMs ?? 0})
+  setTimeout(() => { process.stdout.write(${JSON.stringify(texte)}); process.exit(${opts.code ?? 0}) }, ${opts.attendreMs ?? 0})
 })
 `,
   )
@@ -109,6 +111,33 @@ describe('argumentsClaude', () => {
 })
 
 describe('lancerClaude, avec un binaire simulé', () => {
+  it('en flux : le résultat de la dernière ligne, et les outils tentés hors de la sortie structurée', async () => {
+    const flux = [
+      { type: 'system', subtype: 'init' },
+      {
+        type: 'assistant',
+        message: { content: [{ type: 'tool_use', name: 'requete', input: { sql: 'SELECT 1' } }] },
+      },
+      {
+        type: 'user',
+        message: { content: [{ type: 'tool_result', content: 'No such tool available: requete' }] },
+      },
+      {
+        type: 'assistant',
+        message: { content: [{ type: 'tool_use', name: 'StructuredOutput', input: { a: 1 } }] },
+      },
+      resultat(),
+    ]
+      .map((e) => JSON.stringify(e))
+      .join('\n')
+    const b = binaire(flux)
+    const r = await lancerClaude(lancement({ flux: true }), { claude: { binaire: b } }, ENV)
+    expect(r).toMatchObject({ ok: true, sortie: { a: 1 }, tours: 2 })
+    expect(r.tentatives).toEqual([{ nom: 'requete', entree: { sql: 'SELECT 1' } }])
+    const a = recu(b).args
+    expect(a.slice(0, 4)).toEqual(['-p', '--output-format', 'stream-json', '--verbose'])
+  })
+
   it('rend la sortie structurée, le coût et les tours ; le prompt part sur l’entrée standard', async () => {
     const b = binaire(resultat())
     const r = await lancerClaude(lancement(), { claude: { binaire: b } }, ENV)

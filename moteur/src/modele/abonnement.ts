@@ -5,7 +5,7 @@ import { join } from 'node:path'
 import type Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
 import { type Executer, executerSync } from '../agence/config'
-import { type Lancer, lancerClaude, lancerProcessus } from '../chantier/claude'
+import { type Lancer, lancerClaude, lancerProcessus, type Tentative } from '../chantier/claude'
 import type { Modele } from './modele'
 
 // L'adaptateur de l'abonnement claude.ai, par le binaire de Claude Code : le
@@ -22,10 +22,16 @@ import type { Modele } from './modele'
 /** La variable de Claude Code qui borne les tokens de sortie d'un appel : le plafond de l'appel y passe. */
 export const VARIABLE_TOKENS_SORTIE = 'CLAUDE_CODE_MAX_OUTPUT_TOKENS'
 
-/** Le tour rendu par le binaire. */
+/**
+ * Le tour rendu par le binaire. Ni « outil » ni « appel » : le binaire rend la
+ * sortie structurée par un outil à lui, et un modèle qui lit « tes outils »
+ * tente de les appeler directement, reçoit « No such tool available » et peut
+ * conclure qu'ils sont en panne (évals du 2026-10-18 : 4 essais sur 10, et des
+ * abandons). Le tour nomme donc des actions que le harnais exécute.
+ */
 const Tour = z.strictObject({
   texte: z.string(),
-  appels: z.array(z.strictObject({ outil: z.string(), entree: z.unknown() })),
+  actions: z.array(z.strictObject({ action: z.string(), parametres: z.unknown() })),
 })
 
 /** Le schéma de la sortie structurée : un tour, ses appels limités aux outils de l'appel et à leurs entrées. */
@@ -34,7 +40,7 @@ export function schemaTour(outils: Anthropic.Tool[], unSeulOutil: boolean): unkn
     type: 'object',
     properties: {
       texte: { type: 'string', description: 'Ce que tu dis dans ce tour ; vide si rien.' },
-      appels:
+      actions:
         outils.length === 0
           ? { type: 'array', maxItems: 0 }
           : {
@@ -44,14 +50,14 @@ export function schemaTour(outils: Anthropic.Tool[], unSeulOutil: boolean): unkn
                 anyOf: outils.map((o) => ({
                   type: 'object',
                   ...(o.description !== undefined ? { description: o.description } : {}),
-                  properties: { outil: { const: o.name }, entree: o.input_schema },
-                  required: ['outil', 'entree'],
+                  properties: { action: { const: o.name }, parametres: o.input_schema },
+                  required: ['action', 'parametres'],
                   additionalProperties: false,
                 })),
               },
             },
     },
-    required: ['texte', 'appels'],
+    required: ['texte', 'actions'],
     additionalProperties: false,
   }
 }
@@ -60,11 +66,15 @@ export function schemaTour(outils: Anthropic.Tool[], unSeulOutil: boolean): unkn
 export function protocole(outils: Anthropic.Tool[], unSeulOutil: boolean): string {
   return [
     '---',
-    'Comment se passe cet échange : la conversation jusqu’ici t’est donnée dans le message, tour par tour. `<tour role="user">` est ce qui t’est adressé, résultats de tes appels d’outil (`<resultat>`) compris ; `<tour role="assistant">` sont tes tours précédents, avec leurs appels d’outil (`<appel>`).',
-    `Tu écris le tour suivant de l’assistant, et lui seul, dans la sortie structurée : \`texte\`, ce que tu dis (vide si rien) ; \`appels\`, les outils que tu appelles${unSeulOutil ? ' (un au plus)' : ''}, chacun avec son entrée. Un appel s’exécute après ton tour : son résultat te revient au tour suivant.`,
+    'Comment se passe cet échange : la conversation jusqu’ici t’est donnée dans le message, tour par tour. `<tour role="user">` est ce qui t’est adressé, résultats de tes actions (`<resultat>`) compris ; `<tour role="assistant">` sont tes tours précédents, avec leurs actions (`<action>`).',
+    `Tu écris le tour suivant de l’assistant, et lui seul, en rendant ta sortie structurée : \`texte\`, ce que tu dis (vide si rien) ; \`actions\`, ce que tu demandes au harnais de faire${unSeulOutil ? ' (une au plus)' : ''}, chacune avec ses paramètres. Le harnais exécute l’action après ton tour : son résultat te revient au tour suivant.`,
+    'Dans les consignes ci-dessus, « appeler un outil » veut dire : le nommer dans `actions`. Ces actions ne sont pas des outils que tu peux appeler toi-même.',
     ...(outils.length > 0
-      ? ['Tes outils :', ...outils.map((o) => `- ${o.name} : ${o.description ?? ''}`)]
-      : ['Tu n’as aucun outil.']),
+      ? [
+          'Les actions que tu peux demander :',
+          ...outils.map((o) => `- ${o.name} : ${o.description ?? ''}`),
+        ]
+      : ['Tu ne peux demander aucune action : `actions` reste vide.']),
   ].join('\n')
 }
 
@@ -77,7 +87,7 @@ function blocEnTexte(b: Bloc): string {
     case 'text':
       return b.text
     case 'tool_use':
-      return `<appel id="${b.id}" outil="${b.name}">${JSON.stringify(b.input)}</appel>`
+      return `<action id="${b.id}" nom="${b.name}">${JSON.stringify(b.input)}</action>`
     case 'tool_result': {
       const contenu =
         typeof b.content === 'string' ? b.content : (b.content ?? []).map(blocEnTexte).join('\n')
@@ -97,6 +107,31 @@ export function conversationEnTexte(messages: Anthropic.MessageParam[]): string 
       return `<tour role="${m.role}">\n${contenu}\n</tour>`
     })
     .join('\n\n')
+}
+
+/**
+ * Les actions du tour. Le modèle tente parfois une action directement, comme un
+ * outil ; le binaire répond « No such tool available », et le modèle recopie
+ * d'ordinaire la même action dans la sortie structurée, mais parfois conclut
+ * que l'outil est en panne et abandonne (évals du 2026-10-18). Si la sortie
+ * structurée ne nomme aucune des actions tentées, la première tentative d'une
+ * action connue, d'entrée objet, est le tour : c'est ce que le modèle voulait
+ * faire avant l'erreur du binaire. Son entrée est validée par le moteur, comme
+ * toute autre.
+ */
+export function actionsRetenues(
+  structurees: { action: string; parametres: unknown }[],
+  tentatives: Tentative[],
+  outils: Anthropic.Tool[],
+): { action: string; parametres: unknown }[] {
+  const connues = new Set(outils.map((o) => o.name))
+  const tentees = tentatives.filter(
+    (t) => connues.has(t.nom) && typeof t.entree === 'object' && t.entree !== null,
+  )
+  const premiere = tentees[0]
+  if (premiere === undefined) return structurees
+  if (structurees.some((s) => tentees.some((t) => t.nom === s.action))) return structurees
+  return [{ action: premiere.nom, parametres: premiere.entree }]
 }
 
 /**
@@ -127,6 +162,7 @@ export function modeleAbonnement(
             schemaJson: schemaTour(appel.outils, appel.unSeulOutil),
             delaiMs,
             reglages: 'aucun',
+            flux: true,
           },
           { claude: { binaire } },
           { ...env, [VARIABLE_TOKENS_SORTIE]: String(appel.maxTokens) },
@@ -141,14 +177,15 @@ export function modeleAbonnement(
             `abonnement (${binaire}) : tour illisible, ${z.prettifyError(tour.error)}`,
           )
         }
-        const { texte, appels } = tour.data
+        const { texte } = tour.data
+        const actions = actionsRetenues(tour.data.actions, issue.tentatives ?? [], appel.outils)
         const content: Anthropic.ContentBlock[] = [
           ...(texte.trim() !== '' ? [{ type: 'text' as const, text: texte, citations: null }] : []),
-          ...appels.map((a) => ({
+          ...actions.map((a) => ({
             type: 'tool_use' as const,
             id: `toolu_abonnement_${randomUUID().replaceAll('-', '')}`,
-            name: a.outil,
-            input: a.entree,
+            name: a.action,
+            input: a.parametres,
             caller: { type: 'direct' as const },
           })),
         ]
@@ -158,7 +195,7 @@ export function modeleAbonnement(
           role: 'assistant',
           model: id,
           content,
-          stop_reason: appels.length > 0 ? 'tool_use' : 'end_turn',
+          stop_reason: actions.length > 0 ? 'tool_use' : 'end_turn',
           stop_sequence: null,
           stop_details: null,
           container: null,
