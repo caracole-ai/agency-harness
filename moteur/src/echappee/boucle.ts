@@ -13,14 +13,16 @@ import {
 import type { Constat } from '../regles/verdict'
 import type { Temporal } from '../temps/temporal'
 import { verifierReponse } from './reponse'
-import { type ResultatRequete, rendreResultat } from './requete'
+import { type ResultatRequete, rendreResultat, rendreResultatNumerote } from './requete'
+import { remplirPhrase, sansTrous } from './trous'
 
 // La boucle de l'échappée (espace 2) : le modèle travaille sur une copie des
 // données avec cinq outils, un seul par tour, dans des bornes de tours, de
 // tokens et de temps. Il finit toujours par répondre, proposer ou abandonner ;
-// ce qui sort de la boucle est contrôlé par le code : les chiffres et les noms
-// d'une réponse doivent venir des données, une proposition passe les règles
-// (PLAN-ESPACES.md § 6.5).
+// ce qui sort de la boucle est contrôlé par le code : une réponse est une
+// phrase à trous que le code remplit depuis les résultats de requête, sans
+// aucun chiffre ni identifiant retapé par le modèle (`trous.ts`) ; une
+// proposition passe les règles (PLAN-ESPACES.md § 6.5).
 
 export interface BornesEchappee {
   tours: number
@@ -30,8 +32,14 @@ export interface BornesEchappee {
 
 export const CONTROLE_OK = 'ok'
 export const CONTROLE_RETIRE = 'résumé du modèle retiré'
-/** Ce que le contrôle a dit d'une réponse : ses chiffres et ses noms venaient des données, ou le résumé a été retiré. */
+/** Ce que le contrôle a dit d'une réponse : chaque trou s'est rempli et le modèle n'a rien retapé, ou le résumé a été retiré. */
 export type ControleReponse = typeof CONTROLE_OK | typeof CONTROLE_RETIRE
+/** Pourquoi un résumé est retiré, pour les traces ; le demandeur lit `MOTS_CONTROLE`. */
+export const MOTIFS_RETRAIT = {
+  retape: 'un nombre, une date ou un identifiant retapé hors d’un trou',
+  trou: 'un trou qui ne se résout pas',
+  filet: 'la phrase remplie cite une valeur absente des résultats',
+} as const
 /**
  * Ce que le demandeur lit sous une réponse d'échappée, selon le contrôle :
  * le code a relu les chiffres, ou il a retiré le résumé et montré les
@@ -65,8 +73,13 @@ export const MOTIFS_ABANDON = {
 export type IssueEchappee =
   | {
       sorte: 'reponse'
+      /** Ce que le demandeur lit : la phrase remplie, ou les tableaux si le résumé est retiré. */
       texte: string
+      /** La phrase à trous telle que le modèle l'a écrite, pour les traces. */
+      phrase: string
       controle: ControleReponse
+      /** Pourquoi le résumé est retiré (`MOTIFS_RETRAIT`, et le détail) ; absent quand il est gardé. */
+      motif_controle?: string
       tours: number
       usage: UsageModele
     }
@@ -136,11 +149,14 @@ export const SORTIE_MAX = 2000
 const Requete = z.strictObject({
   sql: z.string().describe('une seule requête SQLite en lecture (SELECT ou WITH) sur les tables'),
 })
+/** La grammaire des trous, dite au modèle dans le système et sur l'outil `repondre`. */
+export const GRAMMAIRE_TROUS =
+  'Tu ne recopies jamais un nombre, une date ni un identifiant : à leur place tu écris un trou, {T2.3.heures} pour la cellule de la colonne heures à la ligne 3 du résultat T2, {T2.n} pour son nombre de lignes, et le harnais le remplit.'
 const Repondre = z.strictObject({
-  texte: z
+  phrase: z
     .string()
     .describe(
-      'la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; chaque chiffre et chaque nom viennent d’un résultat de requete',
+      `la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; une phrase à trous : ${GRAMMAIRE_TROUS}`,
     ),
 })
 const Abandonner = z.strictObject({
@@ -186,7 +202,7 @@ export function outilsEchappee<Modif>(outils: OutilsEchappee<Modif>): Anthropic.
       : []),
     outil(
       OUTIL_REPONDRE,
-      'Finir par une réponse en texte, quand la demande est une question.',
+      'Finir par une réponse au demandeur, quand la demande est une question : une phrase à trous, chaque nombre et chaque identifiant pris dans un résultat de requete par un trou.',
       Repondre,
     ),
     ...(outils.proposer
@@ -236,6 +252,9 @@ export async function boucle<Modif>(
   // Ce que le demandeur a écrit n'est pas inventé : ses nombres se citent. Seule la
   // consigne, pas la date du message (10, 21, 40… deviendraient citables).
   sources.push(consigne)
+  // Ce que le modèle a le droit d'écrire lui-même dans sa phrase, hors des trous : ce
+  // qu'il a reçu avant toute requête (la description de la copie, la consigne).
+  const sourcesInitiales = [...sources]
   // Ce que le harnais a dit au modèle n'est pas inventé non plus : la date du jour et
   // les bornes de la semaine se citent comme dates (et par leur année), pas comme nombres.
   const datesConnues = [maintenant.toPlainDate().toString(), lundi, dimanche]
@@ -245,6 +264,8 @@ export async function boucle<Modif>(
   let appels = 0
   /** Les tableaux des requêtes réussies, dans l'ordre : ce que le demandeur lit si le résumé du modèle est retiré. */
   const tableaux: string[] = []
+  /** Les mêmes résultats, structurés : ce que les trous de la phrase désignent (`T1` est le premier). */
+  const structures: ResultatRequete[] = []
   let dernierResultat: Anthropic.ToolResultBlockParam | undefined
   const abandon = (motif: string): IssueEchappee => ({
     sorte: 'abandon',
@@ -343,12 +364,17 @@ export async function boucle<Modif>(
           if ('erreur' in r) {
             resultat(sortie, r.erreur)
           } else {
+            // Les sources du contrôle gardent le tableau tel que le demandeur le lit : le
+            // nom du résultat et les numéros de ligne, dits au modèle, ne s'y citent pas.
             sources.push(sortie)
             // Le nombre de lignes d'un résultat entier se cite (exemple : « 4 agents ») :
             // le code l'a compté, pas le modèle.
             if (!r.tronque && rendu === complet) sources.push(String(r.lignes.length))
             tableaux.push(rendu)
-            resultat(sortie)
+            structures.push(r)
+            resultat(
+              entreDonnees(tronquer(rendreResultatNumerote(r, structures.length), SORTIE_MAX)),
+            )
           }
           break
         }
@@ -374,19 +400,43 @@ export async function boucle<Modif>(
             invalide(e.error)
             break
           }
-          const controle = verifierReponse(e.data.texte, sources, nomsConnus, datesConnues)
-          return controle.ok
-            ? { sorte: 'reponse', texte: e.data.texte, controle: CONTROLE_OK, tours: appels, usage }
-            : {
-                sorte: 'reponse',
-                texte:
-                  tableaux.length > 0
-                    ? tableaux.join('\n\n')
-                    : "Je n'ai pas pu vérifier ma réponse.",
-                controle: CONTROLE_RETIRE,
-                tours: appels,
-                usage,
-              }
+          const { phrase } = e.data
+          const retire = (motif: string): IssueEchappee => ({
+            sorte: 'reponse',
+            texte:
+              tableaux.length > 0 ? tableaux.join('\n\n') : "Je n'ai pas pu vérifier ma réponse.",
+            phrase,
+            controle: CONTROLE_RETIRE,
+            motif_controle: motif,
+            tours: appels,
+            usage,
+          })
+          // Hors des trous, le modèle ne cite que ce qu'il a reçu avant toute requête.
+          const brut = verifierReponse(
+            sansTrous(phrase),
+            sourcesInitiales,
+            nomsConnus,
+            datesConnues,
+          )
+          if (!brut.ok) return retire(`${MOTIFS_RETRAIT.retape} : ${brut.intrus.join(', ')}`)
+          const rempli = remplirPhrase(phrase, structures)
+          if (!rempli.ok) return retire(`${MOTIFS_RETRAIT.trou} : ${rempli.motif}`)
+          // Le filet : la phrase remplie ne cite que les résultats ; par construction, il ne retire rien.
+          const filet = verifierReponse(
+            rempli.texte,
+            [...sources, ...rempli.valeurs],
+            nomsConnus,
+            datesConnues,
+          )
+          if (!filet.ok) return retire(`${MOTIFS_RETRAIT.filet} : ${filet.intrus.join(', ')}`)
+          return {
+            sorte: 'reponse',
+            texte: rempli.texte,
+            phrase,
+            controle: CONTROLE_OK,
+            tours: appels,
+            usage,
+          }
         }
         case OUTIL_PROPOSER: {
           const e = Proposer.safeParse(bloc.input)

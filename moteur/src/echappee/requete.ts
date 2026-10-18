@@ -160,19 +160,43 @@ export async function executerRequete(
   })
 }
 
-/** Une valeur pour le modèle : un nombre non entier avec deux décimales, jamais un flottant brut (`1234.66`, pas `1234.6599999999999`) (PLAN-METIER-2.md § 1, M11). */
-function rendreValeur(v: unknown): string {
+/** Une valeur pour le modèle, et pour un trou de sa phrase : un nombre non entier avec deux décimales, jamais un flottant brut (`1234.66`, pas `1234.6599999999999`) (PLAN-METIER-2.md § 1, M11). */
+export function rendreValeur(v: unknown): string {
   if (v === null) return 'null'
   if (typeof v === 'number' && !Number.isInteger(v)) return v.toFixed(2)
   return String(v)
 }
 
-/** Le résultat pour le modèle : `col | col`, puis une ligne par résultat ; ou `erreur : …`. */
+/** La colonne qui numérote les lignes d'un résultat rendu au modèle, à partir de 1. */
+export const COLONNE_NUMERO = '#'
+
+/** Le résultat tel que le demandeur le lit : `col | col`, puis une ligne par résultat ; ou `erreur : …`. */
 export function rendreResultat(r: ResultatRequete): string {
   if ('erreur' in r) return `erreur : ${r.erreur}`
   const texte = [
     r.colonnes.join(' | '),
     ...r.lignes.map((ligne) => ligne.map(rendreValeur).join(' | ')),
+  ]
+  if (r.lignes.length === 0) texte.push('(aucune ligne)')
+  if (r.tronque) texte.push(`(tronqué à ${LIGNES_MAX} lignes)`)
+  return texte.join('\n')
+}
+
+/**
+ * Le résultat tel que le modèle le lit : son nom (`T1`, dans l'ordre des
+ * requêtes réussies) et son nombre de lignes en tête, puis la colonne `#` qui
+ * numérote chaque ligne à partir de 1. C'est ce qu'un trou de sa phrase
+ * désigne (`{T1.2.heures}`, `{T1.n}`).
+ */
+export function rendreResultatNumerote(r: ResultatRequete, numero: number): string {
+  if ('erreur' in r) return `erreur : ${r.erreur}`
+  const compte = r.tronque
+    ? `${LIGNES_MAX} lignes au moins, tronqué`
+    : `${r.lignes.length} ligne${r.lignes.length > 1 ? 's' : ''}`
+  const texte = [
+    `T${numero} (${compte})`,
+    [COLONNE_NUMERO, ...r.colonnes].join(' | '),
+    ...r.lignes.map((ligne, i) => [String(i + 1), ...ligne.map(rendreValeur)].join(' | ')),
   ]
   if (r.lignes.length === 0) texte.push('(aucune ligne)')
   if (r.tronque) texte.push(`(tronqué à ${LIGNES_MAX} lignes)`)

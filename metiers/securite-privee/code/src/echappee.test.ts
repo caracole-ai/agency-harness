@@ -153,10 +153,10 @@ describe('une échappée de bout en bout (modèle simulé)', () => {
   const requete: Scripte = {
     outil: 'requete',
     entree: {
-      sql: "SELECT a.nom, SUM(v.heures) AS heures FROM agents a JOIN vacations v ON v.agent = a.id WHERE v.jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY a.id ORDER BY heures",
+      sql: "SELECT a.nom, SUM(v.heures) AS heures FROM agents a JOIN vacations v ON v.agent = a.id WHERE v.jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY a.id ORDER BY heures, a.id",
     },
   }
-  const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+  const repondre = (phrase: string): Scripte => ({ outil: 'repondre', entree: { phrase } })
   const consigne = "Qui a le moins d'heures cette semaine ?"
 
   it('une réponse vraie passe le contrôle ; le journal garde l’échappée, les appels et l’outil', async () => {
@@ -164,7 +164,12 @@ describe('une échappée de bout en bout (modèle simulé)', () => {
     const { r, lignes } = await echapper(
       s,
       PATRON,
-      [requete, repondre('A-3 et A-4 ont 12 heures cette semaine, A-2 en a 16.')],
+      [
+        requete,
+        repondre(
+          '{T1.2.nom} et {T1.3.nom} ont {T1.2.heures} heures cette semaine, {T1.5.nom} en a {T1.5.heures}.',
+        ),
+      ],
       consigne,
     )
     if (r.sorte !== 'reponse') throw new Error(`sorte ${r.sorte}`)
@@ -196,14 +201,19 @@ describe('une échappée de bout en bout (modèle simulé)', () => {
     expect(r.texte).toMatch(/^nom \| heures\n/)
     expect(r.texte).toContain('Sophie Marchand | 12')
     expect(r.texte).not.toContain('10 heures')
-    // Le modèle a lu le tableau masqué ; le demandeur lit le même, les noms restitués.
+    // Le modèle a lu le tableau masqué, nommé et numéroté (ce que ses trous désignent) ; le
+    // demandeur lit le même tableau, sans le nom ni les numéros, les noms restitués.
     const sortie = JSON.parse(
       lignes.find((l) => l.type === TYPE_OUTIL_ECHAPPEE)?.donnees ?? '{}',
     ).sortie
     const echappee = JSON.parse(lignes.find((l) => l.type === TYPE_ECHAPPEE)?.donnees ?? '{}')
-    expect(sortie).toContain('A-3 | 12')
-    expect(sortie).toBe(`<donnees>${echappee.texte_modele}</donnees>`)
+    expect(sortie).toMatch(
+      /^<donnees>T1 \(7 lignes\)\n# \| nom \| heures\n1 \| A-11 \| 12\n2 \| A-3 \| 12\n/,
+    )
+    expect(echappee.texte_modele).toMatch(/^nom \| heures\nA-11 \| 12\nA-3 \| 12\n/)
     expect(echappee.controle_reponse).toBe(CONTROLE_RETIRE)
+    expect(echappee.phrase).toBe('A-3 a 10 heures cette semaine.')
+    expect(echappee.motif_controle).toMatch(/retapé hors d’un trou : A-3, 10$/)
   })
 
   it('un agent : ni verifier ni proposer, et rien des autres agents dans le système', async () => {

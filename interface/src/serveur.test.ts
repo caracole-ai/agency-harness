@@ -211,10 +211,10 @@ describe('le contrôle des chiffres, mesuré et dit (REFLEXIONS.md, décidé le 
   const heures: Scripte = {
     outil: 'requete',
     entree: {
-      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent",
+      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent ORDER BY agent",
     },
   }
-  const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+  const repondre = (phrase: string): Scripte => ({ outil: 'repondre', entree: { phrase } })
   const consigne = async (a: ReturnType<typeof app>) =>
     (await (
       await poster(a, '/api/consigne', {
@@ -224,7 +224,9 @@ describe('le contrôle des chiffres, mesuré et dit (REFLEXIONS.md, décidé le 
     ).json()) as { reponse: Reponse }
 
   it('/api/consigne : une réponse relue porte son contrôle, « ok »', async () => {
-    const { reponse } = await consigne(app([nouvelle, heures, repondre('A-1 a fait 24 heures.')]))
+    const { reponse } = await consigne(
+      app([nouvelle, heures, repondre('{T1.1.agent} a fait {T1.1.heures} heures.')]),
+    )
     expect(reponse).toEqual({
       sorte: 'resultat',
       texte: 'Karim Haddad a fait 24 heures.',

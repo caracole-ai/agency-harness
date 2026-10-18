@@ -8,7 +8,13 @@ import type { Evenement, Journal } from '../journal/journal'
 import { evenementAppel } from '../modele/compteur'
 import { cout, type Modele, USAGE_NUL } from '../modele/modele'
 import type { Temporal } from '../temps/temporal'
-import { boucle, type EvenementBoucle, type IssueEchappee, type OutilsEchappee } from './boucle'
+import {
+  boucle,
+  type EvenementBoucle,
+  GRAMMAIRE_TROUS,
+  type IssueEchappee,
+  type OutilsEchappee,
+} from './boucle'
 import { creerCopie, type TableCopie } from './copie'
 import {
   masquerConsigne,
@@ -108,7 +114,7 @@ export function systemeEchappee(
   return [
     `Tu travailles pour ${quiParle} sur une copie de ses données. Rien de ce que tu fais ne modifie quoi que ce soit : tu proposes, une personne décide.`,
     '',
-    'Tu ne calcules rien de tête. Chaque chiffre de ta réponse vient d’un résultat de requete : fais faire les sommes et les comptes par SQL. Si tu n’as pas la donnée, tu le dis. Recopie les nombres, les dates et les heures tels que les résultats les écrivent. Ta réponse est courte : les chiffres demandés et les noms, sans recopier la date ni l’heure du message, ni les bornes de tes requêtes. Réponds à la question posée, rien de plus, et sois non verbeux : pas de détail ligne par ligne si on demande un total, pas de compte si on demande une liste, pas de remarque ajoutée.',
+    `Tu ne calcules rien de tête : fais faire les sommes et les comptes par SQL. Chaque résultat de requete arrive nommé (T1, T2…) avec une colonne # qui numérote ses lignes. Ta réponse est une phrase à trous. ${GRAMMAIRE_TROUS} Si tu n’as pas la donnée, tu le dis. Ta réponse est courte : les chiffres demandés et les identifiants, par des trous, sans recopier la date ni l’heure du message, ni les bornes de tes requêtes. Réponds à la question posée, rien de plus, et sois non verbeux : pas de détail ligne par ligne si on demande un total, pas de compte si on demande une liste, pas de remarque ajoutée.`,
     proposer
       ? [
           'Tu finis toujours par un appel d’outil, repondre, proposer ou abandonner, jamais par du texte.',
@@ -267,7 +273,16 @@ export async function echappee<Modif>(
         ...(montree.sorte === 'proposition'
           ? { modifications: montree.modifications, constats: montree.constats }
           : {}),
-        ...(montree.sorte === 'reponse' ? { controle_reponse: montree.controle } : {}),
+        ...(montree.sorte === 'reponse'
+          ? {
+              controle_reponse: montree.controle,
+              // La phrase à trous telle que le modèle l'a écrite, et pourquoi son résumé est retiré, le cas échéant.
+              phrase: montree.phrase,
+              ...(montree.motif_controle !== undefined
+                ? { motif_controle: montree.motif_controle }
+                : {}),
+            }
+          : {}),
         // Le texte final tel que montré, après contrôle (les tableaux si le résumé est retiré) et restitution.
         ...(montree.sorte !== 'abandon' ? { texte: montree.texte } : {}),
       },

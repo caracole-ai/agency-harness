@@ -134,6 +134,7 @@ describe('ecartsEchappee', () => {
   const reponse = (texte: string): IssueEchappee => ({
     sorte: 'reponse',
     texte,
+    phrase: texte,
     controle: 'ok',
     tours: 2,
     usage: USAGE_NUL,

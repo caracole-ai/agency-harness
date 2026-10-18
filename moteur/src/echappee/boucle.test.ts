@@ -99,11 +99,15 @@ describe('les outils envoyés au modèle', () => {
     expect(json).toContain('les modifications proposées')
     expect(json).not.toMatch(/réaffectation|patron/)
   })
-  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse', () => {
+  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse, et la grammaire des trous', () => {
     const json = JSON.stringify(outilsEchappee(outils()))
     expect(json).toContain(
-      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte)',
+      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; une phrase à trous : Tu ne recopies jamais un nombre, une date ni un identifiant',
     )
+    expect(json).toContain(
+      '{T2.3.heures} pour la cellule de la colonne heures à la ligne 3 du résultat T2, {T2.n} pour son nombre de lignes',
+    )
+    expect(json).not.toContain('"texte"')
   })
 })
 
@@ -112,28 +116,86 @@ describe('une question', () => {
     const { issue, modele, evenements } = await lancer([
       REQUETE,
       REQUETE,
-      { outil: 'repondre', entree: { texte: 'Julien : 16 h, puis Karim : 24 h.' } },
+      {
+        outil: 'repondre',
+        entree: { phrase: '{T1.1.nom} : {T1.1.heures} h, puis {T2.2.nom} : {T2.2.heures} h.' },
+      },
     ])
-    expect(issue).toMatchObject({ sorte: 'reponse', controle: 'ok', tours: 3 })
+    expect(issue).toMatchObject({
+      sorte: 'reponse',
+      controle: 'ok',
+      tours: 3,
+      texte: 'Julien Lefèvre : 16 h, puis Karim Haddad : 24 h.',
+      phrase: '{T1.1.nom} : {T1.1.heures} h, puis {T2.2.nom} : {T2.2.heures} h.',
+    })
+    expect(issue).not.toHaveProperty('motif_controle')
     expect(evenements.filter((e) => e.sorte === 'appel')).toHaveLength(3)
     expect(evenements.filter((e) => e.sorte === 'outil')).toHaveLength(2)
     const r = resultats(modele.appels[2]?.messages ?? [])
     expect(r).toHaveLength(2)
     expect(r[0]?.cache_control).toBeUndefined()
     expect(r[1]?.cache_control).toEqual({ type: 'ephemeral' })
-    expect(r[1]?.content).toMatch(/^<donnees>nom \| heures\nJulien Lefèvre \| 16/)
+    // Le modèle lit chaque résultat nommé, ses lignes numérotées : ce que ses trous désignent.
+    expect(r[0]?.content).toMatch(
+      /^<donnees>T1 \(2 lignes\)\n# \| nom \| heures\n1 \| Julien Lefèvre \| 16\n2 \| Karim Haddad \| 24<\/donnees>$/,
+    )
+    expect(r[1]?.content).toMatch(
+      /^<donnees>T2 \(2 lignes\)\n# \| nom \| heures\n1 \| Julien Lefèvre \| 16/,
+    )
+    // Le journal garde ce que le modèle a lu.
+    expect(evenements.find((e) => e.sorte === 'outil')).toMatchObject({
+      sortie: expect.stringMatching(/^<donnees>T1 \(2 lignes\)/),
+    })
     expect(modele.appels[0]?.messages[0]?.content).toContain('(intention : heures_par_agent)')
     expect(modele.appels[0]).toMatchObject({ maxTokens: 6000, unSeulOutil: true, effort: 'medium' })
   })
-  it('un chiffre inventé : le résumé du modèle est retiré, le tableau de la requête le remplace', async () => {
+  it('un chiffre retapé hors d’un trou, même vrai : le résumé du modèle est retiré, le tableau de la requête le remplace', async () => {
     const { issue } = await lancer([
       REQUETE,
-      { outil: 'repondre', entree: { texte: 'Julien : 17 h.' } },
+      { outil: 'repondre', entree: { phrase: 'Julien : 17 h.' } },
     ])
-    expect(issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
+    expect(issue).toMatchObject({
+      sorte: 'reponse',
+      controle: CONTROLE_RETIRE,
+      motif_controle: 'un nombre, une date ou un identifiant retapé hors d’un trou : Julien, 17',
+      phrase: 'Julien : 17 h.',
+    })
     expect(issue.sorte === 'reponse' && issue.texte).toBe(
       'nom | heures\nJulien Lefèvre | 16\nKarim Haddad | 24',
     )
+    // Le tableau tel que le demandeur le lit : sans le nom du résultat ni les numéros de ligne.
+    const vrai = await lancer([
+      REQUETE,
+      { outil: 'repondre', entree: { phrase: 'Julien : 16 h.' } },
+    ])
+    expect(vrai.issue).toMatchObject({ controle: CONTROLE_RETIRE })
+  })
+  it('un trou qui ne se résout pas : le résumé est retiré, et le motif le dit', async () => {
+    const { issue } = await lancer([
+      REQUETE,
+      { outil: 'repondre', entree: { phrase: '{T1.1.nom} : {T1.3.heures} h.' } },
+    ])
+    expect(issue).toMatchObject({
+      sorte: 'reponse',
+      controle: CONTROLE_RETIRE,
+      motif_controle: "un trou qui ne se résout pas : {T1.3.heures} : T1 n'a pas de ligne 3",
+    })
+    expect(issue.sorte === 'reponse' && issue.texte).toBe(
+      'nom | heures\nJulien Lefèvre | 16\nKarim Haddad | 24',
+    )
+  })
+  it('une colonne par son rang, une cellule non entière avec deux décimales', async () => {
+    const o = outils()
+    o.requete = () => ({
+      colonnes: ['nom', 'heures'],
+      lignes: [['Julien Lefèvre', 16.5]],
+      tronque: false,
+    })
+    const { issue } = await lancer(
+      [REQUETE, { outil: 'repondre', entree: { phrase: '{T1.1.1} : {T1.1.2} h.' } }],
+      { outils: o, bornes: BORNES, usage: undefined },
+    )
+    expect(issue).toMatchObject({ controle: 'ok', texte: 'Julien Lefèvre : 16.50 h.' })
   })
   it('plusieurs requêtes : tous leurs tableaux remplacent le résumé, pas seulement le dernier', async () => {
     // Vu avec GLM (E-03) : la dernière requête ne portait que des noms, les chiffres étaient dans la première.
@@ -146,7 +208,7 @@ describe('une question', () => {
       [
         REQUETE,
         { outil: 'requete', entree: { sql: 'SELECT noms' } },
-        { outil: 'repondre', entree: { texte: 'Julien : 17 h, Mehdi : 0 h.' } },
+        { outil: 'repondre', entree: { phrase: 'Julien : 17 h, Mehdi : 0 h.' } },
       ],
       { outils: o, bornes: BORNES, usage: undefined },
     )
@@ -155,10 +217,16 @@ describe('une question', () => {
       'nom | heures\nJulien Lefèvre | 16\n\nnom\nMehdi Saïdi',
     )
   })
-  it('le nombre de lignes d’un résultat entier se cite ; d’un résultat tronqué, non', async () => {
+  it('le nombre de lignes d’un résultat entier se cite par un trou ; d’un résultat tronqué, non', async () => {
     // Vu avec GLM (E-05, E-14) : « 4 agents » comptés par le modèle sur les lignes rendues.
-    const repondre = { outil: 'repondre', entree: { texte: '2 agents : Julien 16 h, Karim 24 h.' } }
-    expect((await lancer([REQUETE, repondre])).issue).toMatchObject({ controle: 'ok' })
+    const repondre = {
+      outil: 'repondre',
+      entree: { phrase: '{T1.n} agents : {T1.1.nom} {T1.1.heures} h, {T1.2.nom} {T1.2.heures} h.' },
+    }
+    expect((await lancer([REQUETE, repondre])).issue).toMatchObject({
+      controle: 'ok',
+      texte: '2 agents : Julien Lefèvre 16 h, Karim Haddad 24 h.',
+    })
     const o = outils()
     o.requete = () => ({ ...(outils().requete('') as object), tronque: true }) as never
     const { issue } = await lancer([REQUETE, repondre], {
@@ -168,11 +236,16 @@ describe('une question', () => {
     })
     expect(issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
   })
-  it('sans aucune requête, une réponse chiffrée est retirée', async () => {
-    const { issue } = await lancer([{ outil: 'repondre', entree: { texte: 'Julien : 16 h.' } }])
+  it('sans aucune requête, une réponse chiffrée ou à trous est retirée', async () => {
+    const { issue } = await lancer([{ outil: 'repondre', entree: { phrase: 'Julien : 16 h.' } }])
     expect(issue).toMatchObject({
       controle: CONTROLE_RETIRE,
       texte: "Je n'ai pas pu vérifier ma réponse.",
+    })
+    const trou = await lancer([{ outil: 'repondre', entree: { phrase: '{T1.1.heures} h.' } }])
+    expect(trou.issue).toMatchObject({
+      controle: CONTROLE_RETIRE,
+      motif_controle: "un trou qui ne se résout pas : {T1.1.heures} : le tableau T1 n'existe pas",
     })
   })
 })
@@ -267,7 +340,7 @@ describe('la frontière des données', () => {
         {
           outil: 'repondre',
           entree: {
-            texte:
+            phrase:
               'Du lundi 2026-10-05 au dimanche 2026-10-11, en octobre 2026 : je n’ai pas la donnée.',
           },
         },
@@ -279,7 +352,7 @@ describe('la frontière des données', () => {
       'Semaine en cours : du lundi 2026-10-05 au dimanche 2026-10-11.',
     )
     const nombre = await lancer(
-      [{ outil: 'repondre', entree: { texte: 'Il a fait 11 heures.' } }],
+      [{ outil: 'repondre', entree: { phrase: 'Il a fait 11 heures.' } }],
       o,
     )
     expect(nombre.issue).toMatchObject({ controle: CONTROLE_RETIRE })
@@ -320,9 +393,14 @@ describe('plusieurs appels d’outil dans un message (un fournisseur qui ignore 
   it('chaque appel reçoit son résultat, tous dans un seul message, le cache sur le dernier', async () => {
     const { issue, modele, evenements } = await lancer([
       { plusieurs: [REQUETE, REQUETE].map((r) => ('outil' in r ? r : { outil: '', entree: {} })) },
-      { outil: 'repondre', entree: { texte: 'Julien : 16 h.' } },
+      { outil: 'repondre', entree: { phrase: '{T2.1.nom} : {T2.1.heures} h.' } },
     ])
-    expect(issue).toMatchObject({ sorte: 'reponse', controle: 'ok', tours: 2 })
+    expect(issue).toMatchObject({
+      sorte: 'reponse',
+      controle: 'ok',
+      tours: 2,
+      texte: 'Julien Lefèvre : 16 h.',
+    })
     const envoye = modele.appels[1]?.messages ?? []
     const dernier = envoye.at(-1)
     if (!dernier || typeof dernier.content === 'string') throw new Error('message attendu')
@@ -340,10 +418,10 @@ describe('plusieurs appels d’outil dans un message (un fournisseur qui ignore 
       {
         plusieurs: [
           { outil: 'requete', entree: { sql: 'SELECT 1' } },
-          { outil: 'repondre', entree: { texte: 'Julien : 16 h.' } },
+          { outil: 'repondre', entree: { phrase: '{T1.1.nom} : {T1.1.heures} h.' } },
         ],
       },
-      { outil: 'repondre', entree: { texte: 'Julien : 16 h.' } },
+      { outil: 'repondre', entree: { phrase: '{T1.1.nom} : {T1.1.heures} h.' } },
     ])
     expect(issue).toMatchObject({ sorte: 'reponse', tours: 2 })
     const [requete, fin] = resultats(modele.appels[1]?.messages ?? [])
@@ -356,7 +434,7 @@ describe('plusieurs appels d’outil dans un message (un fournisseur qui ignore 
   it('les nombres de la consigne se citent sans requête ; ceux de la date du message, non', async () => {
     const consigne = 'Combien d’heures du 5 au 11 octobre ?'
     const cite = await lancer(
-      [{ outil: 'repondre', entree: { texte: 'Du 5 au 11 octobre, je n’ai pas la donnée.' } }],
+      [{ outil: 'repondre', entree: { phrase: 'Du 5 au 11 octobre, je n’ai pas la donnée.' } }],
       {
         outils: outils(),
         bornes: BORNES,
@@ -365,7 +443,7 @@ describe('plusieurs appels d’outil dans un message (un fournisseur qui ignore 
       },
     )
     expect(cite.issue).toMatchObject({ sorte: 'reponse', controle: 'ok' })
-    const date = await lancer([{ outil: 'repondre', entree: { texte: 'Sophie a 21 heures.' } }], {
+    const date = await lancer([{ outil: 'repondre', entree: { phrase: 'Sophie a 21 heures.' } }], {
       outils: outils(),
       bornes: BORNES,
       usage: undefined,
@@ -419,7 +497,7 @@ describe('les bornes et les fins anormales', () => {
   it('du texte puis un outil : la relance suffit', async () => {
     const { issue } = await lancer([
       { texte: 'Voici la réponse.' },
-      { outil: 'repondre', entree: { texte: 'Je n’ai pas la donnée.' } },
+      { outil: 'repondre', entree: { phrase: 'Je n’ai pas la donnée.' } },
     ])
     expect(issue).toMatchObject({ sorte: 'reponse', controle: 'ok', tours: 2 })
   })
