@@ -60,17 +60,17 @@ schémas sont dans le README (« La carte »).
 ## Le chantier et la livraison
 
 - **Agence** : la machine et le dépôt de qui fabrique le harnais. `pnpm agence` y tourne. Sa config : `agence.yaml`, sans secret. Elle garde chez elle le dossier complet de chaque chantier et le registre client ↔ mission.
-- **Mission** : la commande d'un geste absent, mise en fichier : `missions/<date>/<intention>.yaml` chez le client. Un titre, un pourquoi, les consignes-types et les requêtes validées des échappées qui l'ont motivée, le métier, aucun nom. Une mission, un chantier, un geste.
+- **Mission** : la commande d'un geste absent, mise en fichier : `missions/<date>/<intention>.yaml` chez le client. Un titre, un pourquoi, les consignes-types des échappées qui l'ont motivée, le métier, aucun nom. Une mission, un chantier, un geste.
 - **File** (`missions-<slug>`) : un dépôt git par client, entre le client et l'agence. La mission y monte, le statut public y redescend. `etat.yaml` y dit où en est l'agence.
 - **Slug** : le nom court d'un client, dans le nom de sa file.
 - **Statut** (`<id>.statut.yaml`) : ce que le chantier rend : `en attente`, `en cours`, `fusionné`, `refusé`, `écartée` (refusée en code avant tout appel), `échoué`, `retiré`. Le statut public va dans la file ; le statut complet reste à l'agence.
 - **Chantier** : le travail qui code un geste depuis une mission, dans la branche `chantier/<métier>/<id>` : un arbre de travail, trois rôles de modèle (Fable planifie et relit, Opus code), la garde, la fusion. `pnpm chantier`. Une mission à la fois, bornées par jour.
 - **Arbre de travail** : un `git worktree` du dépôt de l'agence, parti d'`origin/main`, dans `.claude/worktrees/`. L'arbre de qui lance et sa branche `main` ne bougent jamais.
 - **Garde** : les neuf conditions vérifiées en code avant la fusion : les chemins autorisés du métier, aucun test retiré, `pnpm check` rejoué, l'honnêteté (trois cas de traduction par geste), la relecture, les bornes, le nombre de lignes, une mémoire sans nom, le rejeu. Seul le commit qui a passé la garde se fusionne, jamais la pointe de la branche.
-- **Rejeu** : la neuvième condition : le geste codé, exécuté sur la copie du client fictif, ne cite que des nombres présents dans les tableaux des requêtes validées de la mission, rejouées sur la même copie. `pnpm evals rejeu`.
+- **Rejeu** : la neuvième condition : pour chaque cas de traduction du geste nouveau, une échappée vive sur la même consigne, sur la copie du client fictif, puis le geste ; chaque nombre que l'échappée cite doit se trouver dans la réponse du geste. Abandon ou résumé retiré : « non mesurable », dit. `pnpm evals rejeu`.
 - **Fusion** : automatique, dans un arbre détaché, poussée sur `main` du distant. Puis une version.
 - **Mémoire** (`memoire/`) : dans le dépôt, ce que chaque chantier laisse : `INDEX.md` (une ligne par événement), `chantiers/`, `CONVENTIONS.md` (on y ajoute, jamais on n'en retire). Le chantier suivant la lit, tous les clients la tirent. Aucun nom n'y entre.
-- **Retrait** : `pnpm chantier retirer <id> --motif` : `git revert` de la fusion, la mémoire, le statut, puis une version. Une mission retirée ne se relance jamais.
+- **Retrait** : `pnpm chantier retirer <métier>/<id> --motif` : `git revert` de la fusion, la mémoire, le statut, puis une version. Une mission retirée ne se relance jamais.
 - **Version** : une étiquette git signée `v<AAAA-MM-JJ>-<n>` posée sur `main`, avec son manifeste. Chaque fusion et chaque retrait en posent une ; `pnpm versionner` en pose une sans chantier. Une version doit descendre de celle qui tourne (la lignée) et rester au-dessus du plancher : après un retrait, la version retirée ne se réinstalle pas.
 - **Signature** : SSH, par la clé de l'agence, désignée par `AGENCE_CLE_SIGNATURE`, hors du dépôt, jamais dans l'environnement d'un modèle. Le client porte la clé publique dans son fichier `signataires` : sans lui, aucune version ne s'installe.
 - **Client livré** : un client dont le dossier porte `livraison.yaml`. Il lit le dépôt du produit pour ses seules étiquettes `v*`, avec une clé de déploiement en lecture. Sans ce fichier, rien ne quitte sa machine.
@@ -109,10 +109,10 @@ schémas sont dans le README (« La carte »).
 | `pnpm rapport:html <rapport.md> <rapport.html> [--bandeau "texte"]` | Met un rapport en page pour l'écran et l'impression. |
 | `pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…" [--conversation C-…]` | Une consigne, une réponse, en ligne de commande. |
 | `pnpm interface --client <copie> [--port 3777] [--maintenant …] [--modele simule] [--script réponses.json]` | L'interface web, sur `127.0.0.1`. |
-| `pnpm evals traduire\|echappee\|rejeu --client <dossier> [--seulement id,id] [--modele simule] [--mission <fichier>]` | Rejoue les cas d'un métier, ou le rejeu d'une mission, écrit les résultats dans `evals/resultats/`. |
+| `pnpm evals traduire\|echappee\|rejeu --client <dossier> [--seulement id,id] [--modele simule] [--gestes a,b]` | Rejoue les cas d'un métier (`rejeu` : les cas des gestes nommés, échappée contre geste), écrit les résultats dans `evals/resultats/`. |
 | `pnpm --filter @harnais/agence-web fictif --vers <dossier>` | Génère le client fictif de l'agence web. |
 | `pnpm chantier --mission <fichier> [--sortie <dossier>] [--sans-modele] [--refaire]` | Un chantier sur une mission, à la main. `--refaire` rouvre la branche telle quelle. |
-| `pnpm chantier retirer <id> --motif "<texte>"` | Retire un geste fusionné : revert, mémoire, statut, version. |
+| `pnpm chantier retirer <métier>/<id> --motif "<texte>"` | Retire un geste fusionné : revert, mémoire, statut, version. L'identifiant seul suffit s'il n'est que dans un métier. |
 | `pnpm agence [--une-fois]` | La boucle de l'agence sur les files de ses clients : tire, chantier, statut, version. |
 | `pnpm versionner` | Une version signée sur `origin/main` tel quel. Exige `AGENCE_CLE_SIGNATURE`. |
 | `pnpm mise-a-jour [retirer] --client <dossier>` | Le rattrapage d'un client livré : missions, statuts, versions ; `retirer` revient à la version précédente. |

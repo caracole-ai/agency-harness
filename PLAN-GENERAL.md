@@ -1,5 +1,7 @@
 # Plan général — où on en est, et tout ce qui reste, dans l'ordre
 
+> **Depuis le 2026-10-18** (lot « ménage », `REFLEXIONS.md` « Décidé ») : G1 compte **neuf conditions**, la neuvième est le rejeu ; `retirer` prend `<métier>/<id>`. Ce plan garde ses « huit » et ses `<id>` d'époque.
+
 > **Amendé le 2026-10-15** : la promotion automatique est retirée
 > (`REFLEXIONS.md`). Les mentions de `pnpm promotions`, de la fabrication,
 > de l'état « promotion en cours » et de `evals promotion` décrivent l'état

@@ -249,7 +249,7 @@ la fusion `--no-ff` du commit gardé dans un arbre détaché, l'étiquette
 `chantier/<métier>/<id>`, la version signée, le push atomique sur `main` du
 distant. Le dossier et le statut complets restent à l'agence
 (`.claude/missions/_chantiers/<slug>/<date>/`) ; la file reçoit le statut
-public. `pnpm chantier retirer <id> --motif` défait une fusion (`git revert
+public. `pnpm chantier retirer <métier>/<id> --motif` défait une fusion (`git revert
 -m 1`), pose une version, écrit la mémoire et le statut « retiré ». `pnpm
 versionner` pose une version sans chantier : quand le moteur a changé, pas
 juste après un chantier. La signature : `AGENCE_CLE_SIGNATURE` est le chemin
