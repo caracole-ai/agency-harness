@@ -220,6 +220,11 @@ function rendreTete() {
   $('info-modele').hidden = d.modele !== 'simulé'
   $('modele').textContent = 'simulé (démo sans IA)'
   $('consigne').maxLength = d.consigneMax
+  const e = d.echappees
+  $('echappees-fenetre').textContent = `Questions libres · ${e.jours} jours`
+  $('echappees').textContent =
+    `${e.echappees} · ${e.relues} relue${e.relues > 1 ? 's' : ''}` +
+    ` · ${e.retirees} retiré${e.retirees > 1 ? 's' : ''} · ${e.abandons} abandon${e.abandons > 1 ? 's' : ''}`
 
   const choix = $('identite')
   if (choix.options.length === 0) {
@@ -667,6 +672,15 @@ function bulleOutil(reponse, conf) {
     { classe: 'bulle__corps' },
     el('p', { classe: 'texte', texte: reponse.texte }),
   )
+  // Une réponse d'échappée dit ce que le contrôle a fait de ses chiffres : relus, ou résumé retiré.
+  if (reponse.controle) {
+    corps.append(
+      el('p', {
+        classe: 'bulle__controle',
+        texte: ici.donnees?.motsControle?.[reponse.controle] ?? reponse.controle,
+      }),
+    )
+  }
   if (enAttente) {
     const attente = { ...conf, empreinte: reponse.empreinte }
     ici.attente = attente

@@ -18,6 +18,7 @@ import {
   verifierRegistre,
 } from '../conversation/conversation'
 import { idConversation } from '../conversation/id'
+import { MOTS_CONTROLE } from '../echappee/boucle'
 import { modeleDepuisConfig } from '../modele/anthropic'
 import type { Modele } from '../modele/modele'
 import { modeleSimule } from '../modele/simule'
@@ -103,6 +104,7 @@ function entrer(conversation?: string): IdentiteVerifiee | undefined {
 
 function afficher(r: Reponse, conversation: string): void {
   console.log(`Réponse (${r.sorte}) : ${r.texte}`)
+  if (r.sorte === 'resultat' && r.controle) console.log(MOTS_CONTROLE[r.controle])
   if (r.sorte === 'precision' && r.candidats.length > 0 && !values.interactif) {
     console.log(
       `\nRépondre : pnpm parler --client ${values.client} --role ${demandeur.role}${demandeur.personne ? ` --personne ${demandeur.personne}` : ''} --conversation ${conversation} --consigne "<le nom, ou son rang>"`,

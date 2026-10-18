@@ -1,4 +1,5 @@
 import { empreinte } from '../approbation/jeton'
+import type { ControleReponse } from '../echappee/boucle'
 import type { CriteresProposition, Echappee } from '../echappee/echappee'
 import { masquerConsigne, type Precision } from '../echappee/pseudonymes'
 import { verifierReponse } from '../echappee/reponse'
@@ -127,7 +128,8 @@ export interface PropositionMetier<Session> {
 }
 
 export type Reponse =
-  | { sorte: 'resultat'; texte: string }
+  /** `controle` : une réponse d'échappée dit si le code a relu ses chiffres ou retiré le résumé ; absent sur le résultat d'un geste codé. */
+  | { sorte: 'resultat'; texte: string; controle?: ControleReponse }
   | { sorte: 'confirmation'; texte: string; empreinte: string }
   /** `choix` : les autres choix que le métier offre sur cette proposition, chacun appelé par `traiterGeste`. */
   | { sorte: 'proposition'; texte: string; empreinte: string; choix?: Choix[] }
@@ -533,7 +535,9 @@ async function echapper<S>(
   } catch (erreur) {
     return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${message(erreur)}.` }
   }
-  if (issue.sorte === 'reponse') return { sorte: 'resultat', texte: issue.texte }
+  if (issue.sorte === 'reponse') {
+    return { sorte: 'resultat', texte: issue.texte, controle: issue.controle }
+  }
   if (issue.sorte === 'abandon') {
     return { sorte: 'je_ne_sais_pas', texte: `Je n'y arrive pas : ${issue.motif}.` }
   }

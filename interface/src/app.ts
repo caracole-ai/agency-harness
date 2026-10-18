@@ -13,6 +13,7 @@ import {
   type Capacite,
   chargerPersonnes,
   commanderEtLivrer,
+  compteursEchappees,
   confirmer,
   coutDuMois,
   demandesAvecEtat,
@@ -26,6 +27,7 @@ import {
   idConversation,
   type Ligne,
   type MetierConversation,
+  MOTS_CONTROLE,
   type Modele,
   type Personne,
   rattraperStatuts,
@@ -183,6 +185,10 @@ function etat(
     /** `simulé` en démo sans clé : la page le dit. */
     modele: modele.id,
     consigneMax: CONSIGNE_MAX,
+    /** Les échappées des derniers jours, comptées dans le journal par le code : ce que le contrôle des chiffres a relu, retiré, et les abandons. */
+    echappees: compteursEchappees(lignes, maintenant),
+    /** Ce que la page écrit sous une réponse d'échappée, par valeur de son `controle`. */
+    motsControle: MOTS_CONTROLE,
     /** L'heure murale de Paris, `AAAA-MM-JJTHH:MM`. */
     maintenant: maintenant.toPlainDateTime().toString({ smallestUnit: 'minute' }),
     identites: personnes.map((p) =>

@@ -842,6 +842,14 @@ textarea {
   background: transparent;
   border: 1px dashed var(--fg-faint);
 }
+/* Sous une réponse d'échappée : ce que le contrôle des chiffres a fait. */
+.bulle__controle {
+  margin: 0.45rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  color: var(--fg-faint);
+}
 .note {
   align-self: center;
   max-width: 100%;

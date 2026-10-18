@@ -14,6 +14,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   type Choix,
+  CONTROLE_OK,
+  CONTROLE_RETIRE,
   DOSSIER_MISSIONS,
   ecrireStatut,
   FICHIER_LIVRAISON,
@@ -22,6 +24,7 @@ import {
   Journal,
   type Ligne,
   lireMission,
+  MOTS_CONTROLE,
   metierDe,
   modeleSimule,
   type Reponse,
@@ -89,11 +92,31 @@ interface Etat {
   }
   regles: { id: string; nom: string; interdit: string; statut: string }[]
   ia: { coutMois: number; plafond: number; appels: number }
+  echappees: {
+    jours: number
+    echappees: number
+    relues: number
+    retirees: number
+    propositions: number
+    abandons: number
+  }
+  motsControle: Record<string, string>
 }
 
 describe('POST /api/etat', async () => {
   const r = await lire(app(), '/api/etat')
   const etat = (await r.json()) as Etat
+  it('compte zéro échappée sur un journal vierge, et porte les mots du contrôle', () => {
+    expect(etat.echappees).toEqual({
+      jours: 30,
+      echappees: 0,
+      relues: 0,
+      retirees: 0,
+      propositions: 0,
+      abandons: 0,
+    })
+    expect(etat.motsControle).toEqual(MOTS_CONTROLE)
+  })
   it('rend le client fictif, ses agents et ses 21 règles', () => {
     expect(r.status).toBe(200)
     expect(etat.client).toBe('client fictif (sécurité privée)')
@@ -133,6 +156,86 @@ describe('POST /api/etat', async () => {
     expect(lu.aValider.confirmations).toMatchObject([
       { identite: { role: 'agent', personne: 'A-2' }, nom: 'Julien Lefèvre' },
     ])
+  })
+})
+
+describe('le contrôle des chiffres, mesuré et dit (REFLEXIONS.md, décidé le 2026-10-18)', () => {
+  /** Une ligne `echappee` telle que `echappee.ts` l'écrit, sans aucun nom. */
+  const echappee = (conversation: string, issue: string, donnees: Record<string, unknown>) => ({
+    type: TYPE_ECHAPPEE,
+    client: 'client fictif (sécurité privée)',
+    objet: conversation,
+    issue,
+    motif: 'une consigne',
+    donnees: {
+      echappee: `E-${conversation}`,
+      intention: 'heures_par_agent',
+      role: 'patron',
+      tours: 2,
+      ...donnees,
+    },
+  })
+
+  it('/api/etat compte, sur 30 jours, les réponses relues, retirées et les abandons', async () => {
+    const dossier = copie()
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [
+        echappee('C-1', 'reponse', { controle_reponse: CONTROLE_OK, texte: 'x' }),
+        echappee('C-2', 'reponse', { controle_reponse: CONTROLE_RETIRE, texte: 'x' }),
+        echappee('C-3', 'abandon', { abandon: 'plafond de tours atteint' }),
+      ],
+      '2026-10-09T08:00:00Z',
+    )
+    // Hors de la fenêtre : ne compte pas.
+    j.ecrire(
+      [echappee('C-0', 'reponse', { controle_reponse: CONTROLE_OK, texte: 'x' })],
+      '2026-08-01T08:00:00Z',
+    )
+    j.fermer()
+    const etat = (await (await lire(app([], dossier), '/api/etat')).json()) as Etat
+    expect(etat.echappees).toEqual({
+      jours: 30,
+      echappees: 3,
+      relues: 1,
+      retirees: 1,
+      propositions: 0,
+      abandons: 1,
+    })
+  })
+
+  const nouvelle: Scripte = {
+    outil: 'demande_nouvelle',
+    entree: { intention: 'heures_par_agent', resume: 'x' },
+  }
+  const heures: Scripte = {
+    outil: 'requete',
+    entree: {
+      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent",
+    },
+  }
+  const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+  const consigne = async (a: ReturnType<typeof app>) =>
+    (await (
+      await poster(a, '/api/consigne', {
+        identite: PATRON,
+        consigne: "Combien d'heures a fait Karim cette semaine ?",
+      })
+    ).json()) as { reponse: Reponse }
+
+  it('/api/consigne : une réponse relue porte son contrôle, « ok »', async () => {
+    const { reponse } = await consigne(app([nouvelle, heures, repondre('A-1 a fait 24 heures.')]))
+    expect(reponse).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad a fait 24 heures.',
+      controle: CONTROLE_OK,
+    })
+  })
+
+  it('/api/consigne : un chiffre absent des données : le résumé retiré, le contrôle le dit', async () => {
+    const { reponse } = await consigne(app([nouvelle, heures, repondre('A-1 a fait 999 heures.')]))
+    expect(reponse).toMatchObject({ sorte: 'resultat', controle: CONTROLE_RETIRE })
+    expect(reponse.texte).not.toContain('999')
   })
 })
 
