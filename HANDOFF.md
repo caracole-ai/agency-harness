@@ -40,12 +40,20 @@ la clé de l'agence et un bac à sable : voir « Ouvert, avant un client
 réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
 (`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **La phrase à trous
 est faite** (2026-10-18, fusion 59e9374, verdict dans
-`evals/verdict-2026-10-18-phrase-a-trous.md`). **Sans la clé**, la session
-suivante prend ses deux suites, lues dans les traces de la mesure : les
-abandons « l'outil de requête n'est pas disponible » (E-04, E-08, E-28,
-EP-18 de l'agence web, des deux côtés, « No such tool available » dans la
-trace : l'adaptateur de l'abonnement) ; les codes des règles (« I-04 »)
-rendus citables hors d'un trou (un faux retrait d'E-28).
+`evals/verdict-2026-10-18-phrase-a-trous.md`). L'adaptateur de
+l'abonnement est corrigé (577ac5c : le modèle tentait d'appeler les outils
+du moteur directement ; plus aucun abandon « outil indisponible »).
+**En cours, branche `echappee/identifiants`, non fusionnée** : un
+identifiant reçu tel quel se recopie hors d'un trou, la notion des tickets
+à qualifier, « chaque grandeur demandée, dans son unité » ; mesuré sous
+`evals/regle-2026-10-18-identifiants.md` (trois passes, aucun cas perdu)
+contre une base sans phrase à trous et avec l'adaptateur corrigé (worktree
+du scratchpad). Le lot gagne partout (agence web 18, 18 contre 16, 15, 16 ;
+retraits 1 contre 8), **sauf E-20** (la marge : le lot répond en
+pourcentage, l'étiquette veut aussi les euros) : la règle interdit la
+fusion. **À Lionel** : l'étiquette d'E-20 (déjà dans « Pour Lionel ») ; si
+le pourcentage suffit, l'étiquette change et la branche se fusionne ; sinon,
+une correction plus forte de l'échappée.
 
 - **Ne jamais lancer `pnpm agence`, `pnpm chantier` ni `pnpm versionner`
   dans ce dépôt pour un essai** : ils poussent sur `origin` (GitHub). Le
