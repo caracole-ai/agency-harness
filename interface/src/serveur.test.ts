@@ -141,7 +141,7 @@ describe('POST /api/etat', async () => {
         issue: 'mes_titres',
         motif: 'Je montre tes titres et leurs échéances.',
         donnees: {
-          identite: { role: 'agent', agent: 'A-2' },
+          identite: { role: 'agent', personne: 'A-2' },
           demande: { sorte: 'action', action: 'mes_titres', params: {} },
           empreinte: 'e',
         },
@@ -276,13 +276,13 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
     expect(patron.nom).toBe('le patron')
     expect(patron.textes.suggestions).toContain('Lance la veille')
     expect(patron.textes.accueil).toMatch(/^Bonjour\. Dites-moi ce qui se passe/)
-    const r = await lire(a, '/api/tableau', { role: 'agent', agent: 'A-2' })
+    const r = await lire(a, '/api/tableau', { role: 'agent', personne: 'A-2' })
     expect(r.status).toBe(200)
     const julien = (await r.json()) as Pick<Tableau, 'nom' | 'textes'>
     expect(julien.nom).toBe('Julien Lefèvre')
     expect(julien.textes.accueil).toMatch(/^Bonjour Julien\. /)
     expect(julien.textes.suggestions).toContain('Mes titres')
-    expect((await lire(a, '/api/tableau', { role: 'agent', agent: 'A-99' })).status).toBe(403)
+    expect((await lire(a, '/api/tableau', { role: 'agent', personne: 'A-99' })).status).toBe(403)
   })
   it('/api/etat : une délégation proposée est en attente, avec ses conditions en mots', async () => {
     const dossier = copie()
@@ -332,14 +332,14 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
     const ouvrir = vi.spyOn(METIER, 'ouvrir')
     try {
       const r = await poster(a, '/api/consigne', {
-        identite: { role: 'agent', agent: 'A-99' },
+        identite: { role: 'agent', personne: 'A-99' },
         consigne: 'mon planning',
       })
       expect(r.status).toBe(403)
       expect(((await r.json()) as { erreur: string }).erreur).toBe(
         "inconnu au registre d'accès : A-99",
       )
-      expect((await lire(a, '/api/etat', { role: 'agent', agent: 'A-99' })).status).toBe(403)
+      expect((await lire(a, '/api/etat', { role: 'agent', personne: 'A-99' })).status).toBe(403)
       expect((await lire(a, '/api/journal', { role: 'roi' })).status).toBe(403)
       expect(ouvrir).not.toHaveBeenCalled()
     } finally {
@@ -352,13 +352,13 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
       horodatage: '2026-10-10T19:40:00Z',
     })
     expect(JSON.parse(refus[0]?.donnees ?? '{}')).toEqual({
-      identite: '{"role":"agent","agent":"A-99"}',
+      identite: '{"role":"agent","personne":"A-99"}',
       canal: 'web',
     })
   })
   it('tout le planning et tout le journal : au patron seul, un agent reçoit 403', async () => {
     const a = app()
-    const julien = { role: 'agent', agent: 'A-2' }
+    const julien = { role: 'agent', personne: 'A-2' }
     for (const route of ['/api/etat', '/api/journal']) {
       const r = await lire(a, route, julien)
       expect(r.status).toBe(403)
@@ -374,7 +374,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
       readFileSync(chemin, 'utf8').replace('  - { role: agent, agent: A-2 }\n', ''),
     )
     const r = await poster(a, '/api/consigne', {
-      identite: { role: 'agent', agent: 'A-2' },
+      identite: { role: 'agent', personne: 'A-2' },
       consigne: 'mon planning',
     })
     expect(r.status).toBe(403)
@@ -524,7 +524,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
 
   it('la liste est au patron seul : par intention, les plus fréquentes d’abord, avec les résumés et la dernière date', async () => {
     const a = app([], copieAvecDemandes())
-    expect((await lire(a, '/api/sans-geste', { role: 'agent', agent: 'A-2' })).status).toBe(403)
+    expect((await lire(a, '/api/sans-geste', { role: 'agent', personne: 'A-2' })).status).toBe(403)
     const r = await lire(a, '/api/sans-geste')
     expect(r.status).toBe(200)
     expect(await r.json()).toEqual([
@@ -548,7 +548,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     expect(
       (
         await poster(a, '/api/sans-geste/commander', {
-          identite: { role: 'agent', agent: 'A-2' },
+          identite: { role: 'agent', personne: 'A-2' },
           intention: 'remise_des_cles',
         })
       ).status,
@@ -711,7 +711,7 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
       version: 'v2026-10-10-2',
       le: '2026-10-10',
     })
-    expect((await lire(installee, '/api/version', { role: 'agent', agent: 'A-2' })).status).toBe(
+    expect((await lire(installee, '/api/version', { role: 'agent', personne: 'A-2' })).status).toBe(
       403,
     )
   })

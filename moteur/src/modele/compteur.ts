@@ -50,8 +50,6 @@ export function evenementAppel(
       modele: reponse.message.model,
       usage: reponse.usage,
       cout_usd: cout(reponse.usage, prix),
-      // Le fournisseur n'a pas compté : l'usage et le coût sont une borne haute.
-      ...(reponse.usageBorne ? { usage_borne: true } : {}),
       duree_ms: reponse.dureeMs,
       stop_reason: reponse.message.stop_reason,
     },

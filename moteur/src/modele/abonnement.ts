@@ -16,8 +16,8 @@ import type { Modele } from './modele'
 // binaire n'expose pas les outils du moteur : la conversation part en texte,
 // tour par tour, et le tour revient en sortie structurée (le texte, les appels
 // d'outil validés par le schéma de chaque outil), remis en `Anthropic.Message`.
-// Les outils restent exécutés par le moteur, jamais par le binaire. Pas de
-// flux : le binaire attend la réponse entière, sans passerelle qui coupe.
+// Les outils restent exécutés par le moteur, jamais par le binaire. Le
+// binaire attend la réponse entière.
 
 /** La variable de Claude Code qui borne les tokens de sortie d'un appel : le plafond de l'appel y passe. */
 export const VARIABLE_TOKENS_SORTIE = 'CLAUDE_CODE_MAX_OUTPUT_TOKENS'

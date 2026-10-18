@@ -197,8 +197,8 @@ const validerRemplacement: Action<Session, z.infer<typeof ValiderRemplacement>> 
   },
 }
 
-// La clé s'appelle `accepte`, pas `oui` : la couche de compatibilité de GMI
-// déformait la clé courte (`ouI`, `ouѝ`, `ouo</arg_value>…`), essai du 2026-10-08.
+// La clé s'appelle `accepte`, pas `oui` : un fournisseur essayé le 2026-10-08
+// déformait la clé courte (`ouI`, `ouѝ`, `ouo</arg_value>…`) ; une clé persistée ne se renomme pas.
 const RepondreSollicitation = z.strictObject({
   demande: z.string().describe('la demande de remplacement reçue, ex. D-V-17'),
   accepte: z.boolean().describe("true si l'agent accepte la vacation, false s'il refuse"),

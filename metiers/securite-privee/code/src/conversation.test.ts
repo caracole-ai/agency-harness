@@ -228,9 +228,9 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
     CONVERSATION.fermer(s)
     const ouvrir = vi.spyOn(CONVERSATION, 'ouvrir')
     const demandes = [
-      { role: 'agent', agent: 'A-99' },
+      { role: 'agent', personne: 'A-99' },
       { role: 'x' },
-      { role: 'patron', agent: 'A-1' },
+      { role: 'patron', personne: 'A-1' },
     ]
     try {
       const refus = demandes.map((demandeur) =>
@@ -255,7 +255,7 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
       [TYPE_ACCES_REFUSE, "le patron parle en son nom : pas d'identifiant"],
     ])
     expect(JSON.parse(lignes[0]?.donnees ?? '{}')).toEqual({
-      identite: '{"role":"agent","agent":"A-99"}',
+      identite: '{"role":"agent","personne":"A-99"}',
       canal: 'terminal',
     })
   })

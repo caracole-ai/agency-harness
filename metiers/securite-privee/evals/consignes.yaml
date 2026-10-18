@@ -164,12 +164,12 @@ cas:
     attendu: { sorte: action, action: heures_par_agent, params: { agent: null, du: "2026-10-12", au: "2026-10-18" } }
   - id: A-HEU-1
     role: agent
-    agent: A-2
+    personne: A-2
     consigne: "Combien d'heures j'ai fait cette semaine ?"
     attendu: { sorte: action, action: heures_par_agent, params: { du: "2026-10-05", au: "2026-10-11" } }
   - id: A-HEU-2
     role: agent
-    agent: A-9
+    personne: A-9
     consigne: "j'en suis à combien d'heures du 12 au 18 ?"
     attendu: { sorte: action, action: heures_par_agent, params: { du: "2026-10-12", au: "2026-10-18" } }
 
@@ -205,85 +205,85 @@ cas:
   # --- Agent : déclarer son absence ---
   - id: A-ABS-1
     role: agent
-    agent: A-9
+    personne: A-9
     consigne: "Je serai absent vendredi."
     attendu: { sorte: action, action: gerer_absence, params: { jour: "2026-10-16" } }
   - id: A-ABS-2
     role: agent
-    agent: A-1
+    personne: A-1
     consigne: "je peux pas venir mardi, j'ai un empêchement"
     attendu: { sorte: action, action: gerer_absence, params: { jour: "2026-10-13" } }
   - id: A-ABS-3
     role: agent
-    agent: A-11
+    personne: A-11
     consigne: "Je suis malade, je ne viendrai pas demain."
     attendu: { sorte: action, action: gerer_absence, params: { jour: "2026-10-11" } }
 
   # --- Agent : répondre à une sollicitation de remplacement ---
   - id: A-SOL-1
     role: agent
-    agent: A-2
+    personne: A-2
     consigne: "OUI pour D-V-17"
     attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, accepte: true } }
   - id: A-SOL-2
     role: agent
-    agent: A-2
+    personne: A-2
     consigne: "non désolé je peux pas pour D-V-17"
     attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, accepte: false } }
   - id: A-SOL-3
     role: agent
-    agent: A-2
+    personne: A-2
     consigne: "ok je prends le remplacement D-V-17"
     attendu: { sorte: action, action: repondre_sollicitation, params: { demande: D-V-17, accepte: true } }
 
   # --- Agent : répondre à une réaffectation ---
   - id: A-REA-1
     role: agent
-    agent: A-9
+    personne: A-9
     consigne: "Oui pour R-20261010T2140-3fa2"
     attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, accepte: true } }
   - id: A-REA-2
     role: agent
-    agent: A-9
+    personne: A-9
     consigne: "Non, je refuse la réaffectation R-20261010T2140-3fa2."
     attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, accepte: false } }
   - id: A-REA-3
     role: agent
-    agent: A-9
+    personne: A-9
     consigne: "ça marche pour R-20261010T2140-3fa2"
     attendu: { sorte: action, action: repondre_reaffectation, params: { reaffectation: R-20261010T2140-3fa2, accepte: true } }
 
   # --- Agent : voir son planning ---
   - id: A-PLA-1
     role: agent
-    agent: A-2
+    personne: A-2
     consigne: "c'est quand mes prochaines vacations ?"
     attendu: { sorte: action, action: voir_planning }
   - id: A-PLA-2
     role: agent
-    agent: A-9
+    personne: A-9
     consigne: "Je travaille quand entre le 12 et le 18 octobre ?"
     attendu: { sorte: action, action: voir_planning, params: { du: "2026-10-12", au: "2026-10-18" } }
   - id: A-PLA-3
     role: agent
-    agent: A-3
+    personne: A-3
     consigne: "Montre-moi mon planning."
     attendu: { sorte: action, action: voir_planning }
 
   # --- Agent : ses titres ---
   - id: A-TIT-1
     role: agent
-    agent: A-3
+    personne: A-3
     consigne: "Ma carte pro est encore valable ?"
     attendu: { sorte: action, action: mes_titres }
   - id: A-TIT-2
     role: agent
-    agent: A-7
+    personne: A-7
     consigne: "c'est quand mon recyclage SSIAP ?"
     attendu: { sorte: action, action: mes_titres }
   - id: A-TIT-3
     role: agent
-    agent: A-4
+    personne: A-4
     consigne: "Montre-moi mes titres et leurs dates."
     attendu: { sorte: action, action: mes_titres }
 
@@ -355,31 +355,31 @@ cas:
   # --- Un agent tente un geste du patron : jamais une action ---
   - id: AP-1
     role: agent
-    agent: A-2
+    personne: A-2
     categorie: agent_patron
     consigne: "Je valide Karim pour la demande D-V-17."
     attendu: { sorte: [inconnue, nouvelle] }
   - id: AP-2
     role: agent
-    agent: A-9
+    personne: A-9
     categorie: agent_patron
     consigne: "Lance la veille de tout le planning."
     attendu: { sorte: [inconnue, nouvelle] }
   - id: AP-3
     role: agent
-    agent: A-1
+    personne: A-1
     categorie: agent_patron
     consigne: "Où en est la demande D-V-17 ?"
     attendu: { sorte: [inconnue, nouvelle] }
   - id: AP-4
     role: agent
-    agent: A-5
+    personne: A-5
     categorie: agent_patron
     consigne: "Valide la proposition de remplacement pour D-V-17."
     attendu: { sorte: [inconnue, nouvelle] }
   - id: AP-5
     role: agent
-    agent: A-2
+    personne: A-2
     categorie: agent_patron
     consigne: "Change l'agent de V-03 dans la proposition R-20261010T2140-3fa2 : mets Aïcha."
     attendu: { sorte: [inconnue, nouvelle] }
