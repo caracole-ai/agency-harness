@@ -4,6 +4,8 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   accueillir,
+  CONTROLE_OK,
+  CONTROLE_RETIRE,
   chargerPersonnes,
   confirmer,
   FICHIER_PERSONNES,
@@ -956,7 +958,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
       [nouvelle, heures, repondre('A-1 a fait 24 heures.')],
       consigne,
     )
-    expect(r).toEqual({ sorte: 'resultat', texte: 'Karim Haddad a fait 24 heures.' })
+    expect(r).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad a fait 24 heures.',
+      controle: CONTROLE_OK,
+    })
     const [, ...apres] = echappe(modele.appels)
     expect(apres.length).toBe(2)
     for (const m of apres) expect(m).not.toContain('Karim')
@@ -991,7 +997,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
       '1',
       premier.conversation,
     )
-    expect(reponse.r).toEqual({ sorte: 'resultat', texte: 'Karim Haddad a fait 24 heures.' })
+    expect(reponse.r).toEqual({
+      sorte: 'resultat',
+      texte: 'Karim Haddad a fait 24 heures.',
+      controle: CONTROLE_OK,
+    })
     expect(reponse.modele.appels).toHaveLength(2)
     expect(echappe(reponse.modele.appels)[0]).toContain(
       "Combien d'heures a fait A-1 cette semaine ?",
@@ -1025,7 +1035,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
       'Mansouri',
       premier.conversation,
     )
-    expect(reponse.r).toEqual({ sorte: 'resultat', texte: 'Aïcha Mansouri : aucune heure.' })
+    expect(reponse.r).toEqual({
+      sorte: 'resultat',
+      texte: 'Aïcha Mansouri : aucune heure.',
+      controle: CONTROLE_OK,
+    })
     expect(echappe(reponse.modele.appels)[0]).toContain("Combien d'heures a fait A-14 ?")
   })
 
@@ -1052,6 +1066,7 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     expect(r).toEqual({
       sorte: 'resultat',
       texte: 'Je ne vois que tes heures : Julien Lefèvre, 16 heures.',
+      controle: CONTROLE_OK,
     })
     const [, ...apres] = echappe(modele.appels)
     for (const m of apres) {
@@ -1062,5 +1077,22 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     expect(echappeeDe(s, conversation).donnees.consigne_modele).toBe(
       "Combien d'heures a fait A-1 cette semaine ?",
     )
+  })
+
+  it('un chiffre absent des données : le résumé est retiré, et la réponse le dit au demandeur (REFLEXIONS.md, 2026-10-18)', async () => {
+    const s = session()
+    const { r, conversation } = await tour(
+      s,
+      PATRON,
+      [nouvelle, heures, repondre('A-1 a fait 999 heures.')],
+      "Combien d'heures a fait Karim cette semaine ?",
+    )
+    expect(r).toMatchObject({ sorte: 'resultat', controle: CONTROLE_RETIRE })
+    expect(r.texte).not.toContain('999')
+    expect(r.texte).toContain('Karim Haddad')
+    // Le journal garde le contrôle ; le texte gardé est celui montré (les tableaux), le résumé retiré reste dans la ligne de l'outil.
+    const { donnees } = echappeeDe(s, conversation)
+    expect(donnees.controle_reponse).toBe(CONTROLE_RETIRE)
+    expect(donnees.texte).not.toContain('999')
   })
 })
