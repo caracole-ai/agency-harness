@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Schéma du harnais</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,600;1,400&family=Public+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
 <style>
@@ -335,9 +338,9 @@ a { color: var(--accent-ink); }
       <div class="brand"><span class="brand__mark" aria-hidden="true">ST</span><span><span class="brand__name">Smart Tailor</span><span class="brand__tag">harnais IA sur mesure</span></span></div>
       <h1>Schéma du <em>harnais</em></h1>
       <p class="lede">Comment un outil sur mesure pour une TPE/PME lit, propose et écrit sans jamais faire de faux pas.</p>
-      <div class="meta"><b>Le code conduit. Le modèle lit et écrit. L'humain engage.</b><br><span class="tag">à valider avant le plan</span> · état de la réflexion au 2026-10-05 · instantané gardé tel quel : le système construit depuis est décrit dans <a href="https://smarttailor.fr/dispos-harnais">le diaporama</a> et <a href="https://smarttailor.fr/glossaire">le glossaire</a></div>
+      <div class="meta"><b>Le code conduit. Le modèle lit et écrit. L'humain engage.</b><br><span class="tag">construit</span> · état du système au 2026-10-18 (écrit le 2026-10-05 pour être validé, relu sur le code depuis) · le détail : <a href="https://smarttailor.fr/dispos-harnais">le diaporama</a>, <a href="https://smarttailor.fr/glossaire">le glossaire</a>, le README du dépôt</div>
     </div>
-    <div class="hero-figure"><div id="hero-figure"></div><p class="hero-cap">Figure actuelle du site. Elle sera régénérée depuis la fiche métier (décision du 03/10) : la couche commune deviendra le socle, l'onglet Commerce parlera le vocabulaire du client.</p></div>
+    <div class="hero-figure"><div id="hero-figure"></div><p class="hero-cap">La figure animée du site, telle quelle. Le code, lui, charge chaque métier par son nom : le même moteur sert la sécurité privée et une agence web.</p></div>
   </div>
 </header>
 
@@ -347,11 +350,11 @@ a { color: var(--accent-ink); }
 
   <section class="block" id="these" data-title="La thèse">
     <h2><span class="n">01</span><span>La thèse en trois rôles</span></h2>
-    <p class="kicker">Tout ce qui suit découle d'un seul partage. Ce qui est testable est du code. Ce que le code ne sait pas faire est confié au modèle, à des étapes fixes. Ce qui engage l'entreprise est signé par un humain.</p>
+    <p class="kicker">Tout ce qui suit découle d'un seul partage. Ce qui est testable est du code. Ce que le code ne sait pas faire est confié au modèle, à des étapes fixes et bornées. Ce qui engage l'entreprise est signé par un humain.</p>
     <div class="thesis">
-      <div class="harness"><div class="who harness">Le code conduit</div><b>Le moteur</b>Calendrier juridique, couche sémantique, interdits, machine à états, journal, compteur de coût. Il enchaîne les étapes et décide des sorties. Aucun modèle dedans.</div>
-      <div class="harness"><div class="who harness">Le modèle lit et écrit</div><b>Aux bords</b>Deux rôles de fond : <em>extraire</em> (« Karim se désiste ce soir » → agent, vacation, date, avec extrait et doute) et <em>rédiger</em> (la proposition pour l'humain). Deux rôles de tri bon marché, <em>classer</em> et <em>douter</em>, qui ne rendent jamais qu'un « à vérifier ». Il ne choisit jamais l'étape suivante.</div>
-      <div class="human"><div class="who human">L'humain engage</div><b>L'approbation</b>Rien ne sort sans un oui : pas d'envoi, d'affectation, de signature. Le oui produit un jeton, et l'écriture exige ce jeton comme paramètre. Sans jeton, l'écriture n'existe pas.</div>
+      <div class="harness"><div class="who harness">Le code conduit</div><b>Le moteur</b>Le registre des règles et le calendrier, les contrôles qui échouent fermés, la conversation (un geste choisi dans une liste fermée), l'échappée (une copie masquée, un résumé relu), la clé d'accord, le journal, le compteur de coût, le chantier et la livraison. Il enchaîne les étapes et décide des sorties. Aucun modèle dedans.</div>
+      <div class="harness"><div class="who harness">Le modèle lit et écrit</div><b>Aux bords</b>Trois rôles, tous bornés : <em>traduire</em> (« Aïcha ne vient pas demain » → le geste <code>gerer_absence</code> et ses paramètres, sans voir un nom), <em>chercher</em> (l'échappée : du SQL en lecture sur une copie pseudonymisée, un résumé dont chaque chiffre est relu par le code), <em>coder</em> (un geste que le patron a commandé, au chantier, sous neuf conditions). Il ne choisit jamais l'étape suivante.</div>
+      <div class="human"><div class="who human">L'humain engage</div><b>L'approbation</b>Rien ne s'écrit sans un oui. Le oui porte sur un contenu exact : son empreinte est la clé, et l'écriture vérifie au journal que la dernière validation porte ce contenu. Sans clé, l'écriture n'existe pas. Et seul le patron commande un geste nouveau.</div>
     </div>
   </section>
 
@@ -376,11 +379,11 @@ a { color: var(--accent-ink); }
       <svg viewBox="0 0 980 670" role="img" aria-label="Schéma global : entrées, moteur, modèle aux bords, approbation humaine, outils du client">
         <text x="20" y="28" class="t-label t-soft">Entrées</text>
         <rect x="20" y="40" width="150" height="46" class="box-ink"/>
-        <text x="32" y="59">Messages</text><text x="32" y="76" class="t-soft">WhatsApp, mail, SMS</text>
+        <text x="32" y="59">Consignes</text><text x="32" y="76" class="t-soft">web ou terminal</text>
         <rect x="20" y="100" width="150" height="46" class="box-ink"/>
-        <text x="32" y="119">Documents</text><text x="32" y="136" class="t-soft">scans, pièces jointes</text>
+        <text x="32" y="119">Exports CSV</text><text x="32" y="136" class="t-soft">planning, salariés, postes</text>
         <rect x="20" y="160" width="150" height="46" class="box-ink"/>
-        <text x="32" y="179">Échéances</text><text x="32" y="196" class="t-soft">cron : Veiller</text>
+        <text x="32" y="179">Échéances</text><text x="32" y="196" class="t-soft">la veille : pnpm veiller</text>
         <path d="M170 63 H206" class="arrow"/><path d="M170 123 H206" class="arrow"/><path d="M170 183 H206" class="arrow"/>
         <path d="M206 63 V183" class="arrow"/><path d="M206 123 H228" class="arrow"/>
         <polygon points="228,119 236,123 228,127" fill="var(--fg-soft)"/>
@@ -389,21 +392,21 @@ a { color: var(--accent-ink); }
         <rect x="238" y="40" width="470" height="470" class="box-harness"/>
 
         <rect x="252" y="54" width="442" height="74" class="band"/>
-        <text x="262" y="72" class="t-strong">Machine à états</text>
-        <text x="262" y="90" class="t-soft">reçue → extraite → candidats → proposée → en attente → écrite</text>
-        <text x="262" y="106" class="t-soft">échecs écrits une fois : réessayer (borné) · escalader · s'arrêter avec motif</text>
-        <text x="262" y="121" class="t-soft">une petite machine par archétype ; une tâche les enchaîne</text>
+        <text x="262" y="72" class="t-strong">La conversation</text>
+        <text x="262" y="90" class="t-soft">consigne → traduction → geste ou échappée → proposition → clé → écriture</text>
+        <text x="262" y="106" class="t-soft">échecs écrits une fois : une relance · une question au demandeur · l'abandon dit</text>
+        <text x="262" y="121" class="t-soft">une fonction par tour ; les règles du registre, partout</text>
 
         <rect x="252" y="140" width="442" height="150" class="band"/>
         <text x="262" y="158" class="t-strong">Contrôles, par moment du harnais</text>
         <g class="gate-seq"><rect x="262" y="168" width="102" height="54" class="box-harness-soft"/>
-        <text x="270" y="184" class="t-label">pre-tool</text><text x="270" y="200" class="t-soft">interdits, jeton,</text><text x="270" y="214" class="t-soft">plafond de coût</text></g>
+        <text x="270" y="184" class="t-label">pre-tool</text><text x="270" y="200" class="t-soft">interdits, clé,</text><text x="270" y="214" class="t-soft">plafond de coût</text></g>
         <g class="gate-seq"><rect x="374" y="168" width="102" height="54" class="box-harness-soft"/>
-        <text x="382" y="184" class="t-label">post-tool</text><text x="382" y="200" class="t-soft">typé, source,</text><text x="382" y="214" class="t-soft">doute</text></g>
+        <text x="382" y="184" class="t-label">post-tool</text><text x="382" y="200" class="t-soft">typé, source,</text><text x="382" y="214" class="t-soft">rien de deviné</text></g>
         <g class="gate-seq"><rect x="486" y="168" width="102" height="54" class="box-harness-soft"/>
         <text x="494" y="184" class="t-label">pre-response</text><text x="494" y="200" class="t-soft">mentions, interdits,</text><text x="494" y="214" class="t-soft">cohérence</text></g>
         <g class="gate-seq"><rect x="598" y="168" width="86" height="54" class="box-harness-soft"/>
-        <text x="606" y="184" class="t-label">stop</text><text x="606" y="200" class="t-soft">trois fins</text><text x="606" y="214" class="t-soft">possibles</text></g>
+        <text x="606" y="184" class="t-label">stop</text><text x="606" y="200" class="t-soft">quatre fins</text><text x="606" y="214" class="t-soft">nommées</text></g>
         <text x="262" y="242" class="t-soft">verdicts : ok · refus · à vérifier</text>
         <text x="262" y="258" class="t-soft">refus : code seul, fermé si panne · à vérifier : seul verdict permis à un modèle</text>
         <text x="262" y="274" class="t-soft">structurel avant hook : retirer la capacité quand c'est possible, intercepter le reste</text>
@@ -430,20 +433,20 @@ a { color: var(--accent-ink); }
         <text x="414" y="428" class="t-strong">Compteur de coût</text>
         <text x="414" y="446" class="t-soft">tokens et € par appel</text>
         <text x="414" y="462" class="t-soft">plafond mensuel</text>
-        <text x="414" y="478" class="t-soft">= une alerte Veiller</text>
+        <text x="414" y="478" class="t-soft">vérifié avant chaque appel</text>
         <rect x="556" y="410" width="138" height="86" class="band"/>
         <text x="566" y="428" class="t-strong">Config client</text>
-        <text x="566" y="446" class="t-soft">seuils, rôles, poids,</text>
-        <text x="566" y="462" class="t-soft">vocabulaire, plafond</text>
+        <text x="566" y="446" class="t-soft">seuils, bornes, plafond,</text>
+        <text x="566" y="462" class="t-soft">personnes et rôles</text>
         <text x="566" y="478" class="t-soft">validée au démarrage</text>
 
         <text x="730" y="28" class="t-label t-harness">Le modèle · aux bords</text>
         <rect x="730" y="40" width="230" height="150" class="box-model"/>
-        <text x="742" y="60" class="t-strong">extraire · rédiger</text>
-        <text x="742" y="78" class="t-soft">classer · douter (LLM ; Jev si mesuré)</text>
-        <text x="742" y="104" class="t-soft">entrée : du texte</text>
-        <text x="742" y="120" class="t-soft">sortie : JSON validé par schéma,</text>
-        <text x="742" y="136" class="t-soft">chaque champ avec extrait + doute</text>
+        <text x="742" y="60" class="t-strong">traduire · chercher</text>
+        <text x="742" y="78" class="t-soft">coder un geste commandé, au chantier</text>
+        <text x="742" y="104" class="t-soft">entrée : la consigne, sans aucun nom</text>
+        <text x="742" y="120" class="t-soft">sortie : un formulaire validé</text>
+        <text x="742" y="136" class="t-soft">par schéma, jamais du texte libre</text>
         <text x="742" y="162" class="t-soft">aucun accès direct aux données,</text>
         <text x="742" y="178" class="t-soft">aucun outil d'écriture</text>
         <path d="M708 90 H730" class="arrow-harness"/><polygon points="722,86 730,90 722,94" fill="var(--harness)"/>
@@ -453,47 +456,47 @@ a { color: var(--accent-ink); }
         <rect x="730" y="234" width="230" height="124" class="box-human"/>
         <g class="on-human">
         <text x="742" y="254" class="t-strong">Approbation</text>
-        <text x="742" y="272" class="t-soft">la permanence, ou le gérant au-delà</text>
-        <text x="742" y="288" class="t-soft">du seuil (table de délégation)</text>
-        <text x="742" y="312" class="t-soft">« Remplacer Karim par Sofiane.</text>
+        <text x="742" y="272" class="t-soft">le patron ; chaque agent sollicité</text>
+        <text x="742" y="288" class="t-soft">pour sa propre vacation</text>
+        <text x="742" y="312" class="t-soft">« Je propose Julien Lefèvre.</text>
         <text x="742" y="328" class="t-soft">Carte valide, repos 14 h. Oui/Non »</text>
-        <text x="742" y="350" class="t-human t-strong">oui → jeton d'approbation</text>
+        <text x="742" y="350" class="t-human t-strong">oui → la clé d'accord</text>
         </g>
         <path d="M708 290 H730" class="arrow-human"/><polygon points="722,286 730,290 722,294" fill="var(--human)"/>
         <path d="M730 330 H708" class="arrow-human"/><polygon points="716,326 708,330 716,334" fill="var(--human)"/>
         <text x="712" y="282" class="t-human t-tag" style="font-size:9px">proposition</text>
-        <text x="712" y="346" class="t-human t-tag" style="font-size:9px">jeton</text>
+        <text x="712" y="346" class="t-human t-tag" style="font-size:9px">clé</text>
 
         <rect x="730" y="400" width="230" height="76" class="box-harness"/>
-        <text x="742" y="420" class="t-strong">La coque</text>
-        <text x="742" y="438" class="t-soft">connecteur messagerie maison,</text>
-        <text x="742" y="454" class="t-soft">cron, journal consultable,</text>
-        <text x="742" y="470" class="t-soft">moteur exposé en MCP</text>
+        <text x="742" y="420" class="t-strong">L'interface</text>
+        <text x="742" y="438" class="t-soft">web, sur la machine du client,</text>
+        <text x="742" y="454" class="t-soft">le journal consultable, la veille,</text>
+        <text x="742" y="470" class="t-soft">commandes pnpm ; un canal à venir</text>
 
         <text x="238" y="540" class="t-label t-soft">Les outils du client · ils restent en place</text>
         <rect x="238" y="552" width="200" height="54" class="box-ink"/>
-        <text x="250" y="572">Planning</text><text x="250" y="588" class="t-soft">lecture · écriture avec jeton</text>
+        <text x="250" y="572">Planning (CSV)</text><text x="250" y="588" class="t-soft">lecture · écriture avec la clé</text>
         <rect x="452" y="552" width="150" height="54" class="box-ink"/>
-        <text x="464" y="572">Dossiers agents</text><text x="464" y="588" class="t-soft">lecture seule</text>
+        <text x="464" y="572">Salariés (CSV)</text><text x="464" y="588" class="t-soft">lecture seule</text>
         <rect x="616" y="552" width="150" height="54" class="box-ink"/>
-        <text x="628" y="572">Messagerie</text><text x="628" y="588" class="t-soft">lecture · brouillons</text>
+        <text x="628" y="572">Postes, sites (CSV)</text><text x="628" y="588" class="t-soft">lecture seule</text>
         <rect x="780" y="552" width="180" height="54" class="box-ink"/>
-        <text x="792" y="572">Sites, contrats</text><text x="792" y="588" class="t-soft">lecture seule</text>
+        <text x="792" y="572">Messagerie</text><text x="792" y="588" class="t-soft">à venir ; brouillons seulement</text>
 
         <path d="M320 552 V510" class="arrow"/><polygon points="316,518 320,510 324,518" fill="var(--fg-soft)"/>
         <path d="M356 510 V552" class="arrow-human"/><polygon points="352,544 356,552 360,544" fill="var(--human)"/>
-        <text x="362" y="534" class="t-human t-tag" style="font-size:9px">écrire + jeton</text>
+        <text x="362" y="534" class="t-human t-tag" style="font-size:9px">écrire + clé</text>
         <path d="M527 552 V510" class="arrow"/><polygon points="523,518 527,510 531,518" fill="var(--fg-soft)"/>
         <path d="M691 552 V510" class="arrow"/><polygon points="687,518 691,510 695,518" fill="var(--fg-soft)"/>
         <path d="M870 552 V530 H708" class="arrow"/><polygon points="716,526 708,530 716,534" fill="var(--fg-soft)"/>
 
-        <text x="20" y="572" class="t-label t-soft">Deux identités</text>
-        <text x="20" y="590" class="t-soft">chez le fournisseur (scopes)</text>
-        <text x="20" y="618" class="t-soft">lecture : tout le moteur</text>
-        <text x="20" y="634" class="t-soft">écriture : droits minimaux,</text>
-        <text x="20" y="650" class="t-soft">outil d'écriture + jeton seulement</text>
-        <text x="238" y="636" class="t-soft">Le refus d'écrire vient du serveur de Google ou Microsoft (403), pas de notre code :</text>
-        <text x="238" y="652" class="t-soft">un bug, une injection dans un mail, rien ne peut aboutir. Les droits se voient dans la console du client.</text>
+        <text x="20" y="572" class="t-label t-soft">Une seule écriture</text>
+        <text x="20" y="590" class="t-soft">chez le client, par le code</text>
+        <text x="20" y="618" class="t-soft">lecture : une copie en mémoire</text>
+        <text x="20" y="634" class="t-soft">écriture : une ligne, dernière,</text>
+        <text x="20" y="650" class="t-soft">sous la clé d'accord seulement</text>
+        <text x="238" y="636" class="t-soft">Le modèle n'a aucun outil d'écriture : un bug, une injection dans une cellule, rien ne peut aboutir.</text>
+        <text x="238" y="652" class="t-soft">L'échappée ne lit qu'une copie SQLite jetable, en lecture seule, sans aucun nom.</text>
       </svg>
       <div class="legend"><span class="l-ink">le monde du client</span><span class="l-harness">le harnais (code)</span><span class="l-harness l-model">le modèle, aux bords</span><span class="l-human">l'humain</span></div>
       <div class="cap">Le creux lit, le plein agit : même grammaire que la figure animée du site, dont le « tour » est exactement la chaîne de contrôles ci-dessus.</div>
@@ -502,72 +505,42 @@ a { color: var(--accent-ink); }
 
   <section class="block" id="flux" data-title="Le flux, un cas réel">
     <h2><span class="n">04</span><span>Le flux sur un cas réel</span></h2>
-    <p class="kicker">Société de sécurité privée, 17 h. Un agent se désiste pour la vacation de nuit. Ce que fait le système, étape par étape, et l'état de la demande à chaque fois.</p>
+    <p class="kicker">Société de sécurité privée, la veille au soir. Le patron écrit « Aïcha ne vient pas demain ». Ce que fait le système, étape par étape, et ce qui s'écrit au journal à chaque fois.</p>
     <ol class="steps">
-      <li><div><b>Le message arrive</b>Par WhatsApp : « Karim se désiste ce soir ». Filtre en code d'abord (expéditeur connu, mots-clés). Puis le modèle extrait : agent = Karim, site = Z, vacation = ce soir. Chaque champ porte son extrait et son doute ; l'heure, non dite, est prise du planning et marquée « déduite ». La sortie est validée par un schéma : hors schéma deux fois, la demande passe « à vérifier » et l'humain voit le message brut.<div class="state">état : <i>reçue</i> → <i>extraite</i></div></div></li>
-      <li><div><b>Le moteur calcule les candidats</b>Pas le modèle. La couche sémantique répond à <code>disponible(agent, vacation)</code> pour chaque agent : carte valide à la date de la vacation (calendrier), repos minimal entre deux services (12 h ou 11 h, à trancher) sur la période glissante, pas déjà affecté. Il ne renvoie que des candidats valides, avec le motif d'exclusion des autres (« Marc : carte expirée le 12/10 »). Aucun candidat qualifié : il le dit, avec les trois plus proches et ce qui leur manque, et la demande est escaladée (E-02) vers la permanence — le responsable d'exploitation, ou l'astreinte la nuit. Jamais un candidat par défaut.<div class="state">état : <i>candidats</i> (ou <i>escaladée</i>)</div></div></li>
-      <li><div><b>Le code classe, le modèle rédige</b>Les préférences sont des poids dans la config (connaît le site +3, distance −1/km) : le code trie. Le modèle écrit la proposition pour l'humain. Avant qu'elle parte, le contrôle <em>pre-response</em> repasse tous les interdits sur la proposition exacte (le modèle a pu mélanger deux noms) et vérifie le texte : aucun chiffre hors des données, aucune formulation interdite.<div class="state">état : <i>proposée</i></div></div></li>
-      <li><div><b>La délégation désigne qui décide</b>Remplacement prévu au contrat du client : la permanence. Au-delà (nouveau site, renfort) : le gérant. La permanence reçoit : « Remplacer Karim par Sofiane ce soir, site Z. Carte valide jusqu'au 03/2027, repos 14 h, connaît le site. Oui / Non ». Pas de réponse avant l'échéance : rappel, puis le rôle suivant de la table. La vacation est à 21 h : la transition « trop tard » escalade avant l'heure, pas après.<div class="state">état : <i>en attente d'approbation</i></div></div></li>
-      <li><div><b>Le oui produit un jeton, le jeton ouvre l'écriture</b><code>ecrire_planning(affectation, jeton)</code>. Le moteur vérifie que le jeton correspond exactement à cette affectation, écrit avec l'identité d'écriture (droits minimaux chez le fournisseur), journalise : qui, quand, quelle règle, quelle source. Un non : la demande s'arrête, avec le motif, et le journal le garde.<div class="state">état : <i>écrite</i> (ou <i>arrêtée avec motif</i>)</div></div></li>
+      <li><div><b>La consigne arrive, la porte d'abord</b>Le canal transmet la phrase, qui l'envoie et l'heure. Le moteur vérifie l'identité au registre des personnes et fixe ses droits : le patron a ses gestes, un agent en a six sur ses seules données, un inconnu est refusé avant toute lecture. Le plafond d'IA du mois est vérifié.<div class="state">journal : <i>consigne</i></div></div></li>
+      <li><div><b>Le modèle traduit, sans rien voir</b>Il reçoit la phrase, la date, le rôle et la liste fermée des gestes de ce rôle, plus deux sorties : demande nouvelle, je ne sais pas. Ni nom, ni planning. Il remplit un formulaire : <code>gerer_absence</code>, « Aïcha » telle qu'écrite, demain. Le code revalide le geste et ses paramètres ; du texte, ou un formulaire hors de la liste, finit en « je ne sais pas ».<div class="state">journal : <i>traduction</i>, l'appel et son coût</div></div></li>
+      <li><div><b>Le code trouve Aïcha</b>Le métier donne la liste des salariés que ce rôle peut voir ; une correspondance exacte, sans accents ni majuscules, décide. Une faute de frappe ? Le code retient les noms proches et demande au patron : « Vous parlez de « Aïcha Traoré » ? », ou une liste numérotée. Le modèle ne voit aucun nom ; aucun geste ne s'exécute sur un nom deviné.<div class="state">journal : <i>précision attendue</i>, ou le geste</div></div></li>
+      <li><div><b>Les règles décident, les réglages classent</b>Le métier ouvre une demande de remplacement et simule le planning avec la vacation confiée à chacun des autres salariés, contre les règles codées : carte, activités, repos, déclaration. Des possibles, des exclus avec leur raison, des écartés faute de donnée, classés selon les préférences du client. Le texte est écrit par le code depuis ce résultat : aucun nom, aucun chiffre inventé.<div class="state">journal : la demande <i>D-V-17</i>, proposée</div></div></li>
+      <li><div><b>Le oui devient la clé, une seule écriture</b>Le patron valide ; le code reformule ce qui va s'écrire et attend son oui ; l'empreinte du contenu exact est la clé. L'agent sollicité accepte. Le métier recompare la clé au planning actuel et modifie une seule ligne. Si le planning a changé entre-temps, la clé ne correspond plus et rien ne s'écrit.<div class="state">journal : <i>confirmation</i>, puis l'écriture, et qui l'a décidée</div></div></li>
     </ol>
-    <h3>La même chose en machine à états</h3>
-    <div class="prose"><p>Chaque flèche est une transition déclarée, chaque échec un état nommé. Rien ne « remonte » comme une exception.</p></div>
-    <div class="diagram">
-      <svg class="sm" viewBox="0 0 980 300" role="img" aria-label="Machine à états du désistement">
-        <!-- chemin nominal -->
-        <rect class="st" x="20" y="60" width="110" height="40"/><text x="75" y="85" text-anchor="middle">reçue</text>
-        <rect class="st" x="190" y="60" width="110" height="40"/><text x="245" y="85" text-anchor="middle">extraite</text>
-        <rect class="st" x="360" y="60" width="110" height="40"/><text x="415" y="85" text-anchor="middle">candidats</text>
-        <rect class="st" x="530" y="60" width="110" height="40"/><text x="585" y="85" text-anchor="middle">proposée</text>
-        <rect class="st" x="700" y="60" width="110" height="40"/><text x="755" y="85" text-anchor="middle">en attente</text>
-        <rect class="st st-end" x="860" y="60" width="100" height="40"/><text x="910" y="85" text-anchor="middle">écrite</text>
-        <path class="ar" d="M130 80 H190"/><polygon points="182,76 190,80 182,84" fill="var(--harness)"/>
-        <text class="lab" x="160" y="52" text-anchor="middle">modèle extrait,</text><text class="lab" x="160" y="63" text-anchor="middle">schéma validé</text>
-        <path class="ar" d="M300 80 H360"/><polygon points="352,76 360,80 352,84" fill="var(--harness)"/>
-        <text class="lab" x="330" y="52" text-anchor="middle">couche sémantique</text><text class="lab" x="330" y="63" text-anchor="middle">+ calendrier</text>
-        <path class="ar" d="M470 80 H530"/><polygon points="522,76 530,80 522,84" fill="var(--harness)"/>
-        <text class="lab" x="500" y="52" text-anchor="middle">classement,</text><text class="lab" x="500" y="63" text-anchor="middle">pre-response ok</text>
-        <path class="ar" d="M640 80 H700"/><polygon points="692,76 700,80 692,84" fill="var(--harness)"/>
-        <text class="lab" x="670" y="52" text-anchor="middle">délégation :</text><text class="lab" x="670" y="63" text-anchor="middle">qui décide</text>
-        <path class="ar" d="M810 80 H860"/><polygon points="852,76 860,80 852,84" fill="var(--harness)"/>
-        <text class="lab" x="835" y="52" text-anchor="middle">oui → jeton</text><text class="lab" x="835" y="63" text-anchor="middle">→ écriture</text>
-        <!-- sorties -->
-        <rect class="st-exit" x="140" y="200" width="150" height="40"/><text x="215" y="225" text-anchor="middle">à vérifier</text>
-        <rect class="st-exit" x="415" y="200" width="150" height="40"/><text x="490" y="225" text-anchor="middle">escaladée</text>
-        <rect class="st-exit st-no" x="690" y="200" width="150" height="40"/><text x="765" y="225" text-anchor="middle">arrêtée avec motif</text>
-        <path class="ar-exit" d="M75 100 V170 H215 V200"/><polygon points="211,192 215,200 219,192" fill="var(--human)"/>
-        <text class="lab" x="90" y="150">hors schéma ×2</text>
-        <path class="ar-exit" d="M415 100 V200"/><polygon points="411,192 415,200 419,192" fill="var(--human)"/>
-        <text class="lab" x="300" y="150">aucun candidat qualifié (E-02)</text>
-        <path class="ar-exit" d="M755 100 V150 H540 V200"/><polygon points="536,192 540,200 544,192" fill="var(--human)"/>
-        <text class="lab" x="560" y="143">pas de réponse avant l'échéance</text>
-        <path class="ar-exit" d="M780 100 V200"/><polygon points="776,192 780,200 784,192" fill="var(--refus)"/>
-        <text class="lab" x="788" y="150">non, avec motif</text>
-        <text class="lab" x="20" y="285">Les trois sorties sont des états nommés, persistés et reprenables ; le motif est au journal.</text>
-      </svg>
+    <h3>Quand aucun geste ne convient : l'échappée</h3>
+    <div class="prose">
+      <p>La traduction rend « demande nouvelle » avec une intention (<code>liberer_un_jour</code>). Le moteur ouvre le dossier, remplace chaque nom par un identifiant (<code>A-1</code>) et donne au modèle une copie SQLite jetable, en lecture seule, de ce que le rôle a le droit de voir. Le modèle interroge en SQL, essaie des réaffectations que les règles jugent, et finit par un seul formulaire : répondre, proposer, ou abandonner avec un motif, dans des bornes (12 tours, 20 000 tokens, 420 s). Le code relit la réponse : chaque chiffre et chaque nom doivent venir d'un tableau, sinon le résumé est retiré, le demandeur lit les tableaux et le mot qui le lui dit. Une proposition passe toutes les règles, attend le oui du patron et l'accord de chaque agent, et s'écrit d'un coup sous la clé.</p>
+      <p>Si la demande revient, le patron clique « Créer ce geste » : le code écrit une mission sans nom, et le chantier, à l'agence, la code sous neuf conditions ; la demande suivante coûte un seul appel.</p>
+      <p>Pas de machine à états : un tour de conversation est une fonction, et chaque sortie est une ligne typée du journal (consigne, échappée, confirmation attendue, précision attendue, accès refusé, commande, chantier, mise à jour). Le journal dit toujours où en est une demande, et pourquoi.</p>
     </div>
   </section>
 
   <section class="block" id="controles" data-title="Les contrôles">
     <h2><span class="n">05</span><span>Les contrôles, moment par moment</span></h2>
-    <p class="kicker">Un contrôle est écrit une fois, avec une signature fixe, et monté à un moment du harnais. Aujourd'hui la machine à états l'appelle à la transition. Le jour où une tâche ouverte justifie qu'un modèle conduise, le même contrôle devient un hook sur l'appel d'outil, sans modification.</p>
+    <p class="kicker">Un contrôle est écrit une fois, avec une signature fixe, et déclaré au registre avec son moment. Le moteur l'appelle à la veille, au remplacement, à chaque essai et à chaque proposition de l'échappée : les mêmes règles partout. Le jour où une tâche ouverte justifie qu'un modèle conduise, le même contrôle devient un hook sur l'appel d'outil, sans modification.</p>
     <div class="prose"><p>C'est ce qui fait du moteur un harnais au sens strict, en réserve : on construit le harnais d'abord et on décide ensuite, tâche par tâche, qui on attelle dessus.</p></div>
     <div class="tablewrap"><table>
       <thead><tr><th>Moment</th><th>Ce qui s'y vérifie</th><th>Exemples</th><th>Verdicts possibles</th></tr></thead>
       <tbody>
-        <tr><td class="mono">pre-tool</td><td>Avant tout appel d'outil du moteur : les interdits sur les écritures ; la délégation et le jeton (couvre-t-il exactement ce contenu ?) ; le plafond de coût avant chaque appel au modèle.</td><td>I-01 carte valide à la date, I-05 repos minimal. <code>ecrire_planning</code> sans jeton → refusé. Budget du mois atteint → refusé, alerte.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-refus">refus</span></td></tr>
-        <tr><td class="mono">post-tool</td><td>Après une lecture ou une extraction : ce qui rentre est typé. Date parsée ou <code>inconnue</code>, champ avec extrait et doute, source attachée (G-03), rien de deviné (G-02).</td><td>Un champ illisible devient « à vérifier », pas une valeur. Une date absente n'est pas une date lointaine.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-verif">à vérifier</span></td></tr>
+        <tr><td class="mono">pre-tool</td><td>Avant tout appel d'outil du moteur : les interdits sur les écritures ; la délégation et la clé d'accord (couvre-t-elle exactement ce contenu ?) ; le plafond de coût avant chaque appel au modèle.</td><td>I-01 carte valide à la date, I-05 repos minimal. Une écriture sans sa clé → refusée. Budget du mois atteint → refusé, alerte.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-refus">refus</span></td></tr>
+        <tr><td class="mono">post-tool</td><td>Après une lecture : ce qui rentre est typé par le connecteur et le schéma de la config. Date parsée ou <code>inconnue</code>, source attachée (G-03), rien de deviné (G-02).</td><td>Un champ illisible devient « à vérifier », pas une valeur. Une date absente n'est pas une date lointaine.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-verif">à vérifier</span></td></tr>
         <tr><td class="mono">pre-response</td><td>Avant que la proposition atteigne l'humain : formulations interdites, mentions obligatoires, aucun chiffre hors des données, chaque affirmation rattachée à une source, cohérence avec l'étape d'avant.</td><td>I-09 « ancien policier ». Art. 19.4 sur une facture de transport. Le candidat proposé est bien dans la liste calculée.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-refus">refus</span> <span class="verdict v-verif">à vérifier</span></td></tr>
-        <tr><td class="mono">stop</td><td>Fin d'une demande : elle ne finit que dans un des trois états — approbation demandée, escaladée, arrêtée avec motif. Jamais « terminée » en silence.</td><td>Une demande ne disparaît jamais du journal sans l'un des trois états : on sait toujours où elle en est, et pourquoi.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-refus">refus</span></td></tr>
+        <tr><td class="mono">stop</td><td>Fin d'une demande : une réponse, une proposition qui attend un oui, une question au demandeur, ou « je n'y arrive pas » avec son motif. Jamais « c'est fait » en silence.</td><td>Une demande ne disparaît jamais du journal sans l'un des trois états : on sait toujours où elle en est, et pourquoi.</td><td><span class="verdict v-ok">ok</span> <span class="verdict v-refus">refus</span></td></tr>
       </tbody>
     </table></div>
-    <div class="rule"><b>Seul le code bloque, et il bloque fermé.</b> Un contrôle qui rend <span class="verdict v-refus">refus</span> est du code pur, testé par les T-xx de la fiche. Un contrôle qui plante ou expire refuse, jamais « laisse passer par défaut ». Un modèle (LLM, ou un classifieur comme Jev) dans un contrôle ne peut rendre que <span class="verdict v-verif">à vérifier</span>.</div>
-    <div class="rule"><b>Structurel avant hook.</b> Un hook intercepte une tentative ; une capacité absente n'a pas besoin d'être interceptée. Le modèle n'a pas d'outil « envoyer un mail », seulement « préparer un brouillon » : il ne peut pas envoyer, même si un hook a planté. L'écriture exige un jeton comme paramètre obligatoire. Le compte de lecture n'a pas le droit d'écrire, et ce droit est retiré chez le fournisseur. On n'intercepte que ce qui ne peut pas être retiré : le contenu d'un texte, la cohérence d'une proposition.</div>
+    <div class="rule"><b>Seul le code bloque, et il bloque fermé.</b> Un contrôle qui rend <span class="verdict v-refus">refus</span> est du code pur, testé par les T-xx de la fiche. Un contrôle qui plante ou expire refuse, jamais « laisse passer par défaut ». Un modèle dans un contrôle ne peut rendre que <span class="verdict v-verif">à vérifier</span>.</div>
+    <div class="rule"><b>Structurel avant hook.</b> Un hook intercepte une tentative ; une capacité absente n'a pas besoin d'être interceptée. Le modèle n'a pas d'outil « envoyer un mail », seulement « préparer un brouillon » : il ne peut pas envoyer, même si un hook a planté. L'écriture exige la clé d'accord comme paramètre obligatoire. Le compte de lecture n'a pas le droit d'écrire, et ce droit est retiré chez le fournisseur. On n'intercepte que ce qui ne peut pas être retiré : le contenu d'un texte, la cohérence d'une proposition.</div>
   </section>
 
   <section class="block" id="echecs" data-title="Les échecs">
     <h2><span class="n">06</span><span>Les échecs, tous modélisés</span></h2>
-    <p class="kicker">La densité d'une machine à états vient de ses branches d'échec, et elles sont toutes pareilles. On les écrit une fois dans le moteur ; chaque transition ne déclare que son chemin nominal et sa politique.</p>
+    <p class="kicker">Les branches d'échec sont toutes pareilles. On les écrit une fois dans le moteur ; chaque étape ne déclare que son chemin nominal.</p>
     <div class="exits">
       <div><b>Réessayer, borné</b>Un nombre de fois fixé, puis une autre sortie. Jamais sans fin.</div>
       <div><b>Escalader</b>Vers un humain, avec ce qu'on sait : les candidats les plus proches et ce qui leur manque.</div>
@@ -581,40 +554,40 @@ a { color: var(--accent-ink); }
     <div class="tablewrap"><table>
       <thead><tr><th>L'échec</th><th>Ce que fait le moteur</th></tr></thead>
       <tbody>
-        <tr><td>Un contrôle refuse (interdit, aucun candidat qualifié)</td><td>Ce n'est pas un échec technique, c'est un résultat : escaladée (vers qui, la fiche le dit) ou arrêtée avec motif.</td></tr>
-        <tr><td>Un outil tombe (connecteur en panne, délai dépassé)</td><td>Réessais bornés, puis la demande reste dans son état, persistée, et l'agence est alertée. L'état est en base précisément pour reprendre là où on était.</td></tr>
-        <tr><td>Le modèle rate (sortie hors schéma, refus, doute trop fort)</td><td>Un réessai, puis « à vérifier » : l'humain voit le message brut et fait l'extraction lui-même. Le système n'a pas le droit de « faire au mieux ».</td></tr>
-        <tr><td>L'humain ne répond pas</td><td>Veiller tourné vers nous : rappel, puis le rôle suivant de la table de délégation. La question d'entretien « et quand cette personne est absente ? » sert ici.</td></tr>
-        <tr><td>Le réel n'attend pas (la vacation est à 21 h)</td><td>L'échéance est un champ de la demande ; une transition « trop tard » existe et escalade avant l'heure.</td></tr>
+        <tr><td>Un contrôle refuse (interdit, aucun candidat qualifié)</td><td>Ce n'est pas un échec technique, c'est un résultat : la proposition est refusée avec sa raison, ou la demande rend ses exclus et ce qui leur manque, et l'humain décide.</td></tr>
+        <tr><td>Un outil tombe (connecteur en panne, requête trop longue)</td><td>Une requête de l'échappée tourne dans un processus à part, tuée au bout de 5 secondes ; une lecture qui échoue arrête la demande avec son motif, au journal. Rien n'est à moitié écrit : l'écriture est unique et dernière.</td></tr>
+        <tr><td>Le modèle rate (du texte au lieu d'un formulaire, un refus, un plafond)</td><td>Une relance au plus, puis « je ne sais pas » ou l'abandon, dit, au journal. Le système n'a pas le droit de « faire au mieux ».</td></tr>
+        <tr><td>L'humain ne répond pas</td><td>La question ou la confirmation reste en attente dans sa conversation, à la personne à qui elle est posée ; rien ne s'écrit. Le rappel et le rôle suivant ne sont pas construits.</td></tr>
+        <tr><td>Le réel n'attend pas (la vacation est à 21 h)</td><td>Non construit : le harnais ne décide pas à la place de l'humain quand l'heure approche. Le rapport de veille signale les échéances ; l'humain tient l'horloge.</td></tr>
       </tbody>
     </table></div>
   </section>
 
   <section class="block" id="complexite" data-title="Contenir la complexité">
     <h2><span class="n">07</span><span>Contenir la complexité</span></h2>
-    <p class="kicker">Le désistement est un cas simple et montre déjà une complexité réelle. Quatre manières de la tenir quand les processus seront plus denses.</p>
+    <p class="kicker">Le remplacement est un cas simple et montre déjà une complexité réelle. Quatre manières de la tenir, telles que construites.</p>
     <div class="two">
-      <div class="card"><h3>Une petite machine par archétype</h3><p>Veiller, Rapprocher, Planifier, Rédiger ont chacun cinq à huit états. Une tâche métier les enchaîne : désistement = Rapprocher → Planifier → approbation → écriture. On ne construit jamais la grosse machine « sécurité privée ». Au-delà d'une douzaine d'états, on coupe.</p></div>
-      <div class="card"><h3>La table est une donnée</h3><p><code>état × événement → état suivant, politique</code>. Elle se lit, se diffe, se dessine automatiquement et se teste par scénarios, à des centaines. Si la hiérarchie devient nécessaire, le formalisme standard est le statechart (XState en TypeScript) ; on garde le format compatible dès le départ.</p></div>
-      <div class="card"><h3>La couche sémantique</h3><p>Entités (Agent, Vacation, Site, Carte) et notions dérivées (<code>disponible</code>, <code>valide_a</code>, <code>delai_de_prevenance</code>), chacune définie une fois en mots du client, avec sa source et ses tests. Le modèle ne calcule jamais une notion métier, il la demande. Les mots à double sens de l'entretien y trouvent leur définition ; une ambiguïté non tranchée repart en question au client. Maison et petit : une centaine de fonctions pures au-dessus des connecteurs de lecture, pas un produit de BI.</p></div>
-      <div class="card"><h3>La complexité est celle du métier</h3><p>Tout ce que fait la machine du désistement, la permanence le fait déjà de tête à 17 h. On ne l'ajoute pas, on l'écrit. Une table que le client peut lire et corriger vaut mieux qu'un prompt où la même complexité est cachée. Ce qui reste difficile : où couper entre archétypes, et tenir les tables à jour. D'où la fiche structurée.</p></div>
+      <div class="card"><h3>Un moteur, des métiers chargés par leur nom</h3><p>Le moteur n'importe aucun métier : il charge celui que nomme le client (<code>config.yaml: metier</code>). Un métier déclare ses rôles, son domaine, ses gestes, ses règles, ses tables ; le moteur demande une capacité, jamais un rôle par son nom. Deux métiers le prouvent : la sécurité privée et une agence web, écrite dans sa seule bande.</p></div>
+      <div class="card"><h3>Le registre est une donnée</h3><p>Interdits, tests types et escalades vivent dans <code>regles.yaml</code>, avec leur texte, leur source et leur statut. Les tables de la fiche s'en régénèrent ; <code>pnpm registre:verifier</code> refuse une règle sans contrôle ni test. Le même rejeu de scénarios sert aux tests et au registre.</p></div>
+      <div class="card"><h3>La couche sémantique</h3><p>Entités et notions (<code>disponible</code>, <code>valide_a</code>, <code>delai_de_prevenance</code>), chacune définie une fois en mots du client, avec sa source et ses tests. Un contrôle ne recalcule jamais une notion, il la demande ; le modèle non plus. Maison et petit : des fonctions pures au-dessus des connecteurs de lecture, pas un produit de BI.</p></div>
+      <div class="card"><h3>La complexité est celle du métier</h3><p>Tout ce que fait le remplacement, la permanence le fait déjà de tête à 17 h. On ne l'ajoute pas, on l'écrit. Un registre que le client peut lire vaut mieux qu'un prompt où la même complexité est cachée. Ce qui reste difficile : tenir le registre à jour. D'où la fiche structurée, et l'entretien.</p></div>
     </div>
   </section>
 
   <section class="block" id="cout" data-title="Le coût d'inférence">
     <h2><span class="n">08</span><span>Le coût d'inférence, contrainte de premier rang</span></h2>
     <p class="kicker">On vend à des TPE/PME : la facture de modèle ne doit pas gonfler feature après feature.</p>
-    <div class="prose"><p>La facture ne vient pas des deux appels par demande (quelques dizaines d'euros par mois à cinquante demandes par jour, moins encore avec le cache). Elle vient de trois choses qu'on refuse dès la conception : un agent en boucle, une relecture du contexte entier à chaque tour, et les features « on regarde tout ».</p></div>
+    <div class="prose"><p>La facture ne vient pas d'un appel par demande. Elle vient de trois choses qu'on refuse dès la conception : un agent en boucle sans borne, une relecture du contexte entier à chaque tour, et les features « on regarde tout ».</p></div>
     <div class="tablewrap"><table>
-      <thead><tr><th>Étape de la cascade</th><th>Qui</th><th>Coût</th><th>Exemple (transport, centaines de mails par jour)</th></tr></thead>
+      <thead><tr><th>Étape</th><th>Qui</th><th>Coût</th><th>Ce qui se passe</th></tr></thead>
       <tbody>
-        <tr><td>1. Filtre déterministe</td><td>Code</td><td>Gratuit</td><td>Expéditeur connu, type de pièce jointe, mots du sujet, règles du client. Élimine la majorité.</td></tr>
-        <tr><td>2. Classifieur bon marché</td><td>Petit LLM ; un modèle de décision typée (Jev) plus tard, si sa calibration est mesurée sur nos traces</td><td>Négligeable</td><td>« BL signé / réserve / avis d'avarie / autre ? » Plusieurs questions sur le même document pour un seul prix.</td></tr>
-        <tr><td>3. Extraction</td><td>LLM</td><td>Proportionnel à ce qui reste</td><td>Seulement sur les documents retenus : les champs, avec extrait et doute.</td></tr>
+        <tr><td>1. La porte</td><td>Code</td><td>Gratuit</td><td>L'identité au registre, les droits du rôle, le plafond du mois : un inconnu ou un plafond atteint s'arrête avant tout appel.</td></tr>
+        <tr><td>2. La traduction</td><td>Un appel, liste fermée</td><td>≈ 0,002 $</td><td>La phrase, le rôle, les gestes : un formulaire rempli, revalidé par le code. Un geste ne coûte que cela.</td></tr>
+        <tr><td>3. L'échappée</td><td>Une boucle bornée</td><td>≈ 0,015 $ en moyenne</td><td>12 tours, 20 000 tokens, 420 s par demande ; une borne atteinte finit en abandon, au journal.</td></tr>
         <tr><td>4. Contrôles, puis humain</td><td>Code, puis la personne qui décide</td><td>Gratuit</td><td>Comme toujours.</td></tr>
       </tbody>
     </table></div>
-    <div class="rule"><b>Quatre conséquences, gravées.</b> Chaque feature annonce son coût par unité (message, document, jour) et son plafond mensuel avant d'être construite. Le code d'abord. En cascade. Le moteur journalise chaque appel avec ses tokens et son coût ; le plafond par client est dans la config, validé au démarrage, et s'approcher du plafond est une alerte Veiller comme une autre.</div>
+    <div class="rule"><b>Quatre conséquences, gravées.</b> Le code d'abord. Un seul appel pour un geste. Des bornes pour l'échappée, dans la config du client. Le moteur journalise chaque appel avec ses tokens et son coût ; le plafond par client est validé au démarrage ; sur l'abonnement, le coût s'affiche en équivalent API et la contrainte est le quota. Un geste commandé coûte un chantier, une fois, puis un appel.</div>
   </section>
 
   <section class="block" id="briques" data-title="Standard ou maison">
@@ -623,59 +596,58 @@ a { color: var(--accent-ink); }
     <div class="tablewrap"><table>
       <thead><tr><th>Brique</th><th>Choix</th><th>Pourquoi</th></tr></thead>
       <tbody>
-        <tr><td>Accès au modèle</td><td>SDK officiel du fournisseur, derrière une interface à nous (<code>extraire</code>, <code>rediger</code>, <code>classer</code>, <code>douter</code>)</td><td>Standard. L'interface permet de changer de fournisseur par client : le CLOUD Act est décisif chez les avocats, un modèle hébergé en Europe peut s'imposer.</td></tr>
-        <tr><td>Sorties du modèle</td><td>Sorties structurées validées par schéma (zod)</td><td>On ne parse jamais du texte libre.</td></tr>
-        <tr><td>Exposition du moteur</td><td>MCP</td><td>Utilisable depuis nos outils pour tester, et depuis n'importe quelle coque plus tard.</td></tr>
-        <tr><td>Config client</td><td>JSON Schema, validée au démarrage</td><td>Un seuil manquant arrête le boot, il ne devient pas un comportement silencieux.</td></tr>
-        <tr><td>Connecteurs</td><td>Les API standard du métier (IMAP/Graph, CalDAV, WhatsApp Business, facture électronique par plateforme agréée)</td><td>On n'écrit que l'adaptateur. « Connecteur maison » = 200 lignes au-dessus d'un standard.</td></tr>
-        <tr><td>Solveur (Planifier)</td><td>Bibliothèque de contraintes existante, seulement si le métier planifie</td><td>On ne réécrit pas un solveur.</td></tr>
-        <tr><td>Journal</td><td>SQLite, ajout seul</td><td>Lisible, sauvegardable, chez le client.</td></tr>
+        <tr><td>Accès au modèle</td><td>Le SDK d'Anthropic derrière une interface à nous (<code>Modele</code>) : la clé d'API, ou l'abonnement par le binaire <code>claude</code>, ou le simulé des tests</td><td>Un seul fournisseur, deux accès ; le simulé rejoue un script, sans réseau.</td></tr>
+        <tr><td>Sorties du modèle</td><td>Des outils stricts, validés par schéma (zod)</td><td>On ne parse jamais du texte libre : un geste est un formulaire, une fin d'échappée aussi.</td></tr>
+        <tr><td>Exposition du moteur</td><td>Une interface web sur <code>127.0.0.1</code> (Hono) et des commandes <code>pnpm</code></td><td>Pas de MCP : rien n'est exposé hors de la machine du client.</td></tr>
+        <tr><td>Config client</td><td>YAML, schéma strict, validée au démarrage</td><td>Un seuil manquant arrête le boot, il ne devient pas un comportement silencieux.</td></tr>
+        <tr><td>Connecteurs</td><td>CSV « format agence », en lecture</td><td>On n'écrit que l'adaptateur ; un autre logiciel chez le client, un autre connecteur, rien d'autre ne bouge.</td></tr>
+        <tr><td>Journal</td><td>SQLite, ajout seul</td><td>Lisible, sauvegardable, chez le client ; toute mesure vivante s'y lit.</td></tr>
         <tr><td><b>Les interdits</b></td><td><b>Maison</b></td><td>C'est le produit. Fonctions pures, un test par règle.</td></tr>
-        <tr><td><b>La machine à états</b></td><td><b>Maison, petite</b></td><td>Une table et 150 lignes. XState si la hiérarchie l'exige.</td></tr>
+        <tr><td><b>La conversation</b></td><td><b>Maison, petite</b></td><td>Une fonction par tour, pas de machine à états : chaque sortie est une ligne typée du journal.</td></tr>
         <tr><td><b>La couche sémantique</b></td><td><b>Maison, petite</b></td><td>Les rubriques « vocabulaire » et « données » de la grille, structurées.</td></tr>
-        <tr><td><b>Le schéma de config</b></td><td><b>Maison</b></td><td>C'est la grille d'entretien, structurée.</td></tr>
+        <tr><td><b>Le chantier et la livraison</b></td><td><b>Maison, sur git</b></td><td>Un arbre de travail, une fusion sous neuf conditions, une étiquette signée SSH, tirée et vérifiée par le client. Zéro cryptographie à nous.</td></tr>
       </tbody>
     </table></div>
     <div class="two">
       <div class="card"><h3>Exclus, et pourquoi</h3><ul>
         <li><b>RAG</b> : nos données sont structurées, on les requête. Seul Chercher (avocats) en a besoin, et Attendu le fait déjà par construction, avec la citation exacte.</li>
-        <li><b>Essaims d'agents</b> : plusieurs modèles qui se parlent multiplient les points où personne ne contrôle. Une demande = une machine à états.</li>
+        <li><b>Essaims d'agents</b> : plusieurs modèles qui se parlent multiplient les points où personne ne contrôle. Une demande = un tour, des sorties nommées.</li>
         <li><b>Frameworks d'orchestration</b> (LangChain et consorts) : ils cachent le flux de contrôle. Notre garantie <em>est</em> le flux de contrôle visible et testé.</li>
-        <li><b>Frameworks d'agent auto-améliorants</b> (Hermes) : skills réécrites par l'agent, mémoire curée par lui, accès terminal central. L'inverse d'un interdit auditable.</li>
+        <li><b>Frameworks d'agent auto-améliorants</b> : skills réécrites par l'agent, mémoire curée par lui, accès terminal central. L'inverse d'un interdit auditable.</li>
+        <li><b>Retirés en route</b> : la promotion automatique (un modèle qui devine ce qui revient), la ronde de nuit, un fournisseur tiers. Seul le patron commande ; Anthropic seul.</li>
       </ul></div>
       <div class="card"><h3>Trois étages, une seule source</h3><ul>
-        <li><b>Générique</b> : moteur (calendrier, exécution des contrôles, machine à états, journal, approbation, cadre des connecteurs, compteur).</li>
-        <li><b>Par métier</b> : la bibliothèque d'interdits de la fiche, la couche sémantique du métier, les archétypes activés.</li>
-        <li><b>Par client</b> : <code>config.yaml</code> (seuils, rôles, poids, vocabulaire, plafond) et ses connecteurs. C'est ça, « sur mesure ».</li>
-        <li>La <b>fiche métier structurée</b> est la source unique : les vues terrain, la figure du site, la table de la machine et le code des contrôles en découlent. Deux listes de règles, c'est une règle appliquée que personne n'a vue.</li>
+        <li><b>Générique</b> : le moteur (registre, calendrier, contrôles, conversation, échappée, clé d'accord, journal, chantier, livraison, compteur).</li>
+        <li><b>Par métier</b> : la fiche, le registre, la couche sémantique, les gestes, les évals.</li>
+        <li><b>Par client</b> : <code>config.yaml</code> (seuils, bornes, plafond), <code>personnes.yaml</code> (qui parle, avec quel rôle), ses données et ses missions. C'est ça, « sur mesure ».</li>
+        <li>La <b>fiche métier structurée</b> est la source unique : les vues terrain et ses tables en découlent, et le registre est vérifié contre le code à chaque <code>pnpm check</code>. Deux listes de règles, c'est une règle appliquée que personne n'a vue.</li>
       </ul></div>
     </div>
   </section>
 
-  <section class="block" id="ordre" data-title="L'ordre de fabrication">
-    <h2><span class="n">10</span><span>Dans quel ordre fabriquer</span></h2>
-    <p class="kicker">Le premier livrable ne contient aucun modèle. C'est voulu : c'est le moins risqué, le moins cher, et il est présent dans les quatre métiers.</p>
+  <section class="block" id="ordre" data-title="Ce qui est construit">
+    <h2><span class="n">10</span><span>Ce qui est construit, dans l'ordre où ça l'a été</span></h2>
+    <p class="kicker">Le premier livrable ne contenait aucun modèle. C'était voulu : le moins risqué, le moins cher, et présent dans tous les métiers.</p>
     <ol class="steps">
-      <li><div><b>Connecteur de lecture</b>Du planning, au début un export CSV suffit. Identité de lecture seule chez le fournisseur.</div></li>
-      <li><div><b>Calendrier + couche sémantique + interdits + tests</b>Un script qui lit le planning et dit ce qui cloche. C'est Veiller, livrable sans aucun modèle, et le premier pilote de chaque métier.</div></li>
-      <li><div><b>Machine à états + délégation + approbation</b>Par message, deux boutons. Le jeton. L'identité d'écriture, droits minimaux.</div></li>
-      <li><div><b>Le modèle aux bords</b>Extraire et rédiger, sorties validées par schéma, journal des coûts, plafond. Évals sur des traces réelles : c'est le seul endroit où on en a besoin.</div></li>
-      <li><div><b>Le solveur</b>Seulement si le métier planifie (sécurité oui, avocats non).</div></li>
+      <li><div><b>La veille, sans modèle</b>Connecteur CSV, calendrier, couche sémantique, interdits et tests. Un rapport qui dit ce qui cloche. Le premier pilote de chaque métier.</div></li>
+      <li><div><b>Le remplacement et la clé d'accord</b>Les candidats par les règles, la validation du patron, l'accord de l'agent, une seule écriture sous la clé ; la délégation.</div></li>
+      <li><div><b>La conversation et ses trois espaces</b>La traduction dans une liste fermée, l'échappée sur une copie masquée, la commande d'un geste ; l'interface du patron ; les pseudonymes : aucun nom ne part au modèle, même proche.</div></li>
+      <li><div><b>Le second métier</b>Une agence web, écrite dans la bande métier seulement : le moteur n'a pas bougé.</div></li>
+      <li><div><b>Le chantier et la livraison</b>Le geste commandé, codé par trois modèles sous neuf conditions, fusionné et signé ; le harnais du client tire la version, la vérifie, bascule au calme, revient en arrière s'il le faut.</div></li>
+      <li><div><b>Les mesures</b>Des évals écrites à la main, des contrôles binaires sans juge IA : traduction 73/73 et échappée 18/18 avec Sonnet 5.5 ; mille tests.</div></li>
     </ol>
   </section>
 
-  <section class="block" id="valider" data-title="À valider">
+  <section class="block" id="valider" data-title="Ce qui reste">
     <div class="validate">
-      <h2><span class="n">11</span><span>À valider avant le plan</span></h2>
+      <h2><span class="n">11</span><span>Ce qui reste</span></h2>
       <ol>
-        <li><b>Le partage code / modèle / humain</b> tel que décrit en 01 et 02, y compris : le modèle ne choisit pas le remplaçant, le code classe.</li>
-        <li><b>Les quatre moments et les trois verdicts</b> (05), et la règle « seul le code bloque, fermé ».</li>
-        <li><b>L'écriture</b> : par l'identité d'écriture du moteur, verrouillée par le jeton (défaut), ou par le compte de l'humain qui approuve (plus fort, plus de friction). À choisir par client, ou une fois pour toutes ?</li>
-        <li><b>Les trois sorties d'échec</b> et la table des échecs (06).</li>
-        <li><b>Une machine par archétype</b>, table en donnée, XState seulement si nécessaire (07).</li>
-        <li><b>La cascade de coût</b> et le plafond par client dans la config (08).</li>
-        <li><b>L'ordre de fabrication</b> (10), Veiller en premier, sans modèle.</li>
-        <li><b>Le langage et les briques nommées</b> : TypeScript, zod, XState, SQLite (07, 09) sont une recommandation, pas une décision.</li>
+        <li><b>Le bac à sable du chantier</b> : le code écrit par le modèle tourne encore sous l'utilisateur de l'agence ; un utilisateur dédié avant le premier client réel.</li>
+        <li><b>La clé d'API</b> : tout tourne sur l'abonnement ; la bascule est due avant un client réel.</li>
+        <li><b>Un patron réel</b> : relire les étiquettes des évals avec lui, et un métier porté par quelqu'un d'autre que nous.</li>
+        <li><b>Le juriste</b> : le repos (12 h ou 11 h), le prestataire d'IA comme sous-traitant (RGPD art. 28), la délégation qui choisit entre des personnes (art. 22).</li>
+        <li><b>La phrase à trous</b> : le modèle ne retape plus aucun nombre dans l'échappée, le code remplit ; un lot à part, mesuré.</li>
+        <li><b>Un canal</b> : une messagerie, avec son identifiant, relié à un rôle du registre.</li>
       </ol>
     </div>
   </section>
