@@ -189,7 +189,7 @@ Un dossier, une ligne. Les mots sont dans `GLOSSAIRE.md`, les décisions dans
 │   ├── personnes/         le registre d'accès (personnes.yaml) et l'identité vérifiée, avant toute ouverture du dossier
 │   ├── modele/            l'accès au modèle derrière une interface à nous : l'API d'Anthropic, l'abonnement par le binaire claude, le simulé des tests, le compteur de coût
 │   ├── conversation/      un tour : la porte, la traduction (une consigne, un geste de la liste), la désignation en code, les rôles et le domaine déclarés par le métier, les noms qui ne partent jamais, l'état
-│   ├── echappee/          le deuxième espace : la copie SQLite masquée, le garde-fou SQL, la boucle bornée, le contrôle des nombres et des noms, les pseudonymes
+│   ├── echappee/          le deuxième espace : la copie SQLite masquée, le garde-fou SQL, la boucle bornée, la phrase à trous (le modèle ne retape aucun nombre, le code remplit), les pseudonymes
 │   ├── gestes/            les demandes sans geste et la commande du patron (la mission écrite par le code)
 │   ├── chantier/          la mission, l'arbre de travail, la garde, le chantier, la fusion et le retrait, la mémoire, le binaire claude
 │   ├── livraison/         la version signée, la file d'un client, l'agence, la mise à jour, le lanceur, le verrou

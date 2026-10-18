@@ -38,12 +38,14 @@ pour de vrai, deux fois, la dernière sur la pointe finale.
 **Prochaine session : le lot 5** (la mesure réelle, avec les vrais modèles,
 la clé de l'agence et un bac à sable : voir « Ouvert, avant un client
 réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
-(`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **Sans la clé**, la
-session suivante prend le lot de l'échappée « la phrase à trous » (le modèle
-ne retape plus aucun nombre : une phrase dont chaque trou est lié à une
-cellule d'un tableau, le code remplit ; un lot avec sa cérémonie, mesure
-appariée sur les deux métiers), proposé le 2026-10-18 et accepté dans son
-principe (« on fait tout »), non encore planifié.
+(`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **La phrase à trous
+est faite** (2026-10-18, fusion 59e9374, verdict dans
+`evals/verdict-2026-10-18-phrase-a-trous.md`). **Sans la clé**, la session
+suivante prend ses deux suites, lues dans les traces de la mesure : les
+abandons « l'outil de requête n'est pas disponible » (E-04, E-08, E-28,
+EP-18 de l'agence web, des deux côtés, « No such tool available » dans la
+trace : l'adaptateur de l'abonnement) ; les codes des règles (« I-04 »)
+rendus citables hors d'un trou (un faux retrait d'E-28).
 
 - **Ne jamais lancer `pnpm agence`, `pnpm chantier` ni `pnpm versionner`
   dans ce dépôt pour un essai** : ils poussent sur `origin` (GitHub). Le
@@ -59,8 +61,8 @@ principe (« on fait tout »), non encore planifié.
 - **Les trois espaces** : un geste codé (la traduction le choisit, le code
   l'exécute ; une personne nommée se résout en code, exacte ou par une
   question, jamais par le modèle), l'échappée (SQL en lecture sur une copie
-  masquée, contrôle « pas un chiffre ni un nom hors des données », dit au
-  demandeur et compté dans l'état sur trente jours), la commande (le
+  masquée, une phrase à trous : le modèle ne retape aucun nombre, le code
+  remplit, une réponse retirée est dite au demandeur et compté dans l'état sur trente jours), la commande (le
   chantier, neuf conditions dont le rejeu).
 - **Tout tourne sur l'abonnement** (binaire `claude`, Sonnet 5.5 au
   quotidien, Fable et Opus au chantier) : les dollars affichés sont des
