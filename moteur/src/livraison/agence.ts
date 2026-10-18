@@ -1,8 +1,9 @@
 import { join } from 'node:path'
 import { type Agence, type Executer, executerSync, preflight } from '../agence/config'
-import { type Commande, commandeSync, exclure, verifierBase } from '../chantier/arbre'
+import { branche, type Commande, commandeSync, exclure, verifierBase } from '../chantier/arbre'
 import { faireChantier } from '../chantier/chantier'
 import type { Lancer } from '../chantier/claude'
+import { cleChantier, lireCle } from '../chantier/cle'
 import { retirerFusion } from '../chantier/fusion'
 import { ecrireRetrait, missionFusionnee, nettoyer } from '../chantier/memoire'
 import { lireStatut, type Statut, type StatutChantier, SUFFIXE_STATUT } from '../chantier/mission'
@@ -140,7 +141,7 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
       )
     }
   }
-  noterChantier(o.racine, jour, x.client.slug, x.mission.id)
+  noterChantier(o.racine, jour, x.client.slug, cleChantier(x.mission.metier, x.mission.id))
   ecrireEnFile(o.racine, x, { statut: 'en cours', issue: 'chantier en cours', cout_usd: 0, le })
   pousser('en cours')
   // Le chantier écrit son dossier et son statut complets à l'agence (`sortieAgence`) ; la file ne
@@ -165,7 +166,7 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
     if (r.sorte === 'deja_tentee') {
       fin = {
         statut: 'échoué',
-        issue: `une branche chantier/${x.mission.id} existe déjà à l'agence (cette mission, ou une autre du même nom, peut-être d'un autre client) : à trancher à la main`,
+        issue: `une branche ${branche(cleChantier(x.mission.metier, x.mission.id))} existe déjà à l'agence (cette mission, ou une autre du même nom, peut-être d'un autre client du même métier) : à trancher à la main`,
         cout_usd: 0,
         le,
       }
@@ -184,10 +185,11 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
 }
 
 /**
- * `pnpm chantier retirer <id>` (G2, L7) : la fusion défaite sur `main` du
- * distant et sa version signée (`retirerFusion`), la mémoire du retrait (le
- * client, le titre et les intentions que garde la mémoire de la fusion),
- * puis le statut `retiré` dans la file du client qui l'avait commandée. Le
+ * `pnpm chantier retirer <métier>/<id>` (G2, L7) : la fusion défaite sur
+ * `main` du distant et sa version signée (`retirerFusion`), la mémoire du
+ * retrait (le client, le titre et les intentions que garde la mémoire de la
+ * fusion), puis le statut `retiré` dans la file du client qui l'avait
+ * commandée. L'identifiant seul suffit quand un seul métier l'a fusionné. Le
  * motif est nettoyé une fois (contre les noms des clients fictifs, seuls
  * connus ici) : le même part dans le commit du retrait (que tous les clients
  * tirent avec la version), dans la mémoire et dans le statut.
@@ -195,6 +197,7 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
 export function retirerMission(o: {
   racine: string
   agence: Agence
+  /** La clé `<métier>/<id>` de la mission, ou son identifiant seul s'il ne désigne qu'une fusion. */
   id: string
   motif: string
   personnes: Designable[]
@@ -205,6 +208,8 @@ export function retirerMission(o: {
 }): {
   revert: string
   version: string
+  /** La clé de la mission retirée. */
+  mission: string
   motif: string
   client?: string
   dit: ReturnType<typeof statuerRetrait>
@@ -216,19 +221,19 @@ export function retirerMission(o: {
   const r = retirerFusion({
     commande: c,
     racine: o.racine,
-    id: o.id,
+    cle: o.id,
     motif,
     version: { cle: o.cle, jour },
-    ecrireRetrait: (arbre) => {
-      const fusion = missionFusionnee(arbre, o.id)
-      if (!fusion) throw new Error(`aucune fusion de ${o.id} dans la mémoire d'origin/main`)
+    ecrireRetrait: (arbre, cle) => {
+      const fusion = missionFusionnee(arbre, cle)
+      if (!fusion) throw new Error(`aucune fusion de ${cle} dans la mémoire d'origin/main`)
       client = fusion.client
       ecrireRetrait(
         arbre,
         {
           date: jour,
           client: fusion.client,
-          id: o.id,
+          cle,
           titre: fusion.titre,
           intentions: fusion.intentions,
           motif,
@@ -240,14 +245,21 @@ export function retirerMission(o: {
   const dit =
     client === undefined
       ? { sorte: 'absent' as const }
-      : statuerRetrait(c, o.racine, o.agence.agence.clients, client, o.id, {
+      : statuerRetrait(c, o.racine, o.agence.agence.clients, client, lireCle(r.cle).id, {
           statut: 'retiré',
           issue: `retiré : ${motif}`,
           version: r.version,
           cout_usd: 0,
           le: o.maintenant.toInstant().toString(),
         })
-  return { ...r, motif, ...(client ? { client } : {}), dit }
+  return {
+    revert: r.revert,
+    version: r.version,
+    mission: r.cle,
+    motif,
+    ...(client ? { client } : {}),
+    dit,
+  }
 }
 
 /** Le verrou de `pnpm agence` : le pid de qui tourne, posé d'un seul geste ; un verrou dont le pid est mort est levé. Rend de quoi le rendre. */

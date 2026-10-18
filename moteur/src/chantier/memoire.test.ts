@@ -7,6 +7,7 @@ import {
   ajouterConvention,
   ajouterIndex,
   chantiersCitant,
+  cheminEntree,
   DOSSIER_MEMOIRE,
   ecrireChantier,
   ecrireRetrait,
@@ -15,6 +16,7 @@ import {
   missionFusionnee,
   missionsRetirees,
   nettoyer,
+  resoudreCle,
 } from './memoire'
 
 // PLAN-RONDE.md R10 : la mémoire des chantiers, écrite par le code, sans nom ni
@@ -53,7 +55,7 @@ describe('écrire et relire la mémoire', () => {
       {
         date: '2026-10-13',
         client: CLIENT,
-        id: 'simuler_absence',
+        cle: 'essai/simuler_absence',
         titre: 'Simuler une absence',
         sections: [{ titre: 'Mission', texte: 'simuler_absence, intention du catalogue' }],
         appris,
@@ -62,12 +64,35 @@ describe('écrire et relire la mémoire', () => {
       },
       personnes,
     )
+    // L'entrée vit sous le métier de la mission (décidé le 2026-10-18).
+    expect(chemin).toBe(join(r, 'memoire', 'chantiers', 'essai', '2026-10-13-simuler_absence.md'))
+    expect(cheminEntree('2026-10-13', 'essai/simuler_absence')).toBe(
+      join('memoire', 'chantiers', 'essai', '2026-10-13-simuler_absence.md'),
+    )
     const contenu = readFileSync(chemin, 'utf8')
     expect(contenu).toContain('texte retiré')
     expect(contenu).toContain('leçon 19')
     expect(contenu).not.toContain('leçon 20')
-    expect(chantiersCitant(r, ['simuler_absence'])).toHaveLength(1)
-    expect(chantiersCitant(r, ['autre'])).toHaveLength(0)
+    expect(chantiersCitant(r, ['simuler_absence'], 'essai')).toHaveLength(1)
+    expect(chantiersCitant(r, ['autre'], 'essai')).toHaveLength(0)
+    // Un autre métier ne relit pas les chantiers de celui-ci.
+    expect(chantiersCitant(r, ['simuler_absence'], 'autre')).toHaveLength(0)
+  })
+
+  it('une clé se résout : entière telle quelle ; un identifiant seul par les fusions de l’index, jamais deviné entre deux métiers', () => {
+    const r = racine()
+    const fusion = (cle: string) =>
+      ajouterIndex(
+        r,
+        { date: '2026-10-13', client: CLIENT, sorte: 'fusion', cle, titre: 't', issue: 'fusionné' },
+        personnes,
+      )
+    expect(resoudreCle(r, 'essai/simuler_absence')).toBe('essai/simuler_absence')
+    expect(() => resoudreCle(r, 'simuler_absence')).toThrow(/aucune fusion/)
+    fusion('essai/simuler_absence')
+    expect(resoudreCle(r, 'simuler_absence')).toBe('essai/simuler_absence')
+    fusion('autre/simuler_absence')
+    expect(() => resoudreCle(r, 'simuler_absence')).toThrow(/plusieurs métiers/)
   })
 
   it('une écriture qui porterait un nom lève, rien n’est écrit', () => {
@@ -79,7 +104,7 @@ describe('écrire et relire la mémoire', () => {
           date: '2026-10-12',
           client: CLIENT,
           sorte: 'retrait',
-          id: 'm',
+          cle: 'essai/m',
           titre: 'Rosalie',
           issue: 'x',
         },
@@ -98,13 +123,15 @@ describe('écrire et relire la mémoire', () => {
         date: '2026-10-14',
         client: CLIENT,
         sorte: 'retrait',
-        id: 'heures_cumulees',
+        cle: 'essai/heures_cumulees',
         titre: 'retirée',
         issue: 'motif : doublon',
       },
       personnes,
     )
-    expect(missionsRetirees(r)).toEqual([{ id: 'heures_cumulees', intentions: [] }])
+    expect(missionsRetirees(r)).toEqual([
+      { cle: 'essai/heures_cumulees', metier: 'essai', id: 'heures_cumulees', intentions: [] },
+    ])
   })
 
   it('une fusion se relit pour son retrait : client, titre, intentions de son entrée ; sans fusion, rien', () => {
@@ -115,7 +142,7 @@ describe('écrire et relire la mémoire', () => {
         {
           date,
           client: 'client-essai',
-          id: 'simuler_absence',
+          cle: 'essai/simuler_absence',
           titre: 'Simuler une absence',
           sections: [
             {
@@ -129,17 +156,19 @@ describe('écrire et relire la mémoire', () => {
         },
         personnes,
       )
-    expect(missionFusionnee(r, 'simuler_absence')).toBeUndefined()
+    expect(missionFusionnee(r, 'essai/simuler_absence')).toBeUndefined()
     entree('refus', '2026-10-12', '`simuler_absence`')
-    expect(missionFusionnee(r, 'simuler_absence')).toBeUndefined()
+    expect(missionFusionnee(r, 'essai/simuler_absence')).toBeUndefined()
     entree('fusion', '2026-10-13', '`simuler_absence`, `absence_longue`')
-    expect(missionFusionnee(r, 'simuler_absence')).toEqual({
+    expect(missionFusionnee(r, 'essai/simuler_absence')).toEqual({
       date: '2026-10-13',
       client: 'client-essai',
       titre: 'Simuler une absence',
       intentions: ['simuler_absence', 'absence_longue'],
     })
-    expect(missionFusionnee(r, 'autre')).toBeUndefined()
+    expect(missionFusionnee(r, 'essai/autre')).toBeUndefined()
+    // Le même identifiant sous un autre métier n'est pas cette fusion.
+    expect(missionFusionnee(r, 'autre/simuler_absence')).toBeUndefined()
   })
 
   it('un retrait garde ses intentions : le même travail sous un autre nom n’est pas refait', () => {
@@ -149,7 +178,7 @@ describe('écrire et relire la mémoire', () => {
       {
         date: '2026-10-14',
         client: CLIENT,
-        id: 'etat_des_cartes',
+        cle: 'essai/etat_des_cartes',
         titre: 'Les cartes ; en un geste',
         intentions: ['agents_sans_carte', 'cartes_expirees'],
         motif: 'doublon de voir_echeances',
@@ -157,7 +186,12 @@ describe('écrire et relire la mémoire', () => {
       personnes,
     )
     expect(missionsRetirees(r)).toEqual([
-      { id: 'etat_des_cartes', intentions: ['agents_sans_carte', 'cartes_expirees'] },
+      {
+        cle: 'essai/etat_des_cartes',
+        metier: 'essai',
+        id: 'etat_des_cartes',
+        intentions: ['agents_sans_carte', 'cartes_expirees'],
+      },
     ])
     expect(lireIndex(r)[0]?.issue).toBe('retiré : doublon de voir_echeances')
     expect(() =>
@@ -166,7 +200,7 @@ describe('écrire et relire la mémoire', () => {
         {
           date: '2026-10-14',
           client: CLIENT,
-          id: 'x',
+          cle: 'essai/x',
           titre: 't',
           intentions: [],
           motif: 'Octave',

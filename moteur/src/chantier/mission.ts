@@ -164,7 +164,10 @@ export type Decision = { sorte: 'chantier' } | { sorte: 'ecartee'; motif: string
  * (l'état a pu changer depuis la commande) et les retraits de la mémoire (G2).
  */
 export function decider(m: Mission, catalogue: Catalogue, retirees: MissionRetiree[]): Decision {
-  const retiree = retirees.find((r) => r.id === m.id || memesIntentions(r.intentions, m.intentions))
+  // Un retrait ne vaut que pour son métier : un autre métier peut porter le même identifiant.
+  const retiree = retirees.find(
+    (r) => r.metier === m.metier && (r.id === m.id || memesIntentions(r.intentions, m.intentions)),
+  )
   if (retiree)
     return { sorte: 'ecartee', motif: `mission retirée (${retiree.id}) : jamais refaite` }
   const codes = new Set(catalogue.gestes.map((g) => g.id))

@@ -1,11 +1,15 @@
 // pnpm evals traduire|echappee --client <dossier> [--seulement id,id] [--modele simule]
+// pnpm evals rejeu --client <dossier> --gestes a,b [--seulement id,id] [--modele simule]
 // Les évals de la conversation (PLAN-ESPACES.md § 9) : chaque cas, écrit à la main dans
 // `metiers/<métier>/evals/` (le métier du client, PLAN-METIER-2.md M8),
 // tourne sur une copie fraîche du client (ou sur une variante dérivée de lui,
 // pour un homonyme) ; la sortie est vérifiée en code, la trace complète est
 // gardée dans `evals/traces/<horodatage>-<métier>-<quoi>/` (non versionné) et
 // le tableau dans `evals/resultats/<horodatage>-<métier>-<quoi>.md`.
-// `traduire` et `echappee` appellent le vrai modèle : exige la
+// `rejeu` (la neuvième condition du chantier, `evals/rejeu.ts`) : les cas de
+// `consignes.yaml` de ces gestes, chacun contre une échappée sur la même
+// consigne ; chaque nombre que l'échappée cite doit être dans ce que le geste
+// rend. `traduire`, `echappee` et `rejeu` appellent le vrai modèle : exige la
 // clé que nomme la config (ANTHROPIC_API_KEY sans `acces`), ou l'abonnement
 // par le binaire (`acces: { binaire }`, le coût est alors une estimation), et
 // coûte (≈ 0,3 $ les deux passes). `--modele simule` ne sert qu'à
@@ -29,6 +33,7 @@ import {
   rendreResultats,
   SEUILS,
 } from '../evals/evals'
+import { bilanRejeu, casPourGestes, estNonMesurable, jouerRejeu, ligneRejeu } from '../evals/rejeu'
 import {
   casDuFichier,
   configDuDossier,
@@ -44,8 +49,9 @@ import { metierDe } from './metier'
 
 const RACINE = fileURLToPath(new URL('../../..', import.meta.url))
 const EVALS = join(RACINE, 'evals')
-const QUOIS = ['traduire', 'echappee'] as const
+const QUOIS = ['traduire', 'echappee', 'rejeu'] as const
 type Quoi = (typeof QUOIS)[number]
+const USAGE = `usage : pnpm evals traduire|echappee --client <dossier> [--seulement id,id] [--modele simule] | pnpm evals rejeu --client <dossier> --gestes a,b [--seulement id,id] [--modele simule]`
 
 const { values, positionals } = parseArgs({
   allowPositionals: true,
@@ -53,13 +59,21 @@ const { values, positionals } = parseArgs({
     client: { type: 'string' },
     seulement: { type: 'string' },
     modele: { type: 'string' },
+    gestes: { type: 'string' },
   },
 })
 const [quoi] = positionals as [Quoi | undefined]
 if (quoi === undefined || !QUOIS.includes(quoi) || !values.client) {
-  console.error(
-    `usage : pnpm evals ${QUOIS.join('|')} --client <dossier> [--seulement id,id] [--modele simule]`,
-  )
+  console.error(USAGE)
+  process.exit(2)
+}
+/** Les gestes à rejouer : exigés par `rejeu`, sans effet ailleurs. */
+const gestes = (values.gestes ?? '')
+  .split(',')
+  .map((g) => g.trim())
+  .filter((g) => g.length > 0)
+if (quoi === 'rejeu' && gestes.length === 0) {
+  console.error(USAGE)
   process.exit(2)
 }
 if (values.modele !== undefined && values.modele !== 'simule') {
@@ -103,9 +117,13 @@ const garder = (r: ResultatCas, trace: unknown, id?: string) => {
     JSON.stringify(trace, null, 2),
   )
   const fuite = r.fuite && r.fuite.length > 0 ? ` ; fuite : ${r.fuite.join(', ')}` : ''
-  console.log(
-    `${r.id} : ${r.ecarts.length === 0 ? 'ok' : `écart (${r.ecarts.join(' ; ')})`}${fuite}`,
-  )
+  const issue =
+    r.ecarts.length === 0
+      ? 'ok'
+      : estNonMesurable(r)
+        ? r.ecarts.join(' ; ')
+        : `écart (${r.ecarts.join(' ; ')})`
+  console.log(`${r.id} : ${issue}${fuite}`)
 }
 
 const resultats: ResultatCas[] = []
@@ -150,23 +168,36 @@ if (quoi === 'traduire') {
     resultats.push(joue.resultat)
     garder(joue.resultat, joue.trace, joue.idModele)
   }
+} else if (quoi === 'rejeu') {
+  const fichier = FichierTraduire.parse(parse(readFileSync(join(CAS, 'consignes.yaml'), 'utf8')))
+  const cas = casPourGestes(fichier, gestes).filter((c) => !seulement || seulement.has(c.id))
+  resultats.push(...(await jouerRejeu(m, source, cas, modeleDe, garder)))
 }
 
-const b = bilan(resultats, seuil)
 const chemin = join(EVALS, 'resultats', `${tampon}-${metier}-${quoi}.md`)
 const TITRES: Record<Quoi, string> = {
   traduire: 'de la traduction',
   echappee: "de l'échappée",
+  rejeu: 'du rejeu',
 }
-writeFileSync(
-  chemin,
-  rendreResultats(`Évals ${TITRES[quoi]} — ${tampon}`, idModele, resultats, seuil),
-)
-console.log(
-  `\n${b.ok}/${b.total} (${Math.round(b.taux * 100)} %, seuil ${Math.round(seuil * 100)} %), fuite ${b.fuites.length} cas (seuil 0), coût ${b.coutUsd.toFixed(4)} $${b.stricts.length > 0 ? ` ; cas stricts en écart : ${b.stricts.join(', ')}` : ''}`,
-)
-console.log(
-  `${b.atteint ? 'Seuil atteint.' : 'Sous le seuil : analyse d’erreurs (§ 9.3), puis relance.'}`,
-)
-console.log(`Résultats : ${chemin}\nTraces : ${dossierTraces}`)
-if (!b.atteint) process.exitCode = 1
+const tableau = rendreResultats(`Évals ${TITRES[quoi]} — ${tampon}`, idModele, resultats, seuil)
+if (quoi === 'rejeu') {
+  // Un cas non mesurable n'est ni fidèle ni en écart : le compte du rejeu le dit à part.
+  const b = bilanRejeu(resultats)
+  writeFileSync(chemin, `${tableau}\n${ligneRejeu(b)}\n`)
+  console.log(`\n${ligneRejeu(b)}`)
+  console.log(b.fidele ? 'Fidèle.' : 'En écart : le geste ne rend pas ce que l’échappée cite.')
+  console.log(`Résultats : ${chemin}\nTraces : ${dossierTraces}`)
+  if (!b.fidele) process.exitCode = 1
+} else {
+  const b = bilan(resultats, seuil)
+  writeFileSync(chemin, tableau)
+  console.log(
+    `\n${b.ok}/${b.total} (${Math.round(b.taux * 100)} %, seuil ${Math.round(seuil * 100)} %), fuite ${b.fuites.length} cas (seuil 0), coût ${b.coutUsd.toFixed(4)} $${b.stricts.length > 0 ? ` ; cas stricts en écart : ${b.stricts.join(', ')}` : ''}`,
+  )
+  console.log(
+    `${b.atteint ? 'Seuil atteint.' : 'Sous le seuil : analyse d’erreurs (§ 9.3), puis relance.'}`,
+  )
+  console.log(`Résultats : ${chemin}\nTraces : ${dossierTraces}`)
+  if (!b.atteint) process.exitCode = 1
+}

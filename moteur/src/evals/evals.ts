@@ -25,7 +25,8 @@ export const CATEGORIE_AGENT_PATRON = 'agent_patron'
 export const evalsDuMetier = (metier: string): string => `metiers/${metier}/evals`
 
 /** Les seuils des évals : traduire ≥ 95 %, échappée ≥ 80 %. */
-export const SEUILS = { traduire: 0.95, echappee: 0.8 } as const
+/** `rejeu` : chaque cas mesurable fidèle, aucun écart (REFLEXIONS.md, décidé le 2026-10-18). */
+export const SEUILS = { traduire: 0.95, echappee: 0.8, rejeu: 1 } as const
 
 /** Un dossier d'éval dérivé du client : une chaîne remplacée dans un de ses fichiers, sur la copie du cas. */
 export const Variante = z.strictObject({

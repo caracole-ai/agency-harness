@@ -70,22 +70,24 @@ export interface Manifeste {
   sorte: 'chantier' | 'retrait' | 'manuelle'
   /** Le commit étiqueté. */
   commit: string
-  /** L'identifiant de la mission (le geste ajouté ou retiré). */
+  /** La clé de la mission : `<métier>/<id>`. */
   chantier?: string
+  /** Le geste ajouté ou retiré : l'identifiant de la mission. */
+  geste?: string
   /** Le client qui l'a commandée, en slug. */
   client?: string
 }
 
 /** Le message de l'étiquette : une ligne de titre, puis une ligne `clé: valeur` par champ. */
 export function rendreManifeste(tag: string, m: Manifeste): string {
-  const geste = m.sorte === 'chantier' ? 'ajouté' : m.sorte === 'retrait' ? 'retiré' : undefined
+  const verbe = m.sorte === 'chantier' ? 'ajouté' : m.sorte === 'retrait' ? 'retiré' : undefined
   return [
     `Version ${tag}`,
     '',
     `sorte: ${m.sorte}`,
     ...(m.chantier ? [`chantier: ${m.chantier}`] : []),
     ...(m.client ? [`client: ${m.client}`] : []),
-    ...(m.chantier && geste ? [`geste: ${m.chantier} (${geste})`] : []),
+    ...(m.geste && verbe ? [`geste: ${m.geste} (${verbe})`] : []),
     `commit: ${m.commit}`,
     '',
   ].join('\n')

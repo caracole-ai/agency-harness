@@ -227,11 +227,20 @@ export interface PnpmSimule {
   check?: number[]
   /** La sortie de `pnpm evals traduire` et son code. */
   evals?: { sortie: string; code: number }
+  /** La sortie de `pnpm evals rejeu` et son code. */
+  rejeu?: { sortie: string; code: number }
 }
 
 export const EVALS_AU_SEUIL = {
   sortie:
     'P-1 : ok\nR-2 : écart (le modèle a dit autre chose)\n\n61/62 (98 %, seuil 95 %), fuite 0 cas (seuil 0), coût 0.1200 $\nSeuil atteint.',
+  code: 0,
+}
+
+/** Un rejeu fidèle : les trois cas du geste nouveau, mesurés, sans écart. */
+export const REJEU_FIDELE = {
+  sortie:
+    'S-1 : ok\nS-2 : ok\nS-3 : ok\n\nrejeu : 3/3 fidèle(s), 0 non mesurable(s), coût 0.0300 $\nFidèle.',
   code: 0,
 }
 
@@ -256,7 +265,7 @@ export function commandeSimulee(p: PnpmSimule = {}): { commande: Commande; emise
       return { code, sortie: code === 0 ? 'vert' : 'rouge : 1 test en échec', erreur: '' }
     }
     if (args[0] === 'evals') {
-      const e = p.evals ?? EVALS_AU_SEUIL
+      const e = args[1] === 'rejeu' ? (p.rejeu ?? REJEU_FIDELE) : (p.evals ?? EVALS_AU_SEUIL)
       return { code: e.code, sortie: e.sortie, erreur: '' }
     }
     return { code: 0, sortie: '', erreur: '' }

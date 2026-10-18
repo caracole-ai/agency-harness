@@ -10,10 +10,13 @@ import { join } from 'node:path'
 import type { Designable } from '../conversation/designation'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
 import { fuites } from '../echappee/pseudonymes'
+import { estCle, lireCle } from './cle'
 
 // La mémoire des chantiers, dans le dépôt (PLAN-RONDE.md R10, PLAN-GENERAL.md
 // décision 2) : `memoire/INDEX.md` (une ligne par événement),
-// `chantiers/`, `CONVENTIONS.md` (on y ajoute, on n'en retire jamais).
+// `chantiers/<métier>/`, `CONVENTIONS.md` (on y ajoute, on n'en retire jamais).
+// Une mission y est connue par sa clé `<métier>/<id>` (`cle.ts`) : deux
+// métiers peuvent avoir commandé le même identifiant.
 // Écrite par le code, dans l'arbre détaché de la fusion ou du retrait
 // (PLAN-LIVRAISON.md L2) ; le texte libre d'un modèle y passe nettoyé. Rien
 // n'y entre qui porte un nom de salarié, un identifiant de personne, de
@@ -40,8 +43,8 @@ export interface EvenementMemoire {
   date: string
   client: string
   sorte: SorteMemoire
-  /** L'identifiant (slug) d'une mission. */
-  id: string
+  /** La clé de la mission : `<métier>/<id>`. */
+  cle: string
   titre: string
   issue: string
   /** En dollars ; `estime` : rapporté par le binaire `claude`, une estimation (PLAN-RONDE.md § 0.a). */
@@ -104,12 +107,18 @@ export const coutEcrit = (c: { usd: number; estime: boolean }) =>
   `${c.usd.toFixed(2).replace('.', ',')} $${c.estime ? ' (estimé par le binaire)' : ''}`
 
 function ligneIndex(e: EvenementMemoire): string {
-  return `- ${[e.date, e.client, e.sorte, e.id, e.titre, e.issue, e.cout ? coutEcrit(e.cout) : '—']
+  return `- ${[e.date, e.client, e.sorte, e.cle, e.titre, e.issue, e.cout ? coutEcrit(e.cout) : '—']
     .map(colonne)
     .join(SEP)}`
 }
 
 const dossier = (racine: string, ...sous: string[]) => join(racine, DOSSIER_MEMOIRE, ...sous)
+
+/** L'entrée d'un chantier, relative au dépôt : `memoire/chantiers/<métier>/<date>-<id>.md`. */
+export function cheminEntree(date: string, cle: string): string {
+  const { metier, id } = lireCle(cle)
+  return join(DOSSIER_MEMOIRE, DOSSIER_CHANTIERS_MEMOIRE, metier, `${date}-${id}.md`)
+}
 
 function ajouter(chemin: string, ligne: string): void {
   mkdirSync(join(chemin, '..'), { recursive: true })
@@ -131,19 +140,43 @@ export function lireIndex(racine: string): EvenementMemoire[] {
     .split('\n')
     .filter((l) => l.startsWith('- ') && l.includes(SEP))
     .flatMap((l) => {
-      const [date, client, sorte, id, titre, issue] = l.slice(2).split(SEP)
-      if (!date || !client || !id || !SORTES_MEMOIRE.includes(sorte as SorteMemoire)) return []
+      const [date, client, sorte, cle, titre, issue] = l.slice(2).split(SEP)
+      if (!date || !client || !cle || !SORTES_MEMOIRE.includes(sorte as SorteMemoire)) return []
       return [
-        { date, client, sorte: sorte as SorteMemoire, id, titre: titre ?? '', issue: issue ?? '' },
+        { date, client, sorte: sorte as SorteMemoire, cle, titre: titre ?? '', issue: issue ?? '' },
       ]
     })
+}
+
+/**
+ * La clé d'une mission fusionnée, depuis une clé entière ou un identifiant
+ * nu (`pnpm chantier retirer <id>`) : un identifiant nu se cherche parmi les
+ * fusions de l'index ; lève s'il n'en désigne aucune ou plusieurs (deux
+ * métiers), sans deviner.
+ */
+export function resoudreCle(racine: string, idOuCle: string): string {
+  if (estCle(idOuCle)) return idOuCle
+  const cles = [
+    ...new Set(
+      lireIndex(racine)
+        .filter((e) => e.sorte === 'fusion' && estCle(e.cle) && lireCle(e.cle).id === idOuCle)
+        .map((e) => e.cle),
+    ),
+  ]
+  const [seule] = cles
+  if (cles.length === 1 && seule) return seule
+  if (cles.length === 0) throw new Error(`${idOuCle} : aucune fusion de ce nom dans la mémoire`)
+  throw new Error(
+    `${idOuCle} : plusieurs métiers ont fusionné ce nom (${cles.join(', ')}) : donner la clé <métier>/<id>`,
+  )
 }
 
 /** Ce qu'un chantier laisse à la mémoire (R10) ; écrit au lot 2. */
 export interface ChantierMemoire {
   date: string
   client: string
-  id: string
+  /** `<métier>/<id>` */
+  cle: string
   titre: string
   /** Mission, plan, fichiers touchés, tests, constats, raison de la fusion ou du refus : écrits par le code. */
   sections: { titre: string; texte: string }[]
@@ -154,7 +187,7 @@ export interface ChantierMemoire {
   cout?: { usd: number; estime: boolean }
 }
 
-/** Écrit `memoire/chantiers/<date>-<id>.md` et sa ligne d'index ; rend le chemin. */
+/** Écrit `memoire/chantiers/<métier>/<date>-<id>.md` et sa ligne d'index ; rend le chemin. */
 export function ecrireChantier(
   racine: string,
   c: ChantierMemoire,
@@ -167,7 +200,7 @@ export function ecrireChantier(
     .slice(0, APPRIS_LIGNES_MAX)
     .map((l) => nettoyer(l, personnes))
   const contenu = [
-    `# Chantier ${c.id} — ${c.date}`,
+    `# Chantier ${c.cle} — ${c.date}`,
     '',
     `${nettoyer(c.titre, personnes)} ; issue : ${c.issue}${c.cout ? ` ; coût : ${coutEcrit(c.cout)}` : ''}.`,
     '',
@@ -178,7 +211,7 @@ export function ecrireChantier(
     '',
   ].join('\n')
   exigerPropre(contenu, personnes, 'le chantier')
-  const chemin = dossier(racine, DOSSIER_CHANTIERS_MEMOIRE, `${c.date}-${c.id}.md`)
+  const chemin = join(racine, cheminEntree(c.date, c.cle))
   mkdirSync(join(chemin, '..'), { recursive: true })
   writeFileSync(chemin, contenu)
   ajouterIndex(
@@ -187,7 +220,7 @@ export function ecrireChantier(
       date: c.date,
       client: c.client,
       sorte: c.sorte,
-      id: c.id,
+      cle: c.cle,
       titre: nettoyer(c.titre, personnes),
       issue: c.issue,
       ...(c.cout ? { cout: c.cout } : {}),
@@ -214,8 +247,10 @@ export function lireConventions(racine: string): string {
   return existsSync(chemin) ? readFileSync(chemin, 'utf8') : ''
 }
 
-/** Une mission retirée (G2) : son identifiant et ses intentions, car le même travail peut revenir sous un autre nom. */
+/** Une mission retirée (G2) : sa clé, son métier, son identifiant et ses intentions, car le même travail peut revenir sous un autre nom. */
 export interface MissionRetiree {
+  cle: string
+  metier: string
   id: string
   intentions: string[]
 }
@@ -229,7 +264,8 @@ export function ecrireRetrait(
   r: {
     date: string
     client: string
-    id: string
+    /** `<métier>/<id>` */
+    cle: string
     titre: string
     intentions: string[]
     motif: string
@@ -242,7 +278,7 @@ export function ecrireRetrait(
       date: r.date,
       client: r.client,
       sorte: 'retrait',
-      id: r.id,
+      cle: r.cle,
       titre: `${nettoyer(r.titre, personnes).replaceAll(';', ',')} ; intentions : ${r.intentions.join(', ')}`,
       issue: `retiré : ${nettoyer(r.motif, personnes)}`,
     },
@@ -250,12 +286,13 @@ export function ecrireRetrait(
   )
 }
 
-/** Les missions retirées (G2) : jamais refaites, ni sous un autre nom. */
+/** Les missions retirées (G2), tous métiers : jamais refaites, ni sous un autre nom ; une ligne dont la clé n'en est pas une est ignorée. */
 export const missionsRetirees = (racine: string): MissionRetiree[] =>
   lireIndex(racine)
-    .filter((e) => e.sorte === 'retrait')
+    .filter((e) => e.sorte === 'retrait' && estCle(e.cle))
     .map((e) => ({
-      id: e.id,
+      cle: e.cle,
+      ...lireCle(e.cle),
       intentions: (INTENTIONS_RETRAIT.exec(e.titre)?.[1] ?? '')
         .split(',')
         .map((i) => i.trim())
@@ -272,13 +309,13 @@ const INTENTIONS_MISSION = /^- intentions : (.*)$/m
  */
 export function missionFusionnee(
   racine: string,
-  id: string,
+  cle: string,
 ): { date: string; client: string; titre: string; intentions: string[] } | undefined {
   const e = lireIndex(racine)
-    .filter((x) => x.sorte === 'fusion' && x.id === id)
+    .filter((x) => x.sorte === 'fusion' && x.cle === cle)
     .at(-1)
   if (!e) return undefined
-  const chemin = dossier(racine, DOSSIER_CHANTIERS_MEMOIRE, `${e.date}-${id}.md`)
+  const chemin = join(racine, cheminEntree(e.date, cle))
   const ligne = existsSync(chemin)
     ? INTENTIONS_MISSION.exec(readFileSync(chemin, 'utf8'))?.[1]
     : undefined
@@ -291,24 +328,25 @@ export function missionFusionnee(
   }
 }
 
-/** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du client, les conventions, les chantiers qui citent ses intentions. */
+/** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du client, les conventions, les chantiers de ce métier qui citent ses intentions. */
 export function pourChantier(
   racine: string,
   mots: string[],
   indexLignes: number,
+  metier: string,
 ): { index: string[]; conventions: string; chantiers: string[] } {
   return {
     index: lireIndex(racine)
       .slice(-indexLignes)
-      .map((e) => [e.date, e.sorte, e.id, e.titre, e.issue].join(SEP)),
+      .map((e) => [e.date, e.sorte, e.cle, e.titre, e.issue].join(SEP)),
     conventions: lireConventions(racine),
-    chantiers: chantiersCitant(racine, mots),
+    chantiers: chantiersCitant(racine, mots, metier),
   }
 }
 
-/** Les entrées de chantier qui citent l'un des mots (intentions, gestes) : ce que le plan relit (R10). */
-export function chantiersCitant(racine: string, mots: string[]): string[] {
-  const d = dossier(racine, DOSSIER_CHANTIERS_MEMOIRE)
+/** Les entrées de chantier d'un métier qui citent l'un des mots (intentions, gestes) : ce que le plan relit (R10). */
+export function chantiersCitant(racine: string, mots: string[], metier: string): string[] {
+  const d = dossier(racine, DOSSIER_CHANTIERS_MEMOIRE, metier)
   if (!existsSync(d)) return []
   return readdirSync(d)
     .filter((f) => f.endsWith('.md'))

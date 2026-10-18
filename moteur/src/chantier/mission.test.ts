@@ -88,17 +88,30 @@ describe('decider (§ 0.b)', () => {
   })
 
   it('une mission retirée (nom ou intentions), ou dont un geste existe : rien', () => {
-    expect(decider(mission(), CATALOGUE, [{ id: 'simuler_absence', intentions: [] }]).sorte).toBe(
-      'ecartee',
-    )
+    const retiree = (id: string, intentions: string[], metier = 'essai') => ({
+      cle: `${metier}/${id}`,
+      metier,
+      id,
+      intentions,
+    })
+    expect(decider(mission(), CATALOGUE, [retiree('simuler_absence', [])]).sorte).toBe('ecartee')
     expect(
-      decider(mission({ id: 'autre_nom' }), CATALOGUE, [
-        { id: 'simulation', intentions: ['simuler_absence'] },
-      ]).sorte,
+      decider(mission({ id: 'autre_nom' }), CATALOGUE, [retiree('simulation', ['simuler_absence'])])
+        .sorte,
     ).toBe('ecartee')
     expect(decider(mission({ intentions: ['cartes_expirees'] }), CATALOGUE, []).sorte).toBe(
       'ecartee',
     )
+  })
+
+  it('un retrait d’un autre métier, même identifiant ou mêmes intentions, ne vaut pas ici (décidé le 2026-10-18)', () => {
+    const autre = { cle: 'autre/simuler_absence', metier: 'autre', id: 'simuler_absence' }
+    expect(decider(mission(), CATALOGUE, [{ ...autre, intentions: [] }]).sorte).toBe('chantier')
+    expect(
+      decider(mission({ id: 'autre_nom' }), CATALOGUE, [
+        { ...autre, intentions: ['simuler_absence'] },
+      ]).sorte,
+    ).toBe('chantier')
   })
 })
 
@@ -260,6 +273,20 @@ describe('missionCommandee', () => {
         declaree: { id: 'simuler_absence', description: 'le départ de Rosalie', ecrit: false },
       }),
     ).toThrow(/porterait un nom ou un identifiant/)
+  })
+
+  it('un tiers que le métier déclare (une organisation) dans l’identifiant de l’intention : refusée, comme un nom de personne (décidé le 2026-10-18)', () => {
+    const { dossier, ecrire } = client()
+    ecrire('2026-10-09T08:00:00Z', [
+      nouvelle('C-1', 'relancer_hexalis'),
+      ...echappeeEssai('E-20261009T1000-0001', 'C-1', 'relancer_hexalis', 'Relance le devis.'),
+    ])
+    const tiers = { id: 'O-1', nom: 'Hexalis', sorte: 'organisation' as const }
+    expect(() =>
+      commandee(dossier, 'relancer_hexalis', { personnes: [...PERSONNES_ESSAI, tiers] }),
+    ).toThrow(/porterait un nom ou un identifiant/)
+    // Le contrôle ne connaît que ce que `noms` déclare : un tiers non déclaré passe.
+    expect(commandee(dossier, 'relancer_hexalis').id).toBe('relancer_hexalis')
   })
 
   it('« écrit » : celui du métier quand il déclare l’intention ; sinon vrai si une échappée a fini en proposition', () => {
