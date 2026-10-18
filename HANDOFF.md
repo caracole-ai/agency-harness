@@ -106,27 +106,41 @@ réponse attendue demande-t-elle plus que la question ?). Puis relire les
 ## Ouvert
 
 **Le lot « ménage », tranché le 2026-10-18** (`REFLEXIONS.md`, « Décidé »,
-les quatre lignes du 18). Sans modèle, `pnpm check` seul, une branche, une
-fusion ; dans cet ordre :
+les quatre lignes du 18), **en cours sur la branche `general/menage`, non
+fusionnée dans `main`** (session interrompue par la limite d'usage). État :
 
-1. Le dépôt : fait le jour même (45 branches supprimées, `git cherry` vide
-   sur les cinq non fusionnées ; restent `main` et les trois extraites dans
-   un worktree) ; les trois worktrees : Lionel, ci-dessous.
-2. GMI et ce qui n'existait que pour lui (`flux`, `usageBorne`,
-   `nullEnTexte`), la compat `agent` (`roles.ts`, `parler.ts --agent`,
-   `evals.ts`), `pnpm remplacer` : retirés. `unSeulOutil` reste.
-3. Les plans exécutés, `SESSION-D.md`, les « Fait » de REFLEXIONS →
-   `archives/`, les renvois du README suivent ; le § 10 de
-   `PLAN-METIER-2.md` → « À trancher » ; le § 1 de `PLAN-GENERAL.md`
-   supprimé ; `evals/resultats/` réduit aux cités et aux `apparie-*`.
-4. Le niveau 2 de `designer` retiré (la question en code, « Vous parlez de
-   X ? » ou la liste numérotée) ; le départage par numéro, `gerer_absence`
-   compris ; « Répondre en tant que X » ouvre la conversation de la
-   question ; un commentaire sur `IdentiteVerifiee`.
-5. L'espace de noms `chantier/<métier>/<id>` ; le contrôle des noms étendu
-   aux tiers que le métier déclare.
-6. Une passe `pnpm evals traduire` sur le client fictif (le point 4 touche
-   ce que le modèle lit) : R-2 devient une question, son étiquette suit.
+1. Fait et fusionné dans la branche, `pnpm check` vert (554 moteur, 36
+   interface, 136 sécurité, 259 agence web) : le dépôt (45 branches
+   supprimées) ; la doc (`archives/`, résultats réduits, README en arbre,
+   glossaire à 99 entrées, test de cohérence des commandes) ; GMI, la compat
+   `agent` et `pnpm remplacer` retirés (`menage/fournisseur`) ; le niveau 2
+   retiré, la question par numéro, « Répondre en tant que X » dans la
+   conversation, R-2 en question (`menage/identite`) ; les compteurs
+   d'échappées dans l'état et le mot au demandeur (`menage/echappee`).
+2. **En cours, fork C** : l'espace de noms `chantier/<métier>/<id>`, le
+   contrôle des noms étendu aux tiers, la neuvième condition « rejeu »
+   (`pnpm evals rejeu`). Sa branche `menage/chantier` est dans le worktree
+   `.claude/worktrees/agent-a7c231bdba6523661` : à relire, fusionner dans
+   `general/menage`, `pnpm check`. Si elle n'existe pas ou est incomplète :
+   le glossaire (« Garde », « Rejeu », « Chantier », la ligne `evals`) et
+   le diaporama (neuf conditions, le rejeu) disent déjà l'état visé, à
+   ramener à huit conditions si le rejeu n'arrive pas.
+3. **Reste** : une passe `pnpm evals traduire --client exemples/client-fictif`
+   avec le vrai modèle (le niveau 2 touche ce que le modèle lit) ; la
+   fusion `--no-ff` de `general/menage` dans `main` ; `HANDOFF.md` « Où on
+   en est » ; `methode/architecture-pour-modeles.md:50` et
+   `PLAN-LIVRAISON.md` disent encore « huit conditions » et `chantier/<id>`.
+4. **Les sites** : le diaporama `../smart-tailor/public/dispos-harnais/index.html`
+   est réécrit en local (non commité, non déployé) ; sa ligne 1034 dit
+   encore « la nuit sous huit conditions » et « 897 tests », à finir avec le
+   compte final ; régénérer la page du glossaire (`node
+   presentation/glossaire.mjs GLOSSAIRE.md ../smart-tailor/public/glossaire/index.html`),
+   puis `./deploy/deploy.sh` dans `../smart-tailor`, puis vérifier les deux
+   pages dans un navigateur.
+5. Non fait, à Lionel : le départage de `gerer_absence` par numéro change
+   l'ordre attendu dans `exemples/client-fictif/attendu-remplacement.yaml`
+   (`[A-2, A-1, A-5, A-9]`) ; réécrire `exemples/client-fictif/personnes.yaml`
+   (`agent:` → `personne:`, 13 lignes) puis retirer `agent` de `IdentiteSchema`.
 
 **Reste à Lionel, sans être une décision** : créer la clé de l'agence ; la
 date de la bascule vers la clé d'API ; les étiquettes (`heures_par_agent` :
