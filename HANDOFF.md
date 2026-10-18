@@ -1,9 +1,11 @@
 # Handoff — 2026-10-18
 
 Pour reprendre dans une session neuve : deux pages, l'état et la suite. Les
-décisions et leur fil sont dans `REFLEXIONS.md`, les plans dans `PLAN-*.md`,
+décisions et leur fil sont dans `REFLEXIONS.md`, les plans vivants dans
+`PLAN-GENERAL.md` et `PLAN-LIVRAISON.md`, les exécutés dans `archives/`,
 l'historique dans git (l'ancien handoff de 4 220 lignes :
-`git show 15a128b:HANDOFF.md`).
+`git show 15a128b:HANDOFF.md`). Les commandes : `GLOSSAIRE.md`, une table,
+la seule.
 
 ## Où on en est
 
@@ -177,18 +179,6 @@ au lieu de 23, le piège `lots.nom`.
 
 ## Commandes
 
-```sh
-pnpm install
-pnpm check                 # lint, types, tests, cohérence du registre
-pnpm registre:generer      # réécrit les tables de la fiche depuis le registre
-pnpm veiller --client exemples/client-fictif --date 2026-10-06
-pnpm parler --client <copie> --role <rôle> [--personne A-2] [--maintenant …] [--modele simule] --consigne "…"
-pnpm interface --client <copie> [--maintenant 2026-10-10T21:40]
-pnpm evals traduire|echappee --client exemples/client-fictif [--seulement id,id] [--modele simule]
-pnpm chantier --mission <copie>/missions/<date>/<id>.yaml [--sortie <dossier>] [--sans-modele]   # --refaire rouvre la branche telle quelle
-pnpm chantier retirer <id> --motif "<texte>"
-pnpm versionner            # AGENCE_CLE_SIGNATURE=<clé privée hors du dépôt>
-pnpm agence [--une-fois]   # les files des clients d'agence.yaml: agence.clients
-pnpm mise-a-jour [retirer] --client <dossier>   # chez un client livré ; retirer : revient à la précédente, l'interface relance d'elle-même au calme
-pnpm harnais --client <dossier> [-- --modele simule]   # le lanceur, depuis <installation>/courant
-```
+La table de `GLOSSAIRE.md`, « Les commandes », la seule ; le README,
+« Faire tourner », dit ce que la table ne dit pas (laboratoire, agence,
+client livré).
