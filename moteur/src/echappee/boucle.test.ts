@@ -99,10 +99,10 @@ describe('les outils envoyés au modèle', () => {
     expect(json).toContain('les modifications proposées')
     expect(json).not.toMatch(/réaffectation|patron/)
   })
-  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse, et la grammaire des trous', () => {
+  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse, chaque grandeur demandée, et la grammaire des trous', () => {
     const json = JSON.stringify(outilsEchappee(outils()))
     expect(json).toContain(
-      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; une phrase à trous : Tu ne recopies jamais un nombre, une date ni un identifiant',
+      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte), mais chaque grandeur que la question demande, dans son unité : un pourcentage ne remplace pas un montant demandé ; une phrase à trous : Tu ne recopies jamais un nombre, une date ni un identifiant',
     )
     expect(json).toContain(
       '{T2.3.heures} pour la cellule de la colonne heures à la ligne 3 du résultat T2, {T2.n} pour son nombre de lignes',

@@ -156,7 +156,7 @@ const Repondre = z.strictObject({
   phrase: z
     .string()
     .describe(
-      `la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; une phrase à trous : ${GRAMMAIRE_TROUS}`,
+      `la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte), mais chaque grandeur que la question demande, dans son unité : un pourcentage ne remplace pas un montant demandé ; une phrase à trous : ${GRAMMAIRE_TROUS}`,
     ),
 })
 const Abandonner = z.strictObject({
