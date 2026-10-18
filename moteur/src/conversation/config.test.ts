@@ -34,7 +34,7 @@ describe('ConversationSchema', () => {
     s.modele.effort.traduire = 'max'
     expect(ConversationSchema.safeParse(s).success).toBe(false)
   })
-  it('un point d’accès : adresse, authentification et nom de variable vérifiés', () => {
+  it('un autre point d’accès au format Anthropic est refusé : un seul fournisseur (2026-10-18)', () => {
     const avec = (acces: unknown) => {
       const s = section() as { modele: Record<string, unknown> }
       s.modele.acces = acces
@@ -42,24 +42,12 @@ describe('ConversationSchema', () => {
     }
     expect(
       avec({
-        url: 'https://api.gmi-serving.com',
+        url: 'https://api.exemple.test',
         authentification: 'bearer',
-        variable_cle: 'GMI_API_KEY',
-      }),
-    ).toBe(true)
-    expect(
-      avec({ url: 'pas une adresse', authentification: 'bearer', variable_cle: 'GMI_API_KEY' }),
-    ).toBe(false)
-    expect(
-      avec({ url: 'https://x.y', authentification: 'jeton', variable_cle: 'GMI_API_KEY' }),
-    ).toBe(false)
-    expect(
-      avec({
-        url: 'https://x.y',
-        authentification: 'bearer',
-        variable_cle: 'eyJhbGciOi.la-cle-elle-meme',
+        variable_cle: 'AUTRE_CLE',
       }),
     ).toBe(false)
+    expect(avec({ variable_cle: 'AUTRE_CLE' })).toBe(false)
   })
   it('l’abonnement : un binaire nommé, rien d’autre', () => {
     const avec = (acces: unknown) => {
@@ -69,6 +57,6 @@ describe('ConversationSchema', () => {
     }
     expect(avec({ binaire: 'claude' })).toBe(true)
     expect(avec({ binaire: '' })).toBe(false)
-    expect(avec({ binaire: 'claude', variable_cle: 'GMI_API_KEY' })).toBe(false)
+    expect(avec({ binaire: 'claude', variable_cle: 'AUTRE_CLE' })).toBe(false)
   })
 })

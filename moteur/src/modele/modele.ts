@@ -57,24 +57,12 @@ export interface AppelModele {
   maxTokens: number
   /** true → `tool_choice: { type: 'auto', disable_parallel_tool_use: true }`. */
   unSeulOutil: boolean
-  /**
-   * true : la réponse arrive en flux (SSE), reconstituée en un message par le
-   * SDK. Pour un appel long (plusieurs minutes de réflexion) : une passerelle coupe une réponse non diffusée
-   * passé 120 s (GMI, erreur 524, 2026-10-10). Absent : un appel ordinaire.
-   */
-  flux?: boolean
 }
 
 export interface ReponseModele {
   message: Anthropic.Message
   usage: UsageModele
   dureeMs: number
-  /**
-   * true : le fournisseur n'a pas compté les tokens (GMI, en flux : tout à
-   * zéro), et `usage` est une borne haute calculée par l'adaptateur, jamais
-   * une estimation basse. Le coût qui en sort majore le vrai.
-   */
-  usageBorne?: boolean
 }
 
 export interface Modele {
