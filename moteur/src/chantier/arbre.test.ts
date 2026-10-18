@@ -4,8 +4,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { FUSEAU, Temporal } from '../temps/temporal'
-import { verifierBase } from './arbre'
+import { brancheExiste, ouvrirArbre, verifierBase } from './arbre'
 import { faireChantier } from './chantier'
+import { cleChantier } from './cle'
 import {
   agenceEssai,
   binaireSimule,
@@ -67,16 +68,16 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
     retirerFusion({
       commande,
       racine: depots.racine,
-      id: MISSION_ESSAI.id,
+      cle: cleChantier(MISSION_ESSAI.metier, MISSION_ESSAI.id),
       motif: 'essai',
       version: { cle: CLE_ESSAI.privee, jour: '2026-10-12' },
-      ecrireRetrait: (arbre) =>
+      ecrireRetrait: (arbre, cle) =>
         ecrireRetrait(
           arbre,
           {
             date: '2026-10-12',
             client: 'client-essai',
-            id: MISSION_ESSAI.id,
+            cle,
             titre: MISSION_ESSAI.titre,
             intentions: MISSION_ESSAI.intentions,
             motif: 'essai',
@@ -141,6 +142,21 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
     )
     expect(surLaBase.filter((x) => !PERMISES.includes(x.args[0] ?? ''))).toEqual([])
     expect(etatHumain(depots.racine)).toEqual(humain)
+  })
+
+  it('deux métiers, le même identifiant : deux branches, deux arbres, aucune « déjà tentée » croisée (décidé le 2026-10-18)', () => {
+    const { racine } = creerDepots()
+    const { commande } = commandeSimulee()
+    verifierBase(commande, racine)
+    git(racine, 'branch', 'chantier/essai/simuler_absence')
+    expect(brancheExiste(commande, racine, 'essai/simuler_absence')).toBe(true)
+    expect(brancheExiste(commande, racine, 'autre/simuler_absence')).toBe(false)
+    expect(ouvrirArbre(commande, racine, 'essai/simuler_absence')).toEqual({ sorte: 'deja_tentee' })
+    const ouvert = ouvrirArbre(commande, racine, 'autre/simuler_absence')
+    expect(ouvert.sorte).toBe('ouvert')
+    expect(ouvert.sorte === 'ouvert' && ouvert.chemin).toMatch(
+      /\.claude\/worktrees\/chantier-autre-simuler_absence$/,
+    )
   })
 
   it('verifierBase refuse un dossier qui n’est pas la racine d’un dépôt, et un dépôt sans origin', () => {

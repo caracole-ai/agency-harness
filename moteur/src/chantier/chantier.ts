@@ -10,6 +10,7 @@ import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
 import {
+  branche,
   brancher,
   type Commande,
   commandeSync,
@@ -21,6 +22,7 @@ import {
   verifierBase,
 } from './arbre'
 import { envEnfant, type IssueClaude, type Lancer, lancerClaude, lancerProcessus } from './claude'
+import { cleChantier } from './cle'
 import { CONDITIONS, type Condition, conclure, type IssueFusion, raisonRefus } from './fusion'
 import { casParGesteNouveau, fichierConsignes, type Garde, garderDiff } from './garde'
 import {
@@ -201,6 +203,8 @@ export async function faireChantier<S>(
 ): Promise<IssueChantier> {
   const debut = Date.now()
   const { mission } = lireMission(o.mission)
+  /** La clé de la mission dans le dépôt de l'agence : branche, étiquette, mémoire. */
+  const cle = cleChantier(mission.metier, mission.id)
   const c = o.commande ?? commandeSync
   const lancer = o.lancer ?? lancerProcessus
   const executer = o.executer ?? executerSync
@@ -248,6 +252,7 @@ export async function faireChantier<S>(
       racineMemoire,
       [mission.id, ...mission.intentions],
       ch.memoire_index_lignes,
+      mission.metier,
     )
     const texte = [
       '### L’index (les dernières lignes)',
@@ -311,9 +316,9 @@ export async function faireChantier<S>(
   }
   preflight('claude', o.agence, o.env, executer)
   // La clé de signature (L4) : une fusion pose sa version ; sans clé, rien ne commence.
-  const cle = preflightSignature(o.env, o.racine, executer)
+  const cleSignature = preflightSignature(o.env, o.racine, executer)
   verifierBase(c, o.racine)
-  const arbre = ouvrirArbre(c, o.racine, mission.id, o.refaire === true)
+  const arbre = ouvrirArbre(c, o.racine, cle, o.refaire === true)
   if (arbre.sorte === 'deja_tentee') return { sorte: 'deja_tentee', dossier }
   const cwd = arbre.chemin
 
@@ -321,13 +326,13 @@ export async function faireChantier<S>(
   // refaite), lus avant que la branche existe : une mission écartée ici ne laisse rien.
   const decision = decider(mission, catalogue, missionsRetirees(cwd))
   if (decision.sorte !== 'chantier') {
-    fermerArbre(c, o.racine, mission.id)
+    fermerArbre(c, o.racine, cle)
     return ecarter(decision)
   }
   const { memoire, texte: memoireTexte } = lireMemoire(cwd)
   const fuite = interdits(memoireTexte, personnes)
   if (fuite.length > 0) {
-    fermerArbre(c, o.racine, mission.id)
+    fermerArbre(c, o.racine, cle)
     return refuserFuite(fuite)
   }
 
@@ -448,7 +453,7 @@ export async function faireChantier<S>(
   }
 
   try {
-    if (!arbre.branche) brancher(c, cwd, mission.id)
+    if (!arbre.branche) brancher(c, cwd, cle)
     // L'arbre a ses propres dépendances : `pnpm check` y tourne.
     const installe = pnpm(['install', '--frozen-lockfile', '--prefer-offline'])
     if (installe.code !== 0) {
@@ -627,19 +632,19 @@ export async function faireChantier<S>(
     fusion = conclure({
       commande: c,
       racine: o.racine,
-      id: mission.id,
+      cle,
       titre,
       commit: gardee,
       conditions,
       personnes,
-      version: { cle, jour, client: o.client },
+      version: { cle: cleSignature, jour, client: o.client },
       ecrireEntree: (arbreFusion, sorte, issueMemoire) =>
         ecrireChantier(
           arbreFusion,
           {
             date: jour,
             client: o.client,
-            id: mission.id,
+            cle,
             titre,
             sorte,
             issue: issueMemoire,
@@ -678,7 +683,7 @@ export async function faireChantier<S>(
   } catch (erreur) {
     issue = `${ISSUES_CHANTIER.echoue} : ${(erreur as Error).message.slice(0, 300)}`
   } finally {
-    fermerArbre(c, o.racine, mission.id)
+    fermerArbre(c, o.racine, cle)
   }
 
   const dureeMs = Date.now() - debut
@@ -933,7 +938,7 @@ function rendreDossier(x: {
       : ['Non tentée.']),
     '',
     x.fusion?.sorte === 'fusionne'
-      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`chantier/${x.mission.id}\`${x.fusion.version ? `, version \`${x.fusion.version}\`` : ''}, poussé.`
+      ? `Fusionné dans \`main\` du distant (${x.fusion.fusion.slice(0, 12)}), étiquette \`${branche(cleChantier(x.mission.metier, x.mission.id))}\`${x.fusion.version ? `, version \`${x.fusion.version}\`` : ''}, poussé.`
       : x.fusion?.sorte === 'refuse'
         ? 'Non fusionné : la branche reste.'
         : x.fusion

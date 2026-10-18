@@ -1,11 +1,11 @@
 // pnpm chantier --mission <fichier> [--sortie <dossier>] [--sans-modele] [--refaire]
-// pnpm chantier retirer <id> --motif "<texte>"
+// pnpm chantier retirer <métier>/<id> --motif "<texte>"
 // Le chantier d'une mission commandée par le patron (PLAN-RONDE.md § 6.3, R5 ;
 // PLAN-GENERAL.md G1, G2 ; PLAN-LIVRAISON.md L2, L3), à l'agence : décidé en
 // code (retirée, geste déjà actif : aucun appel), puis plan, implémentation,
 // garde, `pnpm check`, relecture, une reprise au plus, honnêteté, dans un
-// arbre de travail parti d'`origin/main` (`.claude/worktrees/chantier-<id>` de
-// ce dépôt, dont ni l'arbre ni `main` ne bougent) ; la mémoire, et la fusion
+// arbre de travail parti d'`origin/main` (`.claude/worktrees/chantier-<métier>-<id>`
+// de ce dépôt, dont ni l'arbre ni `main` ne bougent) ; la mémoire, et la fusion
 // sur `main` du distant si les huit conditions sont vertes. Le dossier
 // `<id>.chantier.md` et le statut `<id>.statut.yaml` vont dans `--sortie`
 // (par défaut, à côté de la mission) ; une mission de la file d'un client, à
@@ -21,7 +21,9 @@
 // intentions que la mémoire de la fusion garde : la mission n'est jamais
 // refaite), puis le statut `retiré` dans la file du client qui l'avait
 // commandée (`retirerMission`) ; le motif, nettoyé des noms des clients
-// fictifs, est le même dans le commit, la mémoire et le statut.
+// fictifs, est le même dans le commit, la mémoire et le statut. La mission se
+// nomme par sa clé `<métier>/<id>` ; l'identifiant seul suffit quand un seul
+// métier l'a fusionné.
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
 // appelle le modèle du quotidien (la clé que nomme la config du client).
@@ -55,7 +57,7 @@ const { values, positionals } = parseArgs({
   },
 })
 const USAGE =
-  'usage : pnpm chantier --mission <fichier> [--sortie <dossier>] [--sans-modele] [--refaire] | pnpm chantier retirer <id> --motif "<texte>"'
+  'usage : pnpm chantier --mission <fichier> [--sortie <dossier>] [--sans-modele] [--refaire] | pnpm chantier retirer <métier>/<id> --motif "<texte>"'
 
 const agence = chargerAgence(RACINE)
 
@@ -83,7 +85,7 @@ try {
       commande: commandeSync,
     })
     console.log(
-      `${id} retiré : ${r.revert.slice(0, 12)} sur main du distant, version ${r.version}, poussé.`,
+      `${r.mission} retiré : ${r.revert.slice(0, 12)} sur main du distant, version ${r.version}, poussé.`,
     )
     // Le client qui l'avait commandé le lit dans sa file (PLAN-LIVRAISON.md L7).
     console.log(

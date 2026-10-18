@@ -145,7 +145,7 @@ function depotAJour(c: Commande, l: Livraison): string {
     git(c, l.installation, ['init', '--quiet', '--bare', depot])
   }
   git(c, depot, ['config', 'remote.origin.url', l.depot])
-  // `--no-tags` : git suivrait sinon toute étiquette posée dans l'histoire des versions (`chantier/<id>`).
+  // `--no-tags` : git suivrait sinon toute étiquette posée dans l'histoire des versions (`chantier/<métier>/<id>`).
   git(c, depot, ['fetch', '--no-tags', 'origin', 'refs/tags/v*:refs/tags/v*'], ENV_DISTANT())
   return depot
 }
