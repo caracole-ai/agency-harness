@@ -77,3 +77,29 @@ export function remplirPhrase(phrase: string, resultats: ResultatRequete[]): Rem
 export function sansTrous(phrase: string): string {
   return phrase.replace(TROU, ' ')
 }
+
+/**
+ * Un identifiant : des capitales, puis des segments séparés par des tirets, le
+ * dernier numérique (`PRJ-03`, `DOM-11`, `I-04`, `FAC-2026-019`, `D-V-17`, `A-11`).
+ */
+export const IDENTIFIANT =
+  /(?<![\p{L}\p{N}-])[A-Z][A-Z0-9]*(?:-[A-Z0-9]+)*-\d+(?![\p{L}\p{N}]|-[\p{L}\p{N}])/gu
+
+/**
+ * La phrase brute sans les identifiants que le modèle a reçus tels quels (un
+ * espace à leur place). Un identifiant n'est pas une quantité : recopié depuis
+ * un tableau, une consigne ou une notion du métier (le code d'une règle,
+ * `I-04`), il ne s'invente pas ; un identifiant absent de ce que le modèle a
+ * reçu reste dans la phrase, et le contrôle le retire. Les nombres, eux,
+ * passent toujours par un trou (REFLEXIONS.md, 2026-10-18 : les faux retraits
+ * d'E-05 et E-28 de l'agence web).
+ */
+export function sansIdentifiantsRecus(texte: string, recus: string): string {
+  return texte.replace(IDENTIFIANT, (id) => (contientIdentifiant(recus, id) ? ' ' : id))
+}
+
+/** L'identifiant tel quel, entier, dans le texte reçu (`A-1` n'est pas dans `A-11`). */
+function contientIdentifiant(recus: string, id: string): boolean {
+  const echappe = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`(?<![\\p{L}\\p{N}-])${echappe}(?![\\p{N}]|-[\\p{L}\\p{N}])`, 'u').test(recus)
+}

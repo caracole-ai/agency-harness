@@ -14,7 +14,7 @@ import type { Constat } from '../regles/verdict'
 import type { Temporal } from '../temps/temporal'
 import { verifierReponse } from './reponse'
 import { type ResultatRequete, rendreResultat, rendreResultatNumerote } from './requete'
-import { remplirPhrase, sansTrous } from './trous'
+import { remplirPhrase, sansIdentifiantsRecus, sansTrous } from './trous'
 
 // La boucle de l'échappée (espace 2) : le modèle travaille sur une copie des
 // données avec cinq outils, un seul par tour, dans des bornes de tours, de
@@ -411,9 +411,11 @@ export async function boucle<Modif>(
             tours: appels,
             usage,
           })
-          // Hors des trous, le modèle ne cite que ce qu'il a reçu avant toute requête.
+          // Hors des trous, le modèle ne cite que ce qu'il a reçu avant toute requête,
+          // et les identifiants qu'il a reçus tels quels : un tableau, la consigne, une
+          // notion du système. Les nombres passent toujours par un trou.
           const brut = verifierReponse(
-            sansTrous(phrase),
+            sansIdentifiantsRecus(sansTrous(phrase), [systeme, ...sources].join('\n')),
             sourcesInitiales,
             nomsConnus,
             datesConnues,

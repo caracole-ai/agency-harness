@@ -213,7 +213,8 @@ describe('une échappée de bout en bout (modèle simulé)', () => {
     expect(echappee.texte_modele).toMatch(/^nom \| heures\nA-11 \| 12\nA-3 \| 12\n/)
     expect(echappee.controle_reponse).toBe(CONTROLE_RETIRE)
     expect(echappee.phrase).toBe('A-3 a 10 heures cette semaine.')
-    expect(echappee.motif_controle).toMatch(/retapé hors d’un trou : A-3, 10$/)
+    // A-3 vient du tableau : recopié, il ne s'invente pas ; 10, un nombre, passe toujours par un trou.
+    expect(echappee.motif_controle).toMatch(/retapé hors d’un trou : 10$/)
   })
 
   it('un agent : ni verifier ni proposer, et rien des autres agents dans le système', async () => {

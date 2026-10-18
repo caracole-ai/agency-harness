@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ResultatRequete } from './requete'
-import { remplirPhrase, sansTrous, TROU } from './trous'
+import { remplirPhrase, sansIdentifiantsRecus, sansTrous, TROU } from './trous'
 
 // La phrase à trous : chaque trou désigne une cellule d'un résultat reçu, le
 // code remplit ; un trou qui ne se résout pas retire la réponse.
@@ -75,5 +75,12 @@ describe('sansTrous et la grammaire', () => {
     expect([...'{T1.1.heures} {T1} {1.1.heures} {t1.1.h}'.matchAll(TROU)].map((m) => m[0])).toEqual(
       ['{T1.1.heures}'],
     )
+  })
+
+  it('sansIdentifiantsRecus : ôte les identifiants reçus tels quels, entiers ; garde les autres et les nombres', () => {
+    const recus = 'T1 | PRJ-03 | 12\nUn accès est à révoquer (I-04) quand…\nA-11'
+    expect(sansIdentifiantsRecus('PRJ-03 et I-04, 12 jours', recus)).toBe('  et  , 12 jours')
+    expect(sansIdentifiantsRecus('PRJ-07 et A-1', recus)).toBe('PRJ-07 et A-1')
+    expect(sansIdentifiantsRecus('FAC-2026-019', 'facture FAC-2026-019')).toBe(' ')
   })
 })

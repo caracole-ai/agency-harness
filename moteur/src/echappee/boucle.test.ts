@@ -170,6 +170,31 @@ describe('une question', () => {
     ])
     expect(vrai.issue).toMatchObject({ controle: CONTROLE_RETIRE })
   })
+  it('un identifiant recopié tel qu’un tableau ou le système le donne passe ; inventé, non ; un nombre, jamais', async () => {
+    const o = outils()
+    o.requete = () => ({
+      colonnes: ['projet', 'jours'],
+      lignes: [['PRJ-03', 12]],
+      tronque: false,
+    })
+    const avec = (phrase: string) =>
+      lancer([REQUETE, { outil: 'repondre', entree: { phrase } }], {
+        outils: o,
+        bornes: BORNES,
+        usage: undefined,
+      })
+    // PRJ-03 vient du tableau : recopié, il ne s'invente pas.
+    expect((await avec('PRJ-03 : {T1.1.jours} jours.')).issue).toMatchObject({
+      controle: 'ok',
+      texte: 'PRJ-03 : 12 jours.',
+    })
+    // PRJ-07 n'est nulle part dans ce que le modèle a reçu.
+    expect((await avec('PRJ-07 : {T1.1.jours} jours.')).issue).toMatchObject({
+      controle: CONTROLE_RETIRE,
+    })
+    // 12 est dans le tableau, mais un nombre passe toujours par un trou.
+    expect((await avec('PRJ-03 : 12 jours.')).issue).toMatchObject({ controle: CONTROLE_RETIRE })
+  })
   it('un trou qui ne se résout pas : le résumé est retiré, et le motif le dit', async () => {
     const { issue } = await lancer([
       REQUETE,
