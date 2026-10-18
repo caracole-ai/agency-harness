@@ -61,9 +61,9 @@ async function heuresDuGeste(m: MetierConversation<unknown>, cas: CasRejeu): Pro
 }
 
 /** Une échappée scriptée : une requête, puis une réponse. */
-const echappee = (sql: string, texte: string): Scripte[] => [
+const echappee = (sql: string, phrase: string): Scripte[] => [
   { outil: 'requete', entree: { sql } },
-  { outil: 'repondre', entree: { texte } },
+  { outil: 'repondre', entree: { phrase } },
 ]
 
 const jouer = (m: MetierConversation<unknown>, cas: CasRejeu, script: Scripte[]) =>
@@ -91,7 +91,7 @@ describe('jouerRejeu', () => {
     const [r] = await jouer(
       m,
       cas,
-      echappee(`SELECT ${heures} AS heures`, `A-1 : ${heures} heures du 5 au 11.`),
+      echappee(`SELECT ${heures} AS heures`, 'A-1 : {T1.1.heures} heures du 5 au 11.'),
     )
     expect(r?.ecarts).toEqual([])
     expect(r?.fuite).toEqual([])
@@ -99,7 +99,7 @@ describe('jouerRejeu', () => {
 
   it('en écart : un nombre cité par l’échappée que le geste ne rend pas', async () => {
     const { m, cas } = await casHeures()
-    const [r] = await jouer(m, cas, echappee('SELECT 999 AS heures', 'A-1 : 999 heures.'))
+    const [r] = await jouer(m, cas, echappee('SELECT 999 AS heures', 'A-1 : {T1.1.heures} heures.'))
     expect(r?.ecarts).toEqual(["nombres de l'échappée absents du geste : 999"])
     expect(r && estNonMesurable(r)).toBe(false)
   })

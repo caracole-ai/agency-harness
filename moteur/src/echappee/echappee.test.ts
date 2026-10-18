@@ -93,7 +93,7 @@ const REQUETE: Scripte = {
     sql: 'SELECT a.nom, SUM(v.heures) AS heures FROM agents a JOIN vacations v ON v.agent = a.id GROUP BY a.id ORDER BY heures',
   },
 }
-const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+const repondre = (phrase: string): Scripte => ({ outil: 'repondre', entree: { phrase } })
 
 const PERSONNES = AGENTS.lignes.map((a) => ({
   id: String(a.id),
@@ -164,7 +164,7 @@ describe('le journal se souvient de l’échappée', () => {
   it('chaque ligne porte l’identifiant ; la ligne echappee porte le rôle et le texte montré ; rien des données hors du journal', async () => {
     const { issue, dossier, donnees } = await echapper(PATRON, [
       REQUETE,
-      repondre('A-2 : 16 heures.'),
+      repondre('{T1.1.nom} : {T1.1.heures} heures.'),
     ])
     expect(issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_OK })
     const [outil] = donnees(TYPE_OUTIL_ECHAPPEE)
@@ -175,7 +175,9 @@ describe('le journal se souvient de l’échappée', () => {
       intention: 'heures_par_agent',
       role: 'patron',
       texte: 'Julien Lefèvre : 16 heures.',
+      phrase: '{T1.1.nom} : {T1.1.heures} heures.',
     })
+    expect(e).not.toHaveProperty('motif_controle')
     expect(e).not.toHaveProperty('personne')
     expect(e).not.toHaveProperty('instantane')
     expect(readdirSync(dossier).filter((f) => !f.startsWith('journal'))).toEqual([])
@@ -187,19 +189,26 @@ describe('le journal se souvient de l’échappée', () => {
     expect(issue.controle).toBe(CONTROLE_RETIRE)
     const [e] = donnees(TYPE_ECHAPPEE)
     expect(e.texte).toBe(issue.texte)
+    expect(e.motif_controle).toMatch(/retapé hors d’un trou : 17$/)
     expect(e.texte).toMatch(/^nom \| heures\nJulien Lefèvre \| 16/)
   })
 
   it('un nombre que la description de la copie a dit au modèle se cite (evals/erreurs-2026-10-13.md, E4)', async () => {
     // « Table vacations : les vacations (3 lignes) » : le 3 vient du harnais, pas du modèle.
-    const dit = await echapper(PATRON, [REQUETE, repondre('3 vacations ; A-2 : 16 heures.')])
+    const dit = await echapper(PATRON, [
+      REQUETE,
+      repondre('3 vacations ; {T1.1.nom} : {T1.1.heures} heures.'),
+    ])
     expect(dit.issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_OK })
-    const invente = await echapper(PATRON, [REQUETE, repondre('4 vacations ; A-2 : 16 heures.')])
+    const invente = await echapper(PATRON, [
+      REQUETE,
+      repondre('4 vacations ; {T1.1.nom} : {T1.1.heures} heures.'),
+    ])
     expect(invente.issue).toMatchObject({ sorte: 'reponse', controle: CONTROLE_RETIRE })
   })
 
   it('un agent : la ligne echappee porte son identifiant', async () => {
-    const { donnees } = await echapper(JULIEN, [REQUETE, repondre('16 heures.')])
+    const { donnees } = await echapper(JULIEN, [REQUETE, repondre('{T1.1.heures} heures.')])
     const [e] = donnees(TYPE_ECHAPPEE)
     expect(e).toMatchObject({ role: 'agent', personne: 'A-2' })
   })
@@ -269,7 +278,7 @@ describe('aucun nom ne part au modèle (PLAN-PSEUDONYMES.md § 5.4)', () => {
     const { issue, appels, donnees } = await echapper(PATRON, [
       REQUETE,
       { outil: 'verifier', entree: { modifications: [{ vacation: 'V-04', agent: 'A-9' }] } },
-      repondre('A-2 : 16 heures, A-9 : 24 heures.'),
+      repondre('{T1.1.nom} : {T1.1.heures} heures, {T1.2.nom} : {T1.2.heures} heures.'),
     ])
     expect(appels).toHaveLength(3)
     for (const texte of envoye(appels)) expect(fuites(texte, PERSONNES)).toEqual([])
@@ -318,7 +327,7 @@ describe('aucun nom ne part au modèle (PLAN-PSEUDONYMES.md § 5.4)', () => {
   it('un agent : « l’agent A-2 », et le nom d’un collègue qu’il écrit ne part pas non plus', async () => {
     const { issue, appels, donnees } = await echapper(
       JULIEN,
-      [REQUETE, repondre('Je ne vois que tes données : A-2, 16 heures.')],
+      [REQUETE, repondre('Je ne vois que tes données : {T1.1.nom}, {T1.1.heures} heures.')],
       'Combien d’heures a fait Karim ?',
     )
     expect(appels[0]?.systeme).toContain("Tu travailles pour l'agent A-2 ")

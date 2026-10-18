@@ -991,10 +991,10 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
   const heures: Scripte = {
     outil: 'requete',
     entree: {
-      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent",
+      sql: "SELECT agent, SUM(heures) AS heures FROM vacations WHERE jour BETWEEN '2026-10-05' AND '2026-10-11' GROUP BY agent ORDER BY agent",
     },
   }
-  const repondre = (texte: string): Scripte => ({ outil: 'repondre', entree: { texte } })
+  const repondre = (phrase: string): Scripte => ({ outil: 'repondre', entree: { phrase } })
   /** Ce que l'échappée a envoyé : tout appel après la traduction. */
   const echappe = (appels: { messages: unknown }[]) => appels.map((a) => JSON.stringify(a.messages))
   const appelsEchappee = (s: Session, conversation: string) =>
@@ -1010,7 +1010,7 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     const { r, modele, conversation } = await tour(
       s,
       PATRON,
-      [nouvelle, heures, repondre('A-1 a fait 24 heures.')],
+      [nouvelle, heures, repondre('{T1.1.agent} a fait {T1.1.heures} heures.')],
       consigne,
     )
     expect(r).toEqual({
@@ -1048,7 +1048,7 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     const reponse = await tour(
       s,
       PATRON,
-      [heures, repondre('A-1 a fait 24 heures.')],
+      [heures, repondre('{T1.1.agent} a fait {T1.1.heures} heures.')],
       '1',
       premier.conversation,
     )
@@ -1116,7 +1116,11 @@ describe('une demande nouvelle qui nomme quelqu’un : le nom ne part pas à l�
     const { r, modele, conversation } = await tour(
       s,
       agent('A-2'),
-      [nouvelle, heures, repondre('Je ne vois que tes heures : A-2, 16 heures.')],
+      [
+        nouvelle,
+        heures,
+        repondre('Je ne vois que tes heures : {T1.1.agent}, {T1.1.heures} heures.'),
+      ],
       "Combien d'heures a fait Karim cette semaine ?",
     )
     expect(r).toEqual({

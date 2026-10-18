@@ -437,7 +437,7 @@ describe('l’échappée : elle répond, ne propose jamais, et ne voit aucun nom
         nouvelle('acces_ressource'),
         ...['clients', 'contacts', 'domaines', 'acces', 'personnes', 'sous_traitants'].map(lire),
         outil('requete', { sql: "SELECT id FROM clients WHERE id = 'CLI-11'" }),
-        outil('repondre', { texte: 'CLI-11 a deux domaines.' }),
+        outil('repondre', { phrase: 'CLI-11 a deux domaines.' }),
       ],
       'Qui a accès à la prod de Céramiques Orsini, et Julie Okafor y est encore ?',
     )

@@ -1,6 +1,13 @@
 import { afterAll, describe, expect, it } from 'vitest'
 import { creerCopie, type TableCopie } from './copie'
-import { executerRequete, LIGNES_MAX, parametresNommes, rendreResultat, SQL_MAX } from './requete'
+import {
+  executerRequete,
+  LIGNES_MAX,
+  parametresNommes,
+  rendreResultat,
+  rendreResultatNumerote,
+  SQL_MAX,
+} from './requete'
 
 // L'outil `requete` : les lectures passent, tout le reste revient en erreur,
 // et la copie reste intacte (PLAN-ESPACES.md § 6.8). Les paramètres sont
@@ -278,4 +285,34 @@ describe('l’argent (PLAN-METIER-2.md § 6.4, M11)', () => {
       })
     },
   )
+})
+
+describe('rendreResultatNumerote : ce que le modèle lit, et que ses trous désignent', () => {
+  it('le nom du résultat et son nombre de lignes en tête, la colonne # qui numérote', () => {
+    expect(
+      rendreResultatNumerote(
+        {
+          colonnes: ['nom', 'heures'],
+          lignes: [
+            ['Julien Lefèvre', 16],
+            ['Mehdi Saïdi', 7.5],
+          ],
+          tronque: false,
+        },
+        2,
+      ),
+    ).toBe('T2 (2 lignes)\n# | nom | heures\n1 | Julien Lefèvre | 16\n2 | Mehdi Saïdi | 7.50')
+  })
+  it('une ligne, aucune ligne, tronqué, erreur', () => {
+    expect(rendreResultatNumerote({ colonnes: ['n'], lignes: [[1]], tronque: false }, 1)).toBe(
+      'T1 (1 ligne)\n# | n\n1 | 1',
+    )
+    expect(rendreResultatNumerote({ colonnes: ['n'], lignes: [], tronque: false }, 1)).toBe(
+      'T1 (0 ligne)\n# | n\n(aucune ligne)',
+    )
+    expect(rendreResultatNumerote({ colonnes: ['n'], lignes: [[1]], tronque: true }, 3)).toBe(
+      `T3 (${LIGNES_MAX} lignes au moins, tronqué)\n# | n\n1 | 1\n(tronqué à ${LIGNES_MAX} lignes)`,
+    )
+    expect(rendreResultatNumerote({ erreur: 'x' }, 1)).toBe('erreur : x')
+  })
 })
