@@ -30,7 +30,6 @@ const { values } = parseArgs({
     client: { type: 'string' },
     role: { type: 'string' },
     personne: { type: 'string' },
-    agent: { type: 'string' },
     maintenant: { type: 'string' },
     modele: { type: 'string' },
     consigne: { type: 'string' },
@@ -54,9 +53,7 @@ if (modes.filter(Boolean).length !== 1) usage()
 const dossier = resolve(values.client as string)
 const m = await metierDe(dossier)
 if (!m.roles.some((r) => r.id === values.role)) usage()
-// `--agent` : l'ancienne graphie de `--personne`, encore lue (PLAN-METIER-2.md, M2).
-if (values.personne && values.agent && values.personne !== values.agent) usage()
-const personne = values.personne ?? values.agent
+const personne = values.personne
 
 const demandeur = {
   role: values.role as string,

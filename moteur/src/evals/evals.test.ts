@@ -19,14 +19,22 @@ import {
 // Les vérifications des évals, en code et binaires (PLAN-ESPACES.md § 9) ;
 // la fuite, en code aussi (PLAN-PSEUDONYMES.md § 7).
 
-describe('qui parle dans un cas (PLAN-METIER-2.md M2)', () => {
+describe('qui parle dans un cas', () => {
   const cas = { id: 'c', role: 'agent', consigne: 'mon planning', attendu: { sorte: 'action' } }
-  it('l’ancienne graphie `agent` se lit et se rend en `personne`', () => {
-    const lu = CasTraduire.parse({ ...cas, agent: 'A-2' })
-    expect(lu).toMatchObject({ role: 'agent', personne: 'A-2' })
-    expect(lu).not.toHaveProperty('agent')
+  it('l’ancienne graphie `agent` n’est plus lue : refusée (2026-10-18)', () => {
+    expect(CasTraduire.safeParse({ ...cas, agent: 'A-2' }).success).toBe(false)
+    expect(
+      CasEchappee.safeParse({
+        id: 'e',
+        role: 'agent',
+        agent: 'A-2',
+        consigne: 'mes heures',
+        intention: 'heures',
+        attendu: { sortes: ['reponse'] },
+      }).success,
+    ).toBe(false)
   })
-  it('la nouvelle graphie `personne` se lit telle quelle ; un rôle non déclaré par le moteur passe', () => {
+  it('`personne` se lit telle quelle ; un rôle non déclaré par le moteur passe', () => {
     expect(CasTraduire.parse({ ...cas, role: 'dirigeant', personne: 'M-1' })).toMatchObject({
       role: 'dirigeant',
       personne: 'M-1',
@@ -34,13 +42,12 @@ describe('qui parle dans un cas (PLAN-METIER-2.md M2)', () => {
     const echappee = CasEchappee.parse({
       id: 'e',
       role: 'agent',
-      agent: 'A-2',
+      personne: 'A-2',
       consigne: 'mes heures',
       intention: 'heures',
       attendu: { sortes: ['reponse'] },
     })
     expect(echappee).toMatchObject({ personne: 'A-2' })
-    expect(echappee).not.toHaveProperty('agent')
   })
   it('sans personne : aucun champ', () => {
     expect(CasTraduire.parse({ ...cas, role: 'patron' })).not.toHaveProperty('personne')

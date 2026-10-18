@@ -52,7 +52,7 @@ const borne = (valeur: unknown) => String(valeur).slice(0, 80)
 /**
  * La porte : la forme de l'identité reçue, contre les rôles du métier, puis
  * sa présence au registre d'accès. Ne lit rien d'autre. L'identifiant se lit
- * sous ses deux graphies par `identifiantRecu` (PLAN-METIER-2.md, M2).
+ * par `identifiantRecu` (`personne`, rien d'autre).
  */
 export function recevoir(roles: RoleDeclare[], personnes: Personne[], demandeur: unknown): Accueil {
   const refus = (motif: string): Accueil => ({ sorte: 'refus', motif })

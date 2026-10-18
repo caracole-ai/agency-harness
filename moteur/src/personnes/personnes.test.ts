@@ -12,20 +12,20 @@ const ROLES: RoleDeclare[] = [
 const PERSONNES: Personne[] = [{ role: 'patron' }, { role: 'agent', personne: 'A-11' }]
 
 describe('recevoir', () => {
-  it('une entrée valide, sous l’une ou l’autre graphie : reçue, l’identifiant sous `personne`', () => {
-    for (const demandeur of [
-      { role: 'agent', personne: 'A-11' },
-      { role: 'agent', agent: 'A-11' },
-      { role: 'agent', personne: 'A-11', agent: 'A-11' },
-    ]) {
-      expect(recevoir(ROLES, PERSONNES, demandeur)).toEqual({
-        sorte: 'reçu',
-        identite: { role: 'agent', personne: 'A-11' },
-      })
-    }
+  it('une entrée valide : reçue, l’identifiant sous `personne`', () => {
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 'A-11' })).toEqual({
+      sorte: 'reçu',
+      identite: { role: 'agent', personne: 'A-11' },
+    })
     expect(recevoir(ROLES, PERSONNES, { role: 'patron' })).toEqual({
       sorte: 'reçu',
       identite: { role: 'patron' },
+    })
+  })
+  it('l’ancienne graphie `agent` n’est plus un identifiant (2026-10-18) : l’agent reste sans identifiant', () => {
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', agent: 'A-11' })).toEqual({
+      sorte: 'refus',
+      motif: "l'agent doit donner son identifiant",
     })
   })
   it('un inconnu du registre : refusé', () => {
@@ -53,19 +53,16 @@ describe('recevoir', () => {
       sorte: 'refus',
       motif: "l'agent doit donner son identifiant",
     })
-    expect(recevoir(ROLES, PERSONNES, { role: 'agent', agent: 11 }).sorte).toBe('refus')
-    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 11 }).sorte).toBe('refus')
-    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 'A-11', agent: 'A-1' })).toEqual({
+    expect(recevoir(ROLES, PERSONNES, { role: 'agent', personne: 11 })).toEqual({
       sorte: 'refus',
-      motif: 'deux identifiants différents',
+      motif: "l'identifiant doit être un texte",
     })
   })
   it('un patron avec un identifiant d’agent : refusé, même si l’agent existe', () => {
-    expect(recevoir(ROLES, PERSONNES, { role: 'patron', agent: 'A-11' })).toEqual({
+    expect(recevoir(ROLES, PERSONNES, { role: 'patron', personne: 'A-11' })).toEqual({
       sorte: 'refus',
       motif: "le patron parle en son nom : pas d'identifiant",
     })
-    expect(recevoir(ROLES, PERSONNES, { role: 'patron', personne: 'A-11' }).sorte).toBe('refus')
   })
 })
 

@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import { type Designable, normaliserNom } from '../conversation/designation'
 import type { Operation } from '../conversation/operation'
-import { avecPersonne, CHAMPS_PERSONNE } from '../conversation/roles'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
 import { fuites } from '../echappee/pseudonymes'
@@ -36,26 +35,24 @@ export const Variante = z.strictObject({
 })
 export type Variante = z.infer<typeof Variante>
 
-export const CasTraduire = z
-  .strictObject({
-    id: z.string().min(1),
-    role: z.string().min(1),
-    ...CHAMPS_PERSONNE,
-    maintenant: z.string().optional(),
-    /** Le nom d'une variante du fichier (`variantes`) : le cas tourne sur elle. */
-    variante: z.string().optional(),
-    categorie: z.literal(CATEGORIE_AGENT_PATRON).optional(),
-    consigne: z.string().min(1),
-    attendu: z.strictObject({
-      sorte: z.union([z.enum(SORTES_DEMANDE), z.array(z.enum(SORTES_DEMANDE)).min(1)]),
-      action: z.string().optional(),
-      params: z.record(z.string(), z.unknown()).optional(),
-      intention: z.array(z.string()).min(1).optional(),
-      /** Pour une `precision` : les identifiants des candidats proposés, dans n'importe quel ordre. */
-      candidats: z.array(z.string()).optional(),
-    }),
-  })
-  .transform(avecPersonne)
+export const CasTraduire = z.strictObject({
+  id: z.string().min(1),
+  role: z.string().min(1),
+  personne: z.string().optional(),
+  maintenant: z.string().optional(),
+  /** Le nom d'une variante du fichier (`variantes`) : le cas tourne sur elle. */
+  variante: z.string().optional(),
+  categorie: z.literal(CATEGORIE_AGENT_PATRON).optional(),
+  consigne: z.string().min(1),
+  attendu: z.strictObject({
+    sorte: z.union([z.enum(SORTES_DEMANDE), z.array(z.enum(SORTES_DEMANDE)).min(1)]),
+    action: z.string().optional(),
+    params: z.record(z.string(), z.unknown()).optional(),
+    intention: z.array(z.string()).min(1).optional(),
+    /** Pour une `precision` : les identifiants des candidats proposés, dans n'importe quel ordre. */
+    candidats: z.array(z.string()).optional(),
+  }),
+})
 export type CasTraduire = z.infer<typeof CasTraduire>
 
 export const FichierTraduire = z.strictObject({
@@ -65,36 +62,34 @@ export const FichierTraduire = z.strictObject({
 })
 export type FichierTraduire = z.infer<typeof FichierTraduire>
 
-export const CasEchappee = z
-  .strictObject({
-    id: z.string().min(1),
-    role: z.string().min(1),
-    ...CHAMPS_PERSONNE,
-    maintenant: z.string().optional(),
-    piege: z.boolean().optional(),
-    consigne: z.string().min(1),
-    intention: z.string().min(1),
-    attendu: z.strictObject({
-      sortes: z.array(z.enum(SORTES_ECHAPPEE)).min(1),
-      contient: z.array(z.string()).optional(),
-      exclut: z.array(z.string()).optional(),
-      refus: z.number().int().nonnegative().optional(),
-      /**
-       * Les modifications d'une proposition, lues par l'opération du métier
-       * (PLAN-METIER-2.md M8) : `autorisees`, les objets qu'elles peuvent
-       * modifier ; `max`, au plus tant ; `interdites`, des identifiants
-       * qu'aucune ne porte, ni comme objet ni comme valeur, quelle que soit l'issue.
-       */
-      modifications: z
-        .strictObject({
-          autorisees: z.array(z.string()).optional(),
-          interdites: z.array(z.string()).optional(),
-          max: z.number().int().nonnegative().optional(),
-        })
-        .optional(),
-    }),
-  })
-  .transform(avecPersonne)
+export const CasEchappee = z.strictObject({
+  id: z.string().min(1),
+  role: z.string().min(1),
+  personne: z.string().optional(),
+  maintenant: z.string().optional(),
+  piege: z.boolean().optional(),
+  consigne: z.string().min(1),
+  intention: z.string().min(1),
+  attendu: z.strictObject({
+    sortes: z.array(z.enum(SORTES_ECHAPPEE)).min(1),
+    contient: z.array(z.string()).optional(),
+    exclut: z.array(z.string()).optional(),
+    refus: z.number().int().nonnegative().optional(),
+    /**
+     * Les modifications d'une proposition, lues par l'opération du métier
+     * (PLAN-METIER-2.md M8) : `autorisees`, les objets qu'elles peuvent
+     * modifier ; `max`, au plus tant ; `interdites`, des identifiants
+     * qu'aucune ne porte, ni comme objet ni comme valeur, quelle que soit l'issue.
+     */
+    modifications: z
+      .strictObject({
+        autorisees: z.array(z.string()).optional(),
+        interdites: z.array(z.string()).optional(),
+        max: z.number().int().nonnegative().optional(),
+      })
+      .optional(),
+  }),
+})
 export type CasEchappee = z.infer<typeof CasEchappee>
 
 export const FichierEchappee = z.strictObject({
