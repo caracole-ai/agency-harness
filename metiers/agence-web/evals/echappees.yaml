@@ -97,12 +97,13 @@ cas:
     intention: marge_projet
     attendu: { sortes: [reponse], contient: ["12205"] }
   # Un seul forfait au-dessus de 90 % : PRJ-10, 36 j consommés sur 24 vendus, 150 %, 12 j de dépassement.
+  # Tranché par Lionel le 2026-10-19 : le dépassement en jours n'est pas exigé, la question ne le demande pas.
   - id: E-04
     role: dirigeant
     personne: M-01
     consigne: "Quels forfaits sont au-dessus de 90 % ?"
     intention: forfaits_depasses
-    attendu: { sortes: [reponse], contient: [PRJ-10, "150", "12"] }
+    attendu: { sortes: [reponse], contient: [PRJ-10, "150"] }
   # Hébergeur, administration du site et passerelle de paiement de CLI-11 :
   # M-01 (depuis le 06/01/2025), M-05 (13/01/2025), M-06 (03/02/2025). Rien à
   # révoquer : PRJ-03 est clos, mais TMA-03 court jusqu'au 14/09/2027 (I-04).
@@ -116,12 +117,13 @@ cas:
   # --- Hors catalogue : commerciale (M-02) ---
   # Envoyés au plus tard le 02/10 et toujours « envoyé » : DEV-2026-022 (CLI-07,
   # 14/09, 5 400 €), DEV-2026-023 (CLI-25, 28/09, 8 100 €) ; aucune relance de devis au fichier.
+  # Tranché par Lionel le 2026-10-19 : les montants ne sont pas exigés, la question demande lesquels.
   - id: E-08
     role: commercial
     personne: M-02
     consigne: "Quels devis attendent une réponse depuis plus de dix jours ?"
     intention: devis_sans_reponse
-    attendu: { sortes: [reponse], contient: [DEV-2026-022, DEV-2026-023, "5400", "8100"] }
+    attendu: { sortes: [reponse], contient: [DEV-2026-022, DEV-2026-023] }
   # TMA-02 (CLI-05) en octobre : 8 h incluses, 1,5 h consommée, 6,5 h restantes.
   - id: E-09
     role: commercial
@@ -130,12 +132,13 @@ cas:
     intention: heures_tma
     attendu: { sortes: [reponse], contient: ["8", "1.5", "6.5"] }
   # CLI-07 en 2026 : FAC-2026-019 (5 187,00, payée) et FAC-2026-042 (6 483,75, émise) = 11 670,75 € HT.
+  # Tranché par Lionel le 2026-10-19 : les numéros de facture ne sont pas exigés, la question demande combien.
   - id: E-12
     role: commercial
     personne: M-02
     consigne: "Combien on a facturé au client CLI-07 cette année ?"
     intention: facture_client
-    attendu: { sortes: [reponse], contient: ["11670.75", FAC-2026-019, FAC-2026-042] }
+    attendu: { sortes: [reponse], contient: ["11670.75"] }
 
   # --- Hors catalogue : PO (M-03) ---
   # Le lot 2 de PRJ-12 : LOT-032, 12 j vendus ; son consommé ne se calcule pas
@@ -173,12 +176,13 @@ cas:
     attendu: { sortes: [reponse], contient: [LOT-005] }
   # Recette au plus tard le 27/09, sans PV : LOT-042 (PRJ-16, 24/08/2026) ; le
   # contact de CLI-07 : CT-08, restitué à la PO.
+  # Tranché par Lionel le 2026-10-19 : le contact à relancer n'est pas exigé, la question ne le demande pas.
   - id: E-18
     role: po
     personne: M-03
     consigne: "Quels PV de recette ne sont pas signés depuis plus de quinze jours ?"
     intention: pv_non_signes
-    attendu: { sortes: [reponse], contient: [LOT-042, Cohen] }
+    attendu: { sortes: [reponse], contient: [LOT-042] }
   # En cours : PRJ-04 et PRJ-13 (régies), PRJ-09 (12 357,86 €), PRJ-10 (4 375 €),
   # PRJ-12 (12 205 €), PRJ-14 (14 161,43 €), PRJ-16 (20 718,21 €) ; PRJ-17 est
   # interne (aucun vendu). Aucun sous 20 %. La marge en pourcentage suffit

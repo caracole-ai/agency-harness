@@ -114,10 +114,12 @@ chemin simple, dans les trois cas.
 ## Pour Lionel : 30 minutes par semaine
 
 Dire ce qu'est une bonne réponse (E1), ou mieux, mettre un vrai patron devant
-l'outil. Premiers cas, rouges sur GLM comme sur Sonnet, dans
-`metiers/agence-web/evals/echappees.yaml` : **E-04, E-12, E-16** (E-20 tranché le 2026-10-19 ; la
-réponse attendue demande-t-elle plus que la question ?). Puis relire les
-étiquettes de `metiers/securite-privee/evals/consignes.yaml`.
+l'outil. Les étiquettes de l'agence web sont tranchées le 2026-10-19
+(E-04, E-08, E-12, E-18, E-20 : la réponse attendue ne demande plus que ce
+que la question demande ; REFLEXIONS, « Décidé »). Reste à relire celles de
+la sécurité privée : `metiers/securite-privee/evals/consignes.yaml` (les cas
+`heures_par_agent`, P-PLA-2, R-2, AP-4) et E-01, E-02 de
+`metiers/securite-privee/evals/echappees.yaml`.
 
 ## Ouvert
 
