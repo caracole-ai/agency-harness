@@ -43,6 +43,11 @@ est faite** (2026-10-18, fusion 59e9374, verdict dans
 `evals/verdict-2026-10-18-phrase-a-trous.md`). L'adaptateur de
 l'abonnement est corrigé (577ac5c : le modèle tentait d'appeler les outils
 du moteur directement ; plus aucun abandon « outil indisponible »).
+**Fusionné le 2026-10-19 (`general/traduction-masquee`)** : la traduction
+reçoit la consigne masquée (identifiant, ou jeton `NOM-1` que le code reprend
+avant de résoudre) ; l'éval compte un nom tapé comme une fuite. Mesuré :
+fuite de traduction 25 et 3 cas → 0, justes sans perte
+(`evals/verdict-2026-10-19-traduction-masquee.md`).
 **Fusionné le 2026-10-19 (`echappee/identifiants`)** : un identifiant reçu
 tel quel se recopie hors d'un trou, la notion des tickets à qualifier,
 « chaque grandeur demandée, dans son unité ». Mesuré sous
@@ -82,6 +87,12 @@ du rapport Markdown, le planning en lignes courtes ; la première ligne
 d'un résultat en titre. Le journal et son volet disent de qui il s'agit
 (le métier nomme l'objet : `MetierConversation.nommer`, `objetEnClair`
 dans `/api/journal`) et ne répètent plus une échéance à chaque veille.
+Le « i » d'une carte de l'onglet « Gestes » ouvre le même volet
+(Lionel, 2026-10-19) : les étapes datées, ce que fera le geste, les
+demandes reçues, ce qui part à l'agence (`detailSansGeste`).
+Le journal a ses badges de sorte, une recherche à chaque lettre qui
+surligne ce qu'elle trouve, et des tags cumulables, repliés sous elle (« ou » dans une dimension, « et » entre elles ;
+`SORTES_JOURNAL`, `FACETTES` dans `app.js`).
 L'agence web suit (2026-10-19) : factures en retard (jamais relancées,
 déjà relancées), tickets par projet, heures par projet, disponibilités du
 plus libre au plus chargé, domaines (date à renseigner en tête, expirés, à
@@ -224,8 +235,9 @@ au lieu de 23, le piège `lots.nom`.
 - Les interdits ne se lèvent pas ; `regles.yaml` de la sécurité, les
   contrôles `I01`…`I20` et les étiquettes d'éval ne se touchent pas sans
   Lionel. Une porte de contrôle ne se contourne jamais.
-- Aucun nom de personne ni de client ne part au modèle ; rien ne s'écrit chez
-  le client sans le « oui » de qui a le droit.
+- Aucun nom de personne ni de client connu des données ne part au modèle,
+  consigne comprise ; rien ne s'écrit chez le client sans le « oui » de qui a
+  le droit.
 - `exemples/client-fictif/` ne s'écrit qu'avec l'accord de Lionel ; on
   travaille sur des copies.
 - Un seul `git merge --no-ff` et un seul push par session ; `pnpm check` vert
