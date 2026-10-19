@@ -303,10 +303,20 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
   it('/api/etat : une délégation proposée est en attente, avec ses conditions en mots', async () => {
     const dossier = copie()
     const j = new Journal(join(dossier, 'journal.sqlite'))
+    const client = 'client fictif (sécurité privée)'
+    // Le remplacement réussi d'où elle vient : reçu pour Aïcha (A-11), écrit pour Julien (A-2).
     j.ecrire([
       {
+        type: 'remplacement',
+        client,
+        objet: 'D-V-17',
+        issue: 'reçue',
+        donnees: { vacation: 'V-17', agent: 'A-11' },
+      },
+      { type: 'remplacement', client, objet: 'D-V-17', issue: 'écrite', donnees: { agent: 'A-2' } },
+      {
         type: 'délégation proposée',
-        client: 'client fictif (sécurité privée)',
+        client,
         objet: 'D-V-17',
         motif: 'remplacement réussi : le rendre automatique dans ces conditions ?',
         donnees: {
@@ -323,8 +333,29 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
     expect(lu.enAttente).toEqual([
       {
         id: 'D-V-17',
+        titre: 'Solliciter le remplaçant proposé sans attendre votre oui',
         texte:
-          "remplacement réussi : le rendre automatique dans ces conditions ?\nConditions : le remplaçant connaît déjà le site ; l'absence est signalée au moins 10 h avant.",
+          'Après ce remplacement réussi : Julien Lefèvre pour Aïcha Traoré, dim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls.',
+        depuis: expect.any(String),
+        replis: [
+          {
+            titre: 'Seulement quand',
+            lignes: [
+              { titre: 'Le remplaçant connaît déjà le site' },
+              { titre: "L'absence est signalée au moins 10 h avant la vacation" },
+            ],
+            ouvert: true,
+          },
+          {
+            titre: 'Ce qui ne change pas',
+            lignes: [
+              { titre: 'Les règles écartent toujours qui ne peut pas remplacer' },
+              { titre: 'Le remplaçant doit toujours accepter avant que le planning change' },
+              { titre: 'Hors de ces conditions, la décision vous revient' },
+            ],
+            ouvert: true,
+          },
+        ],
       },
     ])
   })

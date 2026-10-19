@@ -657,7 +657,7 @@ function rendreRegles() {
   )
 }
 
-/** Les propositions en attente d'une réponse (`Tableau.enAttente`), dont le texte est rendu par le métier, conditions comprises. */
+/** Les propositions en attente d’une réponse (`Tableau.enAttente`), rendues par le métier : titre, texte, conditions en replis. */
 function rendreDelegations() {
   const { enAttente } = ici.donnees
   const zone = [el('h3', { texte: 'Proposées par l’outil' })]
@@ -675,21 +675,28 @@ function rendreDelegations() {
       el(
         'ul',
         { classe: 'liste' },
-        // La première ligne du texte du métier est la question ; le reste, ses conditions.
+        // Lue comme une demande : ce qui est proposé, d'où ça vient, ses conditions ; sans titre, la première ligne du texte en tient lieu.
         ...enAttente.map((p) => {
-          const [titre = '', ...reste] = p.texte.split('\n')
+          const [premiere = '', ...reste] = p.texte.split('\n')
+          const titre = p.titre ?? majuscule(premiere)
+          const texte = p.titre === undefined ? reste.join('\n') : p.texte
           return el(
             'li',
             { classe: 'carte carte--demande' },
-            el('div', { classe: 'carte__meta' }, el('span', { texte: p.id })),
-            el('h4', { classe: 'demande__titre', texte: majuscule(titre) }),
-            reste.length > 0
-              ? el('p', { classe: 'texte demande__texte', texte: reste.join('\n') })
-              : null,
+            el(
+              'div',
+              { classe: 'carte__meta' },
+              el('span', { classe: 'pastille pastille--outil', texte: 'proposée' }),
+              el('span', { texte: `Délégation · ${p.id}` }),
+              p.depuis ? el('time', { datetime: p.depuis, texte: instant(p.depuis) }) : null,
+            ),
+            el('h4', { classe: 'demande__titre', texte: titre }),
+            texte !== '' ? el('p', { classe: 'texte demande__texte', texte }) : null,
+            p.replis?.length > 0 ? zoneReplis(p.replis) : null,
             el('p', {
               classe: 'carte__suite',
               texte:
-                'Elle s’accorde avec vous, dans la configuration : lecture seule dans la démo.',
+                'Pour l’accorder : elle s’écrit avec vous dans la configuration, pas depuis cette démo.',
             }),
           )
         }),

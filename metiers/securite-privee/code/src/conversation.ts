@@ -31,8 +31,10 @@ import {
   validerReaffectation,
 } from './reaffectation'
 import {
+  absentDe,
   evaluer,
   ouvrir,
+  remplacantDe,
   remplacementFini,
   type Session,
   STATUT,
@@ -189,11 +191,28 @@ const SUGGESTIONS: Record<string, string[]> = {
 /** Les conditions d'une délégation de remplacement, dites en mots (catalogue du métier, veille.ts) ; `{v}` est la valeur. */
 const CONDITIONS: Record<string, string> = {
   connait_site: 'le remplaçant connaît déjà le site',
-  prevenu_avant_heures: "l'absence est signalée au moins {v} h avant",
+  prevenu_avant_heures: "l'absence est signalée au moins {v} h avant la vacation",
 }
 
 const conditions = (c: Record<string, boolean | number> | undefined) =>
   Object.entries(c ?? {}).map(([k, v]) => CONDITIONS[k]?.replace('{v}', String(v)) ?? `${k} : ${v}`)
+
+/** Ce qu'une délégation de remplacement ne lève pas (remplacement.ts : proposer, solliciter, ecrire). */
+const INCHANGE = [
+  'Les règles écartent toujours qui ne peut pas remplacer',
+  'Le remplaçant doit toujours accepter avant que le planning change',
+  'Hors de ces conditions, la décision vous revient',
+]
+
+/** Le remplacement réussi d'où vient une délégation proposée : qui, pour qui, quand et où. */
+function apresRemplacement(s: Session, demande: string): string {
+  const remplacant = remplacantDe(s, demande)
+  const quiPourQui =
+    remplacant === undefined
+      ? titreRemplacement(s, demande)
+      : `${s.ctx.agent(remplacant).nom} pour ${s.ctx.agent(absentDe(s, demande)).nom}`
+  return `Après ce remplacement réussi : ${quiPourQui}, ${vacationEnBref(s.ctx, vacationDe(s, demande).id)}.`
+}
 
 const nomDe = (s: Session, identite: Identite) =>
   identite.role === 'patron' ? 'le patron' : s.ctx.agent(identite.personne ?? '').nom
@@ -393,9 +412,26 @@ export const CONVERSATION: MetierConversation<Session> = {
           const d = l.donnees
             ? (JSON.parse(l.donnees) as { conditions: Record<string, boolean | number> })
             : undefined
+          const demande = l.objet ?? ''
           return {
-            id: l.objet ?? '',
-            texte: `${l.motif ?? ''}\nConditions : ${conditions(d?.conditions).join(' ; ')}.`,
+            id: demande,
+            titre: 'Solliciter le remplaçant proposé sans attendre votre oui',
+            texte: apresRemplacement(s, demande),
+            depuis: l.horodatage,
+            replis: [
+              {
+                titre: 'Seulement quand',
+                lignes: conditions(d?.conditions).map((c) => ({
+                  titre: c.charAt(0).toUpperCase() + c.slice(1),
+                })),
+                ouvert: true,
+              },
+              {
+                titre: 'Ce qui ne change pas',
+                lignes: INCHANGE.map((c) => ({ titre: c })),
+                ouvert: true,
+              },
+            ],
           }
         }),
       nom,

@@ -613,9 +613,18 @@ export const phraseProposition = (p: Proposition): string => {
     : 'Aucun remplaçant possible.'
 }
 
+/** L'absent d'une demande, gardé à sa réception : une fois le planning écrit, la vacation porte le remplaçant. */
+export const absentDe = (s: Session, demande: string): string =>
+  donnees<{ agent?: string }>(dernier(historique(s, demande), STATUT.recue))?.agent ??
+  vacationDe(s, demande).agent
+
+/** Le remplaçant d'une demande dont le planning est écrit ; sinon rien. */
+export const remplacantDe = (s: Session, demande: string): string | undefined =>
+  donnees<{ agent: string }>(dernier(historique(s, demande), STATUT.ecrite))?.agent
+
 /** Ce que demande un remplacement, en quelques mots : remplacer l'absent. */
 export const titreRemplacement = (s: Session, demande: string): string =>
-  `Remplacer ${s.ctx.agent(vacationDe(s, demande).agent).nom}`
+  `Remplacer ${s.ctx.agent(absentDe(s, demande)).nom}`
 
 /**
  * Le détail d'une proposition, montré replié : qui une règle exclut (la

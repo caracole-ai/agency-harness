@@ -9,12 +9,14 @@ import {
   aParis,
   ecrire,
   ouvrir,
+  remplacantDe,
   repondre,
   type Session,
   STATUT,
   signalerAbsence,
   statut,
   suivre,
+  titreRemplacement,
   valider,
 } from './remplacement'
 
@@ -180,6 +182,9 @@ describe('la délégation (G-01)', () => {
     // signalée à 21 h 40 pour 8 h : 10 h 20 de prévenance ; Julien connaît le site
     expect(e.delegationProposee).toEqual({ connait_site: true, prevenu_avant_heures: 10 })
     expect(s.journal.historique('D-V-17').some((l) => l.type === 'délégation proposée')).toBe(true)
+    // Le planning porte désormais Julien : la demande nomme toujours l'absente.
+    expect(titreRemplacement(s, 'D-V-17')).toBe('Remplacer Aïcha Traoré')
+    expect(remplacantDe(s, 'D-V-17')).toBe('A-2')
   })
   it('dans son cadre, la décision est validée par délégation, et l’agent reste sollicité', () => {
     const s = session(delegation('{ connait_site: true }'))
