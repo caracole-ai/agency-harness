@@ -437,7 +437,7 @@ textarea {
 .vue h2 {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(1.6rem, 1.3rem + 1vw, 2.1rem);
+  font-size: clamp(1.35rem, 1.2rem + 0.5vw, 1.6rem);
   line-height: 1.1;
   letter-spacing: -0.012em;
   margin: 0 0 0.5rem;
@@ -454,6 +454,7 @@ textarea {
 }
 .chapo {
   color: var(--fg-soft);
+  font-size: 0.9375rem;
   max-width: 62ch;
   margin: 0 0 1.25rem;
   text-wrap: pretty;
@@ -625,17 +626,18 @@ textarea {
   font-size: 0.8125rem;
   line-height: 1.45;
 }
+/* Une ligne : le nom, puis son détail dessous, en plus petit. */
 .repli li + li {
-  margin-top: 0.15rem;
+  margin-top: 0.4rem;
 }
 .repli__nom {
+  display: block;
   color: var(--fg);
 }
 .repli__detail {
+  display: block;
+  font-size: 0.75rem;
   color: var(--fg-faint);
-}
-.repli__detail::before {
-  content: "— ";
 }
 .vide {
   border: 1px dashed var(--line-strong);
@@ -778,31 +780,30 @@ textarea {
 
 /* ---------- les règles ---------- */
 .regle {
-  display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
-  gap: 0.25rem 1rem;
-  align-items: start;
-  padding: 1rem 0;
+  padding: 0.7rem 0;
   border-top: 1px solid var(--line);
 }
 .regle:last-child {
   border-bottom: 1px solid var(--line);
 }
-.regle__id {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--accent-ink);
-  padding-top: 0.2rem;
+.regle__tete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
 }
 .regle__nom {
   font-weight: 500;
   color: var(--fg);
-  margin: 0 0 0.25rem;
+}
+.regle__detail {
+  margin-top: 0.25rem;
 }
 .regle__texte {
   color: var(--fg-soft);
-  margin: 0;
+  font-size: 0.875rem;
+  margin: 0.35rem 0 0;
 }
 .regle__texte b {
   color: var(--fg);
@@ -812,15 +813,6 @@ textarea {
   color: var(--fg-faint);
   font-size: 0.8125rem;
   margin: 0.4rem 0 0;
-}
-@media (max-width: 560px) {
-  .regle {
-    grid-template-columns: 3rem minmax(0, 1fr);
-  }
-  .regle .pastille {
-    grid-column: 2;
-    justify-self: start;
-  }
 }
 
 /* ---------- le journal ---------- */
@@ -838,53 +830,141 @@ textarea {
 /* Une ligne du journal : l'heure à gauche ; à droite, ce qui s'est passé (type, objet, issue), puis le motif. */
 .journal {
   list-style: none;
-  margin: 0;
+  margin: 0 0 0.5rem;
   padding: 0;
-  font-size: 0.875rem;
 }
+/* Un jour du journal : le repère qui découpe la lecture. */
+.journal__jour {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 1.25rem 0 0.25rem;
+}
+.journal__jour::first-letter {
+  text-transform: uppercase;
+}
+.journal__filtre {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: var(--fg-soft);
+  cursor: pointer;
+}
+/* Une ligne : l'heure à gauche ; le genre en petit, puis ce qui s'est passé. */
 .entree {
   display: grid;
-  grid-template-columns: 8.5rem minmax(0, 1fr);
-  gap: 0.25rem 1rem;
-  padding: 0.75rem 0;
+  grid-template-columns: 3.25rem minmax(0, 1fr);
+  gap: 0 0.75rem;
+  padding: 0.55rem 0;
   border-top: 1px solid var(--line);
 }
-.entree:last-child {
-  border-bottom: 1px solid var(--line);
-}
 .entree__heure {
-  white-space: nowrap;
+  font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
   color: var(--fg-faint);
+  padding-top: 0.05rem;
 }
-.entree__quoi {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.25rem 0.75rem;
+.entree__corps {
   min-width: 0;
 }
-.entree__type {
-  color: var(--fg);
-  font-weight: 500;
+.entree__genre {
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+  margin: 0;
 }
-.entree__objet {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: var(--accent-ink);
-  overflow-wrap: anywhere;
+.entree__genre .pastille {
+  vertical-align: 0.1em;
 }
 .entree__motif {
-  grid-column: 2;
-  color: var(--fg-soft);
+  font-size: 0.9375rem;
+  color: var(--fg);
+  margin-top: 0.1rem;
 }
-@media (max-width: 560px) {
-  .entree {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .entree__motif {
-    grid-column: 1;
-  }
+/* L'identifiant d'une action : un lien discret, qui ouvre son détail. */
+.entree__id {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.entree__id:hover {
+  color: var(--fg);
+}
+/* Le volet de détail : à droite, par-dessus la page, sur toute la hauteur. */
+.volet {
+  position: fixed;
+  inset: 0 0 0 auto;
+  /* Au-dessus du bandeau de démo (30) : sa tête et « Fermer » restent visibles. */
+  z-index: 40;
+  width: min(26rem, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--line-strong);
+}
+.volet[hidden] {
+  display: none;
+}
+.volet__tete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.volet__tete h2 {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+.volet__corps {
+  overflow-y: auto;
+  padding: 0.8rem 1.1rem 1.5rem;
+}
+.volet__resume {
+  font-size: 0.8125rem;
+  color: var(--fg-soft);
+  margin: 0 0 0.6rem;
+}
+.volet__lignes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.volet__ligne {
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--line);
+}
+.volet__donnees {
+  display: grid;
+  grid-template-columns: minmax(0, 9rem) minmax(0, 1fr);
+  gap: 0.15rem 0.75rem;
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+}
+.volet__donnees dt {
+  color: var(--fg-faint);
+  overflow-wrap: anywhere;
+}
+.volet__donnees dd {
+  margin: 0;
+  color: var(--fg-soft);
+  overflow-wrap: anywhere;
+}
+/* Le détail technique, montré sur demande : en retrait. */
+.entree--technique .entree__motif {
+  font-size: 0.8125rem;
+  color: var(--fg-faint);
 }
 
 /* ---------- la conversation ---------- */
@@ -961,6 +1041,9 @@ textarea {
 .bulle__corps {
   border-radius: 3px;
   padding: 0.7rem 0.85rem;
+}
+.bulle__tete {
+  font-weight: 600;
 }
 /* Le client écrit : au trait d'encre, à droite. */
 .bulle--client {
