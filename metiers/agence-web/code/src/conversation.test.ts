@@ -515,3 +515,18 @@ describe('le tableau de l’interface', () => {
     expect(CONVERSATION.registre?.(s).interdits.map((i) => i.id)).toContain('I-15')
   })
 })
+
+describe('ce que la page lit du journal : les objets nommés en clair', () => {
+  const s = session()
+  const nommer = (objet: string) => CONVERSATION.nommer?.(s, objet)
+  it('une facture, une personne, un projet suivi de son étape ; un inconnu garde son identifiant', () => {
+    expect(nommer('FAC-2026-031')).toBe(
+      'Facture FAC-2026-031 · Laboratoire Biocéane · 9 360,00 € TTC',
+    )
+    expect(nommer('M-04')).toBe('Kenji Rossi')
+    expect(nommer('PRJ-12/mise-en-prod/2026-07-28')).toBe(
+      'PRJ-12 — Site de la boulangerie et commande en ligne · Boulangerie Fournil des Saules · mise-en-prod · 2026-07-28',
+    )
+    expect(nommer('C-20261012T1000-abcd')).toBeUndefined()
+  })
+})

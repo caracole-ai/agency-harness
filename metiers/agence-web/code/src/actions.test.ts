@@ -46,8 +46,17 @@ const geste = (id: string): Action<Session, unknown> => {
   if (!a) throw new Error(`pas de geste ${id}`)
   return a
 }
-const jouer = async (s: Session, id: string, identite: Identite, p: unknown) =>
-  (await geste(id).executer(s, identite, p, maintenant)).texte
+/** Un résultat comme la page le montre, à plat : la phrase, puis chaque groupe (`# titre`) et ses lignes (`titre · détail`). */
+const jouer = async (s: Session, id: string, identite: Identite, p: unknown) => {
+  const r = await geste(id).executer(s, identite, p, maintenant)
+  return [
+    r.texte,
+    ...(r.replis ?? []).flatMap((g) => [
+      `# ${g.titre}`,
+      ...g.lignes.map((l) => `${l.titre}${l.detail ? ` · ${l.detail}` : ''}`),
+    ]),
+  ].join('\n')
+}
 
 describe('qui peut quoi (§ 7.5)', () => {
   it('les rôles de chaque geste', () => {
@@ -134,14 +143,17 @@ describe('factures_en_retard', () => {
     async (identite) => {
       const texte = await jouer(s, 'factures_en_retard', identite, { client: null })
       expect(texte.split('\n')).toEqual([
-        'FAC-2026-031 — Laboratoire Biocéane (CLI-18) — 9 360,00 € TTC — échue le 30/08/2026, 43 jours de retard — dernière relance : niveau 2 le 29/09/2026',
-        'FAC-2026-042 — Transports Mérindol (CLI-07) — 7 780,50 € TTC — échue le 01/10/2026, 11 jours de retard — aucune relance',
+        '2 factures en retard : 17 140,50 € restant dû.',
+        '# Jamais relancées (1)',
+        'Transports Mérindol · 7 780,50 € TTC · FAC-2026-042 · échue le 01/10/2026, 11 jours de retard',
+        '# Déjà relancées (1)',
+        'Laboratoire Biocéane · 9 360,00 € TTC · FAC-2026-031 · échue le 30/08/2026, 43 jours de retard · relance niveau 2 le 29/09/2026',
       ])
     },
   )
   it('pour un seul client, par sa mention', async () => {
-    expect(await jouer(s, 'factures_en_retard', COMMERCIALE, { client: 'CLI-07' })).toMatch(
-      /^FAC-2026-042 /,
+    expect(await jouer(s, 'factures_en_retard', COMMERCIALE, { client: 'CLI-07' })).toContain(
+      'Transports Mérindol · 7 780,50 € TTC · FAC-2026-042 ·',
     )
     expect(await jouer(s, 'factures_en_retard', COMMERCIALE, { client: 'Céramiques Orsini' })).toBe(
       'Aucune facture en retard.',
@@ -163,9 +175,9 @@ describe('mes_tickets', () => {
   it('le développeur M-05 : ses tickets ouverts, par projet, avec l’estimation ; pas ceux de Julie', async () => {
     const texte = await jouer(s, 'mes_tickets', BILAL, { du: null, au: null })
     expect(texte).toContain(
-      "  TK-1050 — Le formulaire d'inscription ne s'envoie pas — à faire — 3 h estimées",
+      "Le formulaire d'inscription ne s'envoie pas · à faire · 3 h estimées · TK-1050",
     )
-    expect(texte).toContain('PRJ-14 — Site et inscriptions (fin prévue le 18/12/2026)')
+    expect(texte).toContain('# PRJ-14 — Site et inscriptions (fin prévue le 18/12/2026)')
     expect(texte).not.toContain('TK-1042')
   })
   it('sur une période : les tickets actifs, résolus compris', async () => {
@@ -190,11 +202,12 @@ describe('mon_temps', () => {
       du: '2026-10-01',
       au: '2026-10-12',
     })
-    expect(texte).toContain('Heures de Bilal Kowalski du 01/10/2026 au 12/10/2026 :')
-    expect(texte).toContain(
-      'PRJ-04 — Intranet documentaire (fin prévue le 18/12/2026) : 15 h (2,14 j)',
+    expect(texte.split('\n')[0]).toBe(
+      'Heures de Bilal Kowalski du 01/10/2026 au 12/10/2026 : 53,5 h (7,64 j).',
     )
-    expect(texte).toContain('Total : 53,5 h (7,64 j)')
+    expect(texte).toContain(
+      'PRJ-04 — Intranet documentaire (fin prévue le 18/12/2026) · 15 h (2,14 j)',
+    )
   })
   it.each([DIRIGEANT, PO])('$role : celles d’une autre personne', async (identite) => {
     const texte = await jouer(s, 'mon_temps', identite, {
@@ -202,8 +215,9 @@ describe('mon_temps', () => {
       du: '2026-10-01',
       au: '2026-10-12',
     })
-    expect(texte).toContain('Heures de Julie Okafor')
-    expect(texte).toContain('Total : 50,5 h (7,21 j)')
+    expect(texte.split('\n')[0]).toBe(
+      'Heures de Julie Okafor du 01/10/2026 au 12/10/2026 : 50,5 h (7,21 j).',
+    )
   })
   it.each([COMMERCIALE, BILAL])(
     '$role : le temps d’une autre personne est un refus du code',
@@ -226,7 +240,8 @@ describe('declarer_absence, puis disponibilites', async () => {
     expect(proposition).toMatch(
       /^Proposition : absence de Kenji Rossi le 15\/10\/2026\. Rien n'est écrit/,
     )
-    expect(proposition).toContain('  TK-1047 — Maquette du formulaire (PRJ-16)')
+    expect(proposition).toContain('# Tickets ouverts à reprendre (')
+    expect(proposition).toMatch(/^Maquette du formulaire · TK-1047 · PRJ-16 — /m)
     const lignes = s.journal.lire().filter((l) => l.type === TYPE_ABSENCE_PROPOSEE)
     expect(lignes.map((l) => l.objet)).toEqual(['M-04'])
     expect(readFileSync(join(s.dossier, 'tickets.csv'), 'utf8')).toBe(
@@ -237,17 +252,25 @@ describe('declarer_absence, puis disponibilites', async () => {
     '$role : la charge de chacun, et l’absence proposée',
     async (identite) => {
       expect(avant).toContain(
-        'Kenji Rossi (M-04) : 79 h estimées sur 9 tickets ouverts ; aucune absence connue',
+        'Kenji Rossi · 79 h estimées sur 9 tickets ouverts · aucune absence connue',
       )
       const texte = await jouer(s, 'disponibilites', identite, {
         du: '2026-10-12',
         au: '2026-10-16',
       })
-      expect(texte.split('\n')[0]).toBe('Disponibilités du 12/10/2026 au 16/10/2026 :')
-      expect(texte).toContain(
-        'Kenji Rossi (M-04) : 79 h estimées sur 9 tickets ouverts ; absence proposée le 15/10/2026',
+      expect(texte.split('\n')[0]).toBe(
+        'Disponibilités du 12/10/2026 au 16/10/2026, du plus disponible au plus chargé.',
       )
-      expect(texte.split('\n')).toHaveLength(7)
+      expect(texte).toContain(
+        'Kenji Rossi · 79 h estimées sur 9 tickets ouverts · absence proposée le 15/10/2026',
+      )
+      // La phrase, le groupe, puis les six personnes, du moins chargé au plus chargé.
+      const lignes = texte.split('\n')
+      expect(lignes).toHaveLength(8)
+      const heures = lignes
+        .slice(2)
+        .map((l) => Number(l.match(/· ([\d,]+) h estimées/)?.[1]?.replace(',', '.')))
+      expect(heures).toEqual([...heures].sort((a, b) => a - b))
     },
   )
   it.each(TOUS)('$role peut déclarer la sienne', async (identite) => {
@@ -270,8 +293,11 @@ describe('domaines_expirant', () => {
     async (identite) => {
       const texte = await jouer(session(), 'domaines_expirant', identite, { jours: 30 })
       expect(texte.split('\n')).toEqual([
-        '03/10/2026 : le domaine jardins-de-lune.example a expiré (Association Les Jardins de Lune, registrar-c)',
-        '22/10/2026 : le certificat de camping-genets-bleus.example expire (Camping Les Genêts bleus, registrar-a)',
+        '2 domaines ou certificats : 1 expiré, 1 à renouveler.',
+        '# Déjà expirés (1)',
+        'jardins-de-lune.example · domaine · expiré le 03/10/2026 · Association Les Jardins de Lune, registrar-c',
+        '# À renouveler dans les 30 jours (1)',
+        'camping-genets-bleus.example · certificat · expire le 22/10/2026 · Camping Les Genêts bleus, registrar-a',
       ])
     },
   )
@@ -281,9 +307,11 @@ describe('domaines_expirant', () => {
       writeFileSync(f, readFileSync(f, 'utf8').replace(';2027-05-18;', ';;'))
     })
     const texte = await jouer(s, 'domaines_expirant', DIRIGEANT, { jours: 30 })
-    expect(texte.split('\n')[0]).toBe(
-      'Date inconnue : le domaine atelier-valcourt.example (Atelier de ferronnerie Valcourt, registrar-a)',
-    )
+    expect(texte.split('\n').slice(0, 3)).toEqual([
+      '3 domaines ou certificats : 1 date à renseigner, 1 expiré, 1 à renouveler.',
+      '# Date à renseigner (1)',
+      'atelier-valcourt.example · domaine · Atelier de ferronnerie Valcourt, registrar-a',
+    ])
   })
 })
 
