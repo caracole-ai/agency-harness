@@ -20,6 +20,7 @@ import {
   confirmer,
   coutDuMois,
   demandesAvecEtat,
+  detailSansGeste,
   ErreurCommande,
   etatVersion,
   FORMAT_INTENTION,
@@ -505,6 +506,21 @@ export function creerApp(options: {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
     exigerCapacite(m, identite, 'administre')
     return c.json(await session(identite, (s) => etatVersion(m.journal(s).lire(), options.version)))
+  })
+
+  // Le détail d'une demande sans geste (le volet de l'onglet « Gestes ») : qui l'a demandée et quand,
+  // ce que l'outil a répondu, où en est la commande, ce qui part à l'agence. Sans modèle.
+  app.post('/api/sans-geste/detail', async (c) => {
+    const corps = await lireCorps(c.req.raw)
+    if (typeof corps.intention !== 'string' || !FORMAT_INTENTION.test(corps.intention)) {
+      throw new ErreurRequete('intention attendue : le mot-clé de la demande, en snake_case')
+    }
+    const intention = corps.intention
+    const identite = entrer(corps.identite)
+    exigerCapacite(m, identite, 'administre')
+    return c.json(
+      await session(identite, (s) => detailSansGeste(m, s, dossier, intention, maintenant())),
+    )
   })
 
   app.post('/api/sans-geste/commander', async (c) => {

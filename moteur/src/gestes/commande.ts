@@ -20,7 +20,7 @@ export const TYPE_GESTE_COMMANDE = 'geste commandé'
 export const EXEMPLES_MAX = 3
 
 /** L'issue d'une ligne `consigne` qui a fini en demande nouvelle. */
-const NOUVELLE: Demande['sorte'] = 'nouvelle'
+export const NOUVELLE: Demande['sorte'] = 'nouvelle'
 
 export interface DemandeSansGeste {
   intention: string

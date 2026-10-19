@@ -13,6 +13,7 @@ const API = {
   geste: '/api/geste',
   sansGeste: '/api/sans-geste',
   commanderGeste: '/api/sans-geste/commander',
+  detailGeste: '/api/sans-geste/detail',
   version: '/api/version',
 }
 const FUSEAU = 'Europe/Paris'
@@ -22,6 +23,14 @@ const TYPE_APPEL = 'appel_modele'
 const FUSIONNE = 'fusionné'
 const EN_COURS = 'en cours'
 const EN_ATTENTE = 'en attente'
+/** Les autres fins d'un chantier, en mots pour le patron (`STATUTS_CHANTIER`). */
+const FINS_CHANTIER = {
+  refusé:
+    'Le harnais n’a pas réussi à le coder sous ses contrôles : rien n’a changé dans votre outil.',
+  écartée: 'L’agence ne l’a pas lancé : un geste de ce nom existe déjà, ou il a été retiré.',
+  échoué: 'Le chantier s’est arrêté sur une erreur : rien n’a changé dans votre outil.',
+  retiré: 'Le geste a été retiré de votre outil ; il ne sera pas refait.',
+}
 
 /** Comment montrer chaque sorte de réponse. */
 const SORTES = {
@@ -48,6 +57,39 @@ const NOTES_VEILLE = {
   alerte: { escalade: 'à traiter maintenant', alerte: 'à préparer' },
   constat: { refus: 'à corriger', 'à vérifier': 'à décider', ok: 'conforme' },
 }
+/**
+ * La sorte d'une ligne du journal, en couleur, pour lire et filtrer : les types du moteur rangés par
+ * sorte ; tout autre type (ceux d'un métier : absence, remplacement, message…) est une action.
+ */
+const SORTES_JOURNAL = [
+  { id: 'demande', libelle: 'Demande', types: ['consigne', 'accès refusé'] },
+  { id: 'reponse', libelle: 'Réponse', types: ['confirmation'] },
+  { id: 'attente', libelle: 'En attente', types: ['confirmation_attendue', 'precision_attendue'] },
+  {
+    id: 'question',
+    libelle: 'Question libre',
+    types: ['echappee', 'outil_echappee', 'proposition refusée'],
+  },
+  { id: 'echeance', libelle: 'Échéance', types: ['alerte'] },
+  { id: 'veille', libelle: 'Veille', types: ['constat', 'veille'] },
+  {
+    id: 'outil',
+    libelle: 'Outil',
+    types: ['geste commandé', 'chantier', 'mise à jour', 'délégation proposée'],
+  },
+  { id: 'ia', libelle: 'IA', types: ['appel_modele'] },
+]
+const SORTE_ACTION = { id: 'action', libelle: 'Action' }
+const sorteJournal = (l) => SORTES_JOURNAL.find((s) => s.types.includes(l.type)) ?? SORTE_ACTION
+/** Combien de tags une dimension montre avant « + N autres ». */
+const TAGS_MONTRES = 6
+/** Les dimensions des tags du journal, dans l'ordre où elles s'affichent. */
+const FACETTES = [
+  { id: 'sorte', libelle: 'Sorte' },
+  { id: 'qui', libelle: 'Qui' },
+  { id: 'etat', libelle: 'État' },
+]
+
 /** Les lignes techniques du journal : montrées sur demande seulement. */
 const TYPES_TECHNIQUES = new Set([TYPE_APPEL, 'outil_echappee'])
 /** L'issue d'une question libre, en mots. */
@@ -74,6 +116,16 @@ const ici = {
   onglet: 'valider',
   /** Le journal montre aussi les lignes techniques (appels à l'IA, recherches). */
   journalTechnique: false,
+  /** Les tags choisis du journal, par dimension (`FACETTES`) : « ou » dans une dimension, « et » entre elles. */
+  journalFiltres: { sorte: new Set(), qui: new Set(), etat: new Set() },
+  /** Les dimensions du journal dont tous les tags sont montrés (sinon les plus fréquents). */
+  journalDeplies: new Set(),
+  /** Ce qui est tapé dans la recherche du journal. */
+  journalRecherche: '',
+  /** Le geste dont le volet montre le détail : une réponse arrivée pour un autre est ignorée. */
+  voletGeste: null,
+  /** Le bouton qui a ouvert le volet : il reprend le focus à la fermeture. */
+  voletOuvreur: null,
   /** Les dernières lignes du journal lues : le volet de détail y retrouve une action. */
   journal: [],
   /** Combien de fois chaque relevé de veille montré l'a été (`cleReleve`) : la liste n'en garde qu'un. */
@@ -708,7 +760,7 @@ function rendreDelegations() {
 
 async function chargerJournal() {
   const zone = $('journal')
-  if (!zone.querySelector('.journal'))
+  if (!zone.querySelector('.journal__outils'))
     zone.replaceChildren(el('p', { classe: 'chargement', texte: 'Chargement…' }))
   let lignes
   try {
@@ -733,10 +785,20 @@ async function chargerJournal() {
     return
   }
   ici.journal = lignes
-  // Par jour, le plus récent d'abord ; chaque ligne dit ce qui s'est passé, son genre en petit au-dessus.
+  rendreJournal()
+}
+
+/**
+ * Le journal à l'écran : la recherche et les tags (construits une fois, la
+ * saisie garde son focus), puis les lignes qui passent les filtres, par jour,
+ * le plus récent d'abord. Chaque veille relève à nouveau les mêmes échéances
+ * et les mêmes contrôles : la liste n'en garde que le relevé le plus récent,
+ * qui dit combien de fois il l'a été (le volet les montre tous).
+ */
+function rendreJournal() {
+  const zone = $('journal')
+  const lignes = ici.journal
   const techniques = lignes.filter((l) => TYPES_TECHNIQUES.has(l.type)).length
-  // Chaque veille relève à nouveau les mêmes échéances et les mêmes contrôles : la liste n'en garde que
-  // le relevé le plus récent, qui dit combien de fois il l'a été (le volet les montre tous).
   const releves = new Map()
   const montrees = lignes.filter((l) => {
     if (!ici.journalTechnique && TYPES_TECHNIQUES.has(l.type)) return false
@@ -746,13 +808,48 @@ async function chargerJournal() {
     return releves.get(cle) === 1
   })
   ici.releves = releves
-  const jours = []
-  for (const l of montrees) {
-    const j = jourDuJournal(l.horodatage)
-    if (jours.at(-1)?.jour !== j) jours.push({ jour: j, lignes: [] })
-    jours.at(-1).lignes.push(l)
+  const entrees = montrees.map(entreeLue)
+  if (!zone.querySelector('.journal__outils')) {
+    zone.replaceChildren(
+      el(
+        'div',
+        { classe: 'journal__outils' },
+        el(
+          'label',
+          { classe: 'journal__recherche' },
+          el('span', { classe: 'sr', texte: 'Chercher dans le journal' }),
+          el('input', {
+            type: 'search',
+            id: 'journal-recherche',
+            placeholder: 'Chercher : un nom, un mot, un jour…',
+            autocomplete: 'off',
+            value: ici.journalRecherche,
+            oninput: (e) => {
+              ici.journalRecherche = e.currentTarget.value
+              rendreJournal()
+            },
+          }),
+        ),
+        // Les tags, repliés sous la recherche ; le résumé dit combien sont choisis.
+        el(
+          'details',
+          { classe: 'journal__filtres' },
+          el(
+            'summary',
+            {},
+            'Filtres',
+            el('span', { classe: 'journal__filtres-etat', id: 'journal-filtres-etat' }),
+          ),
+          el('div', { classe: 'journal__tags', id: 'journal-tags' }),
+        ),
+        el('p', { classe: 'journal__compte', id: 'journal-compte', 'aria-live': 'polite' }),
+      ),
+      el('div', { id: 'journal-lignes' }),
+    )
   }
-  zone.replaceChildren(
+  const filtrees = entrees.filter(passeLesFiltres)
+  $('journal-tags').replaceChildren(
+    ...FACETTES.map((f) => rangeeDeTags(f, entrees)).filter(Boolean),
     techniques > 0
       ? el(
           'label',
@@ -762,16 +859,223 @@ async function chargerJournal() {
             checked: ici.journalTechnique,
             onchange: (e) => {
               ici.journalTechnique = e.currentTarget.checked
-              chargerJournal()
+              rendreJournal()
             },
           }),
           ` Montrer le détail technique (${compter(techniques, 'ligne', 'lignes')} : appels à l’IA, recherches)`,
         )
       : null,
-    ...jours.flatMap(({ jour: j, lignes: ls }) => [
-      el('h4', { classe: 'journal__jour', texte: j }),
-      el('ol', { classe: 'journal' }, ...ls.map(entreeJournal)),
-    ]),
+  )
+  const choisis = FACETTES.reduce((n, f) => n + ici.journalFiltres[f.id].size, 0)
+  $('journal-filtres-etat').textContent = [
+    choisis > 0 ? compter(choisis, 'tag choisi', 'tags choisis') : '',
+    ici.journalTechnique ? 'détail technique montré' : '',
+  ]
+    .filter(Boolean)
+    .map((t) => ` · ${t}`)
+    .join('')
+  const filtre = filtreActif()
+  $('journal-compte').replaceChildren(
+    ...[
+      filtre
+        ? `${filtrees.length} sur ${compter(entrees.length, 'ligne', 'lignes')}`
+        : compter(entrees.length, 'ligne', 'lignes'),
+      filtre ? ' · ' : null,
+      filtre
+        ? el('button', {
+            classe: 'journal__effacer',
+            type: 'button',
+            texte: 'Tout effacer',
+            onclick: effacerFiltres,
+          })
+        : null,
+    ].filter(Boolean),
+  )
+  const jours = []
+  for (const e of filtrees) {
+    if (jours.at(-1)?.jour !== e.jour) jours.push({ jour: e.jour, entrees: [] })
+    jours.at(-1).entrees.push(e)
+  }
+  $('journal-lignes').replaceChildren(
+    ...(filtrees.length === 0
+      ? [
+          el(
+            'p',
+            { classe: 'vide' },
+            el('b', { texte: 'Aucune ligne ne correspond. ' }),
+            'Retirez un tag ou changez la recherche.',
+          ),
+        ]
+      : jours.flatMap(({ jour: j, entrees: es }) => [
+          el('h4', { classe: 'journal__jour' }, ...surligner(j, motsCherches())),
+          el('ol', { classe: 'journal' }, ...es.map(entreeJournal)),
+        ])),
+  )
+}
+
+/** Une ligne du journal, lue une fois : ce qu'elle dit, ses tags, et le texte où la recherche cherche. */
+function entreeLue(l) {
+  const lue = lireLigne(l)
+  const sorte = sorteJournal(l)
+  const d = donneesDe(l)
+  const identite = d.identite ?? d.par
+  const qui = identite?.role ? nomDe(identite) : ''
+  // Le genre sans le mot de la sorte, déjà dit par le badge : « Demande · Le patron » → « Le patron ».
+  const [tete, ...reste] = lue.genre.split(' · ')
+  const genre = plier(tete) === plier(sorte.libelle) ? reste.join(' · ') : lue.genre
+  const jour = jourDuJournal(l.horodatage)
+  return {
+    l,
+    ...lue,
+    genre,
+    sorte,
+    tags: { sorte: sorte.libelle, qui, etat: lue.note ?? '' },
+    jour,
+    cherche: plier(
+      [sorte.libelle, lue.genre, lue.texte, lue.note, qui, l.objet, l.objetEnClair, jour]
+        .filter(Boolean)
+        .join(' '),
+    ),
+  }
+}
+
+/** Un texte pour comparer : sans accents ni majuscules (« Échéance » se trouve en tapant « echeance »). */
+const plier = (texte) =>
+  String(texte)
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+
+const filtreActif = () =>
+  ici.journalRecherche.trim() !== '' || FACETTES.some((f) => ici.journalFiltres[f.id].size > 0)
+
+/** Les mots de la recherche, pliés (`plier`). */
+const motsCherches = () => plier(ici.journalRecherche).split(/\s+/).filter(Boolean)
+
+/**
+ * Un texte, chaque passage cherché dans un `<mark>` : la comparaison se fait
+ * sur le texte plié (sans accents ni majuscules), le surlignage sur le texte
+ * tel quel (« aich » surligne « Aïch »). Rend des nœuds à poser dans un élément.
+ */
+function surligner(texte, mots) {
+  if (!texte || mots.length === 0) return [texte]
+  // Le texte plié, et pour chacun de ses caractères l'indice du caractère d'origine.
+  let plie = ''
+  const origine = []
+  const caracteres = [...texte]
+  let position = 0
+  for (const c of caracteres) {
+    const p = plier(c)
+    for (let k = 0; k < p.length; k++) origine.push(position)
+    plie += p
+    position += c.length
+  }
+  origine.push(position)
+  const plages = []
+  for (const m of mots) {
+    for (let i = plie.indexOf(m); i >= 0; i = plie.indexOf(m, i + 1)) {
+      // La fin : le caractère d'origine qui suit le dernier caractère trouvé.
+      const fin = origine.slice(i + m.length).find((o) => o > origine[i + m.length - 1])
+      plages.push([origine[i], fin ?? texte.length])
+    }
+  }
+  if (plages.length === 0) return [texte]
+  plages.sort((a, b) => a[0] - b[0])
+  const fusion = [plages[0]]
+  for (const [debut, fin] of plages.slice(1)) {
+    const derniere = fusion.at(-1)
+    if (debut <= derniere[1]) derniere[1] = Math.max(derniere[1], fin)
+    else fusion.push([debut, fin])
+  }
+  const noeuds = []
+  let curseur = 0
+  for (const [debut, fin] of fusion) {
+    if (debut > curseur) noeuds.push(texte.slice(curseur, debut))
+    noeuds.push(el('mark', { classe: 'surligne', texte: texte.slice(debut, fin) }))
+    curseur = fin
+  }
+  if (curseur < texte.length) noeuds.push(texte.slice(curseur))
+  return noeuds
+}
+
+/** Chaque mot cherché est dans la ligne ; dans chaque dimension où des tags sont choisis, la ligne en porte un. */
+function passeLesFiltres(e) {
+  const mots = motsCherches()
+  if (!mots.every((m) => e.cherche.includes(m))) return false
+  return FACETTES.every((f) => {
+    const choisis = ici.journalFiltres[f.id]
+    return choisis.size === 0 || choisis.has(e.tags[f.id])
+  })
+}
+
+function effacerFiltres() {
+  for (const f of FACETTES) ici.journalFiltres[f.id].clear()
+  ici.journalRecherche = ''
+  const saisie = $('journal-recherche')
+  if (saisie) saisie.value = ''
+  rendreJournal()
+}
+
+/**
+ * Les tags d'une dimension, avec le nombre de lignes de chacun ; un tag
+ * choisi reste montré même sans ligne (après un rafraîchissement). Une
+ * dimension à un seul tag et sans choix ne filtrerait rien : elle se tait.
+ */
+function rangeeDeTags(f, entrees) {
+  const comptes = new Map()
+  for (const e of entrees) {
+    const v = e.tags[f.id]
+    if (v) comptes.set(v, (comptes.get(v) ?? 0) + 1)
+  }
+  const choisis = ici.journalFiltres[f.id]
+  for (const v of choisis) if (!comptes.has(v)) comptes.set(v, 0)
+  if (comptes.size < 2 && choisis.size === 0) return null
+  const tous =
+    f.id === 'sorte'
+      ? [...SORTES_JOURNAL, SORTE_ACTION].map((s) => s.libelle).filter((v) => comptes.has(v))
+      : [...comptes.keys()].sort((a, b) => comptes.get(b) - comptes.get(a) || a.localeCompare(b))
+  // Les plus fréquents d'abord ; les autres sur demande, les choisis toujours visibles.
+  // Les sortes sont peu nombreuses et en couleur : toujours toutes.
+  const deplie = f.id === 'sorte' || ici.journalDeplies.has(f.id) || tous.length <= TAGS_MONTRES + 1
+  const ordre = deplie ? tous : tous.filter((v, i) => i < TAGS_MONTRES || choisis.has(v))
+  const caches = tous.length - ordre.length
+  return el(
+    'div',
+    { classe: 'tags', role: 'group', 'aria-label': f.libelle },
+    el('span', { classe: 'tags__nom', texte: f.libelle }),
+    ...ordre.map((v) => {
+      const sorte =
+        f.id === 'sorte' ? [...SORTES_JOURNAL, SORTE_ACTION].find((s) => s.libelle === v) : null
+      return el(
+        'button',
+        {
+          classe: `tag${sorte ? ` tag--${sorte.id}` : ''}`,
+          type: 'button',
+          'aria-pressed': String(choisis.has(v)),
+          onclick: () => {
+            if (choisis.has(v)) choisis.delete(v)
+            else choisis.add(v)
+            rendreJournal()
+          },
+        },
+        v,
+        el('span', { classe: 'tag__compte', texte: String(comptes.get(v)) }),
+      )
+    }),
+    caches > 0 ||
+      (f.id !== 'sorte' && ici.journalDeplies.has(f.id) && tous.length > TAGS_MONTRES + 1)
+      ? el('button', {
+          classe: 'tags__plus',
+          type: 'button',
+          'aria-expanded': String(caches === 0),
+          texte: caches > 0 ? `+ ${caches} autres` : 'moins',
+          onclick: () => {
+            if (ici.journalDeplies.has(f.id)) ici.journalDeplies.delete(f.id)
+            else ici.journalDeplies.add(f.id)
+            rendreJournal()
+          },
+        })
+      : null,
   )
 }
 
@@ -862,10 +1166,10 @@ function ouvrirDetail(objet) {
   }, 0)
   // Le titre dit de qui ou de quoi il s'agit ; l'identifiant, en petit, reste pour s'y retrouver.
   const enClair = lignes.find((l) => l.objetEnClair)?.objetEnClair
-  $('volet-sorte').textContent = sorteDe(objet, lignes)
-  $('volet-titre').textContent = enClair ?? objet
   const groupes = regrouper(lignes)
-  $('volet-corps').replaceChildren(
+  ouvrirVolet(
+    sorteDe(objet, lignes),
+    enClair ?? objet,
     el('p', {
       classe: 'volet__resume',
       texte: [
@@ -906,13 +1210,25 @@ function ouvrirDetail(objet) {
       }),
     ),
   )
+}
+
+/** Le volet de droite, sur une sorte, un titre et un contenu ; à l'ouverture, le focus va à « Fermer ». */
+function ouvrirVolet(sorte, titre, ...corps) {
+  $('volet-sorte').textContent = sorte
+  $('volet-titre').textContent = titre
+  $('volet-corps').replaceChildren(...corps)
   const volet = $('volet')
+  if (!volet.hidden) return
+  ici.voletOuvreur = document.activeElement
   volet.hidden = false
   $('volet-fermer').focus()
 }
 
 function fermerDetail() {
   $('volet').hidden = true
+  ici.voletGeste = null
+  ici.voletOuvreur?.focus()
+  ici.voletOuvreur = null
 }
 
 const formatJour = new Intl.DateTimeFormat('fr-FR', {
@@ -933,9 +1249,9 @@ const jourDuJournal = (iso) => formatJour.format(new Date(iso))
 /** Ce qui fait d'un relevé de veille le même qu'un autre : la même chose dite sur le même objet. */
 const cleReleve = (l) => JSON.stringify([l.type, l.objet, l.issue, l.motif])
 
-function entreeJournal(l) {
-  const { genre, texte, note } = lireLigne(l)
+function entreeJournal({ l, genre, texte, note, sorte }) {
   const fois = l.type in NOTES_VEILLE ? (ici.releves?.get(cleReleve(l)) ?? 1) : 1
+  const mots = motsCherches()
   return el(
     'li',
     { classe: `entree${TYPES_TECHNIQUES.has(l.type) ? ' entree--technique' : ''}` },
@@ -950,21 +1266,29 @@ function entreeJournal(l) {
       el(
         'p',
         { classe: 'entree__genre' },
-        fois > 1 ? `${genre} · ${fois} relevés` : genre,
+        el('span', { classe: `badge badge--${sorte.id}` }, ...surligner(sorte.libelle, mots)),
+        genre || fois > 1 ? ' ' : null,
+        ...surligner(
+          fois > 1 ? [genre, `${fois} relevés`].filter(Boolean).join(' · ') : genre,
+          mots,
+        ),
         note ? ' ' : null,
-        note ? el('span', { classe: 'pastille', texte: note }) : null,
+        note ? el('span', { classe: 'pastille' }, ...surligner(note, mots)) : null,
         l.objet ? ' ' : null,
         l.objet
-          ? el('button', {
-              classe: 'entree__id',
-              type: 'button',
-              title: 'Voir le détail',
-              texte: l.objet,
-              onclick: () => ouvrirDetail(l.objet),
-            })
+          ? el(
+              'button',
+              {
+                classe: 'entree__id',
+                type: 'button',
+                title: 'Voir le détail',
+                onclick: () => ouvrirDetail(l.objet),
+              },
+              ...surligner(l.objet, mots),
+            )
           : null,
       ),
-      texte ? el('p', { classe: 'entree__motif texte', texte }) : null,
+      texte ? el('p', { classe: 'entree__motif texte' }, ...surligner(texte, mots)) : null,
     ),
   )
 }
@@ -1049,6 +1373,9 @@ async function chargerSansGeste() {
         )
       : el('ul', { classe: 'liste' }, ...sansGeste.map(carteSansGeste)),
   )
+  // Le volet ouvert suit la liste (une commande vient d'être passée, un chantier a avancé).
+  const ouvert = sansGeste.find((d) => d.intention === ici.voletGeste)
+  if (ouvert && !$('volet').hidden) ouvrirGeste(ouvert)
 }
 
 /** Qui a commandé : le rôle, et la personne quand le rôle est identifié. */
@@ -1070,7 +1397,7 @@ function etatCommande(c) {
     return { etat: 'commandé', phrase: `${commande} ; le chantier se fera demain.` }
   if (issue === FUSIONNE) {
     return {
-      etat: 'prêt',
+      etat: 'disponible en téléchargeant la mise à jour',
       phrase: `${commande} ; il arrive à la prochaine mise à jour${version ? ` (${version})` : ''}.`,
     }
   }
@@ -1096,9 +1423,276 @@ function carteSansGeste(d) {
       el('span', {
         texte: `Demandé ${d.compte} fois · la dernière le ${jour(d.derniere)}`,
       }),
+      el(
+        'button',
+        {
+          classe: 'carte__detail',
+          type: 'button',
+          title: 'Le détail de ce geste',
+          'aria-label': `Le détail du geste « ${titreSansGeste(d)} »`,
+          onclick: () => ouvrirGeste(d),
+        },
+        el('span', { 'aria-hidden': 'true', texte: 'i' }),
+      ),
     ),
     el('h4', { classe: 'demande__titre', texte: titreSansGeste(d) }),
     etat ? el('p', { classe: 'carte__suite', texte: etat.phrase }) : zoneCommande(d),
+  )
+}
+
+/**
+ * Le volet d'un geste, pour le patron : où il en est (les étapes datées),
+ * ce qu'il fera, les demandes reçues et ce que l'outil en a fait, ce qui
+ * part (ou partira) à l'agence. Le détail vient de `/api/sans-geste/detail`.
+ */
+async function ouvrirGeste(d) {
+  const etat = d.commande ? etatCommande(d.commande) : null
+  const sorte = `Geste · ${etat ? etat.etat : 'à commander'}`
+  // Un volet déjà ouvert sur ce geste se met à jour sans repasser par « Chargement… ».
+  if (ici.voletGeste !== d.intention || $('volet').hidden) {
+    ici.voletGeste = d.intention
+    ouvrirVolet(sorte, titreSansGeste(d), el('p', { classe: 'chargement', texte: 'Chargement…' }))
+  }
+  let detail
+  try {
+    detail = await appeler(API.detailGeste, { identite: ici.identite, intention: d.intention })
+  } catch (erreur) {
+    if (ici.voletGeste === d.intention)
+      ouvrirVolet(
+        sorte,
+        titreSansGeste(d),
+        erreurBloc(erreur.message, () => ouvrirGeste(d)),
+      )
+    return
+  }
+  if (ici.voletGeste !== d.intention) return
+  ouvrirVolet(
+    sorte,
+    titreSansGeste(d),
+    el('p', { classe: 'volet__resume', texte: resumeGeste(d, detail) }),
+    sectionVolet('Où il en est', el('ol', { classe: 'etapes' }, ...etapesGeste(d, detail))),
+    detail.mission ? sectionVolet('Ce qu’il fera', ...ceQuIlFera(detail.mission)) : null,
+    sectionVolet(
+      'Les demandes reçues',
+      el('p', {
+        classe: 'volet__note',
+        texte:
+          'En attendant le geste, l’outil répond par une question libre : l’IA cherche dans une copie masquée de vos données, le code relit chaque chiffre.',
+      }),
+      el('ol', { classe: 'recues' }, ...detail.demandes.map(demandeRecue)),
+      detail.compte > detail.demandes.length
+        ? el('p', {
+            classe: 'volet__note',
+            texte: `Et ${compter(detail.compte - detail.demandes.length, 'demande plus ancienne', 'demandes plus anciennes')}.`,
+          })
+        : null,
+    ),
+    sectionAgence(d, detail),
+  )
+}
+
+/** Une partie du volet : un intitulé, puis son contenu. */
+const sectionVolet = (titre, ...contenu) =>
+  el('section', { classe: 'volet__section' }, el('h3', { texte: titre }), ...contenu)
+
+/** Qui, dans une phrase : la personne par son nom, un rôle sans majuscule (« par le patron »). */
+function quiDansPhrase(identite) {
+  const nom = nomDe(identite)
+  return identite.personne ? nom : nom.charAt(0).toLowerCase() + nom.slice(1)
+}
+
+/** Deux jours en une plage : « du 14 au 16 octobre 2026 », le mois et l'année dits une fois s'ils sont communs. */
+function plage(debut, fin) {
+  if (debut === fin) return `le ${jour(debut)}`
+  const memeMois = debut.slice(0, 7) === fin.slice(0, 7)
+  return `du ${memeMois ? Number(debut.slice(8, 10)) : jour(debut)} au ${jour(fin)}`
+}
+
+/** Combien de fois, quand, par qui : « Demandé 3 fois du 14 au 16 octobre 2026, par Patron et Julien Lefèvre. » */
+function resumeGeste(d, detail) {
+  const qui = []
+  for (const r of detail.demandes) {
+    const nom = quiDansPhrase(r.identite)
+    if (!qui.includes(nom)) qui.push(nom)
+  }
+  const quand = plage(detail.premiere, d.derniere)
+  // Les plus anciennes ne sont pas lues : leurs auteurs ne sont pas nommés.
+  const toutes = detail.compte === detail.demandes.length
+  const par =
+    qui.length > 0
+      ? `, ${toutes ? 'par' : 'les dernières par'} ${qui.join(', ').replace(/, ([^,]*)$/, ' et $1')}`
+      : ''
+  return `Demandé ${compter(detail.compte, 'fois', 'fois')} ${quand}${par}.`
+}
+
+/** L'état d'une étape, dit au lecteur d'écran (la pastille de la frise le montre). */
+const ETATS_ETAPE = { fait: 'fait', encours: 'en cours', avenir: 'à venir', arrete: 'arrêté' }
+
+/**
+ * Les étapes d'un geste, de la demande à sa mise à disposition : chacune
+ * faite, en cours ou à venir, avec sa date ; un chantier qui s'arrête le dit
+ * à sa place, et les étapes d'après restent à venir.
+ */
+function etapesGeste(d, detail) {
+  const commande = detail.etapes.find((e) => e.sorte === 'commande')
+  const chantiers = detail.etapes.filter((e) => e.sorte === 'chantier')
+  const dernier = chantiers.at(-1)
+  const debut = chantiers[0]
+  const fusion = chantiers.find((e) => e.issue === FUSIONNE)
+  const fin = dernier && dernier.issue in FINS_CHANTIER ? dernier : null
+  const disponible = d.commande?.disponible === true
+  const etapes = [
+    { nom: 'Demandé', etat: 'fait', detail: `Pour la première fois le ${jour(detail.premiere)}.` },
+    commande
+      ? {
+          nom: 'Commandé',
+          etat: 'fait',
+          detail: `Le ${jour(commande.le)} par ${quiDansPhrase(commande.par)}.`,
+        }
+      : {
+          nom: 'Commandé',
+          etat: 'encours',
+          detail: 'À vous de décider : « Créer ce geste » sur la carte.',
+        },
+    {
+      nom: 'Codé à l’agence',
+      ...(fin && !fusion
+        ? {
+            etat: 'arrete',
+            detail: `${majuscule(fin.issue)} le ${jour(fin.le)}. ${FINS_CHANTIER[fin.issue]}`,
+          }
+        : fusion || disponible
+          ? {
+              etat: 'fait',
+              detail: `Codé et vérifié${fusion ? ` le ${jour(fusion.le)}` : ''}, sous les contrôles du harnais.`,
+            }
+          : dernier?.issue === EN_ATTENTE
+            ? {
+                etat: 'encours',
+                detail: 'Le chantier se fera demain : l’agence en lance quelques-uns par jour.',
+              }
+            : debut
+              ? {
+                  etat: 'encours',
+                  detail: `Commencé le ${jour(debut.le)}. Le harnais le code, puis le vérifie.`,
+                }
+              : commande
+                ? { etat: 'encours', detail: 'L’agence ne l’a pas encore commencé.' }
+                : {
+                    etat: 'avenir',
+                    detail: 'Le harnais le code, puis le vérifie sous ses contrôles.',
+                  }),
+    },
+    {
+      nom: 'Disponible en téléchargeant la mise à jour',
+      ...(fin?.issue === 'retiré'
+        ? { etat: 'arrete', detail: `Retiré le ${jour(fin.le)}. ${FINS_CHANTIER.retiré}` }
+        : disponible
+          ? {
+              etat: 'fait',
+              detail: fusion?.version ? `Dans la version ${fusion.version}.` : 'Livré.',
+            }
+          : fusion
+            ? {
+                etat: 'encours',
+                detail: `Il arrive à la prochaine mise à jour${fusion.version ? ` (${fusion.version})` : ''}, installée à un moment calme.`,
+              }
+            : { etat: 'avenir', detail: 'Il arrive par une mise à jour signée de l’agence.' }),
+    },
+    disponible && fin?.issue !== 'retiré'
+      ? { nom: 'Disponible', etat: 'fait', detail: 'Vous pouvez le demander à l’outil.' }
+      : {
+          nom: 'Disponible',
+          etat: 'avenir',
+          detail: 'Ensuite, vous le demandez à l’outil avec vos mots, comme aujourd’hui.',
+        },
+  ]
+  return etapes.map((e) =>
+    el(
+      'li',
+      { classe: `etape etape--${e.etat}` },
+      el(
+        'p',
+        { classe: 'etape__nom' },
+        e.nom,
+        el('span', { classe: 'sr', texte: ` (${ETATS_ETAPE[e.etat]})` }),
+      ),
+      el('p', { classe: 'etape__detail', texte: e.detail }),
+    ),
+  )
+}
+
+/** Ce que le geste fera de vos données, et ce qui change par rapport à la question libre. */
+const ceQuIlFera = (mission) => [
+  el('p', {
+    classe: 'texte volet__texte',
+    texte: mission.ecrit
+      ? 'Il modifiera vos données : chaque modification vous sera proposée, rien ne change sans votre oui.'
+      : 'Il lira vos données, sans rien modifier.',
+  }),
+  el('p', {
+    classe: 'texte volet__texte',
+    texte:
+      'Le code fera le calcul, de la même façon à chaque fois, écrit et testé par l’agence ; l’IA ne fait plus que reconnaître la demande.',
+  }),
+]
+
+/** Un texte français affiché : l'espace avant « ? ! : ; » devient insécable, le signe ne part pas seul à la ligne. */
+const insecable = (texte) => texte.replace(/ ([?!:;])/g, '\u202f$1')
+
+/** Une demande reçue : quand, qui, les mots tapés, et ce que la question libre en a fait. */
+const demandeRecue = (r) =>
+  el(
+    'li',
+    { classe: 'recue' },
+    el('p', { classe: 'recue__meta', texte: `${instant(r.le)} · ${nomDe(r.identite)}` }),
+    el('p', { classe: 'recue__consigne texte', texte: `« ${insecable(r.consigne)} »` }),
+    el('span', {
+      classe: `pastille${r.echappee === 'abandon' || !r.echappee ? ' pastille--doute' : ''}`,
+      texte: r.echappee ? (ISSUES_ECHAPPEE[r.echappee] ?? r.echappee) : 'sans question libre',
+    }),
+  )
+
+/** Ce qui part à l'agence (commandé) ou partira (à commander) ; ou pourquoi la commande serait refusée. */
+function sectionAgence(d, detail) {
+  if (detail.refus) {
+    return sectionVolet(
+      'Si vous le commandez',
+      el(
+        'p',
+        { classe: 'vide' },
+        el('b', { texte: 'La commande serait refusée. ' }),
+        majuscule(detail.refus.replace(`${d.intention} : `, '')),
+      ),
+    )
+  }
+  if (!detail.mission) return null
+  return sectionVolet(
+    d.commande ? 'Ce qui est parti à l’agence' : 'Ce qui partira à l’agence',
+    el('p', {
+      classe: 'volet__note',
+      texte:
+        'Vos demandes, réécrites sans aucun nom : chaque personne y devient son type. L’agence ne reçoit rien d’autre de vos données.',
+    }),
+    el(
+      'ul',
+      { classe: 'citations' },
+      ...detail.mission.consignes_types.map((c) =>
+        el(
+          'li',
+          { classe: 'citation texte' },
+          // Ce qui remplace un nom (`<personne>`) se voit : c'est tout ce que l'agence en saura.
+          ...insecable(c)
+            .split(/(<[^<>]+>)/)
+            .filter(Boolean)
+            .map((morceau) =>
+              /^<[^<>]+>$/.test(morceau)
+                ? el('span', { classe: 'citation__type', texte: morceau.slice(1, -1) })
+                : morceau,
+            ),
+        ),
+      ),
+    ),
   )
 }
 

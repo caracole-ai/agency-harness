@@ -46,6 +46,18 @@
   --shell-max: 86.25rem;
   --toc-reserve: 0rem;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Les sortes du journal : une teinte chacune, lisible sur le fond (4,5:1 au moins). */
+  /* Le surlignage de la recherche : le blanc y tient plus de 6:1. */
+  --surligne: #6b3fd4;
+  --sorte-demande: #1e67ef;
+  --sorte-reponse: #6b3fd4;
+  --sorte-attente: #8f5400;
+  --sorte-question: #0a7068;
+  --sorte-echeance: #c0262d;
+  --sorte-veille: #a8410c;
+  --sorte-outil: #217237;
+  --sorte-ia: #5a6470;
+  --sorte-action: #a82672;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -68,6 +80,15 @@
     --card-line: rgba(255, 255, 255, 0.14);
     --card-hover: rgba(255, 255, 255, 0.28);
     --card-tint: rgba(86, 142, 255, 0.1);
+    --sorte-demande: #8cb2ff;
+    --sorte-reponse: #c3a8ff;
+    --sorte-attente: #f2c46b;
+    --sorte-question: #6fd8cb;
+    --sorte-echeance: #ff9a9a;
+    --sorte-veille: #ffb27a;
+    --sorte-outil: #8fdca3;
+    --sorte-ia: #a9b3bf;
+    --sorte-action: #f59bd0;
     color-scheme: dark;
   }
 }
@@ -91,6 +112,15 @@
   --card-line: rgba(255, 255, 255, 0.14);
   --card-hover: rgba(255, 255, 255, 0.28);
   --card-tint: rgba(86, 142, 255, 0.1);
+  --sorte-demande: #8cb2ff;
+  --sorte-reponse: #c3a8ff;
+  --sorte-attente: #f2c46b;
+  --sorte-question: #6fd8cb;
+  --sorte-echeance: #ff9a9a;
+  --sorte-veille: #ffb27a;
+  --sorte-outil: #8fdca3;
+  --sorte-ia: #a9b3bf;
+  --sorte-action: #f59bd0;
   color-scheme: dark;
 }
 @media (min-width: 1241px) {
@@ -685,6 +715,14 @@ textarea {
   border-color: var(--human);
 }
 
+/* Un état long (« disponible en téléchargeant la mise à jour ») passe à la ligne plutôt que de déborder. */
+.carte__meta .pastille {
+  white-space: normal;
+  max-width: 100%;
+  line-height: 1.35;
+  padding: 0.2em 0.5em;
+}
+
 /* ---------- les boutons ---------- */
 .actions {
   display: flex;
@@ -851,6 +889,208 @@ textarea {
   color: var(--fg-soft);
   cursor: pointer;
 }
+/* La recherche et les tags du journal : au-dessus des lignes, ils ne bougent pas pendant la saisie. */
+.journal__outils {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0 0 0.5rem;
+}
+.journal__recherche input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 0.8rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+}
+.journal__recherche input::placeholder {
+  color: var(--fg-faint);
+}
+.journal__recherche input:hover {
+  border-color: var(--card-hover);
+}
+.journal__tags {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0 0.25rem;
+}
+/* Les filtres repliés sous la recherche : un déclencheur discret, ce qui est choisi à sa suite. */
+.journal__filtres summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: fit-content;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--fg);
+  cursor: pointer;
+  list-style: none;
+}
+.journal__filtres summary::-webkit-details-marker {
+  display: none;
+}
+.journal__filtres summary::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 160ms var(--ease-out);
+}
+.journal__filtres[open] summary::before {
+  transform: rotate(45deg);
+}
+.journal__filtres summary:hover {
+  color: var(--accent-ink);
+}
+.journal__filtres-etat {
+  font-weight: 400;
+  color: var(--accent-ink);
+}
+/* Ce que la recherche a trouvé dans une ligne : fond violet, lettres blanches, dans les deux thèmes. */
+.surligne {
+  color: #ffffff;
+  background: var(--surligne);
+  border-radius: 2px;
+  padding: 0 0.1em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.tags__nom {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+  min-width: 3.25rem;
+}
+/* Un tag : un bouton à bascule ; choisi, il prend la teinte de sa sorte (le bleu de l'outil sinon). */
+.tag {
+  --teinte: var(--accent-ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.85rem;
+  padding: 0 0.65rem;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--fg-soft);
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease-out),
+    background-color 160ms var(--ease-out),
+    color 160ms var(--ease-out);
+}
+.tag:hover {
+  border-color: var(--teinte);
+  color: var(--fg);
+}
+.tag[aria-pressed="true"] {
+  color: var(--fg);
+  border-color: var(--teinte);
+  background: color-mix(in srgb, var(--teinte) 14%, transparent);
+}
+.tag__compte {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-faint);
+}
+/* La pastille de couleur d'un tag de sorte, la même que le badge de ses lignes. */
+.tag[class*="tag--"]::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--teinte);
+}
+.journal__compte {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+}
+.journal__effacer,
+.tags__plus {
+  padding: 0;
+  font: inherit;
+  color: var(--accent-ink);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tags__plus {
+  font-size: 0.8125rem;
+  margin-left: 0.25rem;
+}
+/* La sorte d'une ligne : un badge à sa teinte, en tête de la ligne. */
+.badge {
+  --teinte: var(--fg-soft);
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  padding: 0.35em 0.5em;
+  border-radius: 3px;
+  white-space: nowrap;
+  vertical-align: 0.1em;
+  color: var(--teinte);
+  background: color-mix(in srgb, var(--teinte) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--teinte) 38%, transparent);
+}
+.badge--demande,
+.tag--demande {
+  --teinte: var(--sorte-demande);
+}
+.badge--reponse,
+.tag--reponse {
+  --teinte: var(--sorte-reponse);
+}
+.badge--attente,
+.tag--attente {
+  --teinte: var(--sorte-attente);
+}
+.badge--question,
+.tag--question {
+  --teinte: var(--sorte-question);
+}
+.badge--echeance,
+.tag--echeance {
+  --teinte: var(--sorte-echeance);
+}
+.badge--veille,
+.tag--veille {
+  --teinte: var(--sorte-veille);
+}
+.badge--outil,
+.tag--outil {
+  --teinte: var(--sorte-outil);
+}
+.badge--ia,
+.tag--ia {
+  --teinte: var(--sorte-ia);
+}
+.badge--action,
+.tag--action {
+  --teinte: var(--sorte-action);
+}
 /* Une ligne : l'heure à gauche ; le genre en petit, puis ce qui s'est passé. */
 .entree {
   display: grid;
@@ -961,6 +1201,191 @@ textarea {
   color: var(--fg-soft);
   overflow-wrap: anywhere;
 }
+/* Le volet d'un geste : des parties titrées, une frise des étapes, les demandes, ce qui part à l'agence. */
+.volet__section {
+  padding: 1rem 0 1.1rem;
+  border-top: 1px solid var(--line);
+}
+.volet__section > :last-child {
+  margin-bottom: 0;
+}
+.volet__section h3 {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin: 0 0 0.75rem;
+}
+.volet__texte {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg);
+}
+.volet__texte + .volet__texte {
+  margin-top: 0.5rem;
+}
+.volet__note {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fg-soft);
+  margin: 0 0 0.75rem;
+  text-wrap: pretty;
+}
+.volet__section .vide {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  padding: 0.8rem 0.9rem;
+  margin: 0 0 0.8rem;
+}
+/* La frise : un repère par étape, relié au suivant ; plein fait, cerclé en cours, creux à venir. */
+.etapes {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+.etape {
+  position: relative;
+  padding: 0 0 0.85rem 1.5rem;
+}
+.etape::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.3rem;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  box-sizing: border-box;
+}
+.etape:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: calc(0.3125rem - 0.75px);
+  top: 1.05rem;
+  bottom: 0.1rem;
+  width: 1.5px;
+  background: var(--line-strong);
+}
+.etape--fait::before {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.etape--fait:not(:last-child)::after {
+  background: var(--accent);
+}
+.etape--encours::before {
+  border-color: var(--accent);
+  background: var(--card-tint);
+  box-shadow: 0 0 0 3px var(--card-tint);
+}
+.etape--arrete::before {
+  border-color: var(--refus);
+  background: var(--refus);
+}
+.etape__nom {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+.etape--avenir .etape__nom {
+  font-weight: 500;
+  color: var(--fg-faint);
+}
+.etape__detail {
+  margin: 0.1rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--fg-soft);
+  text-wrap: pretty;
+}
+.etape--avenir .etape__detail {
+  color: var(--fg-faint);
+}
+/* Les demandes reçues : quand et qui, les mots tapés, ce que la question libre en a fait. */
+.recues {
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0;
+}
+.recue {
+  padding: 0.65rem 0;
+  border-top: 1px dashed var(--line-strong);
+}
+.recue__meta {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--fg-faint);
+}
+.recue__consigne {
+  margin: 0.2rem 0 0.4rem;
+  font-size: 0.9375rem;
+  color: var(--fg);
+}
+/* Ce qui part à l'agence : les phrases telles qu'elles partent. */
+.citations {
+  list-style: none;
+  margin: 0 0 0.8rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.citation {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--fg);
+  background: var(--harness-soft);
+  border-left: 2px solid var(--accent);
+  padding: 0.45rem 0.65rem;
+}
+/* Ce qui remplace un nom : le type, en étiquette. */
+.citation__type {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--accent-ink);
+  border: 1px dashed var(--accent);
+  border-radius: 3px;
+  padding: 0.1em 0.4em;
+  margin: 0 0.1em;
+  white-space: nowrap;
+}
+/* Le détail d'une carte : un « i » discret, à droite de la ligne du haut. */
+.carte__detail {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: none;
+  color: var(--fg-soft);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease-out),
+    color 160ms var(--ease-out),
+    background-color 160ms var(--ease-out);
+}
+.carte__detail:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  background: var(--card-tint);
+}
+
 /* Le détail technique, montré sur demande : en retrait. */
 .entree--technique .entree__motif {
   font-size: 0.8125rem;

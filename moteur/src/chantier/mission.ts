@@ -4,11 +4,11 @@ import { parse, stringify } from 'yaml'
 import { z } from 'zod'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG, MOTIF_SLUG, NOM_METIER } from '../config'
 import { FORMAT_INTENTION, type Intention } from '../conversation/actions'
-import type { MetierConversation } from '../conversation/conversation'
+import { type MetierConversation, TYPE_CONSIGNE } from '../conversation/conversation'
 import type { Designable } from '../conversation/designation'
 import { type Domaine, motifPourMasquer } from '../conversation/domaine'
 import { MOTIF_ID_CONVERSATION } from '../conversation/id'
-import type { Identite } from '../conversation/roles'
+import { type Identite, IdentiteSchema } from '../conversation/roles'
 import type { IssueEchappee } from '../echappee/boucle'
 import { TYPE_ECHAPPEE } from '../echappee/echappee'
 import { fuites } from '../echappee/pseudonymes'
@@ -18,6 +18,7 @@ import {
   demandeACommander,
   demandesSansGeste,
   ErreurCommande,
+  NOUVELLE,
   TYPE_GESTE_COMMANDE,
 } from '../gestes/commande'
 import type { Ligne } from '../journal/journal'
@@ -320,17 +321,174 @@ export function commanderMission<S>(
   maintenant: Temporal.ZonedDateTime,
 ): { intention: string; le: string; chemin: string } {
   const journal = m.journal(s)
+  const mission = missionCommandee(
+    intention,
+    journal.lire(),
+    contexteCommande(m, s, dossierClient, intention, maintenant),
+  )
+  const chemin = ecrireMission(dossierClient, mission)
+  return { ...commanderGeste(journal, m.client(s), intention, par, maintenant), chemin }
+}
+
+/** Ce que le code lit chez le client pour écrire la mission d'une intention, le jour dit. */
+function contexteCommande<S>(
+  m: MetierConversation<S>,
+  s: S,
+  dossierClient: string,
+  intention: string,
+  maintenant: Temporal.ZonedDateTime,
+): ContexteCommande {
   const declaree = m.intentions.find((i) => i.id === intention)
-  const mission = missionCommandee(intention, journal.lire(), {
+  return {
     catalogue: construireCatalogue(m, missionsOuvertes(dossierClient)),
     ...(declaree ? { declaree } : {}),
     personnes: m.noms(s),
     domaine: m.domaine,
     metier: chargerConfig(join(dossierClient, FICHIER_CONFIG), ConfigBase).metier,
     date: maintenant.withTimeZone(FUSEAU).toPlainDate(),
-  })
-  const chemin = ecrireMission(dossierClient, mission)
-  return { ...commanderGeste(journal, m.client(s), intention, par, maintenant), chemin }
+  }
+}
+
+/** Combien de demandes le détail d'une demande sans geste montre, de la plus récente à la plus ancienne. */
+export const DEMANDES_DETAIL_MAX = 10
+
+/** Une demande reçue sous une intention : quand, qui, les mots tapés, et ce que la question libre en a fait. */
+export interface DemandeRecue {
+  /** L'horodatage de la consigne (instant ISO). */
+  le: string
+  identite: Identite
+  consigne: string
+  /** L'issue de la question libre qui a suivi (`reponse`, `proposition`, `abandon`) ; absente sans question libre. */
+  echappee?: string
+}
+
+/** Une étape d'une commande : la commande elle-même, puis chaque statut de chantier reçu, au jour de Paris. */
+export type EtapeCommande =
+  | { sorte: 'commande'; le: string; par: Identite }
+  | { sorte: 'chantier'; le: string; issue: string; version?: string }
+
+/** Le détail d'une demande sans geste, pour le patron (l'onglet « Gestes », le volet). */
+export interface DetailSansGeste {
+  intention: string
+  /** Toutes les demandes, et le jour de la première. */
+  compte: number
+  premiere: string
+  /** Les dernières demandes (`DEMANDES_DETAIL_MAX`), de la plus récente à la plus ancienne. */
+  demandes: DemandeRecue[]
+  /** La dernière commande et ce qui l'a suivie, dans l'ordre ; vide sans commande. */
+  etapes: EtapeCommande[]
+  /**
+   * Ce qui part à l'agence : la mission écrite (commandée), ou celle que la
+   * commande écrirait (pas encore commandée) ; absente si elle n'est pas
+   * relue (une ancienne mission) ou si la commande serait refusée (`refus`).
+   */
+  mission?: { consignes_types: string[]; ecrit: boolean }
+  /** Pourquoi « Créer ce geste » serait refusé aujourd'hui, en clair (`ErreurCommande`). */
+  refus?: string
+}
+
+/** Les `donnees` d'une ligne, lues telles quelles (null si absentes) : un schéma les relit ensuite. */
+const donneesDe = (l: Ligne): unknown => JSON.parse(l.donnees ?? 'null')
+
+/** Ce qu'une ligne `consigne` finie en demande nouvelle dit d'elle-même : qui, et l'intention. */
+const DonneesConsigne = z.looseObject({
+  identite: IdentiteSchema,
+  demande: z.looseObject({ intention: z.string() }),
+})
+/** Ce qu'une ligne `geste commandé` dit de qui a commandé. */
+const DonneesCommande = z.looseObject({ par: IdentiteSchema })
+
+/** La mission écrite le jour de la commande, relue par le schéma strict ; absente ou illisible : undefined. */
+function missionEcrite(
+  dossierClient: string,
+  jour: string,
+  intention: string,
+): Mission | undefined {
+  const chemin = join(dossierClient, DOSSIER_MISSIONS, jour, `${intention}.yaml`)
+  if (!existsSync(chemin)) return undefined
+  return Mission.safeParse(parse(readFileSync(chemin, 'utf8'))).data
+}
+
+/**
+ * Le détail d'une demande sans geste, lu dans le journal sans modèle : les
+ * demandes (qui, quand, les mots tapés, l'issue de la question libre qui a
+ * suivi dans la même conversation), les étapes de la dernière commande, et
+ * ce qui part à l'agence : la mission écrite, ou, avant la commande, celle
+ * que `missionCommandee` écrirait (ses refus deviennent `refus`). Lève
+ * (`ErreurCommande`) : une intention mal formée ou sans demande.
+ */
+export function detailSansGeste<S>(
+  m: MetierConversation<S>,
+  s: S,
+  dossierClient: string,
+  intention: string,
+  maintenant: Temporal.ZonedDateTime,
+): DetailSansGeste {
+  if (!FORMAT_INTENTION.test(intention)) {
+    throw new ErreurCommande('intention attendue : le mot-clé de la demande, en snake_case')
+  }
+  const lignes = m.journal(s).lire()
+  const demande = demandesSansGeste(lignes).find((d) => d.intention === intention)
+  if (!demande) throw new ErreurCommande(`${intention} : aucune demande sans geste sous ce mot`)
+
+  const demandes: DemandeRecue[] = []
+  // La demande d'une conversation qui attend encore sa question libre.
+  const enAttente = new Map<string, DemandeRecue>()
+  let etapes: EtapeCommande[] = []
+  for (const l of lignes) {
+    if (l.type === TYPE_CONSIGNE && l.issue === NOUVELLE && l.objet !== null) {
+      const lue = DonneesConsigne.safeParse(donneesDe(l)).data
+      if (lue?.demande.intention !== intention) continue
+      const recue = { le: l.horodatage, identite: lue.identite, consigne: l.motif ?? '' }
+      demandes.push(recue)
+      enAttente.set(l.objet, recue)
+    } else if (l.type === TYPE_ECHAPPEE && l.objet !== null && l.issue !== null) {
+      const recue = enAttente.get(l.objet)
+      if (!recue || DonneesEchappee.safeParse(donneesDe(l)).data?.intention !== intention) continue
+      recue.echappee = l.issue
+      enAttente.delete(l.objet)
+    } else if (l.type === TYPE_GESTE_COMMANDE && l.objet === intention) {
+      const par = DonneesCommande.safeParse(donneesDe(l)).data?.par
+      // Une commande nouvelle (après un retrait) repart de zéro, comme `demandesAvecEtat`.
+      etapes = par ? [{ sorte: 'commande', le: jourDe(l.horodatage).toString(), par }] : []
+    } else if (l.type === TYPE_CHANTIER && l.objet === intention && l.issue !== null) {
+      const version = DonneesChantier.safeParse(donneesDe(l)).data?.version
+      etapes.push({
+        sorte: 'chantier',
+        le: jourDe(l.horodatage).toString(),
+        issue: l.issue,
+        ...(version ? { version } : {}),
+      })
+    }
+  }
+
+  let mission: Mission | undefined
+  let refus: string | undefined
+  if (demande.commande) {
+    mission = missionEcrite(dossierClient, demande.commande.le, intention)
+  } else {
+    try {
+      mission = missionCommandee(
+        intention,
+        lignes,
+        contexteCommande(m, s, dossierClient, intention, maintenant),
+      )
+    } catch (erreur) {
+      if (!(erreur instanceof ErreurCommande)) throw erreur
+      refus = erreur.message
+    }
+  }
+  return {
+    intention,
+    compte: demande.compte,
+    premiere: demandes[0] ? jourDe(demandes[0].le).toString() : demande.derniere,
+    demandes: demandes.reverse().slice(0, DEMANDES_DETAIL_MAX),
+    etapes,
+    ...(mission
+      ? { mission: { consignes_types: mission.consignes_types, ecrit: mission.ecrit } }
+      : {}),
+    ...(refus ? { refus } : {}),
+  }
 }
 
 /** Ce que le chantier rend d'une mission (L7) : `en cours` et `en attente` sont écrits par `pnpm agence`. */

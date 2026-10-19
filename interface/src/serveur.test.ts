@@ -693,6 +693,79 @@ describe('les demandes sans geste : /api/sans-geste, commander (REFLEXIONS.md, 2
     })
     expect(d).not.toHaveProperty('commande.chantier')
   })
+  it('le détail : au patron seul ; les demandes et leur question libre, ce qui partirait, ou pourquoi la commande serait refusée ; puis les étapes', async () => {
+    const dossier = copieAvecDemandes()
+    const a = app([], dossier)
+    const detail = (intention: string, identite: Identite = PATRON) =>
+      poster(a, '/api/sans-geste/detail', { identite, intention })
+    expect((await detail('remise_des_cles', { role: 'agent', personne: 'A-2' })).status).toBe(403)
+    expect((await detail('Remise des clés')).status).toBe(400)
+    expect((await detail('inventaire_cles')).status).toBe(400)
+    const avant = await detail('remise_des_cles')
+    expect(avant.status).toBe(200)
+    expect(await avant.json()).toEqual({
+      intention: 'remise_des_cles',
+      compte: 2,
+      premiere: '2026-10-08',
+      demandes: [
+        {
+          le: '2026-10-09T09:00:00Z',
+          identite: PATRON,
+          consigne: 'Sophie a-t-elle rendu ses clés ?',
+        },
+        {
+          le: '2026-10-08T08:00:00Z',
+          identite: PATRON,
+          consigne: 'Julien a-t-il rendu ses clés ?',
+          echappee: 'proposition',
+        },
+      ],
+      etapes: [],
+      mission: { consignes_types: ['<personne> a-t-il rendu ses clés ?'], ecrit: true },
+    })
+    // Rien n'est écrit pour un détail : ni mission, ni ligne au journal.
+    expect(existsSync(join(dossier, DOSSIER_MISSIONS))).toBe(false)
+    expect(journalDe(dossier).filter((l) => l.type === TYPE_GESTE_COMMANDE)).toEqual([])
+    // Sans question libre, aucune consigne ne partirait : la commande serait refusée, et le détail le dit.
+    expect(await (await detail('releve_kilometrique')).json()).toMatchObject({
+      refus:
+        "releve_kilometrique : aucune consigne utilisable (demandes trop anciennes, ou qui portent un nom) ; rien n'est commandé",
+    })
+    expect(
+      (
+        await poster(a, '/api/sans-geste/commander', {
+          identite: PATRON,
+          intention: 'remise_des_cles',
+        })
+      ).status,
+    ).toBe(200)
+    const j = new Journal(join(dossier, 'journal.sqlite'))
+    j.ecrire(
+      [{ type: TYPE_CHANTIER, client: CLIENT, objet: 'remise_des_cles', issue: 'en cours' }],
+      '2026-10-11T01:30:00Z',
+    )
+    j.ecrire(
+      [
+        {
+          type: TYPE_CHANTIER,
+          client: CLIENT,
+          objet: 'remise_des_cles',
+          issue: 'fusionné',
+          donnees: { version: 'v2026-10-11-1' },
+        },
+      ],
+      '2026-10-11T02:30:00Z',
+    )
+    j.fermer()
+    expect(await (await detail('remise_des_cles')).json()).toMatchObject({
+      etapes: [
+        { sorte: 'commande', le: '2026-10-10', par: PATRON },
+        { sorte: 'chantier', le: '2026-10-11', issue: 'en cours' },
+        { sorte: 'chantier', le: '2026-10-11', issue: 'fusionné', version: 'v2026-10-11-1' },
+      ],
+      mission: { consignes_types: ['<personne> a-t-il rendu ses clés ?'], ecrit: true },
+    })
+  })
   it('l’état d’une commande : le chantier qui l’a suivie, puis « disponible » quand le métier porte le geste', async () => {
     const dossier = copieAvecDemandes()
     const commander = () =>
