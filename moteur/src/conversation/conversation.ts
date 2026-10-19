@@ -102,6 +102,12 @@ export interface MetierConversation<Session> {
   tableau?: (s: Session, identite: Identite, maintenant: Temporal.ZonedDateTime) => Tableau
   /** Les règles du métier, pour l'onglet Règles de l'interface (PLAN-METIER-2.md § 3.6, M10). Absent, l'onglet est vide. */
   registre?: (s: Session) => Registre
+  /**
+   * L'objet d'une ligne du journal, en clair, pour la page (une personne et
+   * son titre, une vacation, une demande) ; `undefined` : l'identifiant reste.
+   * Il ne part jamais au modèle.
+   */
+  nommer?: (s: Session, objet: string) => string | undefined
 }
 
 /** Comment le métier écrit une proposition de l'échappée : validée par le demandeur, puis les accords que le métier exige (PLAN-ESPACES.md § 7.2). */

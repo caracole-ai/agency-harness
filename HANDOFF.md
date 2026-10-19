@@ -79,7 +79,10 @@ un volet de détail par action (Lionel) ; dans le chat, les échéances
 groupées (en retard, urgentes, à prévoir, date à renseigner : `Alerte`
 porte `action` et `precision`), la veille en compte et en groupes au lieu
 du rapport Markdown, le planning en lignes courtes ; la première ligne
-d'un résultat en titre. Démo :
+d'un résultat en titre. Le journal et son volet disent de qui il s'agit
+(le métier nomme l'objet : `MetierConversation.nommer`, `objetEnClair`
+dans `/api/journal`) et ne répètent plus une échéance à chaque veille.
+Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).
 

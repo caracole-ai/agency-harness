@@ -42,7 +42,7 @@ import {
   vacationDe,
 } from './remplacement'
 import { ROLES } from './roles'
-import { ConfigSecurite, type PREFERENCES, vacationEnBref } from './veille'
+import { ConfigSecurite, decrire, type PREFERENCES, vacationEnBref } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
 // son journal seul), ses gestes, les personnes que chaque rôle peut désigner
@@ -362,6 +362,23 @@ export const CONVERSATION: MetierConversation<Session> = {
       modele,
       precisions,
     )
+  },
+  // Un titre d'agent (`A-4/carte`), une vacation (`V-05`), une demande de remplacement (`D-V-17`).
+  nommer: (s, objet) => {
+    if (objet.startsWith('D-')) {
+      try {
+        return `${titreRemplacement(s, objet)} · ${vacationEnBref(s.ctx, vacationDe(s, objet).id)}`
+      } catch {
+        return undefined
+      }
+    }
+    const v = s.ctx.planning.vacations.find((x) => x.id === objet)
+    if (v) return `${s.ctx.agent(v.agent).nom} · ${vacationEnBref(s.ctx, v.id)}`
+    const [agent, titre] = objet.split('/')
+    if (titre !== undefined && s.ctx.planning.agents.some((a) => a.id === agent)) {
+      return decrire(s.ctx, objet)
+    }
+    return undefined
   },
   tableau: (s, identite) => {
     const lignes = s.journal.lire()
