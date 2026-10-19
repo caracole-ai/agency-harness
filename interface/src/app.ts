@@ -4,6 +4,9 @@
 // dans un `finally` : rouvrir est la façon simple de relire le planning après
 // une écriture. L'identité est déclarée, pas authentifiée, et la page le dit
 // (PLAN-ESPACES.md § 10, D4, D12).
+import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   aCapacite,
@@ -47,6 +50,27 @@ import { HTTPException } from 'hono/http-exception'
 
 /** Le dossier servi : `index.html` et `static/`, à côté de ce paquet, quel que soit le dossier de lancement. */
 const PUBLIC = fileURLToPath(new URL('../public', import.meta.url))
+
+/** Les fichiers de la page qu'elle référence par leur adresse : chacune reçoit l'empreinte de son contenu. */
+const FICHIERS_PAGE = ['/static/style.css', '/static/app.js']
+
+/**
+ * La page, chaque fichier référencé suivi de l'empreinte de son contenu
+ * (`/static/app.js?v=…`) : un navigateur qui gardait l'ancienne feuille avec
+ * le nouveau script (2026-10-19, une page sans mise en forme) ne peut plus
+ * mélanger deux versions. Lue une fois, au démarrage.
+ */
+export function pageVersionnee(dossier = PUBLIC): string {
+  return FICHIERS_PAGE.reduce(
+    (page, chemin) => {
+      const contenu = readFileSync(join(dossier, chemin.slice(1)))
+      const v = createHash('sha256').update(contenu).digest('hex').slice(0, 12)
+      if (!page.includes(`"${chemin}"`)) throw new Error(`index.html ne référence pas ${chemin}`)
+      return page.replaceAll(`"${chemin}"`, `"${chemin}?v=${v}"`)
+    },
+    readFileSync(join(dossier, 'index.html'), 'utf8'),
+  )
+}
 
 /** L'interface n'écoute qu'en local. */
 export const HOTE = '127.0.0.1'
@@ -325,7 +349,8 @@ export function creerApp(options: {
     await next()
     c.header('Cache-Control', 'no-cache')
   }
-  app.get('/', revalider, serveStatic({ root: PUBLIC, path: 'index.html' }))
+  const page = pageVersionnee()
+  app.get('/', revalider, (c) => c.html(page))
   app.get('/static/*', revalider, serveStatic({ root: PUBLIC }))
 
   // Les deux lectures sont des POST : l'identité voyage dans un corps JSON,

@@ -627,14 +627,17 @@ export function replisProposition(s: Session, p: Proposition): Repli[] {
   const nomRegle = (id: string) => s.registre.interdits.find((i) => i.id === id)?.nom ?? id
   const section = (titre: string, lignes: Repli['lignes']): Repli[] =>
     lignes.length === 0 ? [] : [{ titre, lignes }]
-  const pluriel = (n: number, un: string, plusieurs: string) => `${n} ${n > 1 ? plusieurs : un}`
+  // Le nom d'une règle dit ce qu'elle exige (« carte professionnelle valide ») : la ligne dit qu'il ne l'a pas.
   return [
     ...section(
-      `${pluriel(p.exclus.length, 'exclu', 'exclus')} par une règle`,
-      p.exclus.map((c) => ({ titre: c.nom, detail: c.regles.map(nomRegle).join(', ') })),
+      `${p.exclus.length} ${p.exclus.length > 1 ? 'ne peuvent pas' : 'ne peut pas'} : une règle l'interdit`,
+      p.exclus.map((c) => ({
+        titre: c.nom,
+        detail: `ne remplit pas : ${c.regles.map(nomRegle).join(', ')}`,
+      })),
     ),
     ...section(
-      `${pluriel(p.ecartes.length, 'écarté', 'écartés')} : une donnée manque`,
+      `${p.ecartes.length} à vérifier : ${p.ecartes.length > 1 ? 'leur' : 'son'} dossier est incomplet`,
       p.ecartes.map((c) => ({ titre: c.nom, detail: c.raisons.join(' ; ') })),
     ),
   ]

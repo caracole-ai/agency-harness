@@ -635,7 +635,7 @@ textarea {
   color: var(--fg-faint);
 }
 .repli__detail::before {
-  content: " · ";
+  content: "— ";
 }
 .vide {
   border: 1px dashed var(--line-strong);

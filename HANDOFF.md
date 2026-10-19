@@ -68,7 +68,10 @@ la proposition de l'outil en avant avec un seul bouton, les autres
 possibles en lignes « Choisir », les indisponibles repliés avec la seule
 règle en cause ; les sections vides ne se montrent plus ; la question de
 validation en clair (`DemandeTableau.titre`, `Choix.titre`/`detail`,
-`Repli.lignes` en nom et détail). Démo :
+`Repli.lignes` en nom et détail) ; les replis disent « ne peuvent pas :
+une règle l'interdit » et « à vérifier : dossier incomplet ». La page
+référence ses fichiers par l'empreinte de leur contenu (`?v=`) : le
+navigateur de Lionel gardait l'ancienne feuille avec le nouveau script. Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).
 
