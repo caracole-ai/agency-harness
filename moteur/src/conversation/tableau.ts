@@ -9,6 +9,8 @@ export interface DemandeTableau {
   texte: string
   statut: string
   depuis: string
+  /** Les décisions offertes sur la demande, à son étape (exemple : valider le remplaçant proposé, ou en prendre un autre) ; chacune un geste, cliqué sans modèle. Absent ou vide : rien à décider. */
+  choix?: Choix[]
 }
 
 /** Un autre choix offert sur une proposition en attente : un geste du métier, appelé directement (un bouton), sans modèle (PLAN-CHOIX.md, lot 3). */

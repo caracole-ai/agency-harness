@@ -365,11 +365,19 @@ function zoneReponse(conf, nom, choix = []) {
   return zone
 }
 
-/** Une demande en cours, telle que le métier la rend (`DemandeTableau`) : son texte dit aussi la dernière étape. */
+/**
+ * Une demande en cours, telle que le métier la rend (`DemandeTableau`) : son
+ * texte dit aussi la dernière étape ; ses décisions, à cliquer. Une décision
+ * déjà cliquée dont le oui attend ne se remontre pas : la carte y renvoie.
+ */
 function carteDemande(d) {
+  const choix = d.choix ?? []
+  const cliquee = choix.find((c) =>
+    ici.donnees.aValider.confirmations.some((x) => x.geste && memeGeste(x.geste, c)),
+  )
   return el(
     'li',
-    { classe: 'carte' },
+    { classe: `carte${choix.length > 0 ? ' carte--attente' : ''}` },
     el(
       'div',
       { classe: 'carte__meta' },
@@ -379,6 +387,49 @@ function carteDemande(d) {
       el('time', { datetime: d.depuis, texte: instant(d.depuis) }),
     ),
     el('p', { classe: 'texte', texte: d.texte }),
+    cliquee
+      ? el('p', {
+          classe: 'carte__suite',
+          texte: `« ${cliquee.libelle} » : votre oui est attendu, dans les confirmations ci-dessus.`,
+        })
+      : choix.length > 0
+        ? zoneChoix(choix)
+        : null,
+  )
+}
+
+/** Deux gestes identiques : la même action, les mêmes paramètres, quel que soit leur ordre. */
+const memeGeste = (a, b) => {
+  const canon = (p) =>
+    JSON.stringify(
+      Object.keys(p)
+        .sort()
+        .map((k) => [k, p[k]]),
+    )
+  return a.action === b.action && canon(a.params) === canon(b.params)
+}
+
+/**
+ * Les décisions qu'offre le métier, sur une demande ou sous le résultat d'un
+ * geste : chacune un geste, cliqué sans modèle ; la première, la décision
+ * attendue, en avant. Les mêmes décisions, où qu'elles soient, partagent leur clé.
+ */
+function zoneChoix(choix) {
+  const cle = JSON.stringify(choix)
+  const bouton = (c, classe) =>
+    el('button', { classe, type: 'button', texte: c.libelle, onclick: () => decider(c, cle) })
+  const [principal, ...autres] = choix
+  return el(
+    'div',
+    { classe: 'actions', 'data-choix': cle },
+    bouton(principal, 'bouton bouton--oui'),
+    autres.length > 0
+      ? el(
+          'div',
+          { classe: 'choix', role: 'group', 'aria-label': 'Ou bien' },
+          ...autres.map((c) => bouton(c, 'bouton bouton--outil bouton--petit suggestion')),
+        )
+      : null,
   )
 }
 
@@ -689,6 +740,9 @@ function bulleOutil(reponse, conf) {
       }),
     )
   }
+  if (reponse.sorte === 'resultat' && reponse.choix?.length > 0) {
+    corps.append(zoneChoix(reponse.choix))
+  }
   if (enAttente) {
     const attente = { ...conf, empreinte: reponse.empreinte }
     ici.attente = attente
@@ -795,7 +849,9 @@ function occuper(oui) {
   // Changer de « Je suis » pendant qu'une réponse est en route mêlerait les
   // identités : la réponse reviendrait au nom de l'ancienne.
   $('identite').disabled = oui
-  for (const b of document.querySelectorAll('.suggestion, [data-confirmation] button'))
+  for (const b of document.querySelectorAll(
+    '.suggestion, [data-confirmation] button, [data-choix] button',
+  ))
     b.disabled = oui
 }
 
@@ -890,6 +946,42 @@ async function choisir(conf, choix) {
     if (r.reponse.sorte === 'proposition') fermer(conf, `Remplacée : ${choix.libelle}`)
     ici.conversation = r.conversation
     bulleOutil(r.reponse, { conversation: r.conversation, identite: conf.identite })
+  } catch (erreur) {
+    attente.remove()
+    bulleErreur(erreur.message)
+  } finally {
+    occuper(false)
+    rafraichir()
+  }
+}
+
+/**
+ * Une décision offerte, cliquée : le geste part sans modèle, dans la
+ * conversation en cours ; ce qui écrit attend encore son oui, montré dans le
+ * fil et dans « à valider ». Les mêmes décisions, ailleurs, disent le choix fait.
+ */
+async function decider(choix, cle) {
+  if (ici.occupe) return
+  occuper(true)
+  const identite = ici.identite
+  bulleClient(choix.libelle, identite)
+  const attente = bulleAttente()
+  try {
+    const r = await appeler(API.geste, {
+      identite,
+      ...(ici.conversation ? { conversation: ici.conversation } : {}),
+      libelle: choix.libelle,
+      action: choix.action,
+      params: choix.params,
+    })
+    attente.remove()
+    for (const zone of document.querySelectorAll('[data-choix]')) {
+      if (zone.dataset.choix === cle) {
+        zone.replaceWith(el('p', { classe: 'repondu', texte: `Choisi : ${choix.libelle}` }))
+      }
+    }
+    ici.conversation = r.conversation
+    bulleOutil(r.reponse, { conversation: r.conversation, identite })
   } catch (erreur) {
     attente.remove()
     bulleErreur(erreur.message)
