@@ -145,11 +145,8 @@ const CALCULS: Record<string, () => Attendu> = {
       .filter((p) => p.type === 'forfait')
       .map((p) => consommeVendu(ctx, p.id, heuresParJour))
       .filter((c) => (c.part ?? 0) > CONSIGNE.quatreVingtDix)
-      .flatMap((c) => [
-        c.projet,
-        nombre((c.part ?? 0) * 100),
-        nombre(Math.abs(c.vendus - c.consommes)),
-      ]),
+      // Le dépassement en jours n'est pas exigé (Lionel, 2026-10-19).
+      .flatMap((c) => [c.projet, nombre((c.part ?? 0) * 100)]),
   }),
   'E-05': () => {
     // « Le site e-commerce » : le client du secteur dont le registre porte des accès à ses domaines.
@@ -168,10 +165,8 @@ const CALCULS: Record<string, () => Attendu> = {
     return { contient: unique(acces.map((a) => nomDeFamille(a.personne))) }
   },
   'E-08': () => ({
-    contient: devisSansReponse(aujourdhui.subtract({ days: CONSIGNE.dixJours })).flatMap((d) => [
-      d.id,
-      nombre(d.montant_ht_eur),
-    ]),
+    // Les montants ne sont pas exigés (Lionel, 2026-10-19).
+    contient: devisSansReponse(aujourdhui.subtract({ days: CONSIGNE.dixJours })).map((d) => d.id),
   }),
   'E-09': () => {
     const client = seul(duSecteur("cabinet d'avocats"), "cabinet d'avocats")
@@ -193,12 +188,8 @@ const CALCULS: Record<string, () => Attendu> = {
     const factures = [...ctx.factures.values()].filter(
       (f) => f.client === 'CLI-07' && jour(f.date).year === aujourdhui.year,
     )
-    return {
-      contient: [
-        nombre(factures.reduce((somme, f) => somme + f.montant_ht_eur, 0)),
-        ...factures.map((f) => f.id),
-      ],
-    }
+    // Les numéros de facture ne sont pas exigés (Lionel, 2026-10-19).
+    return { contient: [nombre(factures.reduce((somme, f) => somme + f.montant_ht_eur, 0))] }
   },
   'E-14': () => {
     const lot = [...ctx.lots.values()].filter((l) => l.projet === 'PRJ-12')[1]
@@ -236,13 +227,10 @@ const CALCULS: Record<string, () => Attendu> = {
     return { contient: [lot] }
   },
   'E-18': () => {
-    const lots = pvEnAttente(aujourdhui.subtract({ days: CONSIGNE.quinzeJours }))
-    const contacts = lots.flatMap((l) =>
-      [...ctx.contacts.values()]
-        .filter((c) => c.client === projet(l.projet).client)
-        .map((c) => nomDeFamille(c.id)),
-    )
-    return { contient: [...lots.map((l) => l.id), ...unique(contacts)] }
+    // Le contact à relancer n'est pas exigé (Lionel, 2026-10-19).
+    return {
+      contient: pvEnAttente(aujourdhui.subtract({ days: CONSIGNE.quinzeJours })).map((l) => l.id),
+    }
   },
   'E-20': () => {
     const enCours = [...ctx.projets.values()].filter(
