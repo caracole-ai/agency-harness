@@ -13,6 +13,7 @@ import {
   type Ligne,
   type MetierConversation,
   quiParle,
+  type Repli,
 } from '@harnais/moteur'
 import { z } from 'zod'
 import { ACTIONS, aDecider } from './actions'
@@ -203,6 +204,36 @@ const INCHANGE = [
   'Le remplaçant doit toujours accepter avant que le planning change',
   'Hors de ces conditions, la décision vous revient',
 ]
+
+/**
+ * Ce qu'un remplacement délégué lit et modifie, source par source, quand il
+ * s'acte (remplacement.ts : evaluer, solliciter, ecrire ; csv-agence.ts :
+ * remplacerAgent). Les fichiers sont ceux de la config du client.
+ */
+const effetsRemplacement = (s: Session): Repli['lignes'] => {
+  const d = s.config.donnees
+  return [
+    {
+      titre: `Planning · ${d.planning}`,
+      detail:
+        "modifié après le oui du remplaçant : l'agent de la vacation remplacée, aucune autre ligne ; lu : les vacations de chacun (heures, repos, sites déjà tenus)",
+    },
+    {
+      titre: 'Messages aux agents',
+      detail:
+        "envoyé sans attendre votre oui : la demande au remplaçant ; après son oui : la confirmation à lui et à l'absent",
+    },
+    {
+      titre: `Journal · ${s.config.journal}`,
+      detail: "écrit : chaque étape, « validé par délégation », l'absence à reporter en paie",
+    },
+    {
+      titre: `Dossiers des agents · ${d.agents}`,
+      detail: 'lu seulement : cartes, titres et recyclages, pour les règles',
+    },
+    { titre: `Postes · ${d.postes}`, detail: 'lu seulement : le site et ce que le poste exige' },
+  ]
+}
 
 /** Le remplacement réussi d'où vient une délégation proposée : qui, pour qui, quand et où. */
 function apresRemplacement(s: Session, demande: string): string {
@@ -429,6 +460,11 @@ export const CONVERSATION: MetierConversation<Session> = {
               {
                 titre: 'Ce qui ne change pas',
                 lignes: INCHANGE.map((c) => ({ titre: c })),
+                ouvert: true,
+              },
+              {
+                titre: 'Ce qui sera lu et modifié, à chaque fois',
+                lignes: effetsRemplacement(s),
                 ouvert: true,
               },
             ],
