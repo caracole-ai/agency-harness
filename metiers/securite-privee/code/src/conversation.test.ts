@@ -96,7 +96,8 @@ describe('un geste qui lit : déclarer une absence', async () => {
   it('rend la proposition, rendue par le code', () => {
     expect(r.sorte).toBe('resultat')
     expect(r.texte).toContain('Demande D-V-17')
-    expect(r.texte).toContain('Je propose Julien Lefèvre')
+    expect(r.texte).toContain('Remplacer Aïcha Traoré')
+    expect(r.sorte === 'resultat' && r.choix?.[0]?.titre).toBe('Julien Lefèvre')
   })
   it('laisse au journal la consigne et l’appel au modèle, avec son coût', () => {
     const consigne = lignes(s, conversation).find((l) => l.type === 'consigne')
@@ -115,7 +116,9 @@ describe('un geste qui écrit : valider, puis la réponse de l’agent', async (
   if (r.sorte !== 'confirmation') throw new Error(`sorte ${r.sorte}`)
 
   it('demande d’abord un « oui » à la reformulation', () => {
-    expect(r.texte).toMatch(/^Valider Julien Lefèvre \(A-2\) pour V-17/)
+    expect(r.texte).toMatch(
+      /^Valider Julien Lefèvre pour remplacer Aïcha Traoré, dim\. 11\/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls \?/,
+    )
     expect(r.texte).toMatch(/\(oui \/ non\)$/)
   })
   it('une empreinte fausse, ou un autre demandeur : refus, et l’attente reste', async () => {
@@ -656,7 +659,7 @@ describe('un agent ne lit que ce qui le concerne (D4)', () => {
       PATRON,
       outil('valider_remplacement', { demande: 'D-V-17', agent: null }),
     )
-    expect(encore.r.texte).toMatch(/^Valider Karim Haddad \(A-1\)/)
+    expect(encore.r.texte).toMatch(/^Valider Karim Haddad pour remplacer Aïcha Traoré/)
   })
 })
 

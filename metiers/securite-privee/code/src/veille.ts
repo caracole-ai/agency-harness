@@ -67,8 +67,23 @@ const TITRES: Record<string, string> = {
 }
 
 const JOURS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.']
-const quand = (z: Temporal.ZonedDateTime) =>
-  `${JOURS[z.dayOfWeek - 1]} ${String(z.day).padStart(2, '0')}/${String(z.month).padStart(2, '0')} ${String(z.hour).padStart(2, '0')}:${String(z.minute).padStart(2, '0')}`
+const jourCourt = (z: Temporal.ZonedDateTime) =>
+  `${JOURS[z.dayOfWeek - 1]} ${String(z.day).padStart(2, '0')}/${String(z.month).padStart(2, '0')}`
+const heure = (z: Temporal.ZonedDateTime) =>
+  `${String(z.hour).padStart(2, '0')}:${String(z.minute).padStart(2, '0')}`
+const quand = (z: Temporal.ZonedDateTime) => `${jourCourt(z)} ${heure(z)}`
+
+/** Une vacation pour qui décide : le jour et les heures, puis le poste et le site ; ni l'agent ni l'identifiant. */
+export function vacationEnBref(ctx: Contexte, vacation: string): string {
+  const v = ctx.planning.vacations.find((x) => x.id === vacation)
+  if (!v) return vacation
+  const poste = ctx.poste(v.poste)
+  const i = intervalleDe(v)
+  const horaires = i.debut.toPlainDate().equals(i.fin.toPlainDate())
+    ? `${jourCourt(i.debut)} · ${heure(i.debut)} → ${heure(i.fin)}`
+    : `${quand(i.debut)} → ${quand(i.fin)}`
+  return `${horaires} · ${poste.id}, ${poste.site}`
+}
 
 export function decrire(ctx: Contexte, objet: string): string {
   const [agentId, titre] = objet.split('/')

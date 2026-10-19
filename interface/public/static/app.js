@@ -318,31 +318,14 @@ function rendreValider() {
     return
   }
 
+  // Une section vide ne se montre pas : seul ce qui attend prend la place.
   const zone = []
-  zone.push(el('h3', { texte: 'Confirmations en attente' }))
-  if (confirmations.length === 0) {
-    zone.push(
-      el(
-        'p',
-        { classe: 'vide' },
-        el('b', { texte: 'Rien à confirmer. ' }),
-        'Quand l’outil prépare une écriture, elle attend ici votre oui.',
-      ),
-    )
-  } else {
+  if (confirmations.length > 0) {
+    zone.push(el('h3', { texte: 'Confirmations en attente' }))
     zone.push(el('ul', { classe: 'liste' }, ...confirmations.map(carteConfirmation)))
   }
-  zone.push(el('h3', { texte: 'Demandes en cours' }))
-  if (demandes.length === 0) {
-    zone.push(
-      el(
-        'p',
-        { classe: 'vide' },
-        el('b', { texte: 'Aucune demande en cours. ' }),
-        ici.tableau?.textes.vide ?? '',
-      ),
-    )
-  } else {
+  if (demandes.length > 0) {
+    zone.push(el('h3', { texte: 'Demandes en cours' }))
     zone.push(el('ul', { classe: 'liste' }, ...demandes.map(carteDemande)))
   }
   $('valider').replaceChildren(...zone)
@@ -436,19 +419,19 @@ function zoneReponse(conf, nom, choix = []) {
 function carteDemande(d) {
   const choix = d.choix ?? []
   const cliquee = decisionCliquee(d)
+  // Lu de haut en bas : ce qu'il faut faire, quand et où, la décision ; le détail en dernier, en petit.
   return el(
     'li',
-    { classe: `carte${choix.length > 0 ? ' carte--attente' : ''}` },
+    { classe: `carte carte--demande${choix.length > 0 ? ' carte--attente' : ''}` },
     el(
       'div',
       { classe: 'carte__meta' },
-      el('span', { classe: 'carte__titre', texte: d.id }),
-      el('span', { texte: d.sorte }),
       el('span', { classe: 'pastille pastille--outil', texte: d.statut }),
+      el('span', { texte: `${majuscule(d.sorte)} · ${d.id}` }),
       el('time', { datetime: d.depuis, texte: instant(d.depuis) }),
     ),
-    el('p', { classe: 'texte', texte: d.texte }),
-    d.replis?.length > 0 ? zoneReplis(d.replis, d.id) : null,
+    el('h4', { classe: 'demande__titre', texte: d.titre ?? d.id }),
+    el('p', { classe: 'texte demande__texte', texte: d.texte }),
     cliquee
       ? el('p', {
           classe: 'carte__suite',
@@ -457,6 +440,7 @@ function carteDemande(d) {
       : choix.length > 0
         ? zoneChoix(choix)
         : null,
+    d.replis?.length > 0 ? zoneReplis(d.replis, d.id) : null,
   )
 }
 
@@ -500,7 +484,18 @@ function zoneReplis(replis, demande) {
           },
         },
         el('summary', { texte: r.titre }),
-        el('ul', {}, ...r.lignes.map((l) => el('li', { texte: l }))),
+        el(
+          'ul',
+          {},
+          ...r.lignes.map((l) =>
+            el(
+              'li',
+              {},
+              el('span', { classe: 'repli__nom', texte: l.titre }),
+              l.detail ? el('span', { classe: 'repli__detail', texte: l.detail }) : null,
+            ),
+          ),
+        ),
       )
     }),
   )
@@ -516,6 +511,60 @@ function zoneChoix(choix) {
   const bouton = (c, classe) =>
     el('button', { classe, type: 'button', texte: c.libelle, onclick: () => decider(c, cle) })
   const [principal, ...autres] = choix
+  // Des choix nommés (une personne et ses raisons) : la proposition en avant, les autres en lignes.
+  if (principal.titre !== undefined) {
+    return el(
+      'div',
+      { classe: 'decision', 'data-choix': cle },
+      el(
+        'div',
+        { classe: 'decision__propose' },
+        el(
+          'div',
+          { classe: 'decision__qui' },
+          el('span', { classe: 'etiquette', texte: 'Proposition de l’outil' }),
+          el('span', { classe: 'decision__nom', texte: principal.titre }),
+          principal.detail
+            ? el('span', { classe: 'decision__detail', texte: principal.detail })
+            : null,
+        ),
+        bouton(principal, 'bouton bouton--oui'),
+      ),
+      autres.length > 0
+        ? el(
+            'div',
+            { classe: 'decision__autres' },
+            el('span', { classe: 'etiquette', texte: 'Autres possibles' }),
+            el(
+              'ul',
+              { classe: 'autres' },
+              ...autres.map((c) =>
+                el(
+                  'li',
+                  {},
+                  el(
+                    'button',
+                    {
+                      classe: 'autre',
+                      type: 'button',
+                      'aria-label': c.libelle,
+                      onclick: () => decider(c, cle),
+                    },
+                    el('span', { classe: 'autre__nom', texte: c.titre ?? c.libelle }),
+                    c.detail ? el('span', { classe: 'autre__detail', texte: c.detail }) : null,
+                    el('span', {
+                      classe: 'autre__action',
+                      'aria-hidden': 'true',
+                      texte: 'Choisir',
+                    }),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : null,
+    )
+  }
   return el(
     'div',
     { classe: 'actions', 'data-choix': cle },
@@ -837,11 +886,12 @@ function bulleOutil(reponse, conf) {
       }),
     )
   }
-  if (reponse.sorte === 'resultat' && reponse.replis?.length > 0) {
-    corps.append(zoneReplis(reponse.replis))
-  }
+  // Comme sur la carte : la décision, puis le détail.
   if (reponse.sorte === 'resultat' && reponse.choix?.length > 0) {
     corps.append(zoneChoix(reponse.choix))
+  }
+  if (reponse.sorte === 'resultat' && reponse.replis?.length > 0) {
+    corps.append(zoneReplis(reponse.replis))
   }
   if (enAttente) {
     const attente = { ...conf, empreinte: reponse.empreinte }

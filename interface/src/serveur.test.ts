@@ -97,9 +97,10 @@ interface Etat {
     demandes: {
       id: string
       statut: string
+      titre?: string
       texte?: string
       choix?: Choix[]
-      replis?: { titre: string; lignes: string[] }[]
+      replis?: { titre: string; lignes: { titre: string; detail?: string }[] }[]
     }[]
   }
   regles: { id: string; nom: string; interdit: string; statut: string }[]
@@ -839,7 +840,10 @@ describe('un parcours simulé : absence, validation, oui', async () => {
   it('la première consigne rend la proposition de remplaçant', () => {
     expect(premiere.conversation).toMatch(/^C-20261010T2140-[0-9a-f]{4}$/)
     expect(premiere.reponse.sorte).toBe('resultat')
-    expect(premiere.reponse.texte).toContain('Je propose Julien Lefèvre')
+    expect(premiere.reponse.texte).toContain('Remplacer Aïcha Traoré')
+    expect(premiere.reponse.sorte === 'resultat' && premiere.reponse.choix?.[0]?.titre).toBe(
+      'Julien Lefèvre',
+    )
     expect(apresAbsence.aValider.demandes).toMatchObject([{ id: 'D-V-17', statut: 'proposée' }])
   })
   it('la seconde demande un oui, qui apparaît dans « à valider »', () => {
@@ -905,37 +909,44 @@ describe('la décision du patron sur une demande, cliquée : sur la carte et sou
     expect(offerts.slice(0, 2)).toEqual([
       {
         libelle: 'Valider Julien Lefèvre',
+        titre: 'Julien Lefèvre',
+        detail: 'connaît le site · 16 h cette semaine',
         action: 'valider_remplacement',
         params: { demande: 'D-V-17', agent: 'A-2' },
       },
       {
-        libelle: 'Prendre Karim Haddad à la place (connaît le site, 24 h cette semaine)',
+        libelle: 'Prendre Karim Haddad à la place',
+        titre: 'Karim Haddad',
+        detail: 'connaît le site · 24 h cette semaine',
         action: 'valider_remplacement',
         params: { demande: 'D-V-17', agent: 'A-1' },
       },
     ])
     expect(avant.aValider.demandes[0]?.choix).toEqual(offerts)
   })
-  it('le texte dit le proposé et ses raisons ; exclus et écartés vont au détail replié, le même des deux côtés', () => {
-    const texte = premiere.reponse.texte
-    expect(texte).toContain('Je propose Julien Lefèvre (connaît le site, 16 h cette semaine).')
-    expect(texte).not.toContain('Autres possibles')
-    expect(texte).not.toContain('Exclus')
+  it('le texte dit quoi, quand et où ; le proposé est la décision ; exclus et écartés vont au détail replié, le même des deux côtés', () => {
+    expect(premiere.reponse.texte).toBe(
+      'Demande D-V-17\nRemplacer Aïcha Traoré\ndim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls',
+    )
     const replis = premiere.reponse.sorte === 'resultat' ? premiere.reponse.replis : undefined
     expect(replis?.map((r) => r.titre)).toEqual([
-      '4 exclus : un interdit s’y oppose',
-      '4 écartés : une donnée manque, rien n’est supposé',
+      '4 exclus par une règle',
+      '4 écartés : une donnée manque',
     ])
-    expect(replis?.[0]?.lignes[0]).toMatch(/^Sophie Marchand : carte professionnelle valide/)
+    expect(replis?.[0]?.lignes[0]).toEqual({
+      titre: 'Sophie Marchand',
+      detail: 'carte professionnelle valide',
+    })
     expect(avant.aValider.demandes[0]?.replis).toEqual(replis)
-    expect(avant.aValider.demandes[0]?.texte).toContain(
-      'Je propose Julien Lefèvre (connaît le site, 16 h cette semaine).',
-    )
+    expect(avant.aValider.demandes[0]).toMatchObject({
+      titre: 'Remplacer Aïcha Traoré',
+      texte: 'dim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls',
+    })
   })
   it('le clic demande le oui, sans modèle ; la confirmation dit le geste qu’elle attend', () => {
     expect(clic.conversation).toBe(premiere.conversation)
     expect(clic.reponse.sorte).toBe('confirmation')
-    expect(clic.reponse.texte).toContain('Karim Haddad (A-1)')
+    expect(clic.reponse.texte).toContain('Valider Karim Haddad pour remplacer Aïcha Traoré')
     expect(enAttente.ia.appels).toBe(avant.ia.appels)
     expect(enAttente.aValider.confirmations).toMatchObject([
       { geste: { action: autre.action, params: autre.params } },
