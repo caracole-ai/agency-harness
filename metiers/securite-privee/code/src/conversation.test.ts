@@ -200,9 +200,11 @@ describe('un agent ne travaille que sur ses données', () => {
       outil('voir_planning', { agent: null, du: null, au: null }),
     )
     expect(soi.r.sorte).toBe('resultat')
-    expect(soi.r.texte).toContain('V-04')
-    expect(soi.r.texte).toContain('V-05')
-    expect(soi.r.texte.split('\n')).toHaveLength(2)
+    expect(soi.r.texte.split('\n')).toEqual([
+      'Ton planning : 2 vacations.',
+      expect.stringMatching(/^mer\. 07\/10 20:00 → jeu\. 08\/10 08:00 · /),
+      expect.stringMatching(/^jeu\. 08\/10 · 16:00 → 20:00 · Accueil, /),
+    ])
     const autre = await tour(
       s,
       agent('A-2'),
@@ -315,13 +317,33 @@ describe('les gestes de veille', () => {
   it('lancer_veille rend le rapport et écrit la veille au journal', async () => {
     const s = session()
     const { r } = await tour(s, PATRON, outil('lancer_veille', { date: null }))
-    expect(r.texte).toMatch(/^# Veille du 10\/10\/2026/)
+    // Une phrase de compte, puis les groupes : une ligne par vacation, sans la source juridique.
+    expect(r.texte).toMatch(/^Veille du 10\/10\/2026 : \d+ à corriger, /)
+    const replis = r.sorte === 'resultat' ? (r.replis ?? []) : []
+    expect(replis[0]?.titre).toMatch(/^À corriger \(\d+\)$/)
+    expect(replis[0]?.lignes).toContainEqual({
+      titre: 'Julien Lefèvre · jeu. 08/10 · 16:00 → 20:00 · Accueil, Galerie des Tilleuls',
+      detail:
+        'durée du travail et repos : 8 h de repos depuis la vacation V-04, sous le minimum de 11 h',
+    })
+    expect(replis.at(-1)?.titre).toMatch(/^Pas encore vérifié \(\d+\)$/)
     expect(s.journal.lire().some((l) => l.type === 'veille')).toBe(true)
   })
   it('voir_echeances (patron) et mes_titres (agent) disent la carte expirée de Sophie', async () => {
     const s = session()
     const patron = await tour(s, PATRON, outil('voir_echeances', {}))
-    expect(patron.r.texte).toContain('Sophie Marchand — carte professionnelle — escalade')
+    // Le patron : une phrase de compte, puis les échéances groupées, chacune qui et quoi, l'action et sa date.
+    expect(patron.r.texte).toBe('7 échéances : 4 en retard, 2 à prévoir, 1 date à renseigner.')
+    const replis = patron.r.sorte === 'resultat' ? (patron.r.replis ?? []) : []
+    expect(replis.map((x) => x.titre)).toEqual([
+      'En retard (4)',
+      'À prévoir (2)',
+      'Date à renseigner (1)',
+    ])
+    expect(replis[0]?.lignes).toContainEqual({
+      titre: 'Sophie Marchand — carte professionnelle',
+      detail: expect.stringMatching(/ — limite dépassée depuis le 01\/07\/2026$/),
+    })
     const sophie = await tour(s, agent('A-3'), outil('mes_titres', {}))
     expect(sophie.r.texte).toContain('Sophie Marchand — carte professionnelle — escalade')
     expect(sophie.r.texte).toContain('Carte professionnelle : surveillance humaine ou gardiennage')
@@ -866,7 +888,9 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
       premier.conversation,
     )
     expect(suite.modele.appels).toHaveLength(1)
-    expect(suite.r.texte).toContain('Sophie Marchand — carte professionnelle')
+    const lignes =
+      suite.r.sorte === 'resultat' ? (suite.r.replis ?? []).flatMap((x) => x.lignes) : []
+    expect(lignes.map((l) => l.titre)).toContain('Sophie Marchand — carte professionnelle')
   })
   it('un agent : un nom proche du sien ne le désigne pas, et aucun collègue ne lui est proposé', async () => {
     const s = session()

@@ -39,8 +39,12 @@ export interface Alerte {
   regle: string
   objet: string
   niveau: Niveau
+  /** La phrase entière, pour le journal et le rapport. */
   motif: string
   limite?: string
+  /** Ce qu'il faut faire, et sa précision, à part : pour qui montre l'alerte autrement qu'en une phrase. */
+  action: string
+  precision?: string
 }
 
 const fr = dateFr
@@ -56,7 +60,12 @@ const apres = (a: Temporal.PlainDate, b: Temporal.PlainDate) => Temporal.PlainDa
  */
 export function veiller(echeances: Echeance[], aujourdhui: Temporal.PlainDate): Alerte[] {
   return echeances.flatMap((e): Alerte[] => {
-    const base = { regle: e.regle, objet: e.objet }
+    const base = {
+      regle: e.regle,
+      objet: e.objet,
+      action: e.action,
+      ...(e.precision ? { precision: e.precision } : {}),
+    }
     const suite = e.precision ? ` ; ${e.precision}` : ''
     if (!e.limite) {
       return [{ ...base, niveau: 'alerte', motif: `date inconnue : ${e.action}${suite}` }]

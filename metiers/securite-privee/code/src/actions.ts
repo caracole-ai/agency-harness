@@ -1,5 +1,6 @@
 import {
   type Action,
+  type Alerte,
   type Choix,
   dateFr,
   dureeHeures,
@@ -146,11 +147,70 @@ function decisionDe(s: Session, demande: string): { choix?: Choix[]; replis?: Re
   }
 }
 
+/** Les alertes de la veille du jour, d'un agent ou de tous. */
+const alertesDuJour = (s: Session, maintenant: Temporal.ZonedDateTime, agent?: string): Alerte[] =>
+  passerVeille(VEILLER, METIER, s.dossier, maintenant.toPlainDate()).alertes.filter(
+    (a) => agent === undefined || a.objet.startsWith(`${agent}/`),
+  )
+
 /** Les alertes de la veille du jour, chacune décrite pour le client. */
 function alertes(s: Session, maintenant: Temporal.ZonedDateTime, agent?: string): string[] {
-  return passerVeille(VEILLER, METIER, s.dossier, maintenant.toPlainDate())
-    .alertes.filter((a) => agent === undefined || a.objet.startsWith(`${agent}/`))
-    .map((a) => `${decrire(s.ctx, a.objet)} — ${a.niveau} : ${a.motif}`)
+  return alertesDuJour(s, maintenant, agent).map(
+    (a) => `${decrire(s.ctx, a.objet)} — ${a.niveau} : ${a.motif}`,
+  )
+}
+
+/**
+ * Les échéances pour le patron, groupées par ce qu'elles demandent de lui :
+ * en retard, urgentes (le temps de préparation manque), à prévoir, date à
+ * renseigner ; chaque ligne, qui et quel titre, puis l'action et sa date.
+ * La phrase entière de chaque alerte reste au journal et au rapport.
+ */
+function echeancesGroupees(
+  s: Session,
+  alertes: Alerte[],
+  aujourdhui: Temporal.PlainDate,
+): { texte: string; replis: Repli[] } {
+  const groupes = [
+    { titre: 'En retard', compte: 'en retard', lignes: [] as Repli['lignes'] },
+    {
+      titre: 'Urgent : le temps de préparation manque',
+      compte: 'urgentes',
+      lignes: [] as Repli['lignes'],
+    },
+    { titre: 'À prévoir', compte: 'à prévoir', lignes: [] as Repli['lignes'] },
+    { titre: 'Date à renseigner', compte: 'date à renseigner', lignes: [] as Repli['lignes'] },
+  ] as const
+  for (const a of alertes) {
+    const limite = a.limite ? Temporal.PlainDate.from(a.limite) : undefined
+    const titre = decrire(s.ctx, a.objet)
+    if (!limite) {
+      groupes[3].lignes.push({ titre, detail: a.action })
+    } else if (Temporal.PlainDate.compare(aujourdhui, limite) > 0) {
+      groupes[0].lignes.push({
+        titre,
+        detail: `${a.action} — limite dépassée depuis le ${dateFr(limite)}`,
+      })
+    } else {
+      groupes[a.niveau === 'escalade' ? 1 : 2].lignes.push({
+        titre,
+        detail: `${a.action} — au plus tard le ${dateFr(limite)}`,
+      })
+    }
+  }
+  const pleins = groupes.filter((g) => g.lignes.length > 0)
+  const total = pleins.reduce((n, g) => n + g.lignes.length, 0)
+  return {
+    texte:
+      total === 0
+        ? 'Aucune échéance proche.'
+        : `${total} ${total > 1 ? 'échéances' : 'échéance'} : ${pleins.map((g) => `${g.lignes.length} ${g.compte}`).join(', ')}.`,
+    replis: pleins.map((g) => ({
+      titre: `${g.titre} (${g.lignes.length})`,
+      lignes: g.lignes,
+      ouvert: true,
+    })),
+  }
 }
 
 const periode = (v: { du: string; au?: string | undefined }) =>
@@ -210,7 +270,7 @@ const gererAbsence: Action<Session, z.infer<typeof GererAbsence>> = {
     return {
       texte:
         identite.role === 'patron'
-          ? `Demande ${r.demande}\n${decrireEtape(s, r, r.demande)}`
+          ? `${decrireEtape(s, r, r.demande)}\nDemande ${r.demande}`
           : `Ton absence du ${dateFr(Temporal.PlainDate.from(p.jour))} est enregistrée (demande ${r.demande}). Le patron s'occupe de ton remplacement.`,
       donnees: { demande: r.demande, statut: r.statut },
       ...(identite.role === 'patron' ? decisionDe(s, r.demande) : {}),
@@ -530,13 +590,37 @@ const voirPlanning: Action<Session, z.infer<typeof VoirPlanning>> = {
       .filter(({ debut }) => dansPeriode(debut, du, au))
       .sort((a, b) => Temporal.ZonedDateTime.compare(a.debut, b.debut))
     // Le nom complet de l'agent visé, même sans vacation : le patron voit qui l'outil a compris.
-    return {
-      texte:
-        vacations.length > 0
-          ? vacations.map(({ v }) => decrire(s.ctx, v.id)).join('\n')
-          : identite.role === 'patron' && agent
+    if (vacations.length === 0) {
+      return {
+        texte:
+          identite.role === 'patron' && agent
             ? `Aucune vacation pour ${nomDe(s, agent)}.`
             : 'Aucune vacation.',
+      }
+    }
+    // Une phrase de tête, puis une ligne courte par vacation (quand, où) ; pour tous, un groupe par agent.
+    const quand = p.du || p.au ? ` ${enMots(p)}` : ''
+    const compte = `${vacations.length} ${vacations.length > 1 ? 'vacations' : 'vacation'}`
+    if (agent) {
+      const qui = identite.role === 'patron' ? `Planning de ${nomDe(s, agent)}` : 'Ton planning'
+      return {
+        texte: [
+          `${qui}${quand} : ${compte}.`,
+          ...vacations.map(({ v }) => vacationEnBref(s.ctx, v.id)),
+        ].join('\n'),
+      }
+    }
+    const parAgent = new Map<string, string[]>()
+    for (const { v } of vacations) {
+      parAgent.set(v.agent, [...(parAgent.get(v.agent) ?? []), vacationEnBref(s.ctx, v.id)])
+    }
+    return {
+      texte: `Planning de tous${quand} : ${compte}, ${parAgent.size} ${parAgent.size > 1 ? 'agents' : 'agent'}.`,
+      replis: [...parAgent].map(([a, lignes]) => ({
+        titre: nomDe(s, a),
+        lignes: lignes.map((titre) => ({ titre })),
+        ouvert: true,
+      })),
     }
   },
 }
@@ -624,8 +708,12 @@ const voirEcheances: Action<Session, z.infer<typeof SansParametre>> = {
   ecrit: false,
   reformuler: () => 'Je montre les échéances des titres des agents.',
   executer: (s, _identite, _p, maintenant) => {
-    const lignes = alertes(s, maintenant)
-    return { texte: lignes.length > 0 ? lignes.join('\n') : 'Aucune échéance proche.' }
+    const { texte, replis } = echeancesGroupees(
+      s,
+      alertesDuJour(s, maintenant),
+      maintenant.toPlainDate(),
+    )
+    return { texte, ...(replis.length > 0 ? { replis } : {}) }
   },
 }
 
@@ -655,11 +743,82 @@ const lancerVeille: Action<Session, z.infer<typeof LancerVeille>> = {
   roles: ['patron'],
   ecrit: false,
   reformuler: () => 'Je lance la veille du planning et des échéances.',
+  // Le journal reçoit la veille entière (constats, alertes), comme `pnpm veiller` ; le patron
+  // lit une phrase de compte, puis les groupes, une ligne par vacation ou par titre.
   executer: (s, _identite, p, maintenant) => {
     const jour = p.date ? Temporal.PlainDate.from(p.date) : maintenant.toPlainDate()
+    const { passe } = veilleDuClient(
+      VEILLER,
+      METIER,
+      s.dossier,
+      jour,
+      s.journal,
+      DOMAINE.rienASignaler,
+    )
+    const nomRegle = (id: string) => s.registre.interdits.find((i) => i.id === id)?.nom ?? id
+    // La source juridique entre parenthèses reste au rapport et à l'onglet Règles.
+    const sources = s.registre.interdits.flatMap((i) => (i.lectures ?? []).map((l) => l.source))
+    const sansSources = (motif: string) =>
+      sources.reduce((m, source) => m.replaceAll(` (${source})`, ''), motif)
+    const enClair = (objet: string) => {
+      const v = s.ctx.planning.vacations.find((x) => x.id === objet)
+      return v ? `${nomDe(s, v.agent)} · ${vacationEnBref(s.ctx, v.id)}` : decrire(s.ctx, objet)
+    }
+    const lignesDe = (verdict: string): Repli['lignes'] => {
+      const parObjet = new Map<string, string[]>()
+      for (const c of passe.constats.filter((x) => x.verdict === verdict)) {
+        parObjet.set(c.objet, [
+          ...(parObjet.get(c.objet) ?? []),
+          `${nomRegle(c.regle)} : ${sansSources(c.motif)}`,
+        ])
+      }
+      return [...parObjet].map(([objet, motifs]) => ({
+        titre: enClair(objet),
+        detail: motifs.join(' ; '),
+      }))
+    }
+    const corriger = lignesDe('refus')
+    const decider = lignesDe('à vérifier')
+    const echeances = echeancesGroupees(s, passe.alertes, jour)
+    const nombreEcheances = echeances.replis.reduce((n, r) => n + r.lignes.length, 0)
+    const nonCouverts = [...VEILLER.controles, ...VEILLER.veilles].filter(
+      (c) => (c.nonCouvert ?? []).length > 0,
+    )
+    const parties = [
+      corriger.length > 0 ? `${corriger.length} à corriger` : null,
+      decider.length > 0 ? `${decider.length} à décider par l'exploitation` : null,
+      nombreEcheances > 0
+        ? `${nombreEcheances} ${nombreEcheances > 1 ? 'échéances' : 'échéance'}`
+        : null,
+    ].filter((x) => x !== null)
     return {
-      texte: veilleDuClient(VEILLER, METIER, s.dossier, jour, s.journal, DOMAINE.rienASignaler)
-        .rapport,
+      texte: `Veille du ${dateFr(jour)} : ${parties.length > 0 ? `${parties.join(', ')}.` : DOMAINE.rienASignaler}`,
+      replis: [
+        ...(corriger.length > 0
+          ? [{ titre: `À corriger (${corriger.length})`, lignes: corriger, ouvert: true }]
+          : []),
+        ...(decider.length > 0
+          ? [
+              {
+                titre: `À décider par l'exploitation (${decider.length})`,
+                lignes: decider,
+                ouvert: true,
+              },
+            ]
+          : []),
+        ...echeances.replis,
+        ...(nonCouverts.length > 0
+          ? [
+              {
+                titre: `Pas encore vérifié (${nonCouverts.length})`,
+                lignes: nonCouverts.map((c) => ({
+                  titre: nomRegle(c.regle).replace(/^./, (x) => x.toUpperCase()),
+                  detail: (c.nonCouvert ?? []).join(' ; '),
+                })),
+              },
+            ]
+          : []),
+      ],
     }
   },
 }

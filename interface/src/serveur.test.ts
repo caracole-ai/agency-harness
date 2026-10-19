@@ -939,7 +939,7 @@ describe('la décision du patron sur une demande, cliquée : sur la carte et sou
   })
   it('le texte dit quoi, quand et où ; le proposé est la décision ; exclus et écartés vont au détail replié, le même des deux côtés', () => {
     expect(premiere.reponse.texte).toBe(
-      'Demande D-V-17\nRemplacer Aïcha Traoré\ndim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls',
+      'Remplacer Aïcha Traoré\ndim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls\nDemande D-V-17',
     )
     const replis = premiere.reponse.sorte === 'resultat' ? premiere.reponse.replis : undefined
     expect(replis?.map((r) => r.titre)).toEqual([

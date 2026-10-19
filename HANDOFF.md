@@ -71,7 +71,15 @@ validation en clair (`DemandeTableau.titre`, `Choix.titre`/`detail`,
 `Repli.lignes` en nom et détail) ; les replis disent « ne peuvent pas :
 une règle l'interdit » et « à vérifier : dossier incomplet ». La page
 référence ses fichiers par l'empreinte de leur contenu (`?v=`) : le
-navigateur de Lionel gardait l'ancienne feuille avec le nouveau script. Démo :
+navigateur de Lionel gardait l'ancienne feuille avec le nouveau script.
+Puis le même traitement partout (Lionel : « clarifier au maximum ») : les
+règles en noms, statut en mots, texte à déplier ; les gestes titrés en
+mots, avec un état ; le journal par jour, en phrases, le technique masqué,
+un volet de détail par action (Lionel) ; dans le chat, les échéances
+groupées (en retard, urgentes, à prévoir, date à renseigner : `Alerte`
+porte `action` et `precision`), la veille en compte et en groupes au lieu
+du rapport Markdown, le planning en lignes courtes ; la première ligne
+d'un résultat en titre. Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).
 

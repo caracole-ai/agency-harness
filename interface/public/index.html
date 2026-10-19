@@ -73,19 +73,19 @@
           <div id="valider"><p class="chargement">Chargement…</p></div>
         </div>
         <div class="vue" id="vue-regles" role="tabpanel" aria-labelledby="onglet-regles" hidden>
-          <h2>Les interdits</h2>
-          <p class="chapo">Chaque interdit est vérifié par le code, à chaque proposition : aucune consigne, aucun oui ne le lève. Lecture seule ; la lecture de la loi qui fait foi se règle avec vous.</p>
+          <h2>Les règles</h2>
+          <p class="chapo">Vérifiées par le code à chaque proposition : aucun oui ne les lève.</p>
           <div id="regles"><p class="chargement">Chargement…</p></div>
         </div>
         <div class="vue" id="vue-delegations" role="tabpanel" aria-labelledby="onglet-delegations" hidden>
           <h2>Ce que vous confiez à l'outil</h2>
-          <p class="chapo">Une délégation laisse l'outil valider seul, dans des conditions écrites. Elle s'accorde dans la configuration, révocable à tout moment : ici, celles que l'outil vous propose.</p>
+          <p class="chapo">L'outil décide seul dans les conditions que vous fixez ; révocable à tout moment.</p>
           <div id="delegations"><p class="chargement">Chargement…</p></div>
         </div>
         <div class="vue" id="vue-appris" role="tabpanel" aria-labelledby="onglet-appris" hidden>
           <h2>Ce que l'outil ne sait pas encore faire</h2>
           <div class="outils-vue">
-            <p class="chapo">Les demandes qu'il n'a pas su traiter, regroupées. Vous commandez celles qui doivent devenir un geste : le harnais le code à l'agence, sous ses contrôles, et il est disponible à la prochaine mise à jour de l'outil.</p>
+            <p class="chapo">Les demandes restées sans geste. Commandez celles qui doivent en devenir un.</p>
             <button class="bouton bouton--outil bouton--petit" type="button" id="rafraichir-appris">Rafraîchir</button>
           </div>
           <div id="appris"><p class="chargement">Chargement…</p></div>
@@ -93,7 +93,7 @@
         <div class="vue" id="vue-journal" role="tabpanel" aria-labelledby="onglet-journal" hidden>
           <h2>Le journal</h2>
           <div class="outils-vue">
-            <p class="chapo">Tout ce que l'outil a vu, proposé et écrit, dans l'ordre. Rien ne s'y efface. La plus récente d'abord.</p>
+            <p class="chapo">Ce qui s'est passé, le plus récent d'abord. Rien ne s'efface.</p>
             <button class="bouton bouton--outil bouton--petit" type="button" id="rafraichir-journal">Rafraîchir</button>
           </div>
           <p class="bilan" id="bilan-echappees"></p>
@@ -119,5 +119,16 @@
       <p class="aide">Entrée pour envoyer, Maj + Entrée pour aller à la ligne.</p>
     </section>
   </main>
+
+  <aside class="volet" id="volet" aria-labelledby="volet-titre" hidden>
+    <div class="volet__tete">
+      <div>
+        <span class="etiquette" id="volet-sorte"></span>
+        <h2 id="volet-titre">Détail</h2>
+      </div>
+      <button class="bouton bouton--non bouton--petit" type="button" id="volet-fermer">Fermer</button>
+    </div>
+    <div class="volet__corps" id="volet-corps"></div>
+  </aside>
 </body>
 </html>

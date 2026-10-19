@@ -32,9 +32,22 @@ const SORTES = {
   precision: { libelle: 'À préciser', classe: 'pastille--doute' },
 }
 
+/** Les types du journal dont le nom n'est pas déjà des mots (les autres le sont : « geste commandé », « alerte »…). */
 const TYPES_LISIBLES = {
-  appel_modele: 'appel au modèle',
-  confirmation_attendue: 'confirmation attendue',
+  appel_modele: 'appel à l’IA',
+  confirmation_attendue: 'oui attendu',
+  outil_echappee: 'recherche de l’IA',
+  precision_attendue: 'précision demandée',
+  echappee: 'question libre',
+  reaffectation: 'réaffectation',
+}
+/** Les lignes techniques du journal : montrées sur demande seulement. */
+const TYPES_TECHNIQUES = new Set([TYPE_APPEL, 'outil_echappee'])
+/** L'issue d'une question libre, en mots. */
+const ISSUES_ECHAPPEE = {
+  reponse: 'réponse donnée',
+  proposition: 'proposition faite',
+  abandon: 'pas de réponse trouvée',
 }
 
 const ici = {
@@ -52,6 +65,10 @@ const ici = {
   attente: null,
   occupe: false,
   onglet: 'valider',
+  /** Le journal montre aussi les lignes techniques (appels à l'IA, recherches). */
+  journalTechnique: false,
+  /** Les dernières lignes du journal lues : le volet de détail y retrouve une action. */
+  journal: [],
   /** Les replis ouverts d'une carte (`demande|titre`) : un rafraîchissement les rend ouverts. */
   replisOuverts: new Set(),
 }
@@ -476,7 +493,7 @@ function zoneReplis(replis, demande) {
         'details',
         {
           classe: 'repli',
-          open: cle !== undefined && ici.replisOuverts.has(cle),
+          open: r.ouvert === true || (cle !== undefined && ici.replisOuverts.has(cle)),
           ontoggle: (e) => {
             if (cle === undefined) return
             if (e.currentTarget.open) ici.replisOuverts.add(cle)
@@ -587,29 +604,46 @@ function zoneChoix(choix) {
 const avecGras = (texte) =>
   texte.split('**').map((morceau, i) => (i % 2 === 1 ? el('b', { texte: morceau }) : morceau))
 
+/** Le statut d'une règle, dit au patron (`STATUTS`, moteur/src/regles/schema.ts ; GLOSSAIRE, « Statut d'un fait »). */
+const STATUTS_REGLE = {
+  texte: { libelle: 'texte officiel', classe: '' },
+  déclaré: { libelle: 'déclarée par vous', classe: '' },
+  constaté: { libelle: 'constatée', classe: '' },
+  confirmé: { libelle: 'confirmée', classe: '' },
+  hypothèse: { libelle: 'à vérifier', classe: 'pastille--doute' },
+}
+
+/** Les règles, une ligne chacune : le nom en avant, son statut en mots ; le texte entier se déplie. */
 function rendreRegles() {
   const regles = ici.donnees.regles
   $('regles').replaceChildren(
     el(
       'ul',
       { classe: 'liste liste--serree' },
-      ...regles.map((r) =>
-        el(
+      ...regles.map((r) => {
+        const statut = STATUTS_REGLE[r.statut] ?? { libelle: r.statut, classe: '' }
+        return el(
           'li',
           { classe: 'regle' },
-          el('span', { classe: 'regle__id', texte: r.id }),
           el(
             'div',
-            {},
-            el('p', { classe: 'regle__nom', texte: r.nom }),
+            { classe: 'regle__tete' },
+            el('span', { classe: 'regle__nom', texte: majuscule(r.nom) }),
+            ' ',
+            el('span', { classe: `pastille ${statut.classe}`, texte: statut.libelle }),
+          ),
+          el(
+            'details',
+            { classe: 'repli regle__detail' },
+            el('summary', { texte: 'Lire la règle' }),
             el('p', { classe: 'regle__texte' }, ...avecGras(r.interdit)),
             r.lecture
               ? el('p', { classe: 'regle__lecture', texte: `Lecture qui fait foi : ${r.lecture}` })
               : null,
+            el('p', { classe: 'regle__lecture', texte: `Référence ${r.id}` }),
           ),
-          el('span', { classe: 'pastille', title: 'statut de la règle', texte: r.statut }),
-        ),
-      ),
+        )
+      }),
     ),
   )
 }
@@ -624,7 +658,7 @@ function rendreDelegations() {
         'p',
         { classe: 'vide' },
         el('b', { texte: 'Aucune proposition. ' }),
-        'Après une décision réussie que vous avez validée, l’outil propose de la rendre automatique dans les mêmes conditions.',
+        'Quand une décision que vous avez validée réussit, l’outil propose de la rendre automatique.',
       ),
     )
   } else {
@@ -632,23 +666,24 @@ function rendreDelegations() {
       el(
         'ul',
         { classe: 'liste' },
-        ...enAttente.map((p) =>
-          el(
+        // La première ligne du texte du métier est la question ; le reste, ses conditions.
+        ...enAttente.map((p) => {
+          const [titre = '', ...reste] = p.texte.split('\n')
+          return el(
             'li',
-            { classe: 'carte' },
-            el(
-              'div',
-              { classe: 'carte__meta' },
-              el('span', { classe: 'carte__titre', texte: p.id }),
-            ),
-            el('p', { classe: 'texte', texte: p.texte }),
+            { classe: 'carte carte--demande' },
+            el('div', { classe: 'carte__meta' }, el('span', { texte: p.id })),
+            el('h4', { classe: 'demande__titre', texte: majuscule(titre) }),
+            reste.length > 0
+              ? el('p', { classe: 'texte demande__texte', texte: reste.join('\n') })
+              : null,
             el('p', {
               classe: 'carte__suite',
               texte:
                 'Elle s’accorde avec vous, dans la configuration : lecture seule dans la démo.',
             }),
-          ),
-        ),
+          )
+        }),
       ),
     )
   }
@@ -681,40 +716,239 @@ async function chargerJournal() {
     )
     return
   }
+  ici.journal = lignes
+  // Par jour, le plus récent d'abord ; chaque ligne dit ce qui s'est passé, son genre en petit au-dessus.
+  const techniques = lignes.filter((l) => TYPES_TECHNIQUES.has(l.type)).length
+  const montrees = ici.journalTechnique
+    ? lignes
+    : lignes.filter((l) => !TYPES_TECHNIQUES.has(l.type))
+  const jours = []
+  for (const l of montrees) {
+    const j = jourDuJournal(l.horodatage)
+    if (jours.at(-1)?.jour !== j) jours.push({ jour: j, lignes: [] })
+    jours.at(-1).lignes.push(l)
+  }
   zone.replaceChildren(
+    techniques > 0
+      ? el(
+          'label',
+          { classe: 'journal__filtre' },
+          el('input', {
+            type: 'checkbox',
+            checked: ici.journalTechnique,
+            onchange: (e) => {
+              ici.journalTechnique = e.currentTarget.checked
+              chargerJournal()
+            },
+          }),
+          ` Montrer le détail technique (${compter(techniques, 'ligne', 'lignes')} : appels à l’IA, recherches)`,
+        )
+      : null,
+    ...jours.flatMap(({ jour: j, lignes: ls }) => [
+      el('h4', { classe: 'journal__jour', texte: j }),
+      el('ol', { classe: 'journal' }, ...ls.map(entreeJournal)),
+    ]),
+  )
+}
+
+/** Les données d'une ligne du journal, lues ; illisibles ou absentes : rien. */
+function donneesDe(l) {
+  try {
+    return l.donnees ? JSON.parse(l.donnees) : {}
+  } catch {
+    return {}
+  }
+}
+
+/** Les clés les plus courantes des données du journal, en mots ; les autres restent telles quelles. */
+const CLES_LISIBLES = {
+  identite: 'qui',
+  role: 'rôle',
+  personne: 'personne',
+  demande: 'demande',
+  sorte: 'sorte',
+  action: 'geste',
+  params: 'paramètres',
+  resultat: 'résultat',
+  erreur: 'erreur',
+  cout_usd: 'coût ($)',
+  resume: 'résumé',
+  intention: 'intention',
+  statut: 'statut',
+  empreinte: 'empreinte',
+  modele: 'modèle',
+}
+
+/** Les données d'une ligne, à plat et en clair : une ligne par valeur, ses clés jointes (`paramètres · agent`). */
+function aPlat(valeur, prefixe = '') {
+  if (valeur === null || valeur === undefined) return []
+  if (Array.isArray(valeur)) {
+    return valeur.every((v) => v === null || typeof v !== 'object')
+      ? [[prefixe, valeur.map(enClair).join(', ')]]
+      : valeur.flatMap((v, i) => aPlat(v, `${prefixe} · ${i + 1}`))
+  }
+  if (typeof valeur === 'object') {
+    return Object.entries(valeur).flatMap(([k, v]) => {
+      const cle = CLES_LISIBLES[k] ?? k
+      return aPlat(v, prefixe ? `${prefixe} · ${cle}` : cle)
+    })
+  }
+  return [[prefixe, enClair(valeur)]]
+}
+
+/** Une valeur des données ; l'identifiant d'une personne du registre devient son nom, l'identifiant entre parenthèses. */
+function enClair(valeur) {
+  const texte = String(valeur)
+  const personne = ici.donnees?.identites.find((x) => x.personne === texte && x.nom)
+  return personne ? `${personne.nom} (${texte})` : texte
+}
+
+/** Ce que désigne l'identifiant d'une action : une conversation, une question libre, sinon le suivi d'une demande. */
+const sorteDe = (objet) =>
+  /^C-/.test(objet) ? 'Conversation' : /^E-/.test(objet) ? 'Question libre' : 'Suivi'
+
+/**
+ * Le volet de détail d'une action du journal : toutes ses lignes, dans
+ * l'ordre où elles sont arrivées, techniques comprises ; chacune en clair,
+ * puis ses données à plat ; le coût de l'IA au total.
+ */
+function ouvrirDetail(objet) {
+  const lignes = ici.journal.filter((l) => l.objet === objet).reverse()
+  const cout = lignes.reduce((s, l) => {
+    const c = donneesDe(l).cout_usd
+    return s + (l.type === TYPE_APPEL && typeof c === 'number' ? c : 0)
+  }, 0)
+  $('volet-sorte').textContent = sorteDe(objet)
+  $('volet-titre').textContent = objet
+  $('volet-corps').replaceChildren(
+    el('p', {
+      classe: 'volet__resume',
+      texte: `${compter(lignes.length, 'ligne', 'lignes')} au journal${cout > 0 ? ` · IA : ${dollars(cout)}` : ''}`,
+    }),
     el(
       'ol',
-      { classe: 'journal' },
-      ...lignes.map((l) =>
-        el(
+      { classe: 'volet__lignes' },
+      ...lignes.map((l) => {
+        const { genre, texte, note } = lireLigne(l)
+        const donnees = aPlat(donneesDe(l))
+        return el(
           'li',
-          { classe: 'entree' },
-          el('time', {
-            classe: 'entree__heure',
-            datetime: l.horodatage,
-            texte: instant(l.horodatage),
-          }),
+          { classe: 'volet__ligne' },
           el(
-            'div',
-            { classe: 'entree__quoi' },
-            el('span', { classe: 'entree__type', texte: TYPES_LISIBLES[l.type] ?? l.type }),
-            l.objet ? el('span', { classe: 'entree__objet', texte: l.objet }) : null,
-            l.issue ? el('span', { classe: 'pastille', texte: l.issue }) : null,
+            'p',
+            { classe: 'entree__genre' },
+            `${instant(l.horodatage)} · ${genre}`,
+            note ? ' ' : null,
+            note ? el('span', { classe: 'pastille', texte: note }) : null,
           ),
-          motif(l) ? el('p', { classe: 'entree__motif texte', texte: motif(l) }) : null,
-        ),
+          texte ? el('p', { classe: 'entree__motif texte', texte }) : null,
+          donnees.length > 0
+            ? el(
+                'dl',
+                { classe: 'volet__donnees' },
+                ...donnees.flatMap(([k, v]) => [el('dt', { texte: k }), el('dd', { texte: v })]),
+              )
+            : null,
+        )
+      }),
+    ),
+  )
+  const volet = $('volet')
+  volet.hidden = false
+  $('volet-fermer').focus()
+}
+
+function fermerDetail() {
+  $('volet').hidden = true
+}
+
+const formatJour = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: FUSEAU,
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+})
+const formatHeure = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: FUSEAU,
+  hour: '2-digit',
+  minute: '2-digit',
+})
+/** Le jour d'un horodatage du journal, en heure de Paris : « samedi 10 octobre ». */
+const jourDuJournal = (iso) => formatJour.format(new Date(iso))
+
+/** Une ligne du journal : son heure ; ce qui s'est passé, en mots, son genre et qui en petit au-dessus. */
+function entreeJournal(l) {
+  const { genre, texte, note } = lireLigne(l)
+  return el(
+    'li',
+    { classe: `entree${TYPES_TECHNIQUES.has(l.type) ? ' entree--technique' : ''}` },
+    el('time', {
+      classe: 'entree__heure',
+      datetime: l.horodatage,
+      texte: formatHeure.format(new Date(l.horodatage)),
+    }),
+    el(
+      'div',
+      { classe: 'entree__corps' },
+      el(
+        'p',
+        { classe: 'entree__genre' },
+        genre,
+        note ? ' ' : null,
+        note ? el('span', { classe: 'pastille', texte: note }) : null,
+        l.objet ? ' ' : null,
+        l.objet
+          ? el('button', {
+              classe: 'entree__id',
+              type: 'button',
+              title: 'Voir le détail',
+              texte: l.objet,
+              onclick: () => ouvrirDetail(l.objet),
+            })
+          : null,
       ),
+      texte ? el('p', { classe: 'entree__motif texte', texte }) : null,
     ),
   )
 }
 
-/** Le motif d'une ligne ; pour un appel au modèle, son coût. */
-function motif(l) {
-  if (l.type === TYPE_APPEL && l.donnees) {
-    const d = JSON.parse(l.donnees)
-    if (typeof d.cout_usd === 'number') return `coût : ${dollars(d.cout_usd)}`
+/**
+ * Ce qu'une ligne dit au patron : son genre (avec qui), son texte, une note
+ * courte. L'identifiant de l'action est à part, un lien vers son détail ;
+ * une question libre ne montre pas sa consigne pseudonymisée (celle du
+ * patron est juste au-dessus).
+ */
+function lireLigne(l) {
+  const d = donneesDe(l)
+  const genre = majuscule(TYPES_LISIBLES[l.type] ?? l.type)
+  switch (l.type) {
+    case 'consigne':
+      return {
+        genre: `Demande${d.identite ? ` · ${nomDe(d.identite)}` : ''}`,
+        texte: l.motif ? `« ${l.motif} »` : '',
+        note:
+          l.issue === 'refus' || d.erreur ? 'refusée' : l.issue === 'nouvelle' ? 'sans geste' : '',
+      }
+    case 'confirmation':
+      return {
+        genre: 'Réponse',
+        texte: l.issue === 'oui' ? 'Oui' : l.issue === 'non' ? 'Non' : l.issue,
+      }
+    case 'echappee':
+      return { genre, texte: ISSUES_ECHAPPEE[l.issue] ?? l.issue ?? '' }
+    case TYPE_APPEL:
+      return {
+        genre,
+        texte: typeof d.cout_usd === 'number' ? `coût : ${dollars(d.cout_usd)}` : '',
+      }
+    default:
+      return {
+        genre,
+        texte: l.motif ?? '',
+        // Une issue qui est un identifiant (une action, `valider_remplacement`) ne dit rien au patron.
+        note: l.issue && !l.issue.includes('_') ? l.issue : '',
+      }
   }
-  return l.motif ?? ''
 }
 
 // ---------- ce que l'outil ne sait pas encore faire ----------
@@ -762,36 +996,51 @@ async function chargerSansGeste() {
 /** Qui a commandé : le rôle, et la personne quand le rôle est identifié. */
 const quiCommande = (par) => (par.personne ? `${par.role} ${par.personne}` : par.role)
 
-/** Où en est une commande (L7) : en attente de l'agence, chantier en cours, fusionné (mise à jour en préparation), disponible ; sinon le statut du chantier. */
-function etatCommande(intention, c) {
-  if (c.disponible) return `Disponible : le geste ${intention} est dans le catalogue.`
-  const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}.`
-  if (!c.chantier) return `${commande} En attente de l’agence.`
+/**
+ * Où en est une commande (L7), en un état court et une phrase : en attente
+ * de l'agence, chantier en cours ou demain, prêt (mise à jour en
+ * préparation), disponible ; sinon le statut du chantier.
+ */
+function etatCommande(c) {
+  if (c.disponible) return { etat: 'disponible', phrase: 'Vous pouvez le demander à l’outil.' }
+  const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}`
+  if (!c.chantier)
+    return { etat: 'commandé', phrase: `${commande} ; l’agence ne l’a pas commencé.` }
   const { issue, version } = c.chantier
-  if (issue === EN_COURS) return `${commande} Chantier en cours à l’agence.`
-  if (issue === EN_ATTENTE) return `${commande} En attente : le chantier se fera demain.`
+  if (issue === EN_COURS) return { etat: 'en chantier', phrase: `${commande} ; l’agence le code.` }
+  if (issue === EN_ATTENTE)
+    return { etat: 'commandé', phrase: `${commande} ; le chantier se fera demain.` }
   if (issue === FUSIONNE) {
-    return `${commande} Fusionné${version ? ` (${version})` : ''} : mise à jour en préparation.`
+    return {
+      etat: 'prêt',
+      phrase: `${commande} ; il arrive à la prochaine mise à jour${version ? ` (${version})` : ''}.`,
+    }
   }
-  return `${commande} Chantier du ${jour(c.chantier.le)} : ${issue}.`
+  return { etat: issue, phrase: `${commande} ; chantier du ${jour(c.chantier.le)}.` }
 }
 
-/** Une demande sans geste : l'intention, combien de fois, les derniers résumés ; où en est sa commande, ou le bouton pour la commander. */
+/** Ce qu'une demande sans geste demandait, en mots : son dernier résumé, sinon son mot-clé. */
+const titreSansGeste = (d) => majuscule(d.exemples[0] ?? d.intention)
+
+/** Une demande sans geste : ce qu'elle demandait, combien de fois ; où en est sa commande, ou le bouton pour la commander. */
 function carteSansGeste(d) {
+  const etat = d.commande ? etatCommande(d.commande) : null
   return el(
     'li',
-    { classe: `carte${d.commande ? '' : ' carte--attente'}` },
+    { classe: `carte carte--demande${d.commande ? '' : ' carte--attente'}` },
     el(
       'div',
       { classe: 'carte__meta' },
-      el('span', { classe: 'carte__titre', texte: d.intention }),
-      el('span', { texte: `${d.compte} fois` }),
-      el('span', { texte: `dernière le ${jour(d.derniere)}` }),
+      el('span', {
+        classe: `pastille ${etat ? 'pastille--outil' : 'pastille--doute'}`,
+        texte: etat ? etat.etat : 'à commander',
+      }),
+      el('span', {
+        texte: `Demandé ${d.compte} fois · la dernière le ${jour(d.derniere)}`,
+      }),
     ),
-    ...d.exemples.map((e) => el('p', { classe: 'texte', texte: `« ${e} »` })),
-    d.commande
-      ? el('p', { classe: 'repondu', texte: etatCommande(d.intention, d.commande) })
-      : zoneCommande(d),
+    el('h4', { classe: 'demande__titre', texte: titreSansGeste(d) }),
+    etat ? el('p', { classe: 'carte__suite', texte: etat.phrase }) : zoneCommande(d),
   )
 }
 
@@ -806,7 +1055,7 @@ function zoneCommande(d) {
     montrer(
       el('p', {
         classe: 'question',
-        texte: `Commander le geste « ${d.intention} » ? Le harnais le code à l’agence, sous ses contrôles.`,
+        texte: `Commander le geste « ${titreSansGeste(d)} » ? Le harnais le code à l’agence, sous ses contrôles.`,
       }),
       bouton('bouton--oui', 'Oui, commander', async () => {
         try {
@@ -876,10 +1125,19 @@ function bulleClient(texte, identite) {
 function bulleOutil(reponse, conf) {
   const sorte = SORTES[reponse.sorte]
   const enAttente = reponse.sorte === 'confirmation' || reponse.sorte === 'proposition'
+  // Un résultat en plusieurs lignes : la première est son titre, en avant.
+  const [tete, ...suite] = reponse.texte.split('\n')
   const corps = el(
     'div',
     { classe: 'bulle__corps' },
-    el('p', { classe: 'texte', texte: reponse.texte }),
+    reponse.sorte === 'resultat' && suite.length > 0
+      ? el(
+          'p',
+          { classe: 'texte' },
+          el('span', { classe: 'bulle__tete', texte: tete }),
+          `\n${suite.join('\n')}`,
+        )
+      : el('p', { classe: 'texte', texte: reponse.texte }),
   )
   // Une réponse d'échappée dit ce que le contrôle a fait de ses chiffres : relus, ou résumé retiré.
   if (reponse.controle) {
@@ -967,7 +1225,8 @@ const note = (texte) => ajouter(el('li', { classe: 'note', texte }))
 
 function accueil() {
   const texte = ici.tableau?.textes.accueil
-  if (texte) bulleOutil({ sorte: 'resultat', texte }, {})
+  // L'accueil n'est pas un résultat : ses lignes restent au même niveau.
+  if (texte) bulleOutil({ sorte: 'accueil', texte }, {})
 }
 
 /** Ce que le métier dit à la personne choisie ; une réponse qui arrive après un autre changement de « Je suis » est ignorée. */
@@ -1215,6 +1474,10 @@ async function demarrer() {
     })
   }
   $('rafraichir-journal').addEventListener('click', chargerJournal)
+  $('volet-fermer').addEventListener('click', fermerDetail)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !$('volet').hidden) fermerDetail()
+  })
   $('alerte-echappees').addEventListener('click', () => ouvrirOnglet('journal', true))
   $('rafraichir-appris').addEventListener('click', chargerSansGeste)
   $('identite').addEventListener('change', (e) => changerIdentite(identiteDe(e.target.value)))

@@ -21,6 +21,8 @@ export interface DemandeTableau {
 export interface Repli {
   titre: string
   lignes: { titre: string; detail?: string }[]
+  /** Montrée ouverte : la section est la réponse elle-même, pas un détail (exemple : les échéances en retard). */
+  ouvert?: boolean
 }
 
 /** Un autre choix offert sur une proposition en attente : un geste du métier, appelé directement (un bouton), sans modèle (PLAN-CHOIX.md, lot 3). */
