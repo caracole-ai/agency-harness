@@ -181,7 +181,8 @@ cas:
     attendu: { sortes: [reponse], contient: [LOT-042, Cohen] }
   # En cours : PRJ-04 et PRJ-13 (régies), PRJ-09 (12 357,86 €), PRJ-10 (4 375 €),
   # PRJ-12 (12 205 €), PRJ-14 (14 161,43 €), PRJ-16 (20 718,21 €) ; PRJ-17 est
-  # interne (aucun vendu). Aucun sous 20 %.
+  # interne (aucun vendu). Aucun sous 20 %. La marge en pourcentage suffit
+  # (Lionel, 2026-10-19) : les montants en euros ne sont plus exigés.
   - id: E-20
     role: po
     personne: M-03
@@ -189,7 +190,7 @@ cas:
     intention: marge_projet
     attendu:
       sortes: [reponse]
-      contient: [PRJ-04, PRJ-09, PRJ-10, PRJ-12, PRJ-13, PRJ-14, PRJ-16, "12357.86", "4375", "12205", "14161.43", "20718.21"]
+      contient: [PRJ-04, PRJ-09, PRJ-10, PRJ-12, PRJ-13, PRJ-14, PRJ-16]
 
   # --- Hors catalogue : graphiste (M-04) ---
   - id: E-22

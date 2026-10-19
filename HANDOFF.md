@@ -43,17 +43,14 @@ est faite** (2026-10-18, fusion 59e9374, verdict dans
 `evals/verdict-2026-10-18-phrase-a-trous.md`). L'adaptateur de
 l'abonnement est corrigé (577ac5c : le modèle tentait d'appeler les outils
 du moteur directement ; plus aucun abandon « outil indisponible »).
-**En cours, branche `echappee/identifiants`, non fusionnée** : un
-identifiant reçu tel quel se recopie hors d'un trou, la notion des tickets
-à qualifier, « chaque grandeur demandée, dans son unité » ; mesuré sous
+**Fusionné le 2026-10-19 (`echappee/identifiants`)** : un identifiant reçu
+tel quel se recopie hors d'un trou, la notion des tickets à qualifier,
+« chaque grandeur demandée, dans son unité ». Mesuré sous
 `evals/regle-2026-10-18-identifiants.md` (trois passes, aucun cas perdu)
-contre une base sans phrase à trous et avec l'adaptateur corrigé (worktree
-du scratchpad). Le lot gagne partout (agence web 18, 18 contre 16, 15, 16 ;
-retraits 1 contre 8), **sauf E-20** (la marge : le lot répond en
-pourcentage, l'étiquette veut aussi les euros) : la règle interdit la
-fusion. **À Lionel** : l'étiquette d'E-20 (déjà dans « Pour Lionel ») ; si
-le pourcentage suffit, l'étiquette change et la branche se fusionne ; sinon,
-une correction plus forte de l'échappée.
+contre une base sans phrase à trous : agence web 58/72 contre 48/72,
+retraits 1 contre 8, sécurité 54 = 54, aucune fuite. E-20 arrêtait la
+fusion sur les euros ; Lionel a tranché que le pourcentage suffit, et
+l'étiquette a changé (`evals/verdict-2026-10-18-identifiants.md`).
 
 - **Ne jamais lancer `pnpm agence`, `pnpm chantier` ni `pnpm versionner`
   dans ce dépôt pour un essai** : ils poussent sur `origin` (GitHub). Le
@@ -118,7 +115,7 @@ chemin simple, dans les trois cas.
 
 Dire ce qu'est une bonne réponse (E1), ou mieux, mettre un vrai patron devant
 l'outil. Premiers cas, rouges sur GLM comme sur Sonnet, dans
-`metiers/agence-web/evals/echappees.yaml` : **E-04, E-12, E-16, E-20** (la
+`metiers/agence-web/evals/echappees.yaml` : **E-04, E-12, E-16** (E-20 tranché le 2026-10-19 ; la
 réponse attendue demande-t-elle plus que la question ?). Puis relire les
 étiquettes de `metiers/securite-privee/evals/consignes.yaml`.
 
@@ -154,23 +151,16 @@ fuite 0 avec le vrai modèle) :
 - Les sites : le diaporama et le glossaire de smarttailor.fr redéployés.
 
 **Reste à Lionel, sans être une décision** : créer la clé de l'agence ; la
-date de la bascule vers la clé d'API ; pousser `main` ; les étiquettes
-(`heures_par_agent` : ses 7 cas et N-1/N-2 réétiquetés ; E-01/E-02 de
-`echappees.yaml` ; AP-4 ; le repli qui montre les cellules piégées) ; deux
-écritures dans `exemples/client-fictif/` : `personnes.yaml` (`agent:` →
-`personne:`, 13 lignes, puis retirer `agent` de `IdentiteSchema` et ses
-deux tests) et `attendu-remplacement.yaml` (le départage de `gerer_absence`
-par numéro donne `[A-2, A-1, A-5, A-9]`, puis `classer` avec
-`localeCompare(…, 'fr', { numeric: true })` dans `remplacement.ts`) ;
-supprimer `~/harnais-nuit`, `~/harnais-nuit-origine.git` et les trois
-worktrees sales de copies dépassées :
-
-**Reste à Lionel, sans être une décision** : créer la clé de l'agence ; la
 date de la bascule vers la clé d'API ; les étiquettes (`heures_par_agent` :
 ses 7 cas et N-1/N-2 réétiquetés ; E-01/E-02 de `echappees.yaml` ; AP-4 ;
-le repli qui montre les cellules piégées ; R-2) ; supprimer `~/harnais-nuit`,
-`~/harnais-nuit-origine.git` et les trois worktrees, sales de copies
-dépassées :
+le repli qui montre les cellules piégées ; R-2) ; deux écritures dans
+`exemples/client-fictif/` : `personnes.yaml` (`agent:` → `personne:`, 13
+lignes, puis retirer `agent` de `IdentiteSchema` et ses deux tests) et
+`attendu-remplacement.yaml` (le départage de `gerer_absence` par numéro
+donne `[A-2, A-1, A-5, A-9]`, puis `classer` avec
+`localeCompare(…, 'fr', { numeric: true })` dans `remplacement.ts`) ;
+supprimer `~/harnais-nuit`, `~/harnais-nuit-origine.git` et les trois
+worktrees, sales de copies dépassées :
 
 ```sh
 git worktree remove --force .claude/worktrees/agent-a2eb82aa7f784e5ca

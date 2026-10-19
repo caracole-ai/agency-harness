@@ -42,3 +42,14 @@ son unité » (9df013c) n'a rien changé. E-20 est déjà dans la liste des
 revient : si la marge en pourcentage répond, l'étiquette change et la branche
 se fusionne telle quelle ; si les euros sont dus, il faut une correction plus
 forte de l'échappée, et une mesure de plus.
+
+## La décision de Lionel (2026-10-19)
+
+« Le pourcentage suffit » : l'étiquette d'E-20 ne demande plus les montants en
+euros, seulement les sept projets en cours. La règle n'est pas réécrite ;
+c'est l'étiquette qui change, par la décision de celui à qui elle revient.
+Relues sous cette étiquette, les mêmes passes (aucune relancée) : E-20 juste
+3 fois sur 3 sur le lot (seuls les euros manquaient), 3 sur 3 sur la base.
+Agence web : 58/72 contre 48/72. Les six conditions sont vraies.
+
+**Fusion.**
