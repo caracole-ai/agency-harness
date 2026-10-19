@@ -1,11 +1,14 @@
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
-import { actionsDe, outilsDe, type Role, schemaMontre } from '../conversation/actions'
+import { actionsDe, type Role } from '../conversation/actions'
 import { type ConfigConversation, prixDe } from '../conversation/config'
-import { avecSession, type MetierConversation, resoudre } from '../conversation/conversation'
-import { roleDe } from '../conversation/roles'
-import { systemeTraduire, traduire } from '../conversation/traduire'
+import {
+  avecSession,
+  type MetierConversation,
+  resoudre,
+  traduireConsigne,
+} from '../conversation/conversation'
 import { cout, type Modele } from '../modele/modele'
 import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
 import { aParis, type Temporal } from '../temps/temporal'
@@ -82,7 +85,7 @@ export function configDuDossier<S>(m: MetierConversation<S>, dossier: string): C
 
 /**
  * Lance un cas sur sa copie (l'identité du cas passe d'abord la porte ; le
- * cas ouvre lui-même la session, après la traduction), garde sa trace, rend
+ * cas ouvre lui-même la session), garde sa trace, rend
  * son résultat, sa fuite et l'identifiant du modèle qui a joué.
  */
 export async function jouerCas<S>(
@@ -179,8 +182,8 @@ export function casDuFichier(fichier: FichierTraduire, seulement?: Set<string>):
 
 /**
  * Joue des cas de traduction : le circuit de la conversation sans
- * l'exécution, la traduction (la phrase seule), puis le dossier, puis la
- * résolution de la personne. `surCas` reçoit chaque résultat et sa trace.
+ * l'exécution, la traduction de la phrase masquée (`traduireConsigne`, le
+ * chemin même de la conversation), puis la résolution de la personne. `surCas` reçoit chaque résultat et sa trace.
  */
 export async function jouerTraduction<S>(
   m: MetierConversation<S>,
@@ -191,39 +194,31 @@ export async function jouerTraduction<S>(
 ): Promise<ResultatCas[]> {
   const resultats: ResultatCas[] = []
   for (const c of cas) {
-    const joue = await jouerCas(m, source, c, modeleDe, async (dossier, modele, identite) => {
-      const actions = actionsDe(m.actions, c.role)
-      const config = configDuDossier(m, dossier)
-      const { demande } = await traduire(
-        modele,
-        config.modele.effort.traduire,
-        config.plafonds.par_demande.tokens_sortie,
-        systemeTraduire(roleDe(m.roles, identite), m.domaine, actions, m.intentions),
-        outilsDe(m.actions, c.role, m.domaine),
-        c.consigne,
-        c.quand,
-        new Map(actions.map((a) => [a.id, schemaMontre(a)])),
-      )
-      const action =
-        demande.sorte === 'action' ? actions.find((a) => a.id === demande.action) : undefined
-      const issue: IssueTraduction =
-        demande.sorte !== 'action' || !action
-          ? demande
-          : await avecSession(m, dossier, identite, async (s) => {
-              m.verifierIdentite(s, identite)
-              const tour = {
-                identite,
-                consigne: c.consigne,
-                maintenant: c.quand,
-                conversation: `C-eval-${c.id}`,
-              }
-              const r = resoudre(m, s, tour, action, demande.params)
-              return r.sorte === 'resolue'
-                ? { ...demande, params: r.params }
-                : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
-            })
-      return { ecarts: ecartsTraduction(c.attendu, issue), issue }
-    })
+    const joue = await jouerCas(m, source, c, modeleDe, async (dossier, modele, identite) =>
+      avecSession(m, dossier, identite, async (s) => {
+        const { demande } = await traduireConsigne(m, s, modele, identite, c.consigne, c.quand)
+        const action =
+          demande.sorte === 'action'
+            ? actionsDe(m.actions, c.role).find((a) => a.id === demande.action)
+            : undefined
+        let issue: IssueTraduction = demande
+        if (demande.sorte === 'action' && action) {
+          m.verifierIdentite(s, identite)
+          const tour = {
+            identite,
+            consigne: c.consigne,
+            maintenant: c.quand,
+            conversation: `C-eval-${c.id}`,
+          }
+          const r = resoudre(m, s, tour, action, demande.params)
+          issue =
+            r.sorte === 'resolue'
+              ? { ...demande, params: r.params }
+              : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
+        }
+        return { ecarts: ecartsTraduction(c.attendu, issue), issue }
+      }),
+    )
     resultats.push(joue.resultat)
     surCas?.(joue.resultat, joue.trace, joue.idModele)
   }

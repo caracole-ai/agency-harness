@@ -39,6 +39,8 @@ export function evenementAppel(
   tour: number,
   reponse: ReponseModele,
   prix: PrixModele,
+  /** Ce que l'appel garde en plus (la consigne telle qu'elle est partie, pour la traduction). */
+  plus: Record<string, unknown> = {},
 ): Evenement {
   return {
     type: TYPE_APPEL,
@@ -52,6 +54,7 @@ export function evenementAppel(
       cout_usd: cout(reponse.usage, prix),
       duree_ms: reponse.dureeMs,
       stop_reason: reponse.message.stop_reason,
+      ...plus,
     },
   }
 }

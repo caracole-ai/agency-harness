@@ -4,8 +4,10 @@ import {
   formesConnues,
   fuites,
   masquerConsigne,
+  masquerPourModele,
   masquerTables,
   masquerTexte,
+  reprendreMentions,
   restituer,
 } from './pseudonymes'
 
@@ -103,6 +105,88 @@ describe('restituer', () => {
   })
 })
 
+describe('masquerTexte : les imperfections d’écriture', () => {
+  it.each([
+    ["d'Aïcha et qu'Aïcha", "d'P-1 et qu'P-1"],
+    ['(Aïcha), «Aïcha», Aïcha. Aïcha!', '(P-1), «P-1», P-1. P-1!'],
+    ['Aïcha\u00A0Traoré vient', 'P-1 vient'],
+    ['Aïcha\u202F?', 'P-1\u202F?'],
+    ['Aï\u200Bcha vient', 'P-1 vient'],
+    ['Tra\u00ADoré vient', 'P-1 vient'],
+    ['Ai\u0308cha vient', 'P-1 vient'],
+    ['Ａｉｃｈａ vient', 'P-1 vient'],
+    ['Dʼangelo et D‘Angelo', 'P-4 et P-4'],
+    ['AICHA TRAORE et traoré aïcha', 'P-1 et P-1'],
+  ])('%s', (texte, attendu) => {
+    expect(m(texte)).toBe(attendu)
+  })
+  it('un nom qui est aussi un mot de la langue se masque partout : la vie privée d’abord', () => {
+    const PETIT = { id: 'P-10', nom: 'Laura Petit', sorte: 'personne' as const }
+    expect(masquerTexte('un petit retard', [PETIT])).toBe('un P-10 retard')
+  })
+})
+
+describe('masquerPourModele : la consigne de la traduction', () => {
+  const pm = (texte: string) => masquerPourModele(texte, EQUIPE)
+  it('une forme sûre : l’identifiant, et la mention gardée', () => {
+    const r = pm('Aïcha ne vient pas demain')
+    expect(r.texte).toBe('P-1 ne vient pas demain')
+    expect([...r.mentions]).toEqual([['P-1', 'Aïcha']])
+  })
+  it('un prénom partagé : un jeton, le même à chaque fois ; le nom complet, son identifiant', () => {
+    const r = pm('karim est absent, Karim Haddad le remplace, Karim le sait')
+    expect(r.texte).toBe('NOM-1 est absent, P-5 le remplace, NOM-1 le sait')
+    expect(r.mentions.get('P-5')).toBe('Karim Haddad')
+    expect(r.mentions.get('NOM-1')).toMatch(/^karim$/i)
+  })
+  it('un nom mal écrit, même en tête de phrase : un jeton', () => {
+    expect(pm('Aisha ne vient pas').texte).toBe('NOM-1 ne vient pas')
+    expect(pm('Demain, Aisha ne vient pas').texte).toBe('Demain, NOM-1 ne vient pas')
+  })
+  it('un mot de la langue en tête de phrase ne devient pas un jeton', () => {
+    expect(pm('Parmi les agents, qui ?').texte).toBe('Parmi les agents, qui ?')
+    const DINA = { id: 'P-12', nom: 'Dina Morel', sorte: 'personne' as const }
+    expect(masquerPourModele('Donne-moi les heures', [DINA]).texte).toBe('Donne-moi les heures')
+  })
+  it('un identifiant tapé reste, sans mention à reprendre ; un mot inconnu passe', () => {
+    const r = pm('Remplace P-7 par Aïcha, pas Bidule')
+    expect(r.texte).toBe('Remplace P-7 par P-1, pas Bidule')
+    expect([...r.mentions.keys()]).toEqual(['P-1'])
+  })
+  it('aucune forme connue ne reste dans ce qui part', () => {
+    for (const t of [
+      'Karim et Karim Benali, Aicha, jean pierre, D’Angelo',
+      'Aisha Traorre ?',
+      'traore aicha',
+    ]) {
+      expect(fuites(pm(t).texte, EQUIPE)).toEqual([])
+    }
+  })
+})
+
+describe('reprendreMentions', () => {
+  const mentions = new Map([
+    ['NOM-1', 'Karim'],
+    ['P-1', 'Aïcha'],
+  ])
+  it('chaque remplaçant redevient la mention, dans toute la valeur', () => {
+    expect(
+      reprendreMentions(
+        { personne: 'NOM-1', autre: 'nom 1', liste: ['P-1', 'NOM_1'], n: 3, rien: null },
+        mentions,
+      ),
+    ).toEqual({ personne: 'Karim', autre: 'Karim', liste: ['Aïcha', 'Karim'], n: 3, rien: null })
+  })
+  it('au mot près : P-11, D-P-1 et NOM-12 ne sont pas touchés', () => {
+    expect(reprendreMentions('P-11, D-P-1, NOM-12', mentions)).toBe('P-11, D-P-1, NOM-12')
+  })
+  it('l’aller-retour rend la consigne', () => {
+    const consigne = 'Karim est absent, Karim Haddad le remplace'
+    const r = masquerPourModele(consigne, EQUIPE)
+    expect(reprendreMentions(r.texte, r.mentions)).toBe(consigne)
+  })
+})
+
 describe('fuites', () => {
   it('vide sur un texte masqué', () => {
     expect(fuites(m('Aïcha Traoré, Jean-Pierre, Kader'), EQUIPE)).toEqual([])
@@ -191,10 +275,11 @@ describe('masquerConsigne (S3)', () => {
     expect(r.precision?.mention).toBe('Aisha')
     expect(ids(r)).toContain('P-1')
   })
-  it('deux mots proches en tête de phrase : la question ; un mot seul en tête : rien', () => {
+  it('en tête de phrase : deux mots proches, la question ; un mot seul, seulement s’il sonne et s’écrit comme un nom', () => {
     expect(masquerConsigne('Aisha Traorre est là ?', EQUIPE).precision?.mention).toBe(
       'Aisha Traorre',
     )
+    expect(masquerConsigne('Aisha est là ?', EQUIPE).precision?.mention).toBe('Aisha')
     expect(masquerConsigne('Parmi les agents, qui ?', [KARIM_H])).toEqual({
       texte: 'Parmi les agents, qui ?',
     })

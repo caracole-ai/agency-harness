@@ -14,13 +14,21 @@ export type { Designable } from './noms'
 /** Au plus ce nombre de candidats proposés dans la question. */
 export const CANDIDATS_MAX = 3
 
-/** Sans accents ni casse, les espaces et les tirets réduits à une espace. */
+/** Les apostrophes typographiques, ramenées à `'`. */
+export const APOSTROPHES = /[’ʼ‘′]/g
+
+/**
+ * Sans accents ni casse, les espaces et les tirets réduits à une espace ; les
+ * lettres de compatibilité ramenées (pleine chasse, ligatures : NFKD), les
+ * caractères invisibles retirés (espace de largeur nulle, trait d'union
+ * conditionnel : `\p{Cf}`).
+ */
 export const normaliserNom = (texte: string) =>
   texte
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
+    .normalize('NFKD')
+    .replace(/[\p{M}\p{Cf}]/gu, '')
     .toLowerCase()
-    .replace(/’/g, "'")
+    .replace(APOSTROPHES, "'")
     .replace(/[\s\p{Pd}]+/gu, ' ')
     .trim()
 
@@ -112,7 +120,12 @@ const seuil = (forme: string) => Math.max(2, Math.ceil(forme.length * 0.4))
  * `CANDIDATS_MAX`. Une liste vide : personne ne ressemble. Elle ne décide
  * jamais : c'est la question qui la montre, et le demandeur qui choisit.
  */
-export function proches<P extends Designable>(mention: string, personnes: P[]): P[] {
+export function proches<P extends Designable>(
+  mention: string,
+  personnes: P[],
+  /** Même clé phonétique **et** distance sous le seuil : pour un mot qui peut être un mot de la langue (en tête de phrase). */
+  exigeant = false,
+): P[] {
   const m = normaliserNom(mention)
   const cle = clePhonetique(m)
   return personnes
@@ -122,7 +135,9 @@ export function proches<P extends Designable>(mention: string, personnes: P[]): 
         distance: distance(m, f),
         seuil: seuil(f),
       }))
-      const retenus = scores.filter((s) => s.phonetique || s.distance <= s.seuil)
+      const retenus = scores.filter((s) =>
+        exigeant ? s.phonetique && s.distance <= s.seuil : s.phonetique || s.distance <= s.seuil,
+      )
       return {
         p,
         retenu: retenus.length > 0,
