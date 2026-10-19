@@ -18,7 +18,7 @@ import {
   roleDe,
 } from '@harnais/moteur'
 import { z } from 'zod'
-import { ACTIONS } from './actions'
+import { ACTIONS, enEuros } from './actions'
 import { ConfigAgenceWeb } from './config'
 import { lireAgenceWeb } from './connecteurs/csv-exports'
 import { tablesPour } from './copie'
@@ -311,6 +311,31 @@ export const CONVERSATION: MetierConversation<Session> = {
       modele,
       precisions,
     ),
+  // Une personne (`M-04`), une facture, un projet, un lot, un devis, un contrat, un client, un ticket, un domaine ;
+  // ce qui suit un « / » (une date, une étape) reste tel quel, après le nom.
+  nommer: (s, objet) => {
+    const [id = '', ...reste] = objet.split('/')
+    const client = (c: string | undefined) => (c ? (s.ctx.clients.get(c)?.nom ?? c) : undefined)
+    const f = s.ctx.factures.get(id)
+    const p = s.ctx.projets.get(id)
+    const l = s.ctx.lots.get(id)
+    const d = s.ctx.devis.get(id)
+    const tma = s.ctx.contrats_tma.get(id)
+    const t = s.ctx.tickets.get(id)
+    const nom =
+      s.ctx.personnes.get(id)?.nom ??
+      (f
+        ? `Facture ${f.id} · ${client(f.client)} · ${enEuros(f.montant_ttc_eur)} TTC`
+        : undefined) ??
+      (p ? `${p.id} — ${p.nom}${p.client ? ` · ${client(p.client)}` : ''}` : undefined) ??
+      (l ? `${l.id} — ${l.nom} · ${s.ctx.projets.get(l.projet)?.nom ?? l.projet}` : undefined) ??
+      (d ? `Devis ${d.id} · ${client(d.client)} · ${enEuros(d.montant_ht_eur)} HT` : undefined) ??
+      (tma ? `${tma.id} — contrat de maintenance · ${client(tma.client)}` : undefined) ??
+      (t ? `${t.cle} — ${t.resume}` : undefined) ??
+      client(s.ctx.clients.has(id) ? id : undefined) ??
+      [...s.ctx.domaines.values()].find((x) => x.id === id || x.nom === id)?.nom
+    return nom === undefined ? undefined : [nom, ...reste].join(' · ')
+  },
   tableau: (s, identite) => {
     const nom =
       s.ctx.personnes.get(identite.personne ?? '')?.nom ?? quiParle(ROLES_DECLARES, identite)

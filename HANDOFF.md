@@ -82,6 +82,12 @@ du rapport Markdown, le planning en lignes courtes ; la première ligne
 d'un résultat en titre. Le journal et son volet disent de qui il s'agit
 (le métier nomme l'objet : `MetierConversation.nommer`, `objetEnClair`
 dans `/api/journal`) et ne répètent plus une échéance à chaque veille.
+L'agence web suit (2026-10-19) : factures en retard (jamais relancées,
+déjà relancées), tickets par projet, heures par projet, disponibilités du
+plus libre au plus chargé, domaines (date à renseigner en tête, expirés, à
+renouveler), absence proposée et ses tickets en liste ; elle nomme ses
+objets (facture, projet, lot, devis, contrat, client, personne, ticket,
+domaine). Démo agence : `--maintenant 2026-10-12T10:00`, port 3778.
 Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).

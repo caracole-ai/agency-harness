@@ -1,4 +1,12 @@
-import { type Action, aCapacite, dateFr, type Identite, LEQUEL, Temporal } from '@harnais/moteur'
+import {
+  type Action,
+  aCapacite,
+  dateFr,
+  type Identite,
+  LEQUEL,
+  type Repli,
+  Temporal,
+} from '@harnais/moteur'
 import { z } from 'zod'
 import type { Session } from './conversation'
 import { projetsDe } from './copie'
@@ -269,21 +277,41 @@ const facturesEnRetard: Action<Session, z.infer<typeof FacturesEnRetard>> = {
       .sort((a, b) => (b.retard ?? -1) - (a.retard ?? -1))
     if (retards.length === 0)
       return { texte: 'Aucune facture en retard.', donnees: { factures: [] } }
-    const lignes = retards.map(({ f, reste, retard }) => {
-      const c = s.ctx.clients.get(f.client)
+    // Une phrase de compte, puis les factures en deux groupes, ce qui décide d'une relance : déjà relancées ou non.
+    const ligne = ({ f, reste, retard }: (typeof retards)[number]) => {
       const derniere = relancesDe(s, f.id).at(-1)
-      return [
-        `${f.id} — ${c?.nom ?? f.client} (${f.client})`,
-        `${enEuros(f.montant_ttc_eur)} TTC${reste !== f.montant_ttc_eur ? `, reste dû ${enEuros(reste)}` : ''}`,
-        f.echeance === undefined || retard === undefined
-          ? 'échéance inconnue'
-          : `échue le ${date(f.echeance)}, ${pluriel(retard, 'jour')} de retard`,
-        derniere
-          ? `dernière relance : niveau ${derniere.niveau} le ${date(derniere.date)}`
-          : 'aucune relance',
-      ].join(' — ')
-    })
-    return { texte: lignes.join('\n'), donnees: { factures: retards.map((x) => x.f.id) } }
+      return {
+        titre: `${s.ctx.clients.get(f.client)?.nom ?? f.client} · ${enEuros(f.montant_ttc_eur)} TTC${reste !== f.montant_ttc_eur ? `, reste dû ${enEuros(reste)}` : ''}`,
+        detail: [
+          f.id,
+          f.echeance === undefined || retard === undefined
+            ? 'échéance inconnue'
+            : `échue le ${date(f.echeance)}, ${pluriel(retard, 'jour')} de retard`,
+          ...(derniere ? [`relance niveau ${derniere.niveau} le ${date(derniere.date)}`] : []),
+        ].join(' · '),
+      }
+    }
+    const sans = retards.filter((x) => relancesDe(s, x.f.id).length === 0)
+    const relancees = retards.filter((x) => relancesDe(s, x.f.id).length > 0)
+    const du = retards.reduce((somme, x) => somme + x.reste, 0)
+    return {
+      texte: `${pluriel(retards.length, 'facture')} en retard : ${enEuros(du)} restant dû.`,
+      replis: [
+        ...(sans.length > 0
+          ? [{ titre: `Jamais relancées (${sans.length})`, lignes: sans.map(ligne), ouvert: true }]
+          : []),
+        ...(relancees.length > 0
+          ? [
+              {
+                titre: `Déjà relancées (${relancees.length})`,
+                lignes: relancees.map(ligne),
+                ouvert: true,
+              },
+            ]
+          : []),
+      ],
+      donnees: { factures: retards.map((x) => x.f.id) },
+    }
   },
 }
 
@@ -321,18 +349,25 @@ const mesTickets: Action<Session, z.infer<typeof MesTickets>> = {
       const ou = imputation(s, t.projet ?? t.contrat_tma)
       parImputation.set(ou, [...(parImputation.get(ou) ?? []), t])
     }
-    const lignes = [...parImputation].flatMap(([ou, ts]) => [
-      ou,
-      ...ts.map(
-        (t) =>
-          `  ${t.cle} — ${t.resume} — ${ETATS_TICKET_EN_MOTS[t.etat]} — ${
-            t.estimation_h === undefined
-              ? 'sans estimation'
-              : `${nombre(t.estimation_h)} h estimées`
-          }`,
-      ),
-    ])
-    return { texte: lignes.join('\n'), donnees: { tickets: tickets.map((t) => t.cle) } }
+    // Une phrase de compte, puis un groupe par projet ou contrat : le ticket en mots, son état et son estimation dessous.
+    const estimees = tickets.reduce((somme, t) => somme + (t.estimation_h ?? 0), 0)
+    const replis: Repli[] = [...parImputation].map(([ou, ts]) => ({
+      titre: ou,
+      lignes: ts.map((t) => ({
+        titre: t.resume,
+        detail: [
+          ETATS_TICKET_EN_MOTS[t.etat],
+          t.estimation_h === undefined ? 'sans estimation' : `${nombre(t.estimation_h)} h estimées`,
+          t.cle,
+        ].join(' · '),
+      })),
+      ouvert: true,
+    }))
+    return {
+      texte: `${pluriel(tickets.length, 'ticket')}, ${nombre(estimees)} h estimées, sur ${parImputation.size} ${parImputation.size > 1 ? 'projets ou contrats' : 'projet ou contrat'}.`,
+      replis,
+      donnees: { tickets: tickets.map((t) => t.cle) },
+    }
   },
 }
 
@@ -394,12 +429,21 @@ const monTemps: Action<Session, z.infer<typeof MonTemps>> = {
     if (heures.size === 0)
       return { texte: `${titre} : aucune.`, donnees: { personne: qui, heures: {} } }
     const total = [...heures.values()].reduce((a, b) => a + b, 0)
+    // Le total d'abord ; le détail par projet, le plus d'heures en tête.
     return {
-      texte: [
-        `${titre} :`,
-        ...[...heures].map(([ou, h]) => `${imputation(s, ou)} : ${nombre(h)} h (${enJours(h)} j)`),
-        `Total : ${nombre(total)} h (${enJours(total)} j)`,
-      ].join('\n'),
+      texte: `${titre} : ${nombre(total)} h (${enJours(total)} j).`,
+      replis: [
+        {
+          titre: `Par projet ou contrat (${heures.size})`,
+          lignes: [...heures]
+            .sort((a, b) => b[1] - a[1])
+            .map(([ou, h]) => ({
+              titre: imputation(s, ou),
+              detail: `${nombre(h)} h (${enJours(h)} j)`,
+            })),
+          ouvert: true,
+        },
+      ],
       donnees: { personne: qui, heures: Object.fromEntries(heures) },
     }
   },
@@ -442,21 +486,37 @@ const disponibilites: Action<Session, z.infer<typeof Periode>> = {
   executer: (s, _identite, p) => {
     exigerPeriode(p.du, p.au)
     const absentes = absences(s, p.du, p.au)
-    const lignes = [...s.ctx.personnes.values()].map((personne) => {
+    // Du plus disponible au plus chargé : la charge en heures estimées, et les absences, sous chaque nom.
+    const charges = [...s.ctx.personnes.values()].map((personne) => {
       const ouverts = [...s.ctx.tickets.values()].filter(
         (t) => t.assigne === personne.id && ouvert(t),
       )
       const estimees = ouverts.reduce((somme, t) => somme + (t.estimation_h ?? 0), 0)
       const sans = ouverts.filter((t) => t.estimation_h === undefined).length
       const siennes = absentes.filter((a) => a.personne === personne.id)
-      return [
-        `${personne.nom} (${personne.id}) : ${nombre(estimees)} h estimées sur ${pluriel(ouverts.length, 'ticket')} ouvert${ouverts.length > 1 ? 's' : ''}${sans > 0 ? ` (${sans} sans estimation)` : ''}`,
-        siennes.length > 0
-          ? `absence proposée ${siennes.map((a) => periode(a.du, a.au)).join(', ')}`
-          : 'aucune absence connue',
-      ].join(' ; ')
+      return {
+        estimees,
+        ligne: {
+          titre: personne.nom,
+          detail: [
+            `${nombre(estimees)} h estimées sur ${pluriel(ouverts.length, 'ticket')} ouvert${ouverts.length > 1 ? 's' : ''}${sans > 0 ? ` (${sans} sans estimation)` : ''}`,
+            siennes.length > 0
+              ? `absence proposée ${siennes.map((a) => periode(a.du, a.au)).join(', ')}`
+              : 'aucune absence connue',
+          ].join(' · '),
+        },
+      }
     })
-    return { texte: [`Disponibilités ${periode(p.du, p.au)} :`, ...lignes].join('\n') }
+    return {
+      texte: `Disponibilités ${periode(p.du, p.au)}, du plus disponible au plus chargé.`,
+      replis: [
+        {
+          titre: `Charge de chacun (${charges.length})`,
+          lignes: charges.sort((a, b) => a.estimees - b.estimees).map((c) => c.ligne),
+          ouvert: true,
+        },
+      ],
+    }
   },
 }
 
@@ -481,17 +541,19 @@ const domainesExpirant: Action<Session, z.infer<typeof DomainesExpirant>> = {
   executer: (s, _identite, p, maintenant) => {
     const aujourdhui = maintenant.toPlainDate()
     const limite = aujourdhui.add({ days: p.jours })
-    const inconnues: string[] = []
-    const datees: { le: Temporal.PlainDate; texte: string }[] = []
+    // Trois groupes, ce qu'ils demandent : date à renseigner, déjà expirés, à renouveler ; le site en titre.
+    const inconnues: Repli['lignes'] = []
+    const datees: { le: Temporal.PlainDate; passe: boolean; ligne: Repli['lignes'][number] }[] = []
     for (const d of s.ctx.domaines.values()) {
       const client = d.client === undefined ? undefined : s.ctx.clients.get(d.client)
       const chez = `${client?.nom ?? 'client inconnu'}, ${d.registrar ?? 'registrar inconnu'}`
       for (const [quoi, le] of [
-        [`le domaine ${d.nom}`, d.expire_le],
-        [`le certificat de ${d.nom}`, d.certificat_expire_le],
+        ['domaine', d.expire_le],
+        ['certificat', d.certificat_expire_le],
       ] as const) {
+        const titre = `${d.nom} · ${quoi}`
         if (le === undefined) {
-          inconnues.push(`Date inconnue : ${quoi} (${chez})`)
+          inconnues.push({ titre, detail: chez })
           continue
         }
         const date = jour(le)
@@ -499,18 +561,42 @@ const domainesExpirant: Action<Session, z.infer<typeof DomainesExpirant>> = {
         const passe = Temporal.PlainDate.compare(date, aujourdhui) < 0
         datees.push({
           le: date,
-          texte: `${dateFr(date)} : ${quoi} ${passe ? 'a expiré' : 'expire'} (${chez})`,
+          passe,
+          ligne: {
+            titre,
+            detail: `${passe ? 'expiré le' : 'expire le'} ${dateFr(date)} · ${chez}`,
+          },
         })
       }
     }
     datees.sort((a, b) => Temporal.PlainDate.compare(a.le, b.le))
-    const lignes = [...inconnues, ...datees.map((d) => d.texte)]
-    return {
-      texte:
-        lignes.length > 0
-          ? lignes.join('\n')
-          : `Aucun domaine ni certificat n'expire dans les ${p.jours} jours.`,
-    }
+    const expires = datees.filter((d) => d.passe).map((d) => d.ligne)
+    const aVenir = datees.filter((d) => !d.passe).map((d) => d.ligne)
+    // Une date inconnue en tête : elle n'est pas lointaine, elle est à renseigner.
+    const groupes = [
+      { titre: 'Date à renseigner', compte: () => 'date à renseigner', lignes: inconnues },
+      {
+        titre: 'Déjà expirés',
+        compte: (n: number) => (n > 1 ? 'expirés' : 'expiré'),
+        lignes: expires,
+      },
+      {
+        titre: `À renouveler dans les ${p.jours} jours`,
+        compte: () => 'à renouveler',
+        lignes: aVenir,
+      },
+    ].filter((g) => g.lignes.length > 0)
+    const total = groupes.reduce((n, g) => n + g.lignes.length, 0)
+    return total === 0
+      ? { texte: `Aucun domaine ni certificat n'expire dans les ${p.jours} jours.` }
+      : {
+          texte: `${total} ${total > 1 ? 'domaines ou certificats' : 'domaine ou certificat'} : ${groupes.map((g) => `${g.lignes.length} ${g.compte(g.lignes.length)}`).join(', ')}.`,
+          replis: groupes.map((g) => ({
+            titre: `${g.titre} (${g.lignes.length})`,
+            lignes: g.lignes,
+            ouvert: true,
+          })),
+        }
   },
 }
 
@@ -538,8 +624,9 @@ const declarerAbsence: Action<Session, z.infer<typeof DeclarerAbsence>> = {
         ouvert(t) &&
         Temporal.PlainDate.compare(jour(t.cree_le), jour(p.au)) <= 0,
     )
+    const phrase = `Proposition : absence de ${nomDe(s, personne)} ${periode(p.du, p.au)}. Rien n'est écrit : la PO la reprend.`
     const texte = [
-      `Proposition : absence de ${nomDe(s, personne)} ${periode(p.du, p.au)}. Rien n'est écrit : la PO la reprend.`,
+      phrase,
       ...(tickets.length > 0
         ? [
             'Tickets ouverts à reprendre :',
@@ -562,7 +649,25 @@ const declarerAbsence: Action<Session, z.infer<typeof DeclarerAbsence>> = {
       ],
       maintenant.toInstant().toString(),
     )
-    return { texte, donnees: { personne, du: p.du, au: p.au, tickets: tickets.map((t) => t.cle) } }
+    // La page : la phrase, puis les tickets à reprendre en liste (le ticket en mots, sa clé et son projet dessous).
+    return {
+      texte: tickets.length > 0 ? phrase : `${phrase}\nAucun ticket ouvert à reprendre.`,
+      ...(tickets.length > 0
+        ? {
+            replis: [
+              {
+                titre: `Tickets ouverts à reprendre (${tickets.length})`,
+                lignes: tickets.map((t) => ({
+                  titre: t.resume,
+                  detail: `${t.cle} · ${imputation(s, t.projet ?? t.contrat_tma)}`,
+                })),
+                ouvert: true,
+              },
+            ],
+          }
+        : {}),
+      donnees: { personne, du: p.du, au: p.au, tickets: tickets.map((t) => t.cle) },
+    }
   },
 }
 
