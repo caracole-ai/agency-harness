@@ -400,7 +400,20 @@ export function creerApp(options: {
     }
     const identite = entrer(corps.identite)
     exigerCapacite(m, identite, 'administre')
-    return c.json(await session(identite, (s) => m.journal(s).lire().slice(-limite).reverse()))
+    // Chaque objet que le métier sait nommer arrive en clair (`objetEnClair`) : la page dit de qui il s'agit.
+    return c.json(
+      await session(identite, (s) =>
+        m
+          .journal(s)
+          .lire()
+          .slice(-limite)
+          .reverse()
+          .map((l) => {
+            const nom = l.objet ? m.nommer?.(s, l.objet) : undefined
+            return nom !== undefined && nom !== l.objet ? { ...l, objetEnClair: nom } : l
+          }),
+      ),
+    )
   })
 
   app.post('/api/consigne', async (c) => {

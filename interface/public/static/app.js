@@ -40,6 +40,13 @@ const TYPES_LISIBLES = {
   precision_attendue: 'précision demandée',
   echappee: 'question libre',
   reaffectation: 'réaffectation',
+  alerte: 'échéance',
+  constat: 'contrôle de la veille',
+}
+/** Le niveau d'une échéance et le verdict d'un contrôle, en mots (les parties du rapport de veille). */
+const NOTES_VEILLE = {
+  alerte: { escalade: 'à traiter maintenant', alerte: 'à préparer' },
+  constat: { refus: 'à corriger', 'à vérifier': 'à décider', ok: 'conforme' },
 }
 /** Les lignes techniques du journal : montrées sur demande seulement. */
 const TYPES_TECHNIQUES = new Set([TYPE_APPEL, 'outil_echappee'])
@@ -69,6 +76,8 @@ const ici = {
   journalTechnique: false,
   /** Les dernières lignes du journal lues : le volet de détail y retrouve une action. */
   journal: [],
+  /** Combien de fois chaque relevé de veille montré l'a été (`cleReleve`) : la liste n'en garde qu'un. */
+  releves: new Map(),
   /** Les replis ouverts d'une carte (`demande|titre`) : un rafraîchissement les rend ouverts. */
   replisOuverts: new Set(),
 }
@@ -719,9 +728,17 @@ async function chargerJournal() {
   ici.journal = lignes
   // Par jour, le plus récent d'abord ; chaque ligne dit ce qui s'est passé, son genre en petit au-dessus.
   const techniques = lignes.filter((l) => TYPES_TECHNIQUES.has(l.type)).length
-  const montrees = ici.journalTechnique
-    ? lignes
-    : lignes.filter((l) => !TYPES_TECHNIQUES.has(l.type))
+  // Chaque veille relève à nouveau les mêmes échéances et les mêmes contrôles : la liste n'en garde que
+  // le relevé le plus récent, qui dit combien de fois il l'a été (le volet les montre tous).
+  const releves = new Map()
+  const montrees = lignes.filter((l) => {
+    if (!ici.journalTechnique && TYPES_TECHNIQUES.has(l.type)) return false
+    if (!(l.type in NOTES_VEILLE)) return true
+    const cle = cleReleve(l)
+    releves.set(cle, (releves.get(cle) ?? 0) + 1)
+    return releves.get(cle) === 1
+  })
+  ici.releves = releves
   const jours = []
   for (const l of montrees) {
     const j = jourDuJournal(l.horodatage)
@@ -803,9 +820,27 @@ function enClair(valeur) {
   return personne ? `${personne.nom} (${texte})` : texte
 }
 
-/** Ce que désigne l'identifiant d'une action : une conversation, une question libre, sinon le suivi d'une demande. */
-const sorteDe = (objet) =>
-  /^C-/.test(objet) ? 'Conversation' : /^E-/.test(objet) ? 'Question libre' : 'Suivi'
+/** Ce que désigne l'identifiant d'une action : une conversation, une question libre, sinon le genre de ses lignes. */
+const sorteDe = (objet, lignes) =>
+  /^C-/.test(objet)
+    ? 'Conversation'
+    : /^E-/.test(objet)
+      ? 'Question libre'
+      : majuscule(TYPES_LISIBLES[lignes[0]?.type] ?? lignes[0]?.type ?? 'suivi')
+
+/** Les lignes qui se suivent et disent la même chose (une échéance relevée à chaque veille) : une seule, avec ses dates. */
+function regrouper(lignes) {
+  const groupes = []
+  for (const l of lignes) {
+    const g = groupes.at(-1)
+    if (g && g.l.type === l.type && g.l.issue === l.issue && g.l.motif === l.motif) {
+      g.quand.push(l.horodatage)
+    } else {
+      groupes.push({ l, quand: [l.horodatage] })
+    }
+  }
+  return groupes
+}
 
 /**
  * Le volet de détail d'une action du journal : toutes ses lignes, dans
@@ -818,18 +853,27 @@ function ouvrirDetail(objet) {
     const c = donneesDe(l).cout_usd
     return s + (l.type === TYPE_APPEL && typeof c === 'number' ? c : 0)
   }, 0)
-  $('volet-sorte').textContent = sorteDe(objet)
-  $('volet-titre').textContent = objet
+  // Le titre dit de qui ou de quoi il s'agit ; l'identifiant, en petit, reste pour s'y retrouver.
+  const enClair = lignes.find((l) => l.objetEnClair)?.objetEnClair
+  $('volet-sorte').textContent = sorteDe(objet, lignes)
+  $('volet-titre').textContent = enClair ?? objet
+  const groupes = regrouper(lignes)
   $('volet-corps').replaceChildren(
     el('p', {
       classe: 'volet__resume',
-      texte: `${compter(lignes.length, 'ligne', 'lignes')} au journal${cout > 0 ? ` · IA : ${dollars(cout)}` : ''}`,
+      texte: [
+        enClair ? objet : null,
+        `${compter(lignes.length, 'ligne', 'lignes')} au journal`,
+        cout > 0 ? `IA : ${dollars(cout)}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
     }),
     el(
       'ol',
       { classe: 'volet__lignes' },
-      ...lignes.map((l) => {
-        const { genre, texte, note } = lireLigne(l)
+      ...groupes.map(({ l, quand }) => {
+        const { genre, texte, note } = lireLigne({ ...l, objetEnClair: undefined })
         const donnees = aPlat(donneesDe(l))
         return el(
           'li',
@@ -837,7 +881,9 @@ function ouvrirDetail(objet) {
           el(
             'p',
             { classe: 'entree__genre' },
-            `${instant(l.horodatage)} · ${genre}`,
+            quand.length > 1
+              ? `${genre} · ${quand.length} fois, la dernière ${instant(quand.at(-1))}`
+              : `${instant(l.horodatage)} · ${genre}`,
             note ? ' ' : null,
             note ? el('span', { classe: 'pastille', texte: note }) : null,
           ),
@@ -877,8 +923,12 @@ const formatHeure = new Intl.DateTimeFormat('fr-FR', {
 const jourDuJournal = (iso) => formatJour.format(new Date(iso))
 
 /** Une ligne du journal : son heure ; ce qui s'est passé, en mots, son genre et qui en petit au-dessus. */
+/** Ce qui fait d'un relevé de veille le même qu'un autre : la même chose dite sur le même objet. */
+const cleReleve = (l) => JSON.stringify([l.type, l.objet, l.issue, l.motif])
+
 function entreeJournal(l) {
   const { genre, texte, note } = lireLigne(l)
+  const fois = l.type in NOTES_VEILLE ? (ici.releves?.get(cleReleve(l)) ?? 1) : 1
   return el(
     'li',
     { classe: `entree${TYPES_TECHNIQUES.has(l.type) ? ' entree--technique' : ''}` },
@@ -893,7 +943,7 @@ function entreeJournal(l) {
       el(
         'p',
         { classe: 'entree__genre' },
-        genre,
+        fois > 1 ? `${genre} · ${fois} relevés` : genre,
         note ? ' ' : null,
         note ? el('span', { classe: 'pastille', texte: note }) : null,
         l.objet ? ' ' : null,
@@ -943,10 +993,11 @@ function lireLigne(l) {
       }
     default:
       return {
-        genre,
+        // Ce que le métier sait nommer dit de qui ou de quoi il s'agit : « Moussa Diallo — carte professionnelle ».
+        genre: l.objetEnClair ? `${genre} · ${l.objetEnClair}` : genre,
         texte: l.motif ?? '',
         // Une issue qui est un identifiant (une action, `valider_remplacement`) ne dit rien au patron.
-        note: l.issue && !l.issue.includes('_') ? l.issue : '',
+        note: NOTES_VEILLE[l.type]?.[l.issue] ?? (l.issue && !l.issue.includes('_') ? l.issue : ''),
       }
   }
 }

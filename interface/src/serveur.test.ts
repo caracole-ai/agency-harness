@@ -960,6 +960,24 @@ describe('la décision du patron sur une demande, cliquée : sur la carte et sou
       texte: 'dim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls',
     })
   })
+  it('le journal nomme en clair une demande et le titre d’un agent ; une conversation garde son identifiant', async () => {
+    await poster(a, '/api/geste', {
+      identite: PATRON,
+      libelle: 'Lance la veille',
+      action: 'lancer_veille',
+      params: { date: null },
+    })
+    const lignes = (await (await lire(a, '/api/journal?limite=200')).json()) as (Ligne & {
+      objetEnClair?: string
+    })[]
+    expect(lignes.find((l) => l.objet === 'D-V-17')?.objetEnClair).toBe(
+      'Remplacer Aïcha Traoré · dim. 11/10 · 08:00 → 20:00 · Accueil, Galerie des Tilleuls',
+    )
+    expect(lignes.find((l) => l.objet === 'A-3/carte')?.objetEnClair).toBe(
+      'Sophie Marchand — carte professionnelle',
+    )
+    expect(lignes.find((l) => l.objet?.startsWith('C-'))?.objetEnClair).toBeUndefined()
+  })
   it('le clic demande le oui, sans modèle ; la confirmation dit le geste qu’elle attend', () => {
     expect(clic.conversation).toBe(premiere.conversation)
     expect(clic.reponse.sorte).toBe('confirmation')
