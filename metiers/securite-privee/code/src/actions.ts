@@ -26,6 +26,7 @@ import {
 } from './reaffectation'
 import {
   agentSollicite,
+  type Candidat,
   decrireEtape,
   dejaSollicites,
   evaluer,
@@ -38,11 +39,12 @@ import {
   signalerAbsence,
   statut,
   suivre,
+  titreRemplacement,
   vacationDe,
   valider,
 } from './remplacement'
 import { intervalleDe } from './semantique'
-import { decrire, VEILLER } from './veille'
+import { decrire, VEILLER, vacationEnBref } from './veille'
 
 // Les gestes du quotidien de la sécurité privée (espace 1) : la liste fermée
 // que le modèle choisit et que le code exécute. Pour le rôle `agent`, chaque
@@ -101,12 +103,12 @@ function premierPossible(s: Session, demande: string): string {
 
 /**
  * Ce que le patron a à décider sur une demande proposée, calculé sur le
- * planning d'aujourd'hui : la phrase du proposé ; les décisions, à cliquer
- * sans modèle (valider le proposé, ou prendre un autre possible, ses raisons
- * dites ; chacune `valider_remplacement` avec son agent, dont le « oui »
- * reste à donner) ; le détail replié (exclus, écartés). Les mêmes sur la
- * demande dans « à valider » et sous le résultat d'un geste. Rien à une
- * demande qui n'est pas proposée.
+ * planning d'aujourd'hui : les décisions, à cliquer sans modèle (valider le
+ * proposé, ou prendre un autre possible ; chacune son nom, ses raisons, et
+ * `valider_remplacement` avec son agent, dont le « oui » reste à donner) ;
+ * le détail replié (exclus, écartés) ; la phrase, seulement quand plus
+ * personne n'est possible. Les mêmes sur la demande dans « à valider » et
+ * sous le résultat d'un geste. Rien à une demande qui n'est pas proposée.
  */
 export function aDecider(
   s: Session,
@@ -115,22 +117,23 @@ export function aDecider(
   if (statut(s, demande) !== STATUT.proposee) return { choix: [], replis: [] }
   const p = evaluer(s, demande, vacationDe(s, demande), dejaSollicites(s, demande))
   const [propose, ...autres] = p.possibles
-  const choix = (libelle: string, agent: string): Choix => ({
+  const choix = (libelle: string, c: Candidat): Choix => ({
     libelle,
+    titre: c.nom,
+    detail: c.raisons.join(' · '),
     action: validerRemplacement.id,
-    params: { demande, agent },
+    params: { demande, agent: c.agent },
   })
   return {
-    phrase: phraseProposition(p),
+    // Sans possible, la phrase le dit ; sinon le proposé est la première décision.
+    ...(propose ? {} : { phrase: phraseProposition(p) }),
     choix: propose
       ? [
-          choix(`Valider ${propose.nom}`, propose.agent),
-          ...autres.map((c) =>
-            choix(`Prendre ${c.nom} à la place (${c.raisons.join(', ')})`, c.agent),
-          ),
+          choix(`Valider ${propose.nom}`, propose),
+          ...autres.map((c) => choix(`Prendre ${c.nom} à la place`, c)),
         ]
       : [],
-    replis: replisProposition(p),
+    replis: replisProposition(s, p),
   }
 }
 
@@ -235,10 +238,13 @@ const validerRemplacement: Action<Session, z.infer<typeof ValiderRemplacement>> 
   },
   roles: ['patron'],
   ecrit: true,
+  // Ce qui est validé, en clair : qui, pour remplacer qui, quand et où ; l'identifiant seulement entre homonymes.
   reformuler: (s, _identite, p) => {
     const v = vacationDe(s, p.demande)
     const agent = p.agent ?? premierPossible(s, p.demande)
-    return `Valider ${nomDe(s, agent)} (${agent}) pour ${decrire(s.ctx, v.id)} ?`
+    const nom = nomDe(s, agent)
+    const homonymes = s.ctx.planning.agents.filter((a) => a.nom === nom).length > 1
+    return `Valider ${nom}${homonymes ? ` (${agent})` : ''} pour remplacer ${nomDe(s, v.agent)}, ${vacationEnBref(s.ctx, v.id)} ?`
   },
   executer: (s, _identite, p, maintenant) => {
     const e = valider(s, p.demande, maintenant, p.agent ?? undefined)
@@ -456,12 +462,20 @@ const suivreDemande: Action<Session, z.infer<typeof SuivreDemande>> = {
       }
     }
     const e = suivre(s, p.demande, maintenant)
-    // Rien de nouveau sur une demande proposée : son statut, et la phrase du proposé.
+    const st = statut(s, p.demande)
+    // Rien de nouveau : le statut, ce que la demande attend, quand et où (et la phrase, si plus personne n'est possible).
     const phrase = aDecider(s, p.demande).phrase
     return {
       texte: e
         ? decrireEtape(s, e, p.demande)
-        : `${p.demande} : ${statut(s, p.demande) ?? 'demande inconnue'}${phrase !== undefined ? `\n${phrase}` : ''}`,
+        : st === undefined
+          ? `${p.demande} : demande inconnue`
+          : [
+              `${p.demande} : ${st}`,
+              titreRemplacement(s, p.demande),
+              vacationEnBref(s.ctx, vacationDe(s, p.demande).id),
+              ...(phrase !== undefined ? [phrase] : []),
+            ].join('\n'),
       ...decisionDe(s, p.demande),
     }
   },

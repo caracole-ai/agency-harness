@@ -6,6 +6,8 @@
 export interface DemandeTableau {
   id: string
   sorte: string
+  /** Ce que la demande attend, en quelques mots (exemple : « Remplacer Aïcha Traoré ») ; absent, l'identifiant en tient lieu. */
+  titre?: string
   texte: string
   statut: string
   depuis: string
@@ -15,16 +17,20 @@ export interface DemandeTableau {
   replis?: Repli[]
 }
 
-/** Une section du détail, montrée repliée : son titre (avec son compte), et ses lignes. */
+/** Une section du détail, montrée repliée : son titre (avec son compte), et ses lignes, chacune un nom et ce qui le concerne. */
 export interface Repli {
   titre: string
-  lignes: string[]
+  lignes: { titre: string; detail?: string }[]
 }
 
 /** Un autre choix offert sur une proposition en attente : un geste du métier, appelé directement (un bouton), sans modèle (PLAN-CHOIX.md, lot 3). */
 export interface Choix {
   /** Rendu par le code, montré tel quel ; il va au journal comme la consigne, jamais au modèle. */
   libelle: string
+  /** Ce qui se choisit, en un mot ou un nom (exemple : la personne) ; présent, la page montre le choix en ligne, son `detail` dessous. */
+  titre?: string
+  /** Pourquoi ce choix, en bref (exemple : « connaît le site · 16 h cette semaine »). */
+  detail?: string
   action: string
   params: Record<string, unknown>
 }

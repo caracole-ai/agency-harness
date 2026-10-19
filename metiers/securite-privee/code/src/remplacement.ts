@@ -27,7 +27,7 @@ import { remplacerAgent } from './connecteurs/csv-agence'
 import { CONTROLES, donneeAbsente } from './controles'
 import type { Vacation } from './modele'
 import { type Contexte, contexte, intervalleDe } from './semantique'
-import { ConfigSecurite, decrire, type PREFERENCES, VEILLER } from './veille'
+import { ConfigSecurite, decrire, type PREFERENCES, VEILLER, vacationEnBref } from './veille'
 
 // Le remplacement d'un agent absent, validé par le patron (PLAN.md, étape 5).
 // Une demande vit dans le journal : chaque statut y est un événement, et une
@@ -613,26 +613,29 @@ export const phraseProposition = (p: Proposition): string => {
     : 'Aucun remplaçant possible.'
 }
 
+/** Ce que demande un remplacement, en quelques mots : remplacer l'absent. */
+export const titreRemplacement = (s: Session, demande: string): string =>
+  `Remplacer ${s.ctx.agent(vacationDe(s, demande).agent).nom}`
+
 /**
- * Le détail d'une proposition, montré replié : qui un interdit exclut, qui
- * une donnée manquante écarte, et pourquoi. Les autres possibles n'y sont
- * pas : chacun est une décision à cliquer, avec ses raisons.
+ * Le détail d'une proposition, montré replié : qui une règle exclut (la
+ * règle seule, son texte entier reste à l'onglet Règles), qui une donnée
+ * manquante écarte. Les autres possibles n'y sont pas : chacun est une
+ * décision à cliquer, avec ses raisons.
  */
-export function replisProposition(p: Proposition): Repli[] {
-  const section = (compte: (n: number) => string, candidats: Candidat[]): Repli[] =>
-    candidats.length === 0
-      ? []
-      : [
-          {
-            titre: compte(candidats.length),
-            lignes: candidats.map((c) => `${c.nom} : ${c.raisons.join(' ; ')}`),
-          },
-        ]
+export function replisProposition(s: Session, p: Proposition): Repli[] {
+  const nomRegle = (id: string) => s.registre.interdits.find((i) => i.id === id)?.nom ?? id
+  const section = (titre: string, lignes: Repli['lignes']): Repli[] =>
+    lignes.length === 0 ? [] : [{ titre, lignes }]
+  const pluriel = (n: number, un: string, plusieurs: string) => `${n} ${n > 1 ? plusieurs : un}`
   return [
-    ...section((n) => `${n} ${n > 1 ? 'exclus' : 'exclu'} : un interdit s’y oppose`, p.exclus),
     ...section(
-      (n) => `${n} ${n > 1 ? 'écartés' : 'écarté'} : une donnée manque, rien n’est supposé`,
-      p.ecartes,
+      `${pluriel(p.exclus.length, 'exclu', 'exclus')} par une règle`,
+      p.exclus.map((c) => ({ titre: c.nom, detail: c.regles.map(nomRegle).join(', ') })),
+    ),
+    ...section(
+      `${pluriel(p.ecartes.length, 'écarté', 'écartés')} : une donnée manque`,
+      p.ecartes.map((c) => ({ titre: c.nom, detail: c.raisons.join(' ; ') })),
     ),
   ]
 }
@@ -640,7 +643,7 @@ export function replisProposition(p: Proposition): Repli[] {
 export function decrireEtape(s: Session, etape: Etape | null, demande: string): string {
   if (!etape) return `${demande} : rien de nouveau.`
   switch (etape.statut) {
-    // Le détail (exclus, écartés) et les autres possibles vont à part : `replisProposition`, les décisions du geste.
+    // Le proposé, les autres possibles et le détail vont à part : les décisions du geste, `replisProposition`.
     case STATUT.proposee: {
       const p = etape.proposition
       return [
@@ -650,9 +653,9 @@ export function decrireEtape(s: Session, etape: Etape | null, demande: string): 
               '',
             ]
           : []),
-        `Absence : ${decrire(s.ctx, p.vacation)}`,
-        '',
-        phraseProposition(p),
+        titreRemplacement(s, demande),
+        vacationEnBref(s.ctx, p.vacation),
+        ...(p.possibles.length === 0 ? [phraseProposition(p)] : []),
       ].join('\n')
     }
     case STATUT.demandee:

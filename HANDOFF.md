@@ -61,7 +61,14 @@ compacte (le proposé et ses raisons ; exclus et écartés repliés,
 questions libres en tête du Journal (l'en-tête ne signale qu'un retrait
 ou un abandon), les suggestions à la ligne, l'état vide avec les
 suggestions, la date du refus en clair, et la page servie en `no-cache`
-(un navigateur gardait l'ancienne page avec le nouveau script). Démo :
+(un navigateur gardait l'ancienne page avec le nouveau script). Puis la
+hiérarchie de la carte (Lionel : « trop d'informations, tout au même
+niveau ») : un titre d'action (« Remplacer X »), quand et où en une ligne,
+la proposition de l'outil en avant avec un seul bouton, les autres
+possibles en lignes « Choisir », les indisponibles repliés avec la seule
+règle en cause ; les sections vides ne se montrent plus ; la question de
+validation en clair (`DemandeTableau.titre`, `Choix.titre`/`detail`,
+`Repli.lignes` en nom et détail). Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).
 

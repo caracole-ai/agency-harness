@@ -35,12 +35,14 @@ import {
   ouvrir,
   remplacementFini,
   type Session,
+  STATUT,
   statut,
   TYPE_DELEGATION_PROPOSEE,
+  titreRemplacement,
   vacationDe,
 } from './remplacement'
 import { ROLES } from './roles'
-import { ConfigSecurite, decrire, type PREFERENCES } from './veille'
+import { ConfigSecurite, type PREFERENCES, vacationEnBref } from './veille'
 
 // Ce que la sécurité privée fournit à la conversation : ouvrir un client (ou
 // son journal seul), ses gestes, les personnes que chaque rôle peut désigner
@@ -213,15 +215,19 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
     if (id.startsWith('D-')) {
       const st = statut(s, id)
       if (st === undefined || remplacementFini(s, id)) return []
-      const description = decrire(s.ctx, vacationDe(s, id).id)
-      // Proposée : la phrase du proposé, avec ses raisons, à la place du motif de l'étape.
+      const quandOu = vacationEnBref(s.ctx, vacationDe(s, id).id)
+      // Proposée : la décision porte le proposé ; ailleurs, le motif de la dernière étape suit.
       const { phrase, choix, replis } = aDecider(s, id)
       return [
         {
           id,
           sorte: 'remplacement',
+          titre: titreRemplacement(s, id),
           statut: st,
-          texte: phrase !== undefined ? `${description}\n${phrase}` : texte(description, id),
+          texte:
+            st === STATUT.proposee
+              ? [quandOu, phrase].filter((t) => t !== undefined).join('\n')
+              : texte(quandOu, id),
           depuis: derniere(id)?.horodatage ?? '',
           choix,
           replis,
