@@ -54,7 +54,7 @@ schémas sont dans le README (« La carte »).
 - **Sans geste** : une demande que le métier ne sait pas faire. L'échappée répond quand même, et l'onglet « Gestes » en fait une carte avec son état : à commander, en attente, en cours, fusionnée, retirée, échouée.
 - **Commande, « Créer ce geste »** : le clic du patron sur cette carte. Il écrit une mission. Le troisième espace.
 - **Modèle** : le fournisseur de langage, Anthropic seulement. Trois accès : `claude` (l'abonnement, par le binaire `claude`), `anthropic` (une clé d'API, absente aujourd'hui), simulé (`--modele simule`, sans réseau, rejoue un script de réponses). Le coût s'affiche en équivalent API.
-- **Évals** : les cas écrits à la main dans `metiers/<métier>/evals/`, rejoués contre le modèle : `consignes.yaml` pour la traduction, `echappees.yaml` pour l'échappée, avec leurs pièges (une donnée modifiée avant le cas). Chaque cas porte une étiquette, ce qui est attendu. Les résultats, datés, dans `evals/resultats/`.
+- **Évals** : les cas écrits à la main dans `metiers/<métier>/evals/`, rejoués contre le modèle : `consignes.yaml` pour la traduction, `echappees.yaml` pour l'échappée, avec leurs pièges (une donnée modifiée avant le cas). Chaque cas porte une étiquette, ce qui est attendu : rien de plus que ce que la question demande (une marge demandée en pourcentage n'exige pas les euros). Les résultats, datés, dans `evals/resultats/`.
 - **Interface** : l'application web du client, servie sur `127.0.0.1` seulement. Onglets : Conversation, Gestes, Règles, Délégations, Journal.
 
 ## Le chantier et la livraison
