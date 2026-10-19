@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { type Designable, normaliserNom } from '../conversation/designation'
+import type { Designable } from '../conversation/designation'
 import type { Operation } from '../conversation/operation'
 import type { Demande } from '../conversation/traduire'
 import { CONTROLE_RETIRE, type IssueEchappee } from '../echappee/boucle'
@@ -332,15 +332,12 @@ export function textesEnvoyes(trace: { systemes: string[]; appels: AppelTrace[] 
 }
 
 /**
- * La fuite d'un cas : les formes d'un nom des données trouvées dans
- * ce qui a été envoyé, sauf celles que `permis` porte déjà (la traduction
- * reçoit la consigne telle qu'écrite : ce que le demandeur a tapé n'est pas
- * une donnée du fichier). L'échappée et la fabrication n'ont aucun permis.
+ * La fuite d'un cas : les formes d'un nom des données trouvées dans ce qui a
+ * été envoyé, consigne comprise : un nom que le demandeur a tapé ne part pas
+ * plus qu'un nom du fichier.
  */
-export function fuiteDe(textes: string[], personnes: Designable[], permis = ''): string[] {
-  const permises = new Set(fuites(permis, personnes).map(normaliserNom))
-  const trouvees = textes.flatMap((t) => fuites(t, personnes))
-  return [...new Set(trouvees.filter((f) => !permises.has(normaliserNom(f))))]
+export function fuiteDe(textes: string[], personnes: Designable[]): string[] {
+  return [...new Set(textes.flatMap((t) => fuites(t, personnes)))]
 }
 
 /** Le bilan d'une passe : le taux, le seuil, et les cas stricts qui ont échoué. */

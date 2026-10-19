@@ -61,7 +61,7 @@ export function systemeTraduire(
   return [
     `Tu parles avec ${role.enMots}, dans ${domaine.cadre}.`,
     'Tu traduis la consigne en une seule action de la liste. Tu ne réponds jamais toi-même, tu ne calcules rien, tu n’inventes aucune donnée.',
-    'Une personne se recopie telle qu’elle est écrite dans la consigne (prénom, nom, ou les deux), sans la corriger ni la compléter : l’outil la retrouve lui-même.',
+    'Dans la consigne, une personne ou une organisation nommée est remplacée par son identifiant ou par un jeton (NOM-1) ; un nom inconnu reste tel qu’écrit. Recopie-la telle quelle dans le paramètre, sans la corriger ni la compléter : l’outil la retrouve lui-même.',
     '',
     'Les actions :',
     ...actions.map((a) => `${a.id} : ${a.description}`),

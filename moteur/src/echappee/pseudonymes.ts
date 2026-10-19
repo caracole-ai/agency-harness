@@ -1,4 +1,4 @@
-import { type Designable, formes, proches } from '../conversation/designation'
+import { APOSTROPHES, type Designable, formes, proches } from '../conversation/designation'
 import type { TableCopie } from './copie'
 
 // Les pseudonymes (PLAN-PSEUDONYMES.md § 4) : le fournisseur ne reçoit jamais
@@ -40,10 +40,10 @@ function suivre(texte: string): { normal: string; debut: number[]; fin: number[]
   const fin: number[] = []
   for (const m of texte.matchAll(/\P{M}\p{M}*|\p{M}+/gu)) {
     const n = m[0]
-      .normalize('NFD')
-      .replace(/\p{M}/gu, '')
+      .normalize('NFKD')
+      .replace(/[\p{M}\p{Cf}]/gu, '')
       .toLowerCase()
-      .replace(/’/g, "'")
+      .replace(APOSTROPHES, "'")
       .replace(/[\s\p{Pd}]/gu, ' ')
     const bout = m.index + m[0].length
     for (const c of n) {
@@ -197,18 +197,56 @@ export interface Precision {
 /** Une suite de mots à majuscule initiale (« Kareem », « Kareem Hadad ») : ce qui peut être un nom mal écrit. */
 const MOTS_A_MAJUSCULE = /(?<![\p{L}\p{N}])\p{Lu}[\p{Ll}\p{M}]+(?:[ -]\p{Lu}[\p{Ll}\p{M}]+)*/gu
 
+/** Un mot seul en tête de phrase plus court ne se compare pas : « Le », « La », « Ce » sonnent comme « Léa ». */
+const LETTRES_EN_TETE = 4
+
 /** Le texte avant une position finit une phrase (ou il n'y a rien avant). */
 const debutDePhrase = (texte: string, position: number) =>
   /^$|[.!?…:;]$/u.test(texte.slice(0, position).replace(/[\s«"“(]+$/u, ''))
+
+/** Une mention à faire préciser : où elle est dans le texte, telle qu'écrite, et qui elle peut désigner. */
+interface APreciser {
+  debut: number
+  fin: number
+  mention: string
+  candidats: Designable[]
+}
+
+/**
+ * Les mentions qu'un texte (déjà masqué de ses formes sûres) laisse à
+ * préciser : d'abord chaque forme que plusieurs personnes partagent (un
+ * prénom), puis chaque mot à majuscule initiale qui ressemble à un nom
+ * (`proches`). Un mot seul en tête de phrase peut être un mot de la langue
+ * (« Parmi » ressemble à « Karim ») : il n'est retenu que s'il a quatre lettres
+ * au moins, et s'il sonne **et** s'écrit presque comme un nom (« Aisha »,
+ * `proches` exigeant).
+ */
+function aPreciser(texte: string, compilees: Forme[], personnes: Designable[]): APreciser[] {
+  const partagees = trouver(texte, compilees)
+    .filter((t) => t.forme.ids.length > 1)
+    .map((t) => ({
+      debut: t.debut,
+      fin: t.fin,
+      mention: texte.slice(t.debut, t.fin),
+      candidats: personnes.filter((p) => t.forme.ids.includes(p.id)),
+    }))
+  const ressemblants = [...texte.matchAll(MOTS_A_MAJUSCULE)].flatMap((m) => {
+    if (partagees.some((p) => m.index < p.fin && p.debut < m.index + m[0].length)) return []
+    const enTete = !m[0].includes(' ') && !m[0].includes('-') && debutDePhrase(texte, m.index)
+    if (enTete && lettres(m[0]) < LETTRES_EN_TETE) return []
+    const candidats = proches(m[0], personnes, enTete)
+    return candidats.length > 0
+      ? [{ debut: m.index, fin: m.index + m[0].length, mention: m[0], candidats }]
+      : []
+  })
+  return [...partagees, ...ressemblants]
+}
 
 /**
  * La consigne telle qu'elle part à l'échappée (S3) : chaque forme sûre d'un
  * nom (niveau 1), puis les précisions déjà données (la mention, là où le
  * masque l'a laissée) remplacées par leur identifiant. Rend aussi, s'il y en a une, la première mention à faire
- * préciser avant tout appel : une forme que plusieurs personnes partagent
- * (un prénom), ou un mot à majuscule initiale qui ressemble à un nom (niveau 2,
- * `proches`). Un mot seul en tête de phrase n'est pas comparé : « Parmi »
- * ressemble à « Karim ». Le reste passe tel quel.
+ * préciser avant tout appel (`aPreciser`). Le reste passe tel quel.
  */
 export function masquerConsigne(
   consigne: string,
@@ -221,20 +259,91 @@ export function masquerConsigne(
     const motif = new RegExp(`(?<![\\p{L}\\p{N}])${echapper(p.mention)}(?![\\p{L}\\p{N}])`, 'gu')
     texte = texte.replace(motif, p.id)
   }
-  const partagee = trouver(texte, compilees).find((t) => t.forme.ids.length > 1)
-  if (partagee) {
-    return {
-      texte,
-      precision: {
-        mention: texte.slice(partagee.debut, partagee.fin),
-        candidats: personnes.filter((p) => partagee.forme.ids.includes(p.id)),
-      },
+  const [premiere] = aPreciser(texte, compilees, personnes)
+  return premiere
+    ? { texte, precision: { mention: premiere.mention, candidats: premiere.candidats } }
+    : { texte }
+}
+
+/** La consigne telle qu'elle part à la traduction, et de quoi reprendre chaque mention masquée : remplaçant → mention telle qu'écrite. */
+export interface ConsigneMasquee {
+  texte: string
+  mentions: Map<string, string>
+}
+
+/** Le jeton d'une mention à préciser : il ne désigne personne, le code la reprend après l'appel. */
+const jeton = (n: number) => `NOM-${n}`
+
+/**
+ * La consigne telle qu'elle part à la traduction, le premier appel : chaque
+ * forme sûre d'un nom devient l'identifiant de la personne ; chaque mention à
+ * préciser (`aPreciser` : un prénom partagé, un mot qui ressemble à un nom)
+ * devient un jeton, `NOM-1`, le même pour la même mention. Rien n'est
+ * demandé ici : `reprendreMentions` rend au code la mention telle qu'écrite,
+ * qui se résout ou se fait préciser comme avant. Échec fermé : une forme
+ * connue qui resterait lève, et rien ne part.
+ */
+export function masquerPourModele(consigne: string, personnes: Designable[]): ConsigneMasquee {
+  const compilees = compiler(personnes)
+  const mentions = new Map<string, string>()
+  const remplacer = (texte: string, plages: { debut: number; fin: number; par: string }[]) => {
+    let sortie = texte
+    for (const p of [...plages].sort((a, b) => b.debut - a.debut)) {
+      if (!mentions.has(p.par)) mentions.set(p.par, texte.slice(p.debut, p.fin))
+      sortie = sortie.slice(0, p.debut) + p.par + sortie.slice(p.fin)
     }
+    return sortie
   }
-  for (const m of texte.matchAll(MOTS_A_MAJUSCULE)) {
-    if (!m[0].includes(' ') && !m[0].includes('-') && debutDePhrase(texte, m.index)) continue
-    const candidats = proches(m[0], personnes)
-    if (candidats.length > 0) return { texte, precision: { mention: m[0], candidats } }
+  const sures = trouver(consigne, compilees).flatMap((t) => {
+    const [id] = t.forme.ids
+    return t.forme.ids.length === 1 && id !== undefined
+      ? [{ debut: t.debut, fin: t.fin, par: id }]
+      : []
+  })
+  const texte = remplacer(consigne, sures)
+  const parMention = new Map<string, string>()
+  const aJeton = aPreciser(texte, compilees, personnes).map((a) => {
+    const cle = a.mention.toLowerCase()
+    const par = parMention.get(cle) ?? jeton(parMention.size + 1)
+    parMention.set(cle, par)
+    return { debut: a.debut, fin: a.fin, par }
+  })
+  const masque = remplacer(texte, aJeton)
+  const restees = fuites(masque, personnes)
+  if (restees.length > 0) {
+    throw new Error(`masque : ${restees.length} forme(s) d'un nom resteraient dans la consigne`)
   }
-  return { texte }
+  return { texte: masque, mentions }
+}
+
+/**
+ * Rend à chaque remplaçant (identifiant ou jeton) de `masquerPourModele` la
+ * mention telle qu'écrite, dans chaque chaîne d'une valeur (les paramètres
+ * d'une demande traduite), au mot près. Un jeton se reconnaît malgré la casse
+ * et le séparateur (`nom-1`, `NOM 1`, `NOM_1`) ; un identifiant tapé par le
+ * demandeur, absent de la table, reste tel quel.
+ */
+export function reprendreMentions<T>(valeur: T, mentions: Map<string, string>): T {
+  if (mentions.size === 0) return valeur
+  const motifs = [...mentions].map(([par, mention]) => {
+    const jetonNumero = /^NOM-(\d+)$/.exec(par)?.[1]
+    const corps = jetonNumero !== undefined ? `NOM[\\s_-]?${jetonNumero}` : echapper(par)
+    return {
+      motif: new RegExp(
+        `(?<![\\p{L}\\p{N}-])${corps}(?![\\p{N}]|-[\\p{L}\\p{N}])`,
+        jetonNumero !== undefined ? 'giu' : 'gu',
+      ),
+      mention,
+    }
+  })
+  const reprendre = (v: unknown): unknown => {
+    if (typeof v === 'string')
+      return motifs.reduce((t, m) => t.replace(m.motif, () => m.mention), v)
+    if (Array.isArray(v)) return v.map(reprendre)
+    if (v !== null && typeof v === 'object') {
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, reprendre(x)]))
+    }
+    return v
+  }
+  return reprendre(valeur) as T
 }

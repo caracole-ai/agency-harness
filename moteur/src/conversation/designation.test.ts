@@ -7,6 +7,7 @@ import {
   correspondances,
   distance,
   formes,
+  normaliserNom,
   proches,
   refuse,
 } from './designation'
@@ -24,6 +25,13 @@ const EQUIPE = [
 ]
 
 const ids = (ps: { id: string }[]) => ps.map((p) => p.id)
+
+describe('normaliserNom', () => {
+  it('ramène pleine chasse, ligatures, invisibles et apostrophes typographiques', () => {
+    expect(normaliserNom('Ａｉ\u200Bcha\u00A0 Tra\u00ADoré')).toBe('aicha traore')
+    expect(normaliserNom('Dʼangelo D‘Angelo D’Angelo')).toBe("d'angelo d'angelo d'angelo")
+  })
+})
 
 describe('niveau 1 : la correspondance exacte décide', () => {
   it('sans accents ni casse, espaces et tirets réduits', () => {

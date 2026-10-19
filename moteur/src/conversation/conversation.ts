@@ -1,11 +1,16 @@
 import { empreinte } from '../approbation/jeton'
 import type { ControleReponse } from '../echappee/boucle'
 import type { CriteresProposition, Echappee } from '../echappee/echappee'
-import { masquerConsigne, type Precision } from '../echappee/pseudonymes'
+import {
+  masquerConsigne,
+  masquerPourModele,
+  type Precision,
+  reprendreMentions,
+} from '../echappee/pseudonymes'
 import { verifierReponse } from '../echappee/reponse'
 import type { Evenement, Journal } from '../journal/journal'
 import { coutDuMois, evenementAppel, plafondAtteint } from '../modele/compteur'
-import type { Modele } from '../modele/modele'
+import type { Modele, ReponseModele } from '../modele/modele'
 import { chargerPersonnes, type IdentiteVerifiee, recevoir } from '../personnes/personnes'
 import type { Registre } from '../regles/schema'
 import type { Temporal } from '../temps/temporal'
@@ -35,9 +40,9 @@ import { type Demande, surUneLigne, systemeTraduire, traduire, type Vocabulaire 
 
 // Le déroulé d'un tour de conversation (PLAN-ESPACES.md § 5.4, REFLEXIONS.md (2026-10-08)) :
 // la porte (qui parle, avant toute ouverture du dossier) ; sur le journal
-// seul, le plafond du mois puis la traduction, qui ne reçoit que la phrase ;
-// ensuite seulement le dossier s'ouvre, le moteur trouve la personne nommée
-// (ou pose la question), puis l'action (tout de suite si elle ne fait que
+// seul, le plafond du mois ; puis le dossier s'ouvre, la traduction reçoit la
+// phrase masquée (aucun nom, `masquerPourModele`), le moteur trouve la personne
+// nommée (ou pose la question), puis l'action (tout de suite si elle ne fait que
 // lire, après un « oui » à sa reformulation si elle écrit). Chaque sortie
 // laisse sa ligne au journal. Une demande nouvelle d'un rôle qui désigne autrui et nomme
 // quelqu'un d'ambigu reçoit sa question avant tout appel d'échappée : le nom
@@ -319,23 +324,31 @@ export async function traiterGeste<S>(
   )
 }
 
-/** Un tour : une consigne, une réponse. Le dossier ne s'ouvre qu'après la traduction. */
+/** Un tour : une consigne, une réponse. Le dossier ne s'ouvre qu'après le plafond et la question en attente ; la traduction a besoin des noms à masquer. */
 export async function traiterConsigne<S>(
   m: MetierConversation<S>,
   dossier: string,
   modele: Modele,
   tour: Tour,
 ): Promise<Reponse> {
-  const avant = await avantLeDossier(m, dossier, modele, tour)
+  const avant = avantLeDossier(m, dossier, tour)
   if (avant.sorte === 'reponse') return avant.reponse
-  return avecSession(m, dossier, tour.identite, (s) => apresLeDossier(m, s, modele, tour, avant))
+  return avecSession(m, dossier, tour.identite, async (s) => {
+    if (avant.sorte === 'precisee') return apresLeDossier(m, s, modele, tour, avant)
+    const traduite = await traduireLeTour(m, s, modele, tour)
+    if (traduite.sorte === 'reponse') return traduite.reponse
+    return apresLeDossier(m, s, modele, tour, traduite)
+  })
 }
 
-/** Ce qui se décide sur le journal seul : une réponse déjà, une demande traduite, ou la réponse à une question en attente. */
+/** Ce qui se décide sur le journal seul : une réponse déjà, la réponse à une question en attente, ou une consigne à traduire. */
 type Avant =
   | { sorte: 'reponse'; reponse: Reponse }
-  | { sorte: 'traduite'; demande: Demande }
+  | { sorte: 'a_traduire' }
   | { sorte: 'precisee'; precision: PrecisionAttendue; choix: Designable }
+
+/** Une consigne traduite, ou déjà la réponse (le modèle injoignable, le masque en échec). */
+type Traduite = { sorte: 'reponse'; reponse: Reponse } | { sorte: 'traduite'; demande: Demande }
 
 /** La question en attente dans cette conversation, posée à ce demandeur et pas encore suivie d'une autre de ses consignes. */
 function precisionEnAttente(journal: Journal, tour: Tour): PrecisionAttendue | undefined {
@@ -398,18 +411,12 @@ function suiteDeLaQuestion<S>(
 
 /**
  * Avant le dossier : le plafond du mois, la réponse à une question en attente
- * (comparée à ses candidats, sans appel), sinon la traduction. Le modèle ne
- * reçoit que la consigne, la date, le rôle et ses gestes. Le plafond se vérifie
- * ici seulement, une fois par consigne : une consigne admise va à son terme
+ * (comparée à ses candidats, sans appel). Le plafond se vérifie ici
+ * seulement, une fois par consigne : une consigne admise va à son terme
  * (l'échappée), le dépassement est d'une consigne au plus, bornée par les
  * plafonds par demande.
  */
-async function avantLeDossier<S>(
-  m: MetierConversation<S>,
-  dossier: string,
-  modele: Modele,
-  tour: Tour,
-): Promise<Avant> {
+function avantLeDossier<S>(m: MetierConversation<S>, dossier: string, tour: Tour): Avant {
   const { client, journal, config } = m.ouvrirJournal(dossier)
   const ici: Cible = { client, journal }
   try {
@@ -428,38 +435,84 @@ async function avantLeDossier<S>(
       const suite = suiteDeLaQuestion(m, ici, tour, attendue)
       if (suite) return suite
     }
-
-    const role = tour.identite.role
-    const actions = actionsDe(m.actions, role)
-    let traduite: Awaited<ReturnType<typeof traduire>>
-    try {
-      traduite = await traduire(
-        modele,
-        config.modele.effort.traduire,
-        config.plafonds.par_demande.tokens_sortie,
-        systemeTraduire(roleDe(m.roles, tour.identite), m.domaine, actions, m.intentions),
-        outilsDe(m.actions, role, m.domaine),
-        tour.consigne,
-        tour.maintenant,
-        new Map(actions.map((a) => [a.id, schemaMontre(a)])),
-      )
-    } catch (erreur) {
-      ecrire(ici, tour, [ligneConsigne(tour, 'refus', { erreur: message(erreur) })])
-      return {
-        sorte: 'reponse',
-        reponse: {
-          sorte: 'je_ne_sais_pas',
-          texte: `Je n'arrive pas à joindre le modèle : ${message(erreur)}`,
-        },
-      }
-    }
-    ecrire(ici, tour, [
-      evenementAppel(client, tour.conversation, 'traduire', 1, traduite.reponse, prixDe(config)),
-    ])
-    return { sorte: 'traduite', demande: traduite.demande }
+    return { sorte: 'a_traduire' }
   } finally {
     journal.fermer()
   }
+}
+
+/**
+ * La traduction, le premier appel au modèle : la consigne masquée avec tous
+ * les noms du client (`masquerPourModele` : un nom sûr devient l'identifiant,
+ * un nom partagé ou ressemblant un jeton), le rôle, ses gestes et la date ;
+ * puis chaque remplaçant redevient la mention telle qu'écrite
+ * (`reprendreMentions`), que la suite résout ou fait préciser comme si le
+ * modèle l'avait lue. Partagée par la conversation et l'éval de traduction.
+ * Lève sur un masque en échec ou un fournisseur injoignable : rien n'est parti.
+ */
+export async function traduireConsigne<S>(
+  m: MetierConversation<S>,
+  s: S,
+  modele: Modele,
+  identite: Identite,
+  consigne: string,
+  maintenant: Temporal.ZonedDateTime,
+): Promise<{ demande: Demande; reponse: ReponseModele; consigneModele: string }> {
+  const masque = masquerPourModele(consigne, m.noms(s))
+  const config = m.config(s)
+  const actions = actionsDe(m.actions, identite.role)
+  const traduite = await traduire(
+    modele,
+    config.modele.effort.traduire,
+    config.plafonds.par_demande.tokens_sortie,
+    systemeTraduire(roleDe(m.roles, identite), m.domaine, actions, m.intentions),
+    outilsDe(m.actions, identite.role, m.domaine),
+    masque.texte,
+    maintenant,
+    new Map(actions.map((a) => [a.id, schemaMontre(a)])),
+  )
+  return {
+    demande: reprendreMentions(traduite.demande, masque.mentions),
+    reponse: traduite.reponse,
+    consigneModele: masque.texte,
+  }
+}
+
+/** La traduction d'un tour, au journal : l'appel et la consigne telle qu'elle est partie ; un échec est dit. */
+async function traduireLeTour<S>(
+  m: MetierConversation<S>,
+  s: S,
+  modele: Modele,
+  tour: Tour,
+): Promise<Traduite> {
+  const ici = cibleDe(m, s)
+  let traduite: Awaited<ReturnType<typeof traduireConsigne>>
+  try {
+    traduite = await traduireConsigne(m, s, modele, tour.identite, tour.consigne, tour.maintenant)
+  } catch (erreur) {
+    ecrire(ici, tour, [ligneConsigne(tour, 'refus', { erreur: message(erreur) })])
+    return {
+      sorte: 'reponse',
+      reponse: {
+        sorte: 'je_ne_sais_pas',
+        texte: `Je n'arrive pas à joindre le modèle : ${message(erreur)}`,
+      },
+    }
+  }
+  ecrire(ici, tour, [
+    evenementAppel(
+      ici.client,
+      tour.conversation,
+      'traduire',
+      1,
+      traduite.reponse,
+      prixDe(m.config(s)),
+      {
+        consigne_modele: traduite.consigneModele,
+      },
+    ),
+  ])
+  return { sorte: 'traduite', demande: traduite.demande }
 }
 
 /** Le dossier ouvert : la cohérence de qui parle, puis la demande traduite (ou reprise après une question). */
@@ -468,7 +521,9 @@ async function apresLeDossier<S>(
   s: S,
   modele: Modele,
   tour: Tour,
-  avant: Exclude<Avant, { sorte: 'reponse' }>,
+  avant:
+    | Exclude<Avant, { sorte: 'reponse' | 'a_traduire' }>
+    | Exclude<Traduite, { sorte: 'reponse' }>,
 ): Promise<Reponse> {
   const ici = cibleDe(m, s)
   const refuser = (texte: string, donnees: Record<string, unknown> = {}): Reponse => {

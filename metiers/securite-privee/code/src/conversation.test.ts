@@ -706,13 +706,13 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
     )
   }
 
-  it('« Aicha ne vient pas demain » (patron) : gerer_absence pour A-11, sans aucun nom ni poste dans l’appel', async () => {
+  it('« Aicha ne vient pas demain » (patron) : la consigne part masquée, le modèle recopie A-11, gerer_absence pour A-11, sans aucun nom ni poste dans l’appel', async () => {
     const s = session()
     const consigne = 'Aicha ne vient pas demain'
-    const { r, modele } = await tour(
+    const { r, modele, conversation } = await tour(
       s,
       PATRON,
-      outil('gerer_absence', { agent: 'Aicha', jour: '2026-10-11' }),
+      outil('gerer_absence', { agent: 'A-11', jour: '2026-10-11' }),
       consigne,
     )
     expect(r.sorte).toBe('resultat')
@@ -725,24 +725,29 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
     expect(NOMS.length).toBeGreaterThan(20)
     for (const nom of NOMS) expect(envoye).not.toContain(nom)
     expect(appel?.messages).toEqual([
-      { role: 'user', content: messageConsigne(consigne, maintenant) },
+      { role: 'user', content: messageConsigne('A-11 ne vient pas demain', maintenant) },
     ])
+    const traduire = lignes(s, conversation).find((l) => l.type === TYPE_APPEL)
+    expect(JSON.parse(traduire?.donnees ?? '{}').consigne_modele).toBe('A-11 ne vient pas demain')
   })
   it('« Aisha » : aucun nom ne part au modèle, même proche ; le code pose la question avec le seul candidat qui ressemble, « oui » reprend le geste sans appel', async () => {
     const s = session()
     const { r, modele, conversation } = await tour(
       s,
       PATRON,
-      outil('gerer_absence', { agent: 'Aisha', jour: '2026-10-11' }),
+      outil('gerer_absence', { agent: 'NOM-1', jour: '2026-10-11' }),
       'Aisha ne vient pas demain',
     )
+    expect(modele.appels[0]?.messages).toEqual([
+      { role: 'user', content: messageConsigne('NOM-1 ne vient pas demain', maintenant) },
+    ])
     expect(r).toEqual({
       sorte: 'precision',
       texte: 'Vous parlez de « Aïcha Traoré » ? (oui / non)',
       candidats: [{ id: 'A-11', nom: 'Aïcha Traoré', sorte: 'personne' }],
     })
     expect(modele.appels).toHaveLength(1)
-    expect(JSON.stringify(modele.appels[0])).not.toContain('Aïcha')
+    expect(JSON.stringify(modele.appels[0])).not.toMatch(/Aïcha|Aisha/)
     expect(
       lignes(s, conversation)
         .filter((l) => l.type === TYPE_APPEL)
@@ -795,9 +800,13 @@ describe('le modèle ne reçoit que la phrase (REFLEXIONS.md, décidé le 2026-1
     const premier = await tour(
       s,
       PATRON,
-      outil('gerer_absence', { agent: 'Aïcha', jour: '2026-10-11' }),
+      outil('gerer_absence', { agent: 'NOM-1', jour: '2026-10-11' }),
       'Aïcha ne vient pas demain',
     )
+    // Le prénom partagé part en jeton ; le code reprend « Aïcha » et pose la question.
+    expect(premier.modele.appels[0]?.messages).toEqual([
+      { role: 'user', content: messageConsigne('NOM-1 ne vient pas demain', maintenant) },
+    ])
     expect(premier.r).toEqual({
       sorte: 'precision',
       texte:
