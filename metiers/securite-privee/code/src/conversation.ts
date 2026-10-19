@@ -15,7 +15,7 @@ import {
   quiParle,
 } from '@harnais/moteur'
 import { z } from 'zod'
-import { ACTIONS, choixRemplacement } from './actions'
+import { ACTIONS, aDecider } from './actions'
 import { CONTROLES } from './controles'
 import { tablesPour } from './copie'
 import { DOMAINE } from './domaine'
@@ -213,14 +213,18 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
     if (id.startsWith('D-')) {
       const st = statut(s, id)
       if (st === undefined || remplacementFini(s, id)) return []
+      const description = decrire(s.ctx, vacationDe(s, id).id)
+      // Proposée : la phrase du proposé, avec ses raisons, à la place du motif de l'étape.
+      const { phrase, choix, replis } = aDecider(s, id)
       return [
         {
           id,
           sorte: 'remplacement',
           statut: st,
-          texte: texte(decrire(s.ctx, vacationDe(s, id).id), id),
+          texte: phrase !== undefined ? `${description}\n${phrase}` : texte(description, id),
           depuis: derniere(id)?.horodatage ?? '',
-          choix: choixRemplacement(s, id),
+          choix,
+          replis,
         },
       ]
     }

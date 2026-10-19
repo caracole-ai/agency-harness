@@ -52,6 +52,8 @@ const ici = {
   attente: null,
   occupe: false,
   onglet: 'valider',
+  /** Les replis ouverts d'une carte (`demande|titre`) : un rafraîchissement les rend ouverts. */
+  replisOuverts: new Set(),
 }
 /** Les boutons Oui / Non montrés pour une confirmation, où qu'ils soient : `conversation|empreinte` → conteneurs. */
 const boutons = new Map()
@@ -209,6 +211,27 @@ function erreurBloc(message, reessayer) {
   )
 }
 
+/** `n` et le mot qui le suit, au singulier ou au pluriel. */
+const compter = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`
+
+/** Les questions libres des derniers jours, en une phrase pour le patron (`echappees` de `/api/etat`). */
+function bilanEchappees(e) {
+  if (e.echappees === 0) return `Aucune question libre ces ${e.jours} derniers jours.`
+  const parts = [
+    e.relues > 0
+      ? `${compter(e.relues, 'réponse', 'réponses')} aux chiffres relus par l'outil`
+      : null,
+    e.propositions > 0 ? compter(e.propositions, 'proposition', 'propositions') : null,
+    e.retirees === 0
+      ? 'aucune réponse retirée'
+      : `${compter(e.retirees, 'réponse retirée', 'réponses retirées')} : un chiffre ne venait pas de vos données, vous avez lu les tableaux`,
+    e.abandons > 0
+      ? `${compter(e.abandons, 'abandon', 'abandons')} : l'outil n'a pas trouvé de réponse`
+      : null,
+  ].filter((x) => x !== null)
+  return `${compter(e.echappees, 'question libre', 'questions libres')} ces ${e.jours} derniers jours : ${parts.join(' ; ')}.`
+}
+
 function rendreTete() {
   const d = ici.donnees
   $('client').textContent = d.client
@@ -220,11 +243,15 @@ function rendreTete() {
   $('info-modele').hidden = d.modele !== 'simulé'
   $('modele').textContent = 'simulé (démo sans IA)'
   $('consigne').maxLength = d.consigneMax
+  // Les questions libres : leur bilan en tête du journal ; en tête de page, seulement ce qui demande un regard.
   const e = d.echappees
-  $('echappees-fenetre').textContent = `Questions libres · ${e.jours} jours`
-  $('echappees').textContent =
-    `${e.echappees} · ${e.relues} relue${e.relues > 1 ? 's' : ''}` +
-    ` · ${e.retirees} retiré${e.retirees > 1 ? 's' : ''} · ${e.abandons} abandon${e.abandons > 1 ? 's' : ''}`
+  $('bilan-echappees').textContent = bilanEchappees(e)
+  const alertes = [
+    e.retirees > 0 ? compter(e.retirees, 'réponse retirée', 'réponses retirées') : null,
+    e.abandons > 0 ? compter(e.abandons, 'abandon', 'abandons') : null,
+  ].filter((x) => x !== null)
+  $('alerte-echappees').hidden = alertes.length === 0
+  $('alerte-echappees-texte').textContent = `${alertes.join(' · ')} · voir le journal`
 
   const choix = $('identite')
   if (choix.options.length === 0) {
@@ -249,11 +276,47 @@ function rendreValider() {
   for (const b of fil().querySelectorAll('[data-confirmation]')) {
     boutons.set(b.dataset.confirmation, [...(boutons.get(b.dataset.confirmation) ?? []), b])
   }
-  const aDecider = confirmations.length
+  // À décider : chaque oui attendu, et chaque demande dont la décision n'est pas encore cliquée.
+  const aDecider =
+    confirmations.length +
+    demandes.filter((d) => (d.choix ?? []).length > 0 && !decisionCliquee(d)).length
   const compte = $('compte-valider')
   compte.hidden = aDecider === 0
   compte.textContent = String(aDecider)
   compte.setAttribute('aria-label', `${aDecider} à décider`)
+
+  // Rien n'attend : une phrase, et de quoi commencer (les suggestions du métier, envoyées à l'outil).
+  if (confirmations.length === 0 && demandes.length === 0) {
+    const suggestions = ici.tableau?.textes.suggestions ?? []
+    $('valider').replaceChildren(
+      el(
+        'div',
+        { classe: 'vide' },
+        el(
+          'p',
+          {},
+          el('b', { texte: 'Rien n’attend votre oui. ' }),
+          ici.tableau?.textes.vide ?? '',
+        ),
+        suggestions.length > 0
+          ? el(
+              'div',
+              { classe: 'actions' },
+              ...suggestions.map((s) =>
+                el('button', {
+                  classe: 'suggestion',
+                  type: 'button',
+                  texte: s,
+                  disabled: ici.occupe,
+                  onclick: () => envoyer(s),
+                }),
+              ),
+            )
+          : null,
+      ),
+    )
+    return
+  }
 
   const zone = []
   zone.push(el('h3', { texte: 'Confirmations en attente' }))
@@ -372,9 +435,7 @@ function zoneReponse(conf, nom, choix = []) {
  */
 function carteDemande(d) {
   const choix = d.choix ?? []
-  const cliquee = choix.find((c) =>
-    ici.donnees.aValider.confirmations.some((x) => x.geste && memeGeste(x.geste, c)),
-  )
+  const cliquee = decisionCliquee(d)
   return el(
     'li',
     { classe: `carte${choix.length > 0 ? ' carte--attente' : ''}` },
@@ -387,6 +448,7 @@ function carteDemande(d) {
       el('time', { datetime: d.depuis, texte: instant(d.depuis) }),
     ),
     el('p', { classe: 'texte', texte: d.texte }),
+    d.replis?.length > 0 ? zoneReplis(d.replis, d.id) : null,
     cliquee
       ? el('p', {
           classe: 'carte__suite',
@@ -398,6 +460,12 @@ function carteDemande(d) {
   )
 }
 
+/** La décision d'une demande déjà cliquée, dont le oui attend dans les confirmations ; sinon rien. */
+const decisionCliquee = (d) =>
+  (d.choix ?? []).find((c) =>
+    ici.donnees.aValider.confirmations.some((x) => x.geste && memeGeste(x.geste, c)),
+  )
+
 /** Deux gestes identiques : la même action, les mêmes paramètres, quel que soit leur ordre. */
 const memeGeste = (a, b) => {
   const canon = (p) =>
@@ -407,6 +475,35 @@ const memeGeste = (a, b) => {
         .map((k) => [k, p[k]]),
     )
   return a.action === b.action && canon(a.params) === canon(b.params)
+}
+
+/**
+ * Le détail d'une demande ou d'un résultat : une section par repli, fermée ;
+ * on l'ouvre pour lire le pourquoi. Sur une carte (`demande`), ce qui est
+ * ouvert le reste quand la carte est rendue de nouveau.
+ */
+function zoneReplis(replis, demande) {
+  return el(
+    'div',
+    { classe: 'replis' },
+    ...replis.map((r) => {
+      const cle = demande === undefined ? undefined : `${demande}|${r.titre}`
+      return el(
+        'details',
+        {
+          classe: 'repli',
+          open: cle !== undefined && ici.replisOuverts.has(cle),
+          ontoggle: (e) => {
+            if (cle === undefined) return
+            if (e.currentTarget.open) ici.replisOuverts.add(cle)
+            else ici.replisOuverts.delete(cle)
+          },
+        },
+        el('summary', { texte: r.titre }),
+        el('ul', {}, ...r.lignes.map((l) => el('li', { texte: l }))),
+      )
+    }),
+  )
 }
 
 /**
@@ -740,6 +837,9 @@ function bulleOutil(reponse, conf) {
       }),
     )
   }
+  if (reponse.sorte === 'resultat' && reponse.replis?.length > 0) {
+    corps.append(zoneReplis(reponse.replis))
+  }
   if (reponse.sorte === 'resultat' && reponse.choix?.length > 0) {
     corps.append(zoneChoix(reponse.choix))
   }
@@ -1061,6 +1161,7 @@ async function demarrer() {
     })
   }
   $('rafraichir-journal').addEventListener('click', chargerJournal)
+  $('alerte-echappees').addEventListener('click', () => ouvrirOnglet('journal', true))
   $('rafraichir-appris').addEventListener('click', chargerSansGeste)
   $('identite').addEventListener('change', (e) => changerIdentite(identiteDe(e.target.value)))
   $('formulaire').addEventListener('submit', (e) => {

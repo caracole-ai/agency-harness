@@ -41,7 +41,7 @@ import {
   verifierRegistre,
 } from '@harnais/moteur'
 import { serveStatic } from '@hono/node-server/serve-static'
-import { Hono } from 'hono'
+import { type Context, Hono, type Next } from 'hono'
 import { csrf } from 'hono/csrf'
 import { HTTPException } from 'hono/http-exception'
 
@@ -319,8 +319,14 @@ export function creerApp(options: {
     await next()
   })
 
-  app.get('/', serveStatic({ root: PUBLIC, path: 'index.html' }))
-  app.get('/static/*', serveStatic({ root: PUBLIC }))
+  // La page et ses fichiers se revalident à chaque chargement : après une mise à jour, un navigateur
+  // qui garderait l'ancienne page avec le nouveau script resterait sur « Chargement… ».
+  const revalider = async (c: Context, next: Next) => {
+    await next()
+    c.header('Cache-Control', 'no-cache')
+  }
+  app.get('/', revalider, serveStatic({ root: PUBLIC, path: 'index.html' }))
+  app.get('/static/*', revalider, serveStatic({ root: PUBLIC }))
 
   // Les deux lectures sont des POST : l'identité voyage dans un corps JSON,
   // comme pour une consigne, qu'une page tierce ne peut pas envoyer sans

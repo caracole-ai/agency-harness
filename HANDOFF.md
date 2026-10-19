@@ -21,7 +21,7 @@ harnais du client la **tire** (`pnpm mise-a-jour`, lancé par l'interface
 dans un processus à part), vérifie signature et lignée, l'installe à côté,
 rejoue `pnpm check`, bascule au calme (`pnpm harnais`, le lanceur), revient
 en arrière si le redémarrage échoue. `pnpm check` vert : moteur 588,
-interface 39, sécurité 136, agence web 259.
+interface 41, sécurité 137, agence web 259.
 
 **Audité avant la fusion le 2026-10-16** : trois relectures en parallèle,
 puis une relecture des corrections ; une trentaine de défauts corrigés en
@@ -55,10 +55,13 @@ l'étiquette a changé (`evals/verdict-2026-10-18-identifiants.md`).
 décisions, les mêmes sous le résultat du geste (`DemandeTableau.choix`,
 `Resultat.choix` ; la sécurité : « Valider X », « Prendre Y à la place »),
 cliquées sans modèle, le oui toujours exigé ; une décision cliquée dont le
-oui attend renvoie aux confirmations. Restent, relevés sur l'écran du
-patron : la réponse d'une absence en mur de texte (exclus et écartés à
-replier), le bandeau « Questions libres » illisible pour un patron, les
-suggestions coupées, une date brute dans un refus. Démo :
+oui attend renvoie aux confirmations. Puis : la réponse d'une absence
+compacte (le proposé et ses raisons ; exclus et écartés repliés,
+`Repli`), les raisons dans chaque « Prendre X à la place », le bilan des
+questions libres en tête du Journal (l'en-tête ne signale qu'un retrait
+ou un abandon), les suggestions à la ligne, l'état vide avec les
+suggestions, la date du refus en clair, et la page servie en `no-cache`
+(un navigateur gardait l'ancienne page avec le nouveau script). Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).
 

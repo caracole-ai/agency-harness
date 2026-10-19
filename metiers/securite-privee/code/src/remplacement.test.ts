@@ -54,6 +54,14 @@ const agentDe = (s: Session, vacation: string) =>
     .find((l) => l.startsWith(`${vacation};`))
     ?.split(';')[1]
 
+describe('une absence un jour sans vacation', () => {
+  it('le refus dit le jour en clair, jamais au format brut', () => {
+    expect(() =>
+      signalerAbsence(session(), attendu.absence.agent, jour.add({ days: 9 }), t0),
+    ).toThrow(/n'a aucune vacation qui commence le \d{2}\/\d{2}\/\d{4}$/)
+  })
+})
+
 describe('la proposition', () => {
   const s = session()
   const r = absence(s)
