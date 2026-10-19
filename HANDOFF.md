@@ -88,6 +88,12 @@ plus libre au plus chargé, domaines (date à renseigner en tête, expirés, à
 renouveler), absence proposée et ses tickets en liste ; elle nomme ses
 objets (facture, projet, lot, devis, contrat, client, personne, ticket,
 domaine). Démo agence : `--maintenant 2026-10-12T10:00`, port 3778.
+La délégation proposée se lit comme une demande (`Tableau.enAttente` :
+`EnAttente` porte `titre`, `depuis`, `replis`) : ce que l'outil ferait
+seul, le remplacement réussi d'où elle vient, ses conditions et ce qui ne
+change pas. Une demande écrite nomme toujours l'absent (`absentDe`, lu à la
+réception : le planning porte ensuite le remplaçant). Pour la voir sur la
+démo : valider D-V-17, puis répondre oui en tant que Julien Lefèvre.
 Démo :
 `pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
 planning fictif s'arrête mi-octobre).

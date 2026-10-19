@@ -37,10 +37,22 @@ export interface Choix {
   params: Record<string, unknown>
 }
 
+/** Une ligne en attente d'une réponse, rendue comme une demande : son titre, son texte, son détail. */
+export interface EnAttente {
+  id: string
+  /** Ce qui est proposé, en quelques mots (exemple : « Solliciter le remplaçant sans attendre votre oui ») ; absent, la première ligne du texte en tient lieu. */
+  titre?: string
+  texte: string
+  /** Quand elle a été proposée (instant ISO). */
+  depuis?: string
+  /** Ses conditions, ce qui ne change pas : montrés comme ceux d'une demande. */
+  replis?: Repli[]
+}
+
 export interface Tableau {
   demandes: DemandeTableau[]
   /** Les lignes « en attente d'une réponse » que l'interface montre à part (exemple : les délégations proposées). */
-  enAttente: { id: string; texte: string }[]
+  enAttente: EnAttente[]
   /** Le nom à afficher pour celui qui parle : le rôle en mots, ou un nom complet. Il ne part jamais au modèle. */
   nom: string
   /** Chaque chaîne de l'interface qui nomme un objet du métier : suggestions par rôle, phrases d'accueil et d'état vide, libellés des conditions. */
