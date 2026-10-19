@@ -73,7 +73,9 @@ const donnees = <T>(l: Ligne): T | undefined =>
 /** Ce que garde une ligne `confirmation_attendue` (la forme écrite par `traiterConsigne`). */
 interface Attente {
   identite: Identite
-  demande: { sorte: 'action' } | { sorte: 'reaffectation'; id: string; corrige?: string }
+  demande:
+    | { sorte: 'action'; action: string; params: Record<string, unknown> }
+    | { sorte: 'reaffectation'; id: string; corrige?: string }
   empreinte: string
 }
 
@@ -162,6 +164,10 @@ function confirmationsEnAttente(m: Metier, s: unknown, lignes: Ligne[]) {
           attente.demande.sorte === 'reaffectation'
             ? (m.proposition?.choix?.(s, attente.demande.id) ?? [])
             : [],
+        // Le geste qu'attend ce oui : la page y reconnaît la décision déjà cliquée sur une demande.
+        ...(attente.demande.sorte === 'action'
+          ? { geste: { action: attente.demande.action, params: attente.demande.params } }
+          : {}),
         horodatage: l.horodatage,
       }
     })

@@ -1,5 +1,6 @@
 import {
   type Action,
+  type Choix,
   dateFr,
   dureeHeures,
   type Identite,
@@ -95,6 +96,28 @@ function premierPossible(s: Session, demande: string): string {
   return premier.agent
 }
 
+/**
+ * Les décisions du patron sur une demande proposée, à cliquer sans modèle :
+ * valider le remplaçant proposé, ou prendre un autre possible ; chacune
+ * `valider_remplacement` avec son agent, dont le « oui » reste à donner. Les
+ * mêmes sur la demande dans « à valider » et sous le résultat du geste.
+ */
+export function choixRemplacement(s: Session, demande: string): Choix[] {
+  if (statut(s, demande) !== STATUT.proposee) return []
+  const v = vacationDe(s, demande)
+  const [propose, ...autres] = evaluer(s, demande, v, dejaSollicites(s, demande)).possibles
+  if (!propose) return []
+  const choix = (libelle: string, agent: string): Choix => ({
+    libelle,
+    action: validerRemplacement.id,
+    params: { demande, agent },
+  })
+  return [
+    choix(`Valider ${propose.nom}`, propose.agent),
+    ...autres.map((c) => choix(`Prendre ${c.nom} à la place`, c.agent)),
+  ]
+}
+
 /** Les alertes de la veille du jour, chacune décrite pour le client. */
 function alertes(s: Session, maintenant: Temporal.ZonedDateTime, agent?: string): string[] {
   return passerVeille(VEILLER, METIER, s.dossier, maintenant.toPlainDate())
@@ -162,6 +185,7 @@ const gererAbsence: Action<Session, z.infer<typeof GererAbsence>> = {
           ? `Demande ${r.demande}\n${decrireEtape(s, r, r.demande)}`
           : `Ton absence du ${dateFr(Temporal.PlainDate.from(p.jour))} est enregistrée (demande ${r.demande}). Le patron s'occupe de ton remplacement.`,
       donnees: { demande: r.demande, statut: r.statut },
+      ...(identite.role === 'patron' ? { choix: choixRemplacement(s, r.demande) } : {}),
     }
   },
 }

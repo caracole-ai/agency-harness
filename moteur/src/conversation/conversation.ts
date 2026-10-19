@@ -123,8 +123,8 @@ export interface PropositionMetier<Session> {
 }
 
 export type Reponse =
-  /** `controle` : une réponse d'échappée dit si le code a relu ses chiffres ou retiré le résumé ; absent sur le résultat d'un geste codé. */
-  | { sorte: 'resultat'; texte: string; controle?: ControleReponse }
+  /** `controle` : une réponse d'échappée dit si le code a relu ses chiffres ou retiré le résumé ; absent sur le résultat d'un geste codé. `choix` : les décisions qu'offre le résultat d'un geste, chacune appelée par `traiterGeste`. */
+  | { sorte: 'resultat'; texte: string; controle?: ControleReponse; choix?: Choix[] }
   | { sorte: 'confirmation'; texte: string; empreinte: string }
   /** `choix` : les autres choix que le métier offre sur cette proposition, chacun appelé par `traiterGeste`. */
   | { sorte: 'proposition'; texte: string; empreinte: string; choix?: Choix[] }
@@ -846,14 +846,14 @@ async function executer<S>(
   maintenant: Temporal.ZonedDateTime,
 ): Promise<{ reponse: Reponse; donnees?: unknown; modifications?: unknown[]; corrige?: string }> {
   try {
-    const { texte, donnees, modifications, corrige } = await action.executer(
+    const { texte, donnees, modifications, corrige, choix } = await action.executer(
       s,
       identite,
       params,
       maintenant,
     )
     return {
-      reponse: { sorte: 'resultat', texte },
+      reponse: { sorte: 'resultat', texte, ...(choix !== undefined ? { choix } : {}) },
       ...(donnees !== undefined ? { donnees } : {}),
       ...(modifications !== undefined ? { modifications } : {}),
       ...(corrige !== undefined ? { corrige } : {}),

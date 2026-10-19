@@ -15,7 +15,7 @@ import {
   quiParle,
 } from '@harnais/moteur'
 import { z } from 'zod'
-import { ACTIONS } from './actions'
+import { ACTIONS, choixRemplacement } from './actions'
 import { CONTROLES } from './controles'
 import { tablesPour } from './copie'
 import { DOMAINE } from './domaine'
@@ -220,6 +220,7 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
           statut: st,
           texte: texte(decrire(s.ctx, vacationDe(s, id).id), id),
           depuis: derniere(id)?.horodatage ?? '',
+          choix: choixRemplacement(s, id),
         },
       ]
     }

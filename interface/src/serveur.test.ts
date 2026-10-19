@@ -87,8 +87,14 @@ interface Etat {
   maintenant: string
   identites: { role: string; personne?: string; nom?: string }[]
   aValider: {
-    confirmations: { conversation: string; empreinte: string; sorte: string; texte: string }[]
-    demandes: { id: string; statut: string }[]
+    confirmations: {
+      conversation: string
+      empreinte: string
+      sorte: string
+      texte: string
+      geste?: { action: string; params: Record<string, unknown> }
+    }[]
+    demandes: { id: string; statut: string; texte?: string; choix?: Choix[] }[]
   }
   regles: { id: string; nom: string; interdit: string; statut: string }[]
   ia: { coutMois: number; plafond: number; appels: number }
@@ -851,6 +857,69 @@ describe('un parcours simulé : absence, validation, oui', async () => {
     expect(lignes[0]?.type).toBe('confirmation')
     const ids = lignes.map((l) => l.id)
     expect(ids).toEqual([...ids].sort((x, y) => y - x))
+  })
+})
+
+describe('la décision du patron sur une demande, cliquée : sur la carte et sous le résultat', async () => {
+  // Un seul appel au modèle : la traduction de l'absence. La décision part d'un clic.
+  const a = app([{ outil: 'gerer_absence', entree: { agent: 'A-11', jour: '2026-10-11' } }])
+  const etat = async () => (await (await lire(a, '/api/etat')).json()) as Etat
+  const premiere = (await (
+    await poster(a, '/api/consigne', { identite: PATRON, consigne: 'Aïcha ne vient pas demain' })
+  ).json()) as { conversation: string; reponse: Reponse }
+  const avant = await etat()
+  const offerts = premiere.reponse.sorte === 'resultat' ? (premiere.reponse.choix ?? []) : []
+  const autre = offerts[1]
+  if (!autre) throw new Error('aucun autre remplaçant offert')
+  const clic = (await (
+    await poster(a, '/api/geste', {
+      identite: PATRON,
+      conversation: premiere.conversation,
+      ...autre,
+    })
+  ).json()) as { conversation: string; reponse: Reponse }
+  const enAttente = await etat()
+  const oui = (await (
+    await poster(a, '/api/confirmer', {
+      identite: PATRON,
+      conversation: clic.conversation,
+      empreinte: clic.reponse.sorte === 'confirmation' ? clic.reponse.empreinte : '',
+      oui: true,
+    })
+  ).json()) as { reponse: Reponse }
+  const apres = await etat()
+
+  it('le résultat et la carte offrent les mêmes décisions : le proposé d’abord, puis chaque autre possible', () => {
+    expect(offerts.slice(0, 2)).toEqual([
+      {
+        libelle: 'Valider Julien Lefèvre',
+        action: 'valider_remplacement',
+        params: { demande: 'D-V-17', agent: 'A-2' },
+      },
+      {
+        libelle: 'Prendre Karim Haddad à la place',
+        action: 'valider_remplacement',
+        params: { demande: 'D-V-17', agent: 'A-1' },
+      },
+    ])
+    expect(avant.aValider.demandes[0]?.choix).toEqual(offerts)
+  })
+  it('le clic demande le oui, sans modèle ; la confirmation dit le geste qu’elle attend', () => {
+    expect(clic.conversation).toBe(premiere.conversation)
+    expect(clic.reponse.sorte).toBe('confirmation')
+    expect(clic.reponse.texte).toContain('Karim Haddad (A-1)')
+    expect(enAttente.ia.appels).toBe(avant.ia.appels)
+    expect(enAttente.aValider.confirmations).toMatchObject([
+      { geste: { action: autre.action, params: autre.params } },
+    ])
+  })
+  it('le oui sollicite l’agent choisi ; la demande n’offre plus de décision', () => {
+    expect(oui.reponse.sorte).toBe('resultat')
+    expect(apres.aValider.confirmations).toEqual([])
+    expect(apres.aValider.demandes).toMatchObject([
+      { id: 'D-V-17', statut: "demandée à l'agent", choix: [] },
+    ])
+    expect(apres.aValider.demandes[0]?.texte).toContain('Karim')
   })
 })
 

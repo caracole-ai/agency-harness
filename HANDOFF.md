@@ -20,8 +20,8 @@ client) ; chaque fusion et chaque retrait posent une **version signée**
 harnais du client la **tire** (`pnpm mise-a-jour`, lancé par l'interface
 dans un processus à part), vérifie signature et lignée, l'installe à côté,
 rejoue `pnpm check`, bascule au calme (`pnpm harnais`, le lanceur), revient
-en arrière si le redémarrage échoue. `pnpm check` vert : moteur 569,
-interface 36, sécurité 136, agence web 259.
+en arrière si le redémarrage échoue. `pnpm check` vert : moteur 588,
+interface 39, sécurité 136, agence web 259.
 
 **Audité avant la fusion le 2026-10-16** : trois relectures en parallèle,
 puis une relecture des corrections ; une trentaine de défauts corrigés en
@@ -51,6 +51,16 @@ contre une base sans phrase à trous : agence web 58/72 contre 48/72,
 retraits 1 contre 8, sécurité 54 = 54, aucune fuite. E-20 arrêtait la
 fusion sur les euros ; Lionel a tranché que le pourcentage suffit, et
 l'étiquette a changé (`evals/verdict-2026-10-18-identifiants.md`).
+**Le frontend, avec Lionel (2026-10-19)** : une demande en cours porte ses
+décisions, les mêmes sous le résultat du geste (`DemandeTableau.choix`,
+`Resultat.choix` ; la sécurité : « Valider X », « Prendre Y à la place »),
+cliquées sans modèle, le oui toujours exigé ; une décision cliquée dont le
+oui attend renvoie aux confirmations. Restent, relevés sur l'écran du
+patron : la réponse d'une absence en mur de texte (exclus et écartés à
+replier), le bandeau « Questions libres » illisible pour un patron, les
+suggestions coupées, une date brute dans un refus. Démo :
+`pnpm interface --client <copie> --maintenant 2026-10-10T21:40` (le
+planning fictif s'arrête mi-octobre).
 
 - **Ne jamais lancer `pnpm agence`, `pnpm chantier` ni `pnpm versionner`
   dans ce dépôt pour un essai** : ils poussent sur `origin` (GitHub). Le

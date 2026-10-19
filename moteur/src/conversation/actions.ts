@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { Temporal } from '../temps/temporal'
 import type { Domaine } from './domaine'
 import type { Identite, Role } from './roles'
+import type { Choix } from './tableau'
 
 // Les gestes du quotidien (espace 1) : une liste fermée d'actions codées, que
 // le modèle ne fait que choisir. Le métier les écrit (`ACTIONS`) ; ce fichier
@@ -24,6 +25,8 @@ export interface Resultat {
   modifications?: unknown[]
   /** La proposition que ces modifications corrigent (son identifiant, rendu par le métier) : le métier les y rattache (PLAN-CHOIX.md C2). */
   corrige?: string
+  /** Les décisions que le résultat offre au demandeur, chacune un geste à cliquer (les mêmes que sur la demande, dans « à valider »). */
+  choix?: Choix[]
 }
 
 export interface Action<Session, Params> {
