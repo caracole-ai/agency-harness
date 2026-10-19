@@ -203,7 +203,7 @@ Un dossier, une ligne. Les mots sont dans `GLOSSAIRE.md`, les décisions dans
 │   └── transport-logistique/, bureaux-etudes/, avocats-affaires/   décrits, pas codés
 ├── exemples/              deux clients fictifs, à copier avant tout essai : client-fictif (la sécurité : 13 agents, 19 vacations, des erreurs posées exprès), agence-web-fictive (vingt CSV, graine fixe) ; livraison.yaml commenté
 ├── evals/                 resultats/ (les tableaux datés d'une passe), traces/ (non versionnées), erreurs-*.md (les analyses)
-├── presentation/          la page « Schéma du harnais » (smarttailor.fr/schema-harnais : copiée telle quelle dans ../smart-tailor/public/schema-harnais/, la ligne des polices remplacée par celles du site), glossaire.mjs (smarttailor.fr/glossaire depuis GLOSSAIRE.md) et carte.mjs (smarttailor.fr/carte-harnais depuis « La carte » ci-dessus)
+├── presentation/          les pages de smarttailor.fr, reliées par une même barre (nav.mjs) : publier.mjs publie le schéma (schema-harnais.html), le diaporama (diaporama.html → /dispos-harnais) et le mini-site « Le harnais en clair » (en-clair/ → /harnais-en-clair), polices du site, chemins absolus, et écrit aussi la version des artefacts claude.ai ; glossaire.mjs (/glossaire depuis GLOSSAIRE.md) et carte.mjs (/carte-harnais depuis « La carte » ci-dessus). Les sources ici font foi ; le site ne se retouche pas à la main
 ├── clients/               les notes d'entretien, ignorées par git : ce que dit un client ne part nulle part
 └── .claude/skills/entretien-metier/   le skill qui prépare l'entretien et transcrit les règles à valider, chaque citation vérifiée
 ```

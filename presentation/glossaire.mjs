@@ -4,6 +4,7 @@
 // régénère d'un bloc, jamais retouchée à la main dans le site.
 // Usage : node presentation/glossaire.mjs GLOSSAIRE.md ../smart-tailor/public/glossaire/index.html
 import { readFileSync, writeFileSync } from 'node:fs'
+import { nav as navHarnais } from './nav.mjs'
 
 const [, , source, sortie] = process.argv
 const md = readFileSync(source, 'utf8')
@@ -287,6 +288,7 @@ mark { background: var(--mark); color: inherit; border-radius: 2px; padding: 0 0
 </style>
 </head>
 <body>
+${navHarnais('/glossaire')}
 <header class="haut"><div class="in">
   <p class="eyebrow"><a href="/">Smart Tailor</a> · le harnais</p>
   <h1>Glossaire</h1>

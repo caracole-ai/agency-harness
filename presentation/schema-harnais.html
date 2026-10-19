@@ -325,6 +325,7 @@ a { color: var(--accent-ink); }
 :focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 </style>
 
+<!-- nav-harnais -->
 <div class="progress" id="progress" aria-hidden="true"></div>
 
 <nav class="toc" aria-label="Sections">
@@ -338,7 +339,7 @@ a { color: var(--accent-ink); }
       <div class="brand"><span class="brand__mark" aria-hidden="true">ST</span><span><span class="brand__name">Smart Tailor</span><span class="brand__tag">harnais IA sur mesure</span></span></div>
       <h1>Schéma du <em>harnais</em></h1>
       <p class="lede">Comment un outil sur mesure pour une TPE/PME lit, propose et écrit sans jamais faire de faux pas.</p>
-      <div class="meta"><b>Le code conduit. Le modèle lit et écrit. L'humain engage.</b><br><span class="tag">construit</span> · état du système au 2026-10-18 (écrit le 2026-10-05 pour être validé, relu sur le code depuis) · le détail : <a href="https://smarttailor.fr/dispos-harnais">le diaporama</a>, <a href="https://smarttailor.fr/glossaire">le glossaire</a>, le README du dépôt</div>
+      <div class="meta"><b>Le code conduit. Le modèle lit et écrit. L'humain engage.</b><br><span class="tag">construit</span> · état du système au 2026-10-19 (écrit le 2026-10-05 pour être validé, relu sur le code depuis) · le détail : <a href="https://smarttailor.fr/dispos-harnais">le diaporama</a>, <a href="https://smarttailor.fr/glossaire">le glossaire</a>, le README du dépôt</div>
     </div>
     <div class="hero-figure"><div id="hero-figure"></div><p class="hero-cap">La figure animée du site, telle quelle. Le code, lui, charge chaque métier par son nom : le même moteur sert la sécurité privée et une agence web.</p></div>
   </div>
@@ -444,7 +445,7 @@ a { color: var(--accent-ink); }
         <rect x="730" y="40" width="230" height="150" class="box-model"/>
         <text x="742" y="60" class="t-strong">traduire · chercher</text>
         <text x="742" y="78" class="t-soft">coder un geste commandé, au chantier</text>
-        <text x="742" y="104" class="t-soft">entrée : la consigne, sans aucun nom</text>
+        <text x="742" y="104" class="t-soft">entrée : la consigne masquée</text>
         <text x="742" y="120" class="t-soft">sortie : un formulaire validé</text>
         <text x="742" y="136" class="t-soft">par schéma, jamais du texte libre</text>
         <text x="742" y="162" class="t-soft">aucun accès direct aux données,</text>
@@ -508,7 +509,7 @@ a { color: var(--accent-ink); }
     <p class="kicker">Société de sécurité privée, la veille au soir. Le patron écrit « Aïcha ne vient pas demain ». Ce que fait le système, étape par étape, et ce qui s'écrit au journal à chaque fois.</p>
     <ol class="steps">
       <li><div><b>La consigne arrive, la porte d'abord</b>Le canal transmet la phrase, qui l'envoie et l'heure. Le moteur vérifie l'identité au registre des personnes et fixe ses droits : le patron a ses gestes, un agent en a six sur ses seules données, un inconnu est refusé avant toute lecture. Le plafond d'IA du mois est vérifié.<div class="state">journal : <i>consigne</i></div></div></li>
-      <li><div><b>Le modèle traduit, sans rien voir</b>Il reçoit la phrase masquée (« Aïcha » devient <code>A-11</code>), la date, le rôle et la liste fermée des gestes de ce rôle, plus deux sorties : demande nouvelle, je ne sais pas. Ni nom, ni planning. Il remplit un formulaire : <code>gerer_absence</code>, <code>A-11</code>, demain. Le code revalide le geste et ses paramètres ; du texte, ou un formulaire hors de la liste, finit en « je ne sais pas ».<div class="state">journal : <i>traduction</i>, l'appel et son coût</div></div></li>
+      <li><div><b>Le modèle traduit, sans rien voir</b>Il reçoit la phrase masquée : « Aïcha » devient <code>A-11</code>. Un prénom partagé ou un nom mal écrit devient un jeton (« Aisha » devient <code>NOM-1</code>), que le code reprend après l'appel. Il reçoit aussi la date, le rôle et la liste fermée des gestes de ce rôle, plus deux sorties : demande nouvelle, je ne sais pas. Ni nom, ni planning. Il remplit un formulaire : <code>gerer_absence</code>, <code>A-11</code>, demain. Le code revalide le geste et ses paramètres ; du texte, ou un formulaire hors de la liste, finit en « je ne sais pas ». Limite : le masque ne connaît que les noms des données ; un surnom ou un nom absent passerait encore.<div class="state">journal : <i>traduction</i>, l'appel et son coût</div></div></li>
       <li><div><b>Le code trouve Aïcha</b>Le métier donne la liste des salariés que ce rôle peut voir ; une correspondance exacte, sans accents ni majuscules, décide. Une faute de frappe ? Le code retient les noms proches et demande au patron : « Vous parlez de « Aïcha Traoré » ? », ou une liste numérotée. Le modèle ne voit aucun nom ; aucun geste ne s'exécute sur un nom deviné.<div class="state">journal : <i>précision attendue</i>, ou le geste</div></div></li>
       <li><div><b>Les règles décident, les réglages classent</b>Le métier ouvre une demande de remplacement et simule le planning avec la vacation confiée à chacun des autres salariés, contre les règles codées : carte, activités, repos, déclaration. Des possibles, des exclus avec leur raison, des écartés faute de donnée, classés selon les préférences du client. Le texte est écrit par le code depuis ce résultat : aucun nom, aucun chiffre inventé.<div class="state">journal : la demande <i>D-V-17</i>, proposée</div></div></li>
       <li><div><b>Le oui devient la clé, une seule écriture</b>Le patron valide ; le code reformule ce qui va s'écrire et attend son oui ; l'empreinte du contenu exact est la clé. L'agent sollicité accepte. Le métier recompare la clé au planning actuel et modifie une seule ligne. Si le planning a changé entre-temps, la clé ne correspond plus et rien ne s'écrit.<div class="state">journal : <i>confirmation</i>, puis l'écriture, et qui l'a décidée</div></div></li>
@@ -582,7 +583,7 @@ a { color: var(--accent-ink); }
       <thead><tr><th>Étape</th><th>Qui</th><th>Coût</th><th>Ce qui se passe</th></tr></thead>
       <tbody>
         <tr><td>1. La porte</td><td>Code</td><td>Gratuit</td><td>L'identité au registre, les droits du rôle, le plafond du mois : un inconnu ou un plafond atteint s'arrête avant tout appel.</td></tr>
-        <tr><td>2. La traduction</td><td>Un appel, liste fermée</td><td>≈ 0,002 $</td><td>La phrase, le rôle, les gestes : un formulaire rempli, revalidé par le code. Un geste ne coûte que cela.</td></tr>
+        <tr><td>2. La traduction</td><td>Un appel, liste fermée</td><td>≈ 0,002 $</td><td>La phrase masquée, le rôle, les gestes : un formulaire rempli, revalidé par le code. Un geste ne coûte que cela.</td></tr>
         <tr><td>3. L'échappée</td><td>Une boucle bornée</td><td>≈ 0,015 $ en moyenne</td><td>12 tours, 20 000 tokens, 420 s par demande ; une borne atteinte finit en abandon, au journal.</td></tr>
         <tr><td>4. Contrôles, puis humain</td><td>Code, puis la personne qui décide</td><td>Gratuit</td><td>Comme toujours.</td></tr>
       </tbody>
@@ -631,7 +632,7 @@ a { color: var(--accent-ink); }
     <ol class="steps">
       <li><div><b>La veille, sans modèle</b>Connecteur CSV, calendrier, couche sémantique, interdits et tests. Un rapport qui dit ce qui cloche. Le premier pilote de chaque métier.</div></li>
       <li><div><b>Le remplacement et la clé d'accord</b>Les candidats par les règles, la validation du patron, l'accord de l'agent, une seule écriture sous la clé ; la délégation.</div></li>
-      <li><div><b>La conversation et ses trois espaces</b>La traduction dans une liste fermée, l'échappée sur une copie masquée, la commande d'un geste ; l'interface du patron ; les pseudonymes : aucun nom ne part au modèle, même proche.</div></li>
+      <li><div><b>La conversation et ses trois espaces</b>La traduction dans une liste fermée, l'échappée sur une copie masquée, la commande d'un geste ; l'interface du patron ; les pseudonymes : la consigne part masquée, aucun nom connu des données ne part au modèle, même proche.</div></li>
       <li><div><b>Le second métier</b>Une agence web, écrite dans la bande métier seulement : le moteur n'a pas bougé.</div></li>
       <li><div><b>Le chantier et la livraison</b>Le geste commandé, codé par trois modèles sous neuf conditions, fusionné et signé ; le harnais du client tire la version, la vérifie, bascule au calme, revient en arrière s'il le faut.</div></li>
       <li><div><b>Les mesures</b>Des évals écrites à la main, des contrôles binaires sans juge IA : traduction 73/73, échappée 54/54 pour la sécurité et 70/72 pour l'agence web sur trois passes, avec Sonnet 5.5 ; mille tests.</div></li>

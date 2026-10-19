@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Le harnais en 15 minutes · Smart Tailor</title>
+<meta name="description" content="Le harnais de Smart Tailor en diaporama : le code décide, l'IA traduit, rien ne s'écrit sans un oui humain.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600&family=Public+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+<style>
+/* Une seule ambiance, celle d'un vidéoprojecteur : marine profond, blanc, un accent bleu
+   pour le code du harnais, un ambre pour ce qui bouge. Grammaire des schémas : trait blanc =
+   le monde du client, bleu = le code, bleu pointillé = l'IA, aplat blanc = l'humain qui décide.
+   Mise en page : une diapositive = un écran, le schéma en pleine largeur, ses commandes dessous. */
+:root {
+  --bg: #041723; --bg-2: #0a2231; --fg: #ffffff; --fg-soft: rgba(255,255,255,0.74); --fg-faint: rgba(255,255,255,0.5);
+  --line: rgba(255,255,255,0.16); --blue: #568eff; --blue-ink: #8cb2ff; --blue-soft: rgba(86,142,255,0.14);
+  --human: #ffffff; --on-human: #041723; --amber: #f2b45a; --ok: #5fcf96;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Martian Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  --gutter: clamp(16px, 4vw, 56px);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 400 clamp(1rem, 0.9rem + 0.6vw, 1.35rem)/1.45 var(--font-body); -webkit-font-smoothing: antialiased; overflow-x: clip; }
+main { min-height: 100%; display: grid; }
+.slide { min-height: 100dvh; display: grid; align-content: center; padding: clamp(1.5rem, 4vh, 3rem) var(--gutter) 5.5rem; }
+.slide[hidden] { display: none; }
+.in { width: min(100%, 72rem); margin-inline: auto; display: grid; gap: clamp(0.8rem, 2vh, 1.4rem); }
+.eyebrow { font: 500 0.72rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.1em; color: var(--blue-ink); margin: 0; }
+h1 { font: 400 clamp(2.4rem, 1.6rem + 4vw, 5.2rem)/1.04 var(--font-display); letter-spacing: -0.025em; margin: 0; text-wrap: balance; max-width: 18ch; }
+h1 em, h2 em { font-style: normal; color: var(--blue-ink); }
+h2 { font: 400 clamp(1.7rem, 1.2rem + 2vw, 3.1rem)/1.1 var(--font-display); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+h3 { font: 600 1.05em/1.3 var(--font-body); margin: 0; }
+p { margin: 0; max-width: 62ch; }
+.lede { color: var(--fg-soft); font-size: 1.12em; max-width: 46ch; text-wrap: balance; }
+.soft { color: var(--fg-soft); }
+.big { font: 400 clamp(1.5rem, 1rem + 2.4vw, 3.4rem)/1.18 var(--font-display); letter-spacing: -0.02em; max-width: 24ch; text-wrap: balance; }
+.who { font: 500 0.78rem var(--font-mono); color: var(--fg-faint); letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* cartes et listes */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.9rem; }
+.card { border: 1px solid var(--line); border-radius: 4px; padding: 1rem 1.1rem; display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
+.card.code { border-color: var(--blue); background: var(--blue-soft); }
+.card.ia { border-color: var(--blue); border-style: dashed; }
+.card.human { background: var(--human); color: var(--on-human); border-color: var(--human); }
+.card .k { font: 500 0.7rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+.card .n { font: 400 1.35em/1.15 var(--font-display); }
+.card .d { font-size: 0.92em; opacity: 0.88; }
+.grid9 { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 0.6rem 1.6rem; counter-reset: s; }
+.grid9 div { border-top: 1px solid var(--line); padding-top: 0.5rem; display: grid; gap: 0.15rem; min-width: 0; }
+.grid9 b { font-weight: 600; }
+.grid9 span { color: var(--fg-soft); font-size: 0.9em; }
+.nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 0.8rem; }
+.num { border-left: 2px solid var(--blue); padding-left: 0.9rem; display: grid; gap: 0.1rem; }
+.num b { font: 400 clamp(1.8rem, 1.2rem + 2vw, 3rem)/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.num span { color: var(--fg-soft); font-size: 0.9em; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 0.35rem 1.2rem; font-size: 0.95em; }
+.kv dt { font: 500 0.72rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue-ink); padding-top: 0.25em; }
+.kv dd { margin: 0; color: var(--fg-soft); }
+@media (max-width: 36rem) { .kv { grid-template-columns: 1fr; gap: 0.1rem 0; } .kv dd { margin-bottom: 0.5rem; } }
+code { font: 0.86em var(--font-mono); color: var(--blue-ink); }
+
+/* schémas animés */
+figure { margin: 0; display: grid; gap: 0.6rem; }
+.scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* le schéma tient dans l'écran avec ses commandes et sa légende : la hauteur est bornée, la largeur suit */
+figure svg { display: block; width: 100%; min-width: 640px; height: auto; max-height: 52vh; color: var(--fg); }
+svg text { font-family: var(--font-body); fill: currentColor; }
+svg .t { font-size: 14px; font-weight: 600; }
+svg .s { font-size: 12px; fill: var(--fg-soft); }
+svg .m { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; }
+svg .dark { fill: var(--on-human); }
+svg .darks { fill: var(--on-human); opacity: 0.75; }
+svg .blue { fill: var(--blue-ink); }
+svg .bx { fill: none; stroke: currentColor; stroke-width: 1.1; transition: stroke-width 0.25s, filter 0.25s, fill 0.25s; }
+svg .bx.code { fill: var(--blue-soft); stroke: var(--blue); }
+svg .bx.ia { fill: none; stroke: var(--blue); stroke-dasharray: 5 4; }
+svg .bx.human { fill: var(--human); stroke: var(--human); }
+svg .bx.on { stroke-width: 3; filter: drop-shadow(0 0 10px rgba(242,180,90,0.75)); stroke: var(--amber); }
+svg .bx.code.on, svg .bx.ia.on { stroke: var(--amber); }
+svg .ar { fill: none; stroke: var(--blue); stroke-width: 2; opacity: 0; transition: stroke-dashoffset 0.6s ease, opacity 0.2s; }
+svg .ar.ink { stroke: currentColor; }
+svg .ar.on { opacity: 1; stroke: var(--amber); }
+svg .ar.done { opacity: 0.55; }
+svg .hd { fill: var(--blue); }
+svg .hd.ink { fill: currentColor; }
+svg .token { fill: var(--amber); opacity: 0; filter: drop-shadow(0 0 6px rgba(242,180,90,0.9)); }
+svg .token.on { opacity: 1; }
+svg .badge { fill: var(--human); opacity: 0; transition: opacity 0.3s; }
+svg .badge.on, svg .badge.done { opacity: 1; }
+svg .lbl { opacity: 0; transition: opacity 0.3s; }
+svg .lbl.on, svg .lbl.done { opacity: 1; }
+/* une étiquette fugace ne dit que l'action de son étape, puis s'efface */
+svg .lbl.fugace.done { opacity: 0; }
+/* les canaux : branchés en trait plein, à venir en pointillé discret */
+svg .chip { fill: none; stroke: var(--line); stroke-width: 1; }
+svg .chip.next { stroke-dasharray: 2 2; }
+svg .chip-t { font-size: 9px; fill: var(--fg-soft); }
+/* qui peut écrire au canal : un lien toujours visible, le parcours de la demande passe par-dessus */
+svg .lien { fill: none; stroke: var(--fg-faint); stroke-width: 1.1; }
+svg .hd.lien { fill: var(--fg-faint); stroke: none; }
+.ctl { display: flex; flex-wrap: wrap; gap: 0.5rem 0.8rem; align-items: center; }
+.ctl button { font: 500 0.78rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg); background: transparent; border: 1px solid var(--line); border-radius: 4px; padding: 0.55rem 0.9rem; cursor: pointer; }
+.ctl button.main { border-color: var(--amber); color: var(--amber); }
+.ctl button[aria-pressed="true"] { background: var(--amber); color: var(--on-human); border-color: var(--amber); }
+.ctl button:hover, .ctl button:focus-visible { border-color: var(--fg); outline: none; }
+.ctl button:disabled { opacity: 0.4; cursor: default; }
+.ctl .cnt { font: 500 0.78rem var(--font-mono); color: var(--fg-faint); letter-spacing: 0.06em; }
+.cap { min-height: 2.6em; font-size: 1.05em; color: var(--fg); max-width: none; }
+.cap b { color: var(--amber); font-weight: 600; }
+.steps { display: none; }
+.in.large { width: min(100%, 86rem); }
+figure.with-side { grid-template-columns: minmax(0, 1fr) 18rem; grid-template-areas: "svg side" "ctl side" "cap side"; column-gap: 1.4rem; align-items: start; }
+figure.with-side .scroll { grid-area: svg; }
+figure.with-side .side { grid-area: side; }
+figure.with-side .ctl { grid-area: ctl; }
+figure.with-side .cap { grid-area: cap; }
+@media (max-width: 60rem) { figure.with-side { grid-template-columns: 1fr; grid-template-areas: "svg" "side" "ctl" "cap"; } }
+.side { border-left: 2px solid var(--amber); padding-left: 1rem; font-size: 0.72em; line-height: 1.4; display: grid; gap: 0.45rem; align-content: start; }
+.side > div { display: grid; gap: 0.45rem; }
+.side > div[hidden] { display: none; }
+.side h3 { font: 500 0.72rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--blue-ink); }
+.side p { max-width: none; color: var(--fg-soft); }
+.side b { color: var(--fg); font-weight: 600; }
+.side code { display: inline-block; margin: 0.08rem 0.15rem 0.08rem 0; padding: 0 0.3rem; border: 1px solid var(--line); border-radius: 3px; font-size: 0.74em; color: var(--blue-ink); transition: border-color 0.3s, color 0.3s; }
+.side code.on { border-color: var(--amber); color: var(--amber); }
+.side .nw { white-space: nowrap; }
+.side .why { color: var(--fg); }
+.side .why::before { content: "Pourquoi"; display: block; margin-bottom: 0.15rem; font: 500 0.66rem var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+.side .note { color: var(--fg-faint); font-size: 0.9em; }
+.side .leg { display: grid; gap: 0.3rem; color: var(--fg-soft); }
+.side .leg span::before { content: ""; display: inline-block; width: 1.4em; height: 0.8em; margin-right: 0.5em; vertical-align: -0.05em; border-radius: 2px; border: 1px solid var(--fg); }
+.side .leg .l-h::before { background: var(--human); }
+.side .leg .l-c::before { border-color: var(--blue); background: var(--blue-soft); }
+.side .leg .l-i::before { border: 1px dashed var(--blue); }
+.side .leg .l-a::before { border-color: var(--amber); background: var(--amber); height: 0.5em; border-radius: 1em; }
+
+/* barre du bas */
+.bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 0.7rem var(--gutter) calc(0.7rem + env(safe-area-inset-bottom, 0px)); display: flex; justify-content: space-between; gap: 1rem; align-items: center; font: 500 0.72rem var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--fg-faint); background: linear-gradient(to top, rgba(4,23,35,0.95), rgba(4,23,35,0)); pointer-events: none; }
+.bar .nav { display: flex; gap: 0.4rem; pointer-events: auto; }
+.bar button { font: inherit; color: var(--fg); background: var(--bg-2); border: 1px solid var(--line); border-radius: 4px; padding: 0.4rem 0.7rem; cursor: pointer; }
+.bar button:hover, .bar button:focus-visible { border-color: var(--fg); outline: none; }
+.bar .hint { display: none; }
+.bar #pos { white-space: nowrap; flex: none; }
+@media (min-width: 100rem) { .bar .hint { display: block; } }
+@media (prefers-reduced-motion: reduce) {
+  svg .ar, svg .bx, svg .badge, svg .lbl { transition: none; }
+}
+</style>
+</head>
+<body>
+<main id="deck">
+
+<section class="slide" id="s1">
+  <div class="in">
+    <p class="eyebrow">Smart Tailor · octobre 2026</p>
+    <h1>Un harnais pour mettre une IA dans une <em>PME</em> sans lui donner les clés</h1>
+    <p class="lede">Le code décide, l'IA traduit. Deux métiers : le planning d'une entreprise de sécurité privée, et une agence web inventée.</p>
+    <p class="who">Lionel · agence Smart Tailor · 15 minutes</p>
+  </div>
+</section>
+
+<section class="slide" id="s2" hidden>
+  <div class="in">
+    <p class="eyebrow">Le problème</p>
+    <h2>Une PME, c'est des règles et des tableurs</h2>
+    <div class="cards">
+      <div class="card"><span class="k">Les règles</span><span class="n">La loi, la convention, les habitudes</span><span class="d">Une carte professionnelle expirée, un repos trop court : une erreur coûte un contrôle, une amende, un contrat.</span></div>
+      <div class="card"><span class="k">Les outils</span><span class="n">Un planning, un fichier de salariés</span><span class="d">Tenus à la main, par une personne, qui a tout en tête.</span></div>
+      <div class="card ia"><span class="k">Un LLM lâché là-dessus</span><span class="n">Il invente, il écrit, il obéit à une cellule</span><span class="d">On veut la souplesse du langage. Pas son risque.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s3" hidden>
+  <div class="in">
+    <p class="eyebrow">La thèse</p>
+    <p class="big">Rigide là où une erreur coûte, libre partout ailleurs. <em>Le code décide, l'IA traduit.</em> Rien ne s'écrit sans un oui humain.</p>
+    <p class="soft">Le modèle choisit dans une liste fermée, ou travaille sur une copie. Il n'a jamais les clés, et tout ce qu'il rend est contrôlé par du code testé.</p>
+  </div>
+</section>
+
+<section class="slide" id="s4" hidden>
+  <div class="in large">
+    <p class="eyebrow">Le circuit</p>
+    <h2>Qui fait quoi : une demande de bout en bout</h2>
+    <figure data-scene data-total="11" class="with-side">
+      <div class="scroll">
+      <svg viewBox="-80 0 1160 460" role="img" aria-label="Une demande de bout en bout, en onze étapes : la demande arrive par le canal ; le moteur vérifie qui parle et fixe ses droits ; le métier ouvre le dossier du client, que son connecteur lit et garde en copie en mémoire ; le modèle ne reçoit que la consigne masquée, chaque nom remplacé par son identifiant, et la liste fermée des gestes du rôle ; il choisit un geste, que le moteur revalide ; le code trouve la personne désignée dans la liste des salariés ; le métier exécute le geste ; les règles décident et les réglages du client classent ; le métier rédige la réponse, le moteur la journalise et la remet au canal ; le oui du patron devient une clé ; une seule écriture, tout au journal.">
+        <defs>
+          <marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd"/></marker>
+          <marker id="h1i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd ink"/></marker>
+          <marker id="h1l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd lien"/></marker>
+        </defs>
+        <rect x="404" y="174" width="662" height="174" rx="6" class="bx" style="stroke-dasharray:3 5;opacity:0.7"/>
+        <text x="1066" y="164" text-anchor="end" class="m">LE HARNAIS</text>
+        <rect x="-60" y="136" width="140" height="70" rx="4" class="bx human"/>
+        <text x="10" y="166" text-anchor="middle" class="t dark">L'employé</text>
+        <text x="10" y="188" text-anchor="middle" class="s darks">« Mon planning ? »</text>
+
+        <rect x="-60" y="234" width="140" height="70" rx="4" class="bx human" data-step="1 13 14"/>
+        <text x="10" y="258" text-anchor="middle" class="t dark">Le patron</text>
+        <text x="10" y="278" text-anchor="middle" class="s darks">« Aïcha ne vient</text>
+        <text x="10" y="293" text-anchor="middle" class="s darks">pas demain »</text>
+        <path d="M82,172 H168" class="lien" marker-end="url(#h1l)"/>
+        <path d="M82,268 H168" class="lien" marker-end="url(#h1l)"/>
+
+        <rect x="170" y="160" width="160" height="120" rx="4" class="bx" data-step="1 12 13"/>
+        <text x="250" y="184" text-anchor="middle" class="t">Le canal</text>
+        <rect x="178" y="196" width="68" height="16" rx="3" class="chip"/>
+        <text x="212" y="207.5" text-anchor="middle" class="m chip-t">WEB</text>
+        <rect x="254" y="196" width="68" height="16" rx="3" class="chip"/>
+        <text x="288" y="207.5" text-anchor="middle" class="m chip-t">TERMINAL</text>
+        <rect x="178" y="216" width="68" height="16" rx="3" class="chip next"/>
+        <text x="212" y="227.5" text-anchor="middle" class="m chip-t">WHATSAPP</text>
+        <rect x="254" y="216" width="68" height="16" rx="3" class="chip next"/>
+        <text x="288" y="227.5" text-anchor="middle" class="m chip-t">TELEGRAM</text>
+        <rect x="178" y="236" width="68" height="16" rx="3" class="chip next"/>
+        <text x="212" y="247.5" text-anchor="middle" class="m chip-t">DISCORD</text>
+        <rect x="254" y="236" width="68" height="16" rx="3" class="chip next"/>
+        <text x="288" y="247.5" text-anchor="middle" class="m chip-t">SLACK</text>
+        <text x="250" y="270" text-anchor="middle" class="s">transmet, c'est tout</text>
+
+        <rect x="420" y="190" width="170" height="140" rx="4" class="bx code" data-step="1 2 3 6 7 8 9 11 12 14 15"/>
+        <text x="505" y="218" text-anchor="middle" class="m blue">LE MOTEUR</text>
+        <text x="505" y="242" text-anchor="middle" class="t">la part commune</text>
+        <text x="505" y="266" text-anchor="middle" class="s">vérifie qui parle,</text>
+        <text x="505" y="284" text-anchor="middle" class="s">appelle le modèle,</text>
+        <text x="505" y="302" text-anchor="middle" class="s">tient la clé, journalise</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="2">IDENTITÉ · DROITS</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="8">QUI EST AÏCHA ?</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="7">REVALIDE</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="14">FIGE LA CLÉ</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="12">JOURNALISE</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="5">COPIE EN MÉMOIRE</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="11">RÉDIGE LA RÉPONSE</text>
+
+        <rect x="660" y="190" width="170" height="140" rx="4" class="bx code" data-step="3 4 5 8 9 10 11 15"/>
+        <text x="745" y="218" text-anchor="middle" class="m blue">LE MÉTIER</text>
+        <text x="745" y="242" text-anchor="middle" class="t">la part sécurité privée</text>
+        <text x="745" y="266" text-anchor="middle" class="s">connecteurs, règles,</text>
+        <text x="745" y="284" text-anchor="middle" class="s">11 gestes, 21 interdits</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="10">4 POSSIBLES, CLASSÉS</text>
+
+        <rect x="880" y="190" width="170" height="140" rx="4" class="bx code" data-step="10"/>
+        <text x="965" y="218" text-anchor="middle" class="m blue">LES RÉGLAGES</text>
+        <text x="965" y="242" text-anchor="middle" class="t">la part du client</text>
+        <text x="965" y="266" text-anchor="middle" class="s">politique de repos,</text>
+        <text x="965" y="284" text-anchor="middle" class="s">préférences, délégations,</text>
+        <text x="965" y="302" text-anchor="middle" class="s">plafonds d'IA</text>
+
+        <rect x="660" y="16" width="170" height="80" rx="4" class="bx ia" data-step="6 7"/>
+        <text x="745" y="42" text-anchor="middle" class="m blue">LE MODÈLE (IA)</text>
+        <text x="745" y="64" text-anchor="middle" class="t">Sonnet 5.5</text>
+        <text x="745" y="86" text-anchor="middle" class="s">un formulaire, aucun accès</text>
+
+        <rect x="660" y="370" width="170" height="80" rx="4" class="bx" data-step="4 5 15"/>
+        <text x="745" y="396" text-anchor="middle" class="m">LE CLIENT</text>
+        <text x="745" y="418" text-anchor="middle" class="t">ses données</text>
+        <text x="745" y="438" text-anchor="middle" class="s">planning, salariés, config</text>
+
+        <rect x="420" y="380" width="170" height="70" rx="4" class="bx" data-step="15"/>
+        <text x="505" y="408" text-anchor="middle" class="t">Le journal</text>
+        <text x="505" y="430" text-anchor="middle" class="s">ajout seul, tout y passe</text>
+
+        <path id="k1" d="M82,268 H168" class="ar ink" marker-end="url(#h1i)" data-step="1"/>
+        <path id="k1b" d="M332,220 H418" class="ar ink" marker-end="url(#h1i)" data-step="1"/>
+        <path id="k9" d="M592,214 H658" class="ar" marker-end="url(#h1)" data-step="3"/>
+        <path id="k9b" d="M658,238 H592" class="ar" marker-end="url(#h1)" data-step="8"/>
+        <path id="k2" d="M460,188 V46 H658" class="ar" marker-end="url(#h1)" data-step="6"/>
+        <path id="k2b" d="M658,76 H440 V188" class="ar" marker-end="url(#h1)" data-step="7"/>
+        <path id="k3" d="M592,268 H658" class="ar" marker-end="url(#h1)" data-step="9"/>
+        <path id="k4" d="M710,332 V368" class="ar" marker-end="url(#h1)" data-step="4"/>
+        <path id="k4b" d="M740,368 V332" class="ar ink" marker-end="url(#h1i)" data-step="5"/>
+        <path id="k5" d="M878,260 H832" class="ar" marker-end="url(#h1)" data-step="10"/>
+        <path id="k6" d="M658,298 H592" class="ar" marker-end="url(#h1)" data-step="11"/>
+        <path id="k6b" d="M418,245 H332" class="ar" marker-end="url(#h1)" data-step="12"/>
+        <path id="k6c" d="M168,244 H82" class="ar" marker-end="url(#h1)" data-step="13"/>
+        <path id="k7" d="M10,306 V358 H480 V332" class="ar ink" marker-end="url(#h1i)" data-step="14"/>
+        <path id="k8" d="M800,332 V368" class="ar" marker-end="url(#h1)" data-step="15"/>
+        <path id="k8b" d="M540,332 V378" class="ar" marker-end="url(#h1)" data-step="15"/>
+
+        <text x="125" y="284" text-anchor="middle" class="m lbl" data-step="1">CONSIGNE</text>
+        <text x="367" y="212" text-anchor="middle" class="m lbl" style="font-size:9.5px" data-step="1">IDENTITÉ</text>
+        <text x="625" y="206" text-anchor="middle" class="m blue lbl" data-step="3">OUVRE</text>
+        <text x="625" y="230" text-anchor="middle" class="m blue lbl" style="font-size:9.5px" data-step="8">NOMS</text>
+        <text x="559" y="38" text-anchor="middle" class="m blue lbl" style="font-size:9.5px" data-step="6">CONSIGNE MASQUÉE + GESTES</text>
+        <text x="450" y="96" class="m blue lbl" data-step="7">→ GERER_ABSENCE</text>
+        <text x="625" y="260" text-anchor="middle" class="m blue lbl" data-step="9">GESTE</text>
+        <text x="855" y="252" text-anchor="middle" class="m blue lbl" data-step="10">SELON</text>
+        <text x="700" y="362" text-anchor="end" class="m blue lbl" data-step="4">LE CONNECTEUR LIT</text>
+        <text x="748" y="362" class="m lbl" data-step="5">DONNÉES</text>
+        <text x="212" y="320" text-anchor="middle" class="m blue lbl" data-step="13">« JE PROPOSE JULIEN LEFÈVRE »</text>
+        <text x="245" y="374" text-anchor="middle" class="m lbl" data-step="14">OUI = LA CLÉ</text>
+        <rect x="808" y="352" width="30" height="16" rx="3" class="badge" data-step="15"/>
+        <text x="823" y="364" text-anchor="middle" class="m dark lbl" data-step="15">CLÉ</text>
+
+        <circle r="7" class="token" data-step="1" data-arrow="k1"/>
+        <circle r="7" class="token" data-step="1" data-arrow="k1b" data-delay="450"/>
+        <circle r="7" class="token" data-step="3" data-arrow="k9"/>
+        <circle r="7" class="token" data-step="4" data-arrow="k4"/>
+        <circle r="7" class="token" data-step="5" data-arrow="k4b"/>
+        <circle r="7" class="token" data-step="8" data-arrow="k9b"/>
+        <circle r="7" class="token" data-step="6" data-arrow="k2"/>
+        <circle r="7" class="token" data-step="7" data-arrow="k2b"/>
+        <circle r="7" class="token" data-step="9" data-arrow="k3"/>
+        <circle r="7" class="token" data-step="10" data-arrow="k5"/>
+        <circle r="7" class="token" data-step="11" data-arrow="k6"/>
+        <circle r="7" class="token" data-step="12" data-arrow="k6b"/>
+        <circle r="7" class="token" data-step="13" data-arrow="k6c"/>
+        <circle r="7" class="token" data-step="14" data-arrow="k7"/>
+        <circle r="7" class="token" data-step="15" data-arrow="k8"/>
+        <circle r="7" class="token" data-step="15" data-arrow="k8b" data-delay="400"/>
+      </svg>
+      </div>
+      <aside class="side">
+        <div data-steps="0"><h3>Mode d'emploi</h3><p>Espace : l'étape suivante. Chaque étape s'affiche ici : ce qui se passe, puis pourquoi c'est fait ainsi.</p><p class="leg"><span class="l-h">un humain, qui décide</span><span class="l-c">le code du harnais</span><span class="l-i">l'IA</span><span class="l-a">ce qui circule à cette étape</span></p></div>
+        <div data-steps="1" hidden><h3>1 · La demande arrive</h3><p>Le patron écrit « Aïcha ne vient pas demain » sur son canal : le web, le terminal, plus tard une messagerie. Le canal transmet le message, qui l'envoie et l'heure. Rien d'autre.</p><p class="why">Le canal n'a aucune logique : en changer ne change rien au harnais, et aucune règle ne peut s'y cacher.</p></div>
+        <div data-steps="2" hidden><h3>2 · Qui parle, avec quels droits</h3><p>Avant toute chose, le moteur vérifie l'expéditeur et fixe ses droits. Le patron a huit gestes <span class="nw">(<code>gerer_absence</code></span><code>valider_remplacement</code><code>changer_remplacant</code>…) ; un employé en a six, sur ses seules données <span class="nw">(<code>voir_planning</code></span><code>mes_titres</code><code>repondre_sollicitation</code>…). Un inconnu est refusé ici : ni planning ni salariés ne sont lus, seule une ligne s'écrit au journal.</p><p class="why">Tout ce qui suit est borné par ce rôle : ce que le modèle pourra choisir, ce que la réponse pourra montrer.</p><p class="note">L'interface n'écoute que la machine du client : sa session est l'authentification. Un canal (une messagerie) apportera son identifiant, relié à un rôle du registre.</p></div>
+        <div data-steps="3" hidden><h3>3.1 · Le moteur demande le dossier</h3><p>La personne est connue : le moteur demande au métier d'ouvrir le dossier de ce client. Il ne sait ni où sont les fichiers, ni sous quel format.</p><p class="why">Il lui faut les noms du client pour les masquer avant d'appeler le modèle. Et le moteur sert tous les métiers : tout ce qui touche aux données, il le délègue.</p><p class="note">Avant d'ouvrir le dossier, le moteur vérifie que le plafond d'IA du mois n'est pas atteint.</p></div>
+        <div data-steps="4" hidden><h3>3.2 · Le connecteur lit</h3><p>Le connecteur du métier lit les tableurs du client, au format de l'agence : les salariés, les postes, le planning, et la configuration.</p><p class="why">C'est la seule pièce qui connaît le logiciel du client : un autre logiciel, c'est un autre connecteur, rien d'autre ne bouge. Il ne fait que lire.</p></div>
+        <div data-steps="5" hidden><h3>3.3 · Une copie en mémoire</h3><p>Le métier garde ces données en mémoire, le temps de la demande. C'est la session ; elle est refermée à la fin, quoi qu'il arrive.</p><p class="why">Tout le travail se fait sur cette copie : le dossier du client n'est plus touché jusqu'à l'écriture finale, la seule.</p></div>
+        <div data-steps="6" hidden><h3>4 · Le modèle ne reçoit que la phrase masquée</h3><p>Chaque nom connu devient son identifiant : « A-11 ne vient pas demain » (un nom mal écrit : « NOM-1 »). Le modèle reçoit cette consigne masquée, la date et l'heure, le rôle de qui parle, et la liste des gestes de ce rôle (pour le patron : <span class="nw"><code>gerer_absence</code></span><code>valider_remplacement</code><code>changer_remplacant</code><code>suivre_demande</code><code>voir_planning</code><code>heures_par_agent</code><code>voir_echeances</code><code>lancer_veille</code>), plus deux sorties : <code>demande_nouvelle</code>, avec les intentions connues du métier, et <span class="nw"><code>je_ne_sais_pas</code>.</span> Rien du client : ni noms, ni planning.</p><p class="why">Le modèle n'a aucun accès : ni aux fichiers, ni au logiciel du client, ni à une commande ; et pour un geste, le fournisseur ne reçoit aucune donnée du client. Son seul pouvoir : choisir dans cette liste. Il ne sait pas ce qui se passe après, et n'en a pas besoin : la suite est écrite dans le geste, pas décidée à chaque fois.</p></div>
+        <div data-steps="7" hidden><h3>5 · Un choix, revalidé</h3><p>On demande au modèle de remplir un seul formulaire : celui de <code>gerer_absence</code>, avec A-11 tel qu'il l'a reçu et la date de demain. Le moteur revérifie que ce geste est permis au rôle et que ses paramètres sont bien formés. Du texte, ou un formulaire hors de la liste, finit en « je ne sais pas ». Puis le code reprend A-11 : il redevient « Aïcha », le mot du patron.</p><p class="why">Au pire, le modèle se trompe de geste. Il ne peut pas en inventer un, et il ne désigne personne : il recopie un identifiant.</p><p class="note">Un formulaire, c'est ce que l'API du fournisseur appelle un « outil » (tool use) : un nom et des champs. Le modèle le remplit ; le code décide quoi en faire.</p></div>
+        <div data-steps="8" hidden><h3>6 · Le code trouve qui est Aïcha</h3><p>Le métier donne au moteur la liste des salariés que ce rôle peut voir. Le moteur y cherche « Aïcha » sans tenir compte des accents ni des majuscules : un seul nom correspond, c'est réglé.</p><p>Une faute de frappe ? Le modèle n'a reçu qu'un jeton. Le code retient les noms proches et demande au patron, avant d'agir : « Vous parlez d'Aïcha Traoré ? », ou une liste numérotée s'ils sont plusieurs. Un employé ne peut désigner que lui-même.</p><p class="why">Les noms restent dans le harnais. Le code décide quand c'est sûr ; le modèle ne voit jamais aucun nom ; l'humain tranche le reste, d'un chiffre.</p></div>
+        <div data-steps="9" hidden><h3>7 · Le métier prend le relais</h3><p>Le moteur confie le geste au métier, qui retrouve la vacation d'Aïcha demain et ouvre une demande de remplacement, inscrite au journal.</p><p class="why">Les règles de la sécurité privée vivent dans le métier. Le même moteur sert n'importe quel autre métier.</p></div>
+        <div data-steps="10" hidden><h3>8 · Les règles décident, les réglages classent</h3><p>Pour chacun des douze autres salariés, le métier simule le planning avec la vacation confiée et le passe aux règles codées : carte professionnelle, activités, repos, déclaration. Quatre possibles, quatre exclus, quatre écartés faute de donnée, classés selon les préférences du client.</p><p class="why">Qui peut remplacer, c'est du code testé qui le dit, pas l'IA. La loi d'abord, les goûts du client ensuite.</p></div>
+        <div data-steps="11" hidden><h3>9.1 · Le métier rédige la réponse</h3><p>À partir du résultat des règles, le code du métier écrit le texte : le remplaçant proposé et pourquoi, les autres possibles, la raison de chaque exclusion, ce qui manque pour les écartés. Il le rend au moteur.</p><p class="why">Le texte sort du résultat des règles, pas du modèle : aucun nom, aucun chiffre inventé.</p></div>
+        <div data-steps="12" hidden><h3>9.2 · Le moteur journalise et transmet</h3><p>Le moteur inscrit au journal la consigne mot pour mot, sa version masquée (celle que le modèle a lue) et le geste choisi, puis remet le texte au canal, tel quel.</p><p class="why">Le moteur n'ajoute rien et ne retouche rien : le texte vient du métier. Le journal garde de quoi le refaire : la consigne, le geste, ses paramètres.</p></div>
+        <div data-steps="13" hidden><h3>9.3 · Le patron lit</h3><p>Sur son canal, le patron reçoit la demande D-V-17 : « Je propose Julien Lefèvre », avec ses raisons, puis les autres possibles, les exclus et les écartés, chacun avec sa raison.</p><p class="why">Le patron voit pourquoi, et décide. Rien n'a encore été écrit chez le client.</p></div>
+        <div data-steps="14" hidden><h3>10 · Le oui devient la clé</h3><p>Le patron valide (« je valide Julien pour D-V-17 ») : le code reformule ce qui va s'écrire et attend son oui. Le harnais calcule alors une empreinte du contenu exact (la demande, la vacation, le remplaçant, les horaires) : c'est la clé. Julien est alors sollicité.</p><p class="why">Un oui ne vaut que pour ce que le patron a vu. Si le planning change entre-temps, la clé ne correspond plus et rien ne s'écrit.</p></div>
+        <div data-steps="15" hidden><h3>11 · Une seule écriture</h3><p>Julien accepte. Le métier recompare la clé au planning actuel, puis modifie une seule ligne chez le client. Le journal garde tout : la consigne, l'appel au modèle et son coût, chaque décision et qui l'a prise.</p><p class="why">Le modèle n'a rien touché. L'unique écriture est contrôlée, prouvée par la clé, traçable.</p></div>
+      </aside>
+      <ol class="steps">
+        <li data-n="1">La demande arrive par le canal, qui <b>ne fait que transmettre</b>.</li>
+        <li data-n="2">Le moteur vérifie <b>qui parle</b> et fixe <b>ses droits</b>, avant toute chose.</li>
+        <li data-n="3.1">La personne connue, le moteur demande au métier <b>le dossier du client</b>.</li>
+        <li data-n="3.2">Le <b>connecteur</b> du métier lit les tableurs du client.</li>
+        <li data-n="3.3">Le métier en garde <b>une copie en mémoire</b>, le temps de la demande.</li>
+        <li data-n="4">Le modèle reçoit <b>la consigne masquée</b> et <b>une liste fermée</b> de gestes, rien du client.</li>
+        <li data-n="5">Il <b>choisit un geste</b> ; le moteur <b>revalide</b>.</li>
+        <li data-n="6">Le <b>code</b> trouve qui est Aïcha dans la liste des salariés.</li>
+        <li data-n="7">Le métier <b>exécute</b> le geste.</li>
+        <li data-n="8">Les <b>règles</b> décident qui peut remplacer ; les <b>réglages</b> du client classent.</li>
+        <li data-n="9.1">Le métier <b>rédige la réponse</b> à partir du résultat des règles.</li>
+        <li data-n="9.2">Le moteur la <b>journalise</b> et la remet au canal, telle quelle.</li>
+        <li data-n="9.3">Le patron <b>lit la proposition</b> sur son canal.</li>
+        <li data-n="10">Le oui du patron devient <b>une clé</b> sur le contenu exact.</li>
+        <li data-n="11">Julien accepte : <b>une seule écriture</b>, tout au journal.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="s4b" hidden>
+  <div class="in large">
+    <p class="eyebrow">Le circuit, sans geste</p>
+    <h2>Quand aucun geste ne correspond : l'échappée de bout en bout</h2>
+    <figure data-scene class="with-side">
+      <div class="scroll">
+      <svg viewBox="-80 0 1160 460" role="img" aria-label="Une demande qu'aucun geste ne couvre, en quinze étapes : la demande arrive par le canal ; le moteur vérifie qui parle ; le dossier s'ouvre ; le code remplace chaque nom par un identifiant ; le modèle ne reçoit que la consigne masquée et la liste fermée ; il choisit demande nouvelle avec une intention ; le métier donne les tables du rôle, le moteur en fait une copie jetable sans aucun nom ; le modèle l'interroge en SQL ; il essaie des réaffectations que les règles jugent ; il finit par un seul formulaire, dans des bornes ; le métier rejuge la proposition et la rédige en clair ; le moteur journalise et transmet ; le patron lit ; son oui devient la clé et l'agent est sollicité ; l'agent accepte, une seule écriture.">
+        <defs>
+          <marker id="h8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd"/></marker>
+          <marker id="h8i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd ink"/></marker>
+          <marker id="h8l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd lien"/></marker>
+        </defs>
+        <rect x="404" y="174" width="662" height="174" rx="6" class="bx" style="stroke-dasharray:3 5;opacity:0.7"/>
+        <text x="1066" y="164" text-anchor="end" class="m">LE HARNAIS</text>
+        <rect x="-60" y="136" width="140" height="70" rx="4" class="bx human" data-step="15"/>
+        <text x="10" y="166" text-anchor="middle" class="t dark">L'employée</text>
+        <text x="10" y="188" text-anchor="middle" class="s darks">« Oui, je prends »</text>
+
+        <rect x="-60" y="234" width="140" height="70" rx="4" class="bx human" data-step="1 13 14"/>
+        <text x="10" y="258" text-anchor="middle" class="t dark">Le patron</text>
+        <text x="10" y="278" text-anchor="middle" class="s darks">« Libère le mardi</text>
+        <text x="10" y="293" text-anchor="middle" class="s darks">13 de Karim »</text>
+        <path d="M82,172 H168" class="lien" marker-end="url(#h8l)"/>
+        <path d="M82,268 H168" class="lien" marker-end="url(#h8l)"/>
+
+        <rect x="170" y="160" width="160" height="120" rx="4" class="bx" data-step="1 12 13 14 15"/>
+        <text x="250" y="184" text-anchor="middle" class="t">Le canal</text>
+        <rect x="178" y="196" width="68" height="16" rx="3" class="chip"/>
+        <text x="212" y="207.5" text-anchor="middle" class="m chip-t">WEB</text>
+        <rect x="254" y="196" width="68" height="16" rx="3" class="chip"/>
+        <text x="288" y="207.5" text-anchor="middle" class="m chip-t">TERMINAL</text>
+        <rect x="178" y="216" width="68" height="16" rx="3" class="chip next"/>
+        <text x="212" y="227.5" text-anchor="middle" class="m chip-t">WHATSAPP</text>
+        <rect x="254" y="216" width="68" height="16" rx="3" class="chip next"/>
+        <text x="288" y="227.5" text-anchor="middle" class="m chip-t">TELEGRAM</text>
+        <rect x="178" y="236" width="68" height="16" rx="3" class="chip next"/>
+        <text x="212" y="247.5" text-anchor="middle" class="m chip-t">DISCORD</text>
+        <rect x="254" y="236" width="68" height="16" rx="3" class="chip next"/>
+        <text x="288" y="247.5" text-anchor="middle" class="m chip-t">SLACK</text>
+        <text x="250" y="270" text-anchor="middle" class="s">transmet, c'est tout</text>
+
+        <rect x="420" y="190" width="170" height="140" rx="4" class="bx code" data-step="1 2 3 4 5 6 10 11 12 14 15"/>
+        <text x="505" y="218" text-anchor="middle" class="m blue">LE MOTEUR</text>
+        <text x="505" y="242" text-anchor="middle" class="t">la part commune</text>
+        <text x="505" y="266" text-anchor="middle" class="s">vérifie qui parle,</text>
+        <text x="505" y="284" text-anchor="middle" class="s">masque les noms,</text>
+        <text x="505" y="302" text-anchor="middle" class="s">tient la clé, journalise</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="2">IDENTITÉ · DROITS</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="6">REVALIDE</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="4">KARIM → A-1</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="10">FIN DE LA BOUCLE</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="12">JOURNALISE</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="14">FIGE LA CLÉ</text>
+        <text x="505" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="15">COMPARE LA CLÉ</text>
+
+        <rect x="660" y="190" width="170" height="140" rx="4" class="bx code" data-step="3 4 7 9 11 15"/>
+        <text x="745" y="218" text-anchor="middle" class="m blue">LE MÉTIER</text>
+        <text x="745" y="242" text-anchor="middle" class="t">la part sécurité privée</text>
+        <text x="745" y="266" text-anchor="middle" class="s">connecteurs, règles,</text>
+        <text x="745" y="284" text-anchor="middle" class="s">tables de l'échappée</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="3">COPIE EN MÉMOIRE</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="9">LES RÈGLES JUGENT</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="11">REJUGE · RÉDIGE</text>
+        <text x="745" y="314" text-anchor="middle" class="m blue lbl fugace" data-step="15">ÉCRIT D'UN COUP</text>
+
+        <rect x="880" y="190" width="170" height="140" rx="4" class="bx code" data-step="10"/>
+        <text x="965" y="218" text-anchor="middle" class="m blue">LES RÉGLAGES</text>
+        <text x="965" y="242" text-anchor="middle" class="t">la part du client</text>
+        <text x="965" y="266" text-anchor="middle" class="s">politique de repos,</text>
+        <text x="965" y="284" text-anchor="middle" class="s">préférences, délégations,</text>
+        <text x="965" y="302" text-anchor="middle" class="s">plafonds d'IA</text>
+        <text x="965" y="320" text-anchor="middle" class="m blue lbl fugace" data-step="10">LES BORNES</text>
+
+        <rect x="660" y="16" width="170" height="80" rx="4" class="bx ia" data-step="5 6 8 9 10"/>
+        <text x="745" y="42" text-anchor="middle" class="m blue">LE MODÈLE (IA)</text>
+        <text x="745" y="64" text-anchor="middle" class="t">Sonnet 5.5</text>
+        <text x="745" y="86" text-anchor="middle" class="s">un formulaire, aucun accès</text>
+
+        <rect x="880" y="16" width="170" height="80" rx="4" class="bx" style="stroke-dasharray:4 3" data-step="7 8"/>
+        <text x="965" y="42" text-anchor="middle" class="m">LA COPIE</text>
+        <text x="965" y="64" text-anchor="middle" class="t">SQLite, lecture seule</text>
+        <text x="965" y="86" text-anchor="middle" class="s">sans aucun nom, jetable</text>
+
+        <rect x="660" y="370" width="170" height="80" rx="4" class="bx" data-step="3 15"/>
+        <text x="745" y="396" text-anchor="middle" class="m">LE CLIENT</text>
+        <text x="745" y="418" text-anchor="middle" class="t">ses données</text>
+        <text x="745" y="438" text-anchor="middle" class="s">planning, salariés, config</text>
+
+        <rect x="420" y="380" width="170" height="70" rx="4" class="bx" data-step="12 15"/>
+        <text x="505" y="408" text-anchor="middle" class="t">Le journal</text>
+        <text x="505" y="430" text-anchor="middle" class="s">ajout seul, tout y passe</text>
+
+        <path id="x1" d="M82,268 H168" class="ar ink" marker-end="url(#h8i)" data-step="1"/>
+        <path id="x1b" d="M332,220 H418" class="ar ink" marker-end="url(#h8i)" data-step="1"/>
+        <path id="x2" d="M460,188 V46 H658" class="ar" marker-end="url(#h8)" data-step="5"/>
+        <path id="x2b" d="M658,76 H440 V188" class="ar" marker-end="url(#h8)" data-step="6 10"/>
+        <path id="x9" d="M592,214 H658" class="ar" marker-end="url(#h8)" data-step="3"/>
+        <path id="x4" d="M710,332 V368" class="ar" marker-end="url(#h8)" data-step="3"/>
+        <path id="x4b" d="M740,368 V332" class="ar ink" marker-end="url(#h8i)" data-step="3"/>
+        <path id="x9b" d="M658,238 H592" class="ar" marker-end="url(#h8)" data-step="4"/>
+        <path id="xc" d="M815,188 V160 H965 V98" class="ar" marker-end="url(#h8)" data-step="7"/>
+        <path id="xq" d="M832,40 H878" class="ar" marker-end="url(#h8)" data-step="8"/>
+        <path id="xqb" d="M878,72 H832" class="ar ink" marker-end="url(#h8i)" data-step="8"/>
+        <path id="xv" d="M720,98 V188" class="ar" marker-end="url(#h8)" data-step="9"/>
+        <path id="xvb" d="M770,188 V98" class="ar ink" marker-end="url(#h8i)" data-step="9"/>
+        <path id="x3" d="M592,268 H658" class="ar" marker-end="url(#h8)" data-step="11"/>
+        <path id="x6" d="M658,298 H592" class="ar" marker-end="url(#h8)" data-step="11"/>
+        <path id="x6b" d="M418,245 H332" class="ar" marker-end="url(#h8)" data-step="12"/>
+        <path id="x8b" d="M540,332 V378" class="ar" marker-end="url(#h8)" data-step="12 15"/>
+        <path id="x6c" d="M168,244 H82" class="ar" marker-end="url(#h8)" data-step="13"/>
+        <path id="x7" d="M10,306 V358 H480 V332" class="ar ink" marker-end="url(#h8i)" data-step="14"/>
+        <path id="xs1" d="M418,232 H332" class="ar" marker-end="url(#h8)" data-step="14"/>
+        <path id="xs2" d="M168,186 H82" class="ar" marker-end="url(#h8)" data-step="14"/>
+        <path id="xa1" d="M82,172 H168" class="ar ink" marker-end="url(#h8i)" data-step="15"/>
+        <path id="xa2" d="M332,198 H418" class="ar ink" marker-end="url(#h8i)" data-step="15"/>
+        <path id="x8" d="M818,332 V368" class="ar" marker-end="url(#h8)" data-step="15"/>
+
+        <text x="125" y="284" text-anchor="middle" class="m lbl" data-step="1">CONSIGNE</text>
+        <text x="367" y="212" text-anchor="middle" class="m lbl" style="font-size:9.5px" data-step="1">IDENTITÉ</text>
+        <text x="559" y="38" text-anchor="middle" class="m blue lbl" style="font-size:9.5px" data-step="5">CONSIGNE MASQUÉE + GESTES</text>
+        <text x="470" y="100" class="m blue lbl fugace" data-step="6">→ DEMANDE_NOUVELLE</text>
+        <text x="470" y="116" class="m blue lbl fugace" data-step="6">INTENTION LIBERER_UN_JOUR</text>
+        <text x="470" y="100" class="m blue lbl fugace" data-step="10">→ PROPOSER</text>
+        <text x="470" y="116" class="m blue lbl fugace" data-step="10">V-03 → A-11</text>
+        <text x="625" y="206" text-anchor="middle" class="m blue lbl" data-step="3">OUVRE</text>
+        <text x="700" y="362" text-anchor="end" class="m blue lbl" data-step="3">LE CONNECTEUR LIT</text>
+        <text x="748" y="362" class="m lbl" data-step="3">DONNÉES</text>
+        <text x="625" y="230" text-anchor="middle" class="m blue lbl" style="font-size:9.5px" data-step="4">NOMS</text>
+        <text x="890" y="153" text-anchor="middle" class="m blue lbl" data-step="7">TABLES DU RÔLE</text>
+        <text x="855" y="32" text-anchor="middle" class="m blue lbl" style="font-size:9.5px" data-step="8">SQL</text>
+        <text x="855" y="110" text-anchor="middle" class="m lbl" style="font-size:9.5px" data-step="8">LIGNES</text>
+        <text x="713" y="134" text-anchor="end" class="m blue lbl" data-step="9">VERIFIER</text>
+        <text x="777" y="134" class="m lbl" data-step="9">CONSTATS</text>
+        <text x="625" y="260" text-anchor="middle" class="m blue lbl" style="font-size:9.5px" data-step="11">LISTE</text>
+        <text x="212" y="320" text-anchor="middle" class="m blue lbl" data-step="13">« V-03 → AÏCHA TRAORÉ ? »</text>
+        <text x="245" y="374" text-anchor="middle" class="m lbl" data-step="14">OUI = LA CLÉ</text>
+        <text x="125" y="200" text-anchor="middle" class="m blue lbl fugace" style="font-size:9.5px" data-step="14">V-03 ?</text>
+        <text x="125" y="164" text-anchor="middle" class="m lbl" style="font-size:9.5px" data-step="15">OUI</text>
+        <rect x="826" y="352" width="30" height="16" rx="3" class="badge" data-step="15"/>
+        <text x="841" y="364" text-anchor="middle" class="m dark lbl" data-step="15">CLÉ</text>
+
+        <circle r="7" class="token" data-step="1" data-arrow="x1"/>
+        <circle r="7" class="token" data-step="1" data-arrow="x1b" data-delay="450"/>
+        <circle r="7" class="token" data-step="5" data-arrow="x2"/>
+        <circle r="7" class="token" data-step="6 10" data-arrow="x2b"/>
+        <circle r="7" class="token" data-step="3" data-arrow="x9"/>
+        <circle r="7" class="token" data-step="3" data-arrow="x4" data-delay="500"/>
+        <circle r="7" class="token" data-step="3" data-arrow="x4b" data-delay="1000"/>
+        <circle r="7" class="token" data-step="4" data-arrow="x9b"/>
+        <circle r="7" class="token" data-step="7" data-arrow="xc"/>
+        <circle r="7" class="token" data-step="8" data-arrow="xq"/>
+        <circle r="7" class="token" data-step="8" data-arrow="xqb" data-delay="700"/>
+        <circle r="7" class="token" data-step="9" data-arrow="xv"/>
+        <circle r="7" class="token" data-step="9" data-arrow="xvb" data-delay="700"/>
+        <circle r="7" class="token" data-step="11" data-arrow="x3"/>
+        <circle r="7" class="token" data-step="11" data-arrow="x6" data-delay="700"/>
+        <circle r="7" class="token" data-step="12" data-arrow="x6b"/>
+        <circle r="7" class="token" data-step="12" data-arrow="x8b" data-delay="300"/>
+        <circle r="7" class="token" data-step="13" data-arrow="x6c"/>
+        <circle r="7" class="token" data-step="14" data-arrow="x7"/>
+        <circle r="7" class="token" data-step="14" data-arrow="xs1" data-delay="700"/>
+        <circle r="7" class="token" data-step="14" data-arrow="xs2" data-delay="1100"/>
+        <circle r="7" class="token" data-step="15" data-arrow="xa1"/>
+        <circle r="7" class="token" data-step="15" data-arrow="xa2" data-delay="400"/>
+        <circle r="7" class="token" data-step="15" data-arrow="x8" data-delay="900"/>
+        <circle r="7" class="token" data-step="15" data-arrow="x8b" data-delay="900"/>
+      </svg>
+      </div>
+      <aside class="side">
+        <div data-steps="0"><h3>Mode d'emploi</h3><p>Le même circuit que la diapositive précédente, pour une demande qu'aucun geste ne couvre. Espace : l'étape suivante.</p><p class="leg"><span class="l-h">un humain, qui décide</span><span class="l-c">le code du harnais</span><span class="l-i">l'IA</span><span class="l-a">ce qui circule à cette étape</span></p></div>
+        <div data-steps="1" hidden><h3>1 · La demande arrive</h3><p>Le patron écrit « Libère le mardi 13 de Karim » sur son canal. Le canal transmet le message, qui l'envoie et l'heure. Rien d'autre.</p><p class="why">Rien ne distingue encore cette demande d'une autre : c'est la traduction qui dira si un geste la couvre.</p></div>
+        <div data-steps="2" hidden><h3>2 · Qui parle, avec quels droits</h3><p>Le moteur vérifie l'expéditeur et fixe ses droits, comme pour un geste. Un inconnu s'arrête ici.</p><p class="why">Le rôle borne aussi l'échappée : la copie qu'elle verra, et le droit de proposer une écriture. Seul le patron peut proposer ; un salarié n'obtient qu'une réponse, sur ses propres données.</p></div>
+        <div data-steps="3" hidden><h3>3 · Le dossier s'ouvre</h3><p>Comme pour un geste : le moteur demande le dossier au métier, le connecteur lit les tableurs du client, le métier en garde une copie en mémoire le temps de la demande.</p><p class="why">Le dossier ne s'ouvre que pour une personne connue : il faut ses noms pour les masquer avant d'appeler le modèle. Le client n'est plus touché jusqu'à l'écriture finale.</p></div>
+        <div data-steps="4" hidden><h3>4 · Les noms deviennent des identifiants</h3><p>Le métier donne la liste des salariés que le patron peut voir. Le moteur y trouve Karim et réécrit la consigne pour le modèle : « Libère le mardi 13 de A-1 ».</p><p>Un nom ambigu (deux Karim) ? Il part en jeton, « NOM-1 », et la question « vous parlez de qui ? » part au patron <b>avant</b> l'échappée. Un salarié ne désigne que lui-même.</p><p class="why">Dès la traduction et pendant toute l'échappée, aucun nom que les données connaissent ne part chez le fournisseur du modèle. Pour une faute de frappe, c'est au patron que le code demande, jamais au modèle.</p><p class="note">La limite : un surnom, un nom absent des données ou une faute tout en minuscules partiraient tels quels.</p></div>
+        <div data-steps="5" hidden><h3>5 · Le modèle ne reçoit que la phrase masquée</h3><p>La consigne masquée, « Libère le mardi 13 de A-1 », la date, le rôle, la liste fermée des gestes du patron, et les deux sorties : <code>demande_nouvelle</code>, avec les intentions connues du métier <span class="nw">(<code>liberer_un_jour</code></span><code>simuler_absence</code>…), et <code>je_ne_sais_pas</code>. Rien du client.</p><p class="why">Un seul appel au modèle, le même que pour un geste : la porte se choisit dans la liste, pas en dehors.</p></div>
+        <div data-steps="6" hidden><h3>6 · Aucun geste : une demande nouvelle</h3><p>Aucun des gestes ne libère une journée entière. Le modèle choisit <code>demande_nouvelle</code>, avec l'intention <code>liberer_un_jour</code> : une connue si elle convient, sinon un mot-clé nouveau. Le moteur revalide la forme.</p><p>Si la consigne est hors sujet, trop vague ou illisible : « Je ne sais pas faire ça », la raison, et la liste des gestes possibles. Rien n'est fait.</p><p class="why">L'intention nomme la sorte de demande, au journal : c'est elle qui regroupe les demandes que le patron voit dans l'onglet « Gestes ».</p></div>
+        <div data-steps="7" hidden><h3>7 · La copie de l'échappée</h3><p>Le métier donne les tables à l'échelle du rôle : agents, vacations, cartes, postes. Le moteur y remplace chaque nom par son identifiant et en fait une base SQLite jetable, ouverte en lecture seule.</p><p class="why">Pour un salarié, la copie ne contient que ses données : l'absence de la donnée, pas un filtre. La copie est détruite à la fin, quoi qu'il arrive.</p></div>
+        <div data-steps="8" hidden><h3>8 · L'IA cherche</h3><p>Le modèle écrit des requêtes SQL : « quelles vacations a A-1 le 13 ? », « qui a une carte valide et rien la veille ni le lendemain ? ». Chaque requête tourne à part : 5 secondes, 200 lignes au plus.</p><p class="why">Il ne calcule rien de tête : la base compte. Les lignes reviennent entre balises : une donnée, jamais une consigne.</p></div>
+        <div data-steps="9" hidden><h3>9 · L'IA essaie, les règles jugent</h3><p>Avec le formulaire <code>verifier</code>, le modèle soumet un essai : « et si V-03 passait à A-11 ? ». Le métier simule le planning et répond par les constats des règles : carte, repos, déclaration, heures.</p><p class="why">Les mêmes règles codées que pour un remplacement et le rapport de la semaine. Le modèle cherche ; le code juge.</p></div>
+        <div data-steps="10" hidden><h3>10 · Il finit par un seul formulaire</h3><p>Ici <code>proposer</code> : V-03 (accueil, mardi 13, 8 h-20 h) à A-11. Les deux autres fins : <code>repondre</code> pour une question, <code>abandonner</code> avec un motif.</p><p>Les bornes viennent des réglages : 12 tours, 20 000 tokens, 420 s, un plafond d'IA par mois. Une borne atteinte finit en « je n'y arrive pas », au journal.</p><p class="why">Une demande finit toujours clairement. Jamais « c'est fait » : le modèle n'a rien écrit.</p></div>
+        <div data-steps="11" hidden><h3>11 · Le code rejuge, puis rédige</h3><p>Le moteur passe la liste au métier, qui rejoue toutes les règles sur le planning réel. Un refus s'arrête là : la raison, au journal. Sinon le métier rédige la proposition en clair, avec les autres possibles pour chaque vacation.</p><p class="why">On ne croit pas le modèle sur parole, pas même sur ses propres essais. Les noms reviennent par le code, à partir des identifiants.</p><p class="note">Pour une réponse, le modèle ne retape aucun nombre : il écrit une phrase à trous, {T1.2.heures}, et le code remplit depuis la cellule ; un trou qui ne se résout pas retire la réponse et le patron lit les tableaux. Il le sait : « chiffres relus par le harnais », ou « un chiffre absent de vos données ». L'écran compte, par client, les résumés retirés.</p></div>
+        <div data-steps="12" hidden><h3>12 · Le moteur journalise et transmet</h3><p>Au journal : chaque appel et son coût, chaque requête, l'issue, la consigne masquée et la version en clair. Rien des données n'est gardé ailleurs. Le texte part au canal, tel quel.</p><p class="why">Si le patron commande un jour le geste de cette demande, c'est de ces consignes masquées que le code écrira sa mission.</p></div>
+        <div data-steps="13" hidden><h3>13 · Le patron lit</h3><p>« Proposition : V-03, accueil, mardi 13, 8 h-20 h → Aïcha Traoré », les autres possibles, ce qui reste à vérifier. « Valider ? (oui / non) » Et un bouton par autre possible : « Prendre Mehdi Saïdi pour V-03 ».</p><p class="why">Le patron voit ce qui changera, ligne par ligne, et change un agent d'un clic, sans appel au modèle. Rien n'est écrit chez le client.</p></div>
+        <div data-steps="14" hidden><h3>14 · Le oui devient la clé</h3><p>Le patron répond oui. Le harnais calcule l'empreinte de la liste exacte des réaffectations : c'est la clé. Chaque agent qui reçoit une vacation est sollicité.</p><p class="why">Un oui ne vaut que pour ce que le patron a vu. Une demande nouvelle ne se délègue jamais : c'est toujours lui.</p></div>
+        <div data-steps="15" hidden><h3>15 · Aïcha accepte : une seule écriture</h3><p>Quand tous les agents sollicités ont dit oui, le métier recompare la clé au planning actuel, rejoue les règles une dernière fois, et écrit toutes les réaffectations d'un coup. Tout est au journal.</p><p class="why">Le modèle a cherché, proposé, rien touché. Si la demande revient, le patron clique « Créer ce geste » : le harnais le code dès le clic, à l'agence, et la suivante coûte un seul appel.</p></div>
+      </aside>
+      <ol class="steps">
+        <li>La demande arrive par le canal, qui <b>ne fait que transmettre</b>.</li>
+        <li>Le moteur vérifie <b>qui parle</b> et fixe <b>ses droits</b>, comme pour un geste.</li>
+        <li>Le <b>dossier s'ouvre</b> : le connecteur lit, le métier garde une copie en mémoire.</li>
+        <li>Le code remplace <b>chaque nom par un identifiant</b> : Karim devient A-1.</li>
+        <li>Le modèle reçoit <b>la consigne masquée</b> et <b>la liste fermée</b>, avec ses deux sorties.</li>
+        <li>Aucun geste ne couvre la demande : <b>demande nouvelle</b>, avec une intention.</li>
+        <li>Le métier donne les <b>tables du rôle</b> ; le moteur en fait une <b>copie jetable, sans aucun nom</b>.</li>
+        <li>L'IA <b>interroge la copie en SQL</b>, en lecture seule.</li>
+        <li>L'IA <b>essaie</b> une réaffectation ; les <b>règles</b> du métier la jugent.</li>
+        <li>Elle finit par <b>un seul formulaire</b> : ici une proposition, dans des <b>bornes</b>.</li>
+        <li>Le métier <b>rejuge</b> la proposition sur toutes les règles, puis la <b>rédige en clair</b>.</li>
+        <li>Le moteur <b>journalise</b> l'échappée entière et la remet au canal.</li>
+        <li>Le patron <b>lit la proposition</b> sur son canal.</li>
+        <li>Le oui du patron devient <b>une clé</b> ; l'agent est sollicité.</li>
+        <li>Aïcha accepte : <b>une seule écriture</b>, tout au journal.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="s5" hidden>
+  <div class="in">
+    <p class="eyebrow">Une règle</p>
+    <h2>De la loi au code, une seule liste de règles, trois usages</h2>
+    <figure data-scene>
+      <div class="scroll">
+      <svg viewBox="0 0 960 180" role="img" aria-label="Une règle part du texte officiel, est relue mot à mot, écrite dans le registre, codée avec un test, puis sert partout : rapport, remplacement, proposition de l'IA.">
+        <defs>
+          <marker id="h2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd ink"/></marker>
+        </defs>
+        <rect x="20" y="30" width="164" height="100" rx="4" class="bx" data-step="1"/>
+        <text x="102" y="68" text-anchor="middle" class="t">Texte officiel</text>
+        <text x="102" y="90" text-anchor="middle" class="s">code, décret,</text>
+        <text x="102" y="107" text-anchor="middle" class="s">convention</text>
+        <rect x="209" y="30" width="164" height="100" rx="4" class="bx" data-step="2"/>
+        <text x="291" y="68" text-anchor="middle" class="t">Relu mot à mot</text>
+        <text x="291" y="90" text-anchor="middle" class="s">à la source,</text>
+        <text x="291" y="107" text-anchor="middle" class="s">avec la date</text>
+        <rect x="398" y="30" width="164" height="100" rx="4" class="bx code" data-step="3"/>
+        <text x="480" y="68" text-anchor="middle" class="t">Le registre</text>
+        <text x="480" y="90" text-anchor="middle" class="s">« I-01 : carte</text>
+        <text x="480" y="107" text-anchor="middle" class="s">professionnelle »</text>
+        <rect x="587" y="30" width="164" height="100" rx="4" class="bx code" data-step="4"/>
+        <text x="669" y="68" text-anchor="middle" class="t">Code + test</text>
+        <text x="669" y="90" text-anchor="middle" class="s">le test prouve</text>
+        <text x="669" y="107" text-anchor="middle" class="s">la règle</text>
+        <rect x="776" y="30" width="164" height="100" rx="4" class="bx human" data-step="5"/>
+        <text x="858" y="68" text-anchor="middle" class="t dark">Partout</text>
+        <text x="858" y="90" text-anchor="middle" class="s darks">rapport, remplacement,</text>
+        <text x="858" y="107" text-anchor="middle" class="s darks">proposition de l'IA</text>
+        <path id="r1" d="M186,80 H206" class="ar ink" marker-end="url(#h2)" data-step="2"/>
+        <path id="r2" d="M375,80 H395" class="ar ink" marker-end="url(#h2)" data-step="3"/>
+        <path id="r3" d="M564,80 H584" class="ar ink" marker-end="url(#h2)" data-step="4"/>
+        <path id="r4" d="M753,80 H773" class="ar ink" marker-end="url(#h2)" data-step="5"/>
+        <circle r="6" class="token" data-step="2" data-arrow="r1"/>
+        <circle r="6" class="token" data-step="3" data-arrow="r2"/>
+        <circle r="6" class="token" data-step="4" data-arrow="r3"/>
+        <circle r="6" class="token" data-step="5" data-arrow="r4"/>
+        <text x="480" y="165" text-anchor="middle" class="s">Une règle qu'on n'a pas relue ne bloque jamais : elle alerte. Quand deux textes se contredisent, la loi décide et l'autre est noté.</text>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li>Le point de départ est <b>un texte officiel</b> : Code du travail, décret, convention collective.</li>
+        <li>Il est <b>relu mot à mot</b>, à la source, avec sa date de version. Pas de règle apprise par ouï-dire.</li>
+        <li>La règle s'écrit <b>une seule fois</b>, dans le registre : un identifiant, son texte, sa source, son statut.</li>
+        <li>Elle devient <b>du code et un test</b> qui la prouve. Le statut borne le verdict : sans relecture, « à vérifier » au plus.</li>
+        <li>La même vérification sert <b>partout</b> : le rapport de la semaine, le remplacement d'un salarié, toute proposition de l'IA.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="s6" hidden>
+  <div class="in">
+    <p class="eyebrow">Les trois espaces</p>
+    <h2>Chaque demande tombe dans l'un des trois</h2>
+    <div class="cards">
+      <div class="card code"><span class="k">Espace 1</span><span class="n">Les gestes du quotidien</span><span class="d">Onze actions codées et testées (<code>gerer_absence</code>, <code>valider_remplacement</code>, <code>changer_remplacant</code>…). L'IA ne fait que reconnaître laquelle on demande ; le code exécute.</span><span class="d soft">« Aïcha ne vient pas demain. »</span></div>
+      <div class="card ia"><span class="k">Espace 2</span><span class="n">Les demandes nouvelles</span><span class="d">L'IA cherche sur une copie des données. L'IA ne retape aucun chiffre : le code les remplit depuis les données, et passe toute proposition aux règles. Un oui écrit.</span><span class="d soft">« Libère le mardi 13 de Karim. »</span></div>
+      <div class="card human"><span class="k">Espace 3 · la commande</span><span class="n">Le patron commande un geste</span><span class="d">L'outil montre ce qu'il n'a pas su faire. Le patron clique « Créer ce geste » ; à l'agence, dès le clic, le harnais le code, sous ses contrôles. Rien ne naît sans sa demande.</span><span class="d">« Créer ce geste. »</span></div>
+    </div>
+    <p class="soft">On ne contrôle pas le chemin que prend l'IA. On contrôle ce qu'elle voit, ce qu'elle rend, et comment elle finit.</p>
+  </div>
+</section>
+
+<section class="slide" id="s7" hidden>
+  <div class="in">
+    <p class="eyebrow">L'aiguillage</p>
+    <h2>Trois portes, trois garanties</h2>
+    <figure data-scene>
+      <div class="scroll">
+      <svg viewBox="0 0 960 440" role="img" aria-label="Une consigne est traduite par l'IA en un formulaire rempli, pris dans la liste, et sort par une des trois portes : un geste du quotidien, le circuit déjà vu ; une demande nouvelle, qui passe par l'échappée sur une copie, les contrôles du code, puis la validation et la clé ; ou je ne sais pas, où la réponse dit pourquoi et rien n'est écrit.">
+        <defs>
+          <marker id="h3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd"/></marker>
+        </defs>
+        <rect x="330" y="16" width="300" height="44" rx="4" class="bx human" data-step="1"/>
+        <text x="480" y="43" text-anchor="middle" class="t dark">Une consigne, en langage courant</text>
+        <rect x="330" y="84" width="300" height="56" rx="4" class="bx ia" data-step="1"/>
+        <text x="480" y="108" text-anchor="middle" class="t">L'IA traduit</text>
+        <text x="480" y="128" text-anchor="middle" class="s">un formulaire de la liste, jamais de texte</text>
+
+        <rect x="20" y="200" width="280" height="100" rx="4" class="bx code" data-step="2"/>
+        <text x="160" y="228" text-anchor="middle" class="t">Un geste du quotidien</text>
+        <text x="160" y="250" text-anchor="middle" class="s">11 gestes codés et testés :</text>
+        <text x="160" y="268" text-anchor="middle" class="s">le circuit qu'on vient de voir ;</text>
+        <text x="160" y="286" text-anchor="middle" class="s">ce qui écrit attend un oui</text>
+
+        <rect x="340" y="200" width="280" height="44" rx="4" class="bx code" data-step="3"/>
+        <text x="480" y="227" text-anchor="middle" class="t">Une demande nouvelle</text>
+        <rect x="340" y="262" width="280" height="44" rx="4" class="bx ia" data-step="4"/>
+        <text x="480" y="289" text-anchor="middle" class="t">L'échappée : l'IA cherche sur une copie</text>
+        <rect x="340" y="324" width="280" height="44" rx="4" class="bx code" data-step="5"/>
+        <text x="480" y="351" text-anchor="middle" class="t">Les contrôles du code</text>
+        <rect x="340" y="386" width="280" height="44" rx="4" class="bx human" data-step="6"/>
+        <text x="480" y="413" text-anchor="middle" class="t dark">Vous validez ; la clé écrit</text>
+
+        <rect x="660" y="200" width="280" height="56" rx="4" class="bx" data-step="7"/>
+        <text x="800" y="224" text-anchor="middle" class="t">Je ne sais pas</text>
+        <text x="800" y="243" text-anchor="middle" class="s">inintelligible, trop vague, hors sujet</text>
+        <rect x="660" y="276" width="280" height="56" rx="4" class="bx" data-step="7"/>
+        <text x="800" y="300" text-anchor="middle" class="t">La réponse dit pourquoi</text>
+        <text x="800" y="319" text-anchor="middle" class="s">rien n'est fait, rien n'est écrit</text>
+
+        <path id="c1" d="M480,62 V82" class="ar" marker-end="url(#h3)" data-step="1"/>
+        <path id="c2" d="M400,142 V170 H160 V198" class="ar" marker-end="url(#h3)" data-step="2"/>
+        <path id="c3" d="M480,142 V198" class="ar" marker-end="url(#h3)" data-step="3"/>
+        <path id="c4" d="M480,246 V260" class="ar" marker-end="url(#h3)" data-step="4"/>
+        <path id="c5" d="M480,308 V322" class="ar" marker-end="url(#h3)" data-step="5"/>
+        <path id="c6" d="M480,370 V384" class="ar" marker-end="url(#h3)" data-step="6"/>
+        <path id="c7" d="M560,142 V170 H800 V198" class="ar" marker-end="url(#h3)" data-step="7"/>
+        <path id="c7b" d="M800,258 V274" class="ar" marker-end="url(#h3)" data-step="7"/>
+        <text x="280" y="164" text-anchor="middle" class="m blue lbl" data-step="2">PORTE 1 · UN GESTE</text>
+        <text x="490" y="184" class="m blue lbl" data-step="3">PORTE 2 · DEMANDE NOUVELLE</text>
+        <text x="700" y="164" text-anchor="middle" class="m blue lbl" data-step="7">PORTE 3 · JE NE SAIS PAS</text>
+        <circle r="6" class="token" data-step="1" data-arrow="c1"/>
+        <circle r="6" class="token" data-step="2" data-arrow="c2"/>
+        <circle r="6" class="token" data-step="3" data-arrow="c3"/>
+        <circle r="6" class="token" data-step="4" data-arrow="c4"/>
+        <circle r="6" class="token" data-step="5" data-arrow="c5"/>
+        <circle r="6" class="token" data-step="6" data-arrow="c6"/>
+        <circle r="6" class="token" data-step="7" data-arrow="c7"/>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li>Une consigne arrive, d'une personne que le registre connaît. L'IA ne rend pas de texte : elle <b>remplit un formulaire</b> pris dans une liste fermée : huit gestes pour le patron (<code>gerer_absence</code>, <code>valider_remplacement</code>…), six pour un salarié (<code>voir_planning</code>, <code>repondre_sollicitation</code>…), plus deux sorties. Ses paramètres sont revalidés par le code.</li>
+        <li><b>Porte 1, un geste</b> : du code testé, le circuit qu'on vient de voir ; le code trouve la personne nommée. Une lecture s'exécute tout de suite ; ce qui écrit attend un oui, dont l'empreinte est la clé.</li>
+        <li><b>Porte 2, une demande nouvelle</b> : aucun geste ne la couvre. Elle reçoit un mot-clé d'intention, qui la regroupe avec ses semblables pour le patron.</li>
+        <li>L'échappée : l'IA cherche <b>sur une copie</b>, en SQL, en lecture seule, douze tours au plus. Aucun accès au vrai dossier.</li>
+        <li>Les contrôles du code : <b>chaque chiffre et chaque nom</b> doit venir des données ; une proposition passe toutes les règles du métier.</li>
+        <li>Vous validez, chaque salarié concerné accepte, et <b>la clé écrit</b> d'un coup.</li>
+        <li><b>Porte 3, « je ne sais pas »</b> : trop vague, hors sujet. La réponse dit pourquoi et rappelle les gestes possibles. Rien n'est fait.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="s8" hidden>
+  <div class="in">
+    <p class="eyebrow">L'espace 2</p>
+    <h2>L'échappée : la liberté dans une boîte</h2>
+    <figure data-scene>
+      <div class="scroll">
+      <svg viewBox="0 0 960 340" role="img" aria-label="L'IA interroge en SQL une copie en lecture seule, sans aucun nom, essaie des réaffectations que les règles jugent, puis finit par un seul formulaire ; le code contrôle la sortie ; des bornes arrêtent la demande.">
+        <defs>
+          <marker id="h4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd"/></marker>
+          <marker id="h4i" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd ink"/></marker>
+        </defs>
+        <rect x="20" y="30" width="240" height="170" rx="4" class="bx" data-step="1 2 3 4"/>
+        <text x="140" y="58" text-anchor="middle" class="t">La copie (SQLite)</text>
+        <text x="140" y="82" text-anchor="middle" class="s">lecture seule, détruite à la fin</text>
+        <text x="140" y="100" text-anchor="middle" class="s">à l'échelle du rôle : un salarié</text>
+        <text x="140" y="118" text-anchor="middle" class="s">n'y a que ses propres données</text>
+        <text x="140" y="142" text-anchor="middle" class="s">une requête : 5 s, 200 lignes</text>
+        <text x="140" y="160" text-anchor="middle" class="s">sans aucun nom, entre balises :</text>
+        <text x="140" y="180" text-anchor="middle" class="m">DONNÉE, JAMAIS CONSIGNE</text>
+
+        <rect x="360" y="30" width="240" height="170" rx="4" class="bx ia" data-step="1 2 3 4 5 6 7"/>
+        <text x="480" y="58" text-anchor="middle" class="t">L'IA</text>
+        <text x="480" y="82" text-anchor="middle" class="s">lit la consigne et l'intention</text>
+        <text x="480" y="100" text-anchor="middle" class="s">écrit des requêtes SQL</text>
+        <text x="480" y="118" text-anchor="middle" class="s">essaie des réaffectations</text>
+        <text x="480" y="142" text-anchor="middle" class="s">puis finit, par un seul formulaire :</text>
+        <text x="480" y="164" text-anchor="middle" class="m blue">REPONDRE · PROPOSER</text>
+        <text x="480" y="180" text-anchor="middle" class="m blue">ABANDONNER</text>
+
+        <rect x="700" y="30" width="240" height="170" rx="4" class="bx code" data-step="5 6"/>
+        <text x="820" y="58" text-anchor="middle" class="t">Les règles (code)</text>
+        <text x="820" y="82" text-anchor="middle" class="s">verifier : ce qu'une réaffectation</text>
+        <text x="820" y="100" text-anchor="middle" class="s">d'essai enfreindrait</text>
+        <text x="820" y="124" text-anchor="middle" class="s">une proposition qui enfreint</text>
+        <text x="820" y="142" text-anchor="middle" class="s">une règle revient à l'IA :</text>
+        <text x="820" y="160" text-anchor="middle" class="s">« corrige ou abandonne »</text>
+        <text x="820" y="184" text-anchor="middle" class="s">les mêmes règles que le rapport</text>
+
+        <rect x="340" y="240" width="280" height="44" rx="4" class="bx" data-step="7"/>
+        <text x="480" y="267" text-anchor="middle" class="t">Fin : réponse · proposition · abandon</text>
+        <rect x="700" y="240" width="240" height="44" rx="4" class="bx code" data-step="8"/>
+        <text x="820" y="258" text-anchor="middle" class="t">Le contrôle du code</text>
+        <text x="820" y="276" text-anchor="middle" class="s">chiffres, noms, règles rejouées</text>
+        <rect x="20" y="304" width="920" height="28" rx="4" class="bx" data-step="9"/>
+        <text x="480" y="323" text-anchor="middle" class="m">BORNES · 12 TOURS · 20 000 TOKENS · 420 S · 30 $ D'IA PAR MOIS</text>
+
+        <path id="e1" d="M358,90 H264" class="ar" marker-end="url(#h4)" data-step="1 3"/>
+        <path id="e2" d="M264,130 H358" class="ar ink" marker-end="url(#h4i)" data-step="2 4"/>
+        <path id="e5" d="M602,90 H696" class="ar" marker-end="url(#h4)" data-step="5"/>
+        <path id="e6" d="M696,130 H602" class="ar ink" marker-end="url(#h4i)" data-step="6"/>
+        <path id="e7" d="M480,202 V238" class="ar" marker-end="url(#h4)" data-step="7"/>
+        <path id="e8" d="M622,262 H696" class="ar" marker-end="url(#h4)" data-step="8"/>
+        <text x="311" y="82" text-anchor="middle" class="m blue lbl" data-step="1 3">REQUETE</text>
+        <text x="311" y="148" text-anchor="middle" class="m lbl" data-step="2 4">RÉSULTAT</text>
+        <text x="649" y="82" text-anchor="middle" class="m blue lbl" data-step="5">VERIFIER</text>
+        <text x="649" y="148" text-anchor="middle" class="m lbl" data-step="6">CONSTATS</text>
+        <circle r="6" class="token" data-step="1 3" data-arrow="e1"/>
+        <circle r="6" class="token" data-step="2 4" data-arrow="e2"/>
+        <circle r="6" class="token" data-step="5" data-arrow="e5"/>
+        <circle r="6" class="token" data-step="6" data-arrow="e6"/>
+        <circle r="6" class="token" data-step="7" data-arrow="e7"/>
+        <circle r="6" class="token" data-step="8" data-arrow="e8"/>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li>L'IA écrit une <b>requête SQL</b>. Elle ne calcule rien de tête : les sommes et les comptes, c'est la base qui les fait.</li>
+        <li>Le résultat revient <b>entre balises</b> : une donnée, jamais une instruction, même si elle en a la forme. Et <b>sans aucun nom</b> : l'identifiant (<code>A-7</code>) tient lieu de nom, le code rend les noms dans ce que vous lisez.</li>
+        <li>Une autre requête. Chacune tourne dans un processus à part, <b>tuée au bout de 5 secondes</b>, 200 lignes au plus.</li>
+        <li>Un autre résultat. La copie ne contient que ce que le demandeur a le droit de voir : <b>l'absence de la donnée, pas un filtre</b>.</li>
+        <li>Pour une réorganisation, l'IA <b>essaie</b> des réaffectations : « et si V-03 passait à A-9 ? »</li>
+        <li>Les règles répondent : <b>ce que ça enfreindrait</b>, règle par règle. Les mêmes règles que le rapport de la semaine.</li>
+        <li>L'IA finit par <b>un seul formulaire</b> : une réponse, une proposition, ou un abandon motivé. Jamais « c'est fait ».</li>
+        <li>Sa réponse est <b>une phrase à trous</b> : elle ne retape aucun chiffre, le code remplit chaque trou depuis un résultat ; un trou vide, et le texte est retiré, les tableaux montrés à la place. Une proposition est rejugée.</li>
+        <li>Des <b>bornes</b> arrêtent tout : tours, tokens, temps, un plafond d'IA par mois. Une borne atteinte finit en abandon, au journal.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="s9" hidden>
+  <div class="in">
+    <p class="eyebrow">Les invariants</p>
+    <h2>Neuf sécurités qui ne se règlent pas</h2>
+    <div class="grid9">
+      <div><b>L'IA n'a pas les clés</b><span>elle remplit un formulaire ; le code exécute ; ce qui écrit attend un oui à empreinte</span></div>
+      <div><b>Les interdits ne se lèvent pas</b><span>ni par l'IA, ni par le patron, ni par une délégation</span></div>
+      <div><b>Tout résultat passe les règles</b><span>avant d'être montré, à la validation, à l'écriture ; un contrôle qui plante refuse</span></div>
+      <div><b>Une demande nouvelle ne se délègue jamais</b><span>seuls les gestes, déterministes, s'automatisent</span></div>
+      <div><b>Pas un chiffre, pas un nom hors des données</b><span>l'IA ne retape aucun chiffre : une phrase à trous, que le code remplit</span></div>
+      <div><b>Une demande finit toujours clairement</b><span>réponse, proposition, ou « je n'y arrive pas, voici pourquoi »</span></div>
+      <div><b>Chaque demande a un plafond</b><span>12 tours, 20 000 tokens, 420 s ; 30 $ d'IA par mois</span></div>
+      <div><b>Les données ne sont jamais des consignes</b><span>balises que la donnée ne peut pas fermer ; un piège se signale sans être recopié</span></div>
+      <div><b>Tout est au journal</b><span>en ajout seul : consignes, appels, coûts, décisions, par qui</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s10" hidden>
+  <div class="in">
+    <p class="eyebrow">L'espace 3 · la commande</p>
+    <h2>Le patron commande, le harnais code</h2>
+    <figure data-scene>
+      <div class="scroll">
+      <svg viewBox="0 0 960 200" role="img" aria-label="L'outil montre au patron les demandes qu'il n'a pas su faire, regroupées ; le patron clique Créer ce geste ; le code écrit la mission, sans nom et sans modèle ; à l'agence, un modèle la code dans la bande métier, sous neuf conditions vérifiées en code ; si toutes sont vertes, le geste rejoint l'espace 1.">
+        <defs>
+          <marker id="h5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd ink"/></marker>
+        </defs>
+        <rect x="20" y="30" width="164" height="100" rx="4" class="bx" data-step="1"/>
+        <text x="102" y="68" text-anchor="middle" class="t">Sans geste</text>
+        <text x="102" y="90" text-anchor="middle" class="s">les demandes que l'outil</text>
+        <text x="102" y="107" text-anchor="middle" class="s">n'a pas su faire, regroupées</text>
+        <rect x="209" y="30" width="164" height="100" rx="4" class="bx human" data-step="2"/>
+        <text x="291" y="68" text-anchor="middle" class="t dark">Le patron</text>
+        <text x="291" y="90" text-anchor="middle" class="s darks">clique</text>
+        <text x="291" y="107" text-anchor="middle" class="s darks">« Créer ce geste »</text>
+        <rect x="398" y="30" width="164" height="100" rx="4" class="bx code" data-step="3"/>
+        <text x="480" y="68" text-anchor="middle" class="t">La mission</text>
+        <text x="480" y="90" text-anchor="middle" class="s">écrite par le code,</text>
+        <text x="480" y="107" text-anchor="middle" class="s">sans nom, sans modèle</text>
+        <rect x="587" y="30" width="164" height="100" rx="4" class="bx ia" data-step="4"/>
+        <text x="669" y="68" text-anchor="middle" class="t">Le chantier</text>
+        <text x="669" y="90" text-anchor="middle" class="s">à l'agence, un modèle code ;</text>
+        <text x="669" y="107" text-anchor="middle" class="s">neuf conditions en code</text>
+        <rect x="776" y="30" width="164" height="100" rx="4" class="bx code" data-step="5"/>
+        <text x="858" y="68" text-anchor="middle" class="t">Espace 1</text>
+        <text x="858" y="90" text-anchor="middle" class="s">un geste de plus :</text>
+        <text x="858" y="107" text-anchor="middle" class="s">un appel, testé, prouvé</text>
+        <path id="p1" d="M186,80 H206" class="ar ink" marker-end="url(#h5)" data-step="2"/>
+        <path id="p2" d="M375,80 H395" class="ar ink" marker-end="url(#h5)" data-step="3"/>
+        <path id="p3" d="M564,80 H584" class="ar ink" marker-end="url(#h5)" data-step="4"/>
+        <path id="p4" d="M753,80 H773" class="ar ink" marker-end="url(#h5)" data-step="5"/>
+        <circle r="6" class="token" data-step="2" data-arrow="p1"/>
+        <circle r="6" class="token" data-step="3" data-arrow="p2"/>
+        <circle r="6" class="token" data-step="4" data-arrow="p3"/>
+        <circle r="6" class="token" data-step="5" data-arrow="p4"/>
+        <text x="480" y="170" text-anchor="middle" class="s">Aucun modèle ne cherche ce qui manque : seul le patron commande. Un geste n'est que du code, écrit par le harnais.</text>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li>L'outil montre au patron <b>ce qu'il n'a pas su faire</b>, regroupé par sorte de demande, avec le nombre de fois et les dernières formulations.</li>
+        <li>Le patron décide : <b>« Créer ce geste »</b>. Rien d'autre ne déclenche un geste nouveau : ni un seuil, ni un modèle qui devine.</li>
+        <li>Le code écrit <b>la mission</b>, sans appel au modèle : les vraies demandes, chaque nom remplacé par une place (« combien d'heures a fait &lt;personne&gt; cette semaine ? »). Sans consigne utilisable, il refuse plutôt que d'inventer.</li>
+        <li>Dès le clic, à l'agence, <b>le chantier</b> : un modèle planifie, un autre code dans la seule partie « métier », un troisième relit. Le code vérifie <b>neuf conditions</b> : périmètre, aucun test retiré, tests verts, trois cas de traduction et 95 % au moins, relecture, budget, taille, mémoire, et le rejeu : sur chaque cas du geste, une échappée vive doit retrouver ses nombres dans la réponse du geste.</li>
+        <li>Toutes vertes : le geste est fusionné et rejoint <b>l'espace 1</b>. Une seule rouge : rien n'entre, le dossier dit pourquoi. Tout se retire d'une commande.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+    <p class="soft">Décidé le 15/10 : la détection automatique de ce qui revient était instable. C'est le patron qui donne les directives ; le harnais fait en sorte que le geste respecte l'architecture et les permissions.</p>
+  </div>
+</section>
+
+<section class="slide" id="s11" hidden>
+  <div class="in">
+    <p class="eyebrow">De l'espace 2 à l'espace 1 · mesuré le 15/10</p>
+    <h2>D'une demande nouvelle à un geste, pas à pas</h2>
+    <figure data-scene>
+      <div class="scroll">
+      <svg viewBox="0 0 960 410" role="img" aria-label="Une demande nouvelle part en échappée sur une copie ; le code contrôle chaque chiffre et chaque nom ; le journal garde la consigne masquée ; l'onglet Gestes regroupe les demandes sans geste ; le patron commande ; le code écrit la mission ; à l'agence, le chantier la code ; neuf conditions vertes : le geste est fusionné, la demande suivante est un geste ; une condition rouge : rien n'entre.">
+        <defs>
+          <marker id="h7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd"/></marker>
+        </defs>
+        <text x="20" y="26" class="m">L'ÉCHAPPÉE, CHAQUE FOIS</text>
+        <text x="20" y="186" class="m">LA COMMANDE, UNE FOIS</text>
+
+        <rect x="20" y="40" width="200" height="96" rx="4" class="bx human" data-step="1"/>
+        <text x="120" y="72" text-anchor="middle" class="t dark">Une demande nouvelle</text>
+        <text x="120" y="94" text-anchor="middle" class="s darks">« Combien d'heures a fait</text>
+        <text x="120" y="112" text-anchor="middle" class="s darks">Karim cette semaine ? »</text>
+
+        <rect x="260" y="40" width="200" height="96" rx="4" class="bx ia" data-step="1"/>
+        <text x="360" y="72" text-anchor="middle" class="t">L'échappée</text>
+        <text x="360" y="94" text-anchor="middle" class="s">l'IA interroge en SQL</text>
+        <text x="360" y="112" text-anchor="middle" class="s">une copie sans aucun nom</text>
+
+        <rect x="500" y="40" width="200" height="96" rx="4" class="bx code" data-step="2"/>
+        <text x="600" y="72" text-anchor="middle" class="t">Le contrôle</text>
+        <text x="600" y="94" text-anchor="middle" class="s">chaque chiffre, chaque nom</text>
+        <text x="600" y="112" text-anchor="middle" class="s">vient d'un résultat</text>
+
+        <rect x="740" y="40" width="200" height="96" rx="4" class="bx" data-step="3"/>
+        <text x="840" y="72" text-anchor="middle" class="t">Le journal</text>
+        <text x="840" y="94" text-anchor="middle" class="s">la consigne masquée :</text>
+        <text x="840" y="112" text-anchor="middle" class="s">« … a fait A-1 … ? »</text>
+
+        <rect x="740" y="196" width="200" height="96" rx="4" class="bx code" data-step="4"/>
+        <text x="840" y="228" text-anchor="middle" class="t">L'onglet « Gestes »</text>
+        <text x="840" y="250" text-anchor="middle" class="s">les demandes sans geste,</text>
+        <text x="840" y="268" text-anchor="middle" class="s">regroupées : 3 fois</text>
+
+        <rect x="500" y="196" width="200" height="96" rx="4" class="bx human" data-step="5"/>
+        <text x="600" y="228" text-anchor="middle" class="t dark">Le patron commande</text>
+        <text x="600" y="250" text-anchor="middle" class="s darks">un clic :</text>
+        <text x="600" y="268" text-anchor="middle" class="s darks">« Créer ce geste »</text>
+
+        <rect x="260" y="196" width="200" height="96" rx="4" class="bx code" data-step="6"/>
+        <text x="360" y="228" text-anchor="middle" class="t">La mission</text>
+        <text x="360" y="250" text-anchor="middle" class="s">écrite par le code : « &lt;personne&gt; »</text>
+        <text x="360" y="268" text-anchor="middle" class="s">à la place des noms, aucun appel</text>
+
+        <rect x="20" y="196" width="200" height="96" rx="4" class="bx ia" data-step="7 8 9"/>
+        <text x="120" y="228" text-anchor="middle" class="t">Le chantier, à l'agence</text>
+        <text x="120" y="250" text-anchor="middle" class="s">un modèle planifie, un code,</text>
+        <text x="120" y="268" text-anchor="middle" class="s">un relit ; neuf conditions</text>
+
+        <rect x="20" y="338" width="560" height="60" rx="4" class="bx code" data-step="8"/>
+        <text x="300" y="363" text-anchor="middle" class="t">Neuf conditions vertes : un geste de plus, dans l'espace 1</text>
+        <text x="300" y="384" text-anchor="middle" class="s">la même question ensuite : un appel, aucune échappée</text>
+
+        <rect x="620" y="338" width="320" height="60" rx="4" class="bx" style="stroke-dasharray:3 4" data-step="9"/>
+        <text x="780" y="363" text-anchor="middle" class="t">Une condition rouge</text>
+        <text x="780" y="384" text-anchor="middle" class="s">rien n'entre ; le dossier dit pourquoi</text>
+
+        <path id="g1" d="M222,88 H256" class="ar" marker-end="url(#h7)" data-step="1"/>
+        <path id="g2" d="M462,88 H496" class="ar" marker-end="url(#h7)" data-step="2"/>
+        <path id="g3" d="M702,88 H736" class="ar" marker-end="url(#h7)" data-step="3"/>
+        <path id="g4" d="M840,138 V192" class="ar" marker-end="url(#h7)" data-step="4"/>
+        <path id="g5" d="M738,244 H704" class="ar" marker-end="url(#h7)" data-step="5"/>
+        <path id="g6" d="M498,244 H464" class="ar" marker-end="url(#h7)" data-step="6"/>
+        <path id="g7" d="M258,244 H224" class="ar" marker-end="url(#h7)" data-step="7"/>
+        <path id="g8" d="M120,294 V334" class="ar" marker-end="url(#h7)" data-step="8"/>
+        <path id="g9" d="M200,294 V316 H780 V334" class="ar" marker-end="url(#h7)" data-step="9"/>
+        <circle r="6" class="token" data-step="1" data-arrow="g1"/>
+        <circle r="6" class="token" data-step="2" data-arrow="g2"/>
+        <circle r="6" class="token" data-step="3" data-arrow="g3"/>
+        <circle r="6" class="token" data-step="4" data-arrow="g4"/>
+        <circle r="6" class="token" data-step="5" data-arrow="g5"/>
+        <circle r="6" class="token" data-step="6" data-arrow="g6"/>
+        <circle r="6" class="token" data-step="7" data-arrow="g7"/>
+        <circle r="6" class="token" data-step="8" data-arrow="g8"/>
+        <circle r="6" class="token" data-step="9" data-arrow="g9"/>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li>Aucun geste ne couvre la demande : elle part en <b>échappée</b>. L'IA écrit des requêtes SQL sur une copie de ce que le demandeur a le droit de voir, où un identifiant tient lieu de nom.</li>
+        <li>Le code <b>contrôle</b> la réponse : l'IA écrit une phrase à trous, le code remplit chaque chiffre depuis un résultat ; un trou vide, et la réponse est retirée.</li>
+        <li>Le <b>journal</b> garde la consigne telle que le modèle l'a lue, <b>masquée</b> : « A-1 » à la place de « Karim ». Rien des données n'est gardé ailleurs.</li>
+        <li>La demande revient. L'onglet <b>« Gestes »</b> les regroupe : « heures_par_agent, 3 fois », avec les dernières formulations.</li>
+        <li>Le <b>patron commande</b> : « Créer ce geste ». C'est sa décision, et la seule chose qui déclenche un geste nouveau.</li>
+        <li>Le code écrit <b>la mission</b>, sans appel au modèle : les trois consignes, « &lt;personne&gt; » à la place de chaque identifiant. Aucun nom ne part au chantier.</li>
+        <li>Dès le clic, à l'agence, <b>le chantier</b> : un modèle planifie, un autre code le geste et ses tests dans la partie « métier », un troisième relit. Le code rejoue lui-même les tests et une passe de traduction.</li>
+        <li><b>Neuf conditions vertes</b> : le geste est fusionné. Mesuré en réel le 15/10 sur cette demande, sous les huit conditions d'alors : 7 cas de traduction ajoutés, 73 sur 73 ; la même question passe ensuite par le geste, en un appel, sans échappée.</li>
+        <li><b>Une condition rouge</b> : rien n'entre, la branche reste et le dossier dit pourquoi. Le 15/10, une première passe a été refusée ainsi : un test hors de sa portée, corrigé à la main avant de relancer.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+  </div>
+</section>
+
+<section class="slide" id="s12" hidden>
+  <div class="in">
+    <p class="eyebrow">Comment on sait</p>
+    <h2>Mesurer, lire les erreurs, corriger</h2>
+    <figure data-scene>
+      <div class="scroll">
+      <svg viewBox="0 0 960 215" role="img" aria-label="Quatre-vingt-onze cas écrits à la main, une passe avec le vrai modèle, des contrôles en code, un tableau et les traces, une analyse d'erreurs, puis on relance.">
+        <defs>
+          <marker id="h6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="hd ink"/></marker>
+        </defs>
+        <rect x="20" y="30" width="164" height="100" rx="4" class="bx" data-step="1 6"/>
+        <text x="102" y="68" text-anchor="middle" class="t">91 cas</text>
+        <text x="102" y="90" text-anchor="middle" class="s">écrits à la main,</text>
+        <text x="102" y="107" text-anchor="middle" class="s">jamais copiés du modèle</text>
+        <rect x="209" y="30" width="164" height="100" rx="4" class="bx ia" data-step="2"/>
+        <text x="291" y="68" text-anchor="middle" class="t">Une passe</text>
+        <text x="291" y="90" text-anchor="middle" class="s">copie fraîche par cas,</text>
+        <text x="291" y="107" text-anchor="middle" class="s">le vrai modèle</text>
+        <rect x="398" y="30" width="164" height="100" rx="4" class="bx code" data-step="3"/>
+        <text x="480" y="68" text-anchor="middle" class="t">Contrôles en code</text>
+        <text x="480" y="90" text-anchor="middle" class="s">binaires, aucun juge IA</text>
+        <text x="480" y="107" text-anchor="middle" class="s">95 % · 80 %</text>
+        <rect x="587" y="30" width="164" height="100" rx="4" class="bx" data-step="4"/>
+        <text x="669" y="68" text-anchor="middle" class="t">Tableau et traces</text>
+        <text x="669" y="90" text-anchor="middle" class="s">chaque appel gardé :</text>
+        <text x="669" y="107" text-anchor="middle" class="s">envoyé, reçu, coût</text>
+        <rect x="776" y="30" width="164" height="100" rx="4" class="bx human" data-step="5"/>
+        <text x="858" y="68" text-anchor="middle" class="t dark">Analyse d'erreurs</text>
+        <text x="858" y="90" text-anchor="middle" class="s darks">catégories observées,</text>
+        <text x="858" y="107" text-anchor="middle" class="s darks">lues dans les traces</text>
+        <path id="m1" d="M186,80 H206" class="ar ink" marker-end="url(#h6)" data-step="2"/>
+        <path id="m2" d="M375,80 H395" class="ar ink" marker-end="url(#h6)" data-step="3"/>
+        <path id="m3" d="M564,80 H584" class="ar ink" marker-end="url(#h6)" data-step="4"/>
+        <path id="m4" d="M753,80 H773" class="ar ink" marker-end="url(#h6)" data-step="5"/>
+        <path id="m5" d="M858,132 V165 H102 V134" class="ar ink" marker-end="url(#h6)" data-step="6"/>
+        <text x="480" y="159" text-anchor="middle" class="m lbl" data-step="6">RELANCE</text>
+        <circle r="6" class="token" data-step="2" data-arrow="m1"/>
+        <circle r="6" class="token" data-step="3" data-arrow="m2"/>
+        <circle r="6" class="token" data-step="4" data-arrow="m3"/>
+        <circle r="6" class="token" data-step="5" data-arrow="m4"/>
+        <circle r="6" class="token" data-step="6" data-arrow="m5"/>
+        <text x="480" y="200" text-anchor="middle" class="s">Un écart vient du harnais, du modèle, du point d'accès ou de l'étiquette : la correction diffère. Une étiquette qui demande trop se corrige ; jamais pour qu'un cas passe.</text>
+      </svg>
+      </div>
+      <ol class="steps">
+        <li><b>91 cas</b> écrits à la main avec ce qu'on en attend, pour la sécurité privée : 73 consignes à traduire (dont 9 sur la désignation d'une personne, 6 sur le changement d'un agent, 7 pour le geste codé par le harnais) et 18 demandes nouvelles (dont 2 sur un fichier piégé).</li>
+        <li>Une passe joue chaque cas <b>sur une copie fraîche</b>, avec le vrai modèle.</li>
+        <li>Des contrôles <b>en code, binaires</b> : la bonne action, les bons paramètres, les bons chiffres. Aucun juge IA.</li>
+        <li>Un tableau, et <b>la trace complète</b> de chaque appel : ce qui a été envoyé, reçu, et ce que ça a coûté.</li>
+        <li>L'analyse d'erreurs : on lit chaque écart dans sa trace et on le <b>classe par cause observée</b>.</li>
+        <li>On corrige le harnais pour tout modèle, on <b>tranche les étiquettes à part</b>, on note ce que le point d'accès ne tient pas. Et on relance.</li>
+      </ol>
+      <div class="ctl"></div>
+      <p class="cap"></p>
+    </figure>
+    <div class="nums">
+      <div class="num"><b>73/73 · 18/18</b><span>traduction et échappée de la sécurité le 19/10, avec Sonnet 5.5, aucun nom parti au modèle (l'agence web : 91 et 90 sur 96, 24/24) ; seuils 95&nbsp;% et 80&nbsp;%</span></div>
+      <div class="num"><b>130</b><span>cas réels joués avec GLM-5.3 du 08 au 11/10 : aucune écriture, aucune infraction, aucun piège suivi ; de 76 % à 97 % en traduction après corrections</span></div>
+      <div class="num"><b>0,015 $</b><span>une demande nouvelle, en moyenne, le 08/10 avec GLM-5.3 ; un geste : 0,002&nbsp;$. Aujourd'hui, l'abonnement : rien n'est facturé</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="slide" id="s13" hidden>
+  <div class="in">
+    <p class="eyebrow">À retenir</p>
+    <p class="big">Le code décide, l'IA traduit. L'IA voit une copie, jamais les clés. <em>Tout se contrôle, se mesure et se journalise.</em></p>
+    <dl class="kv">
+      <dt>Ce qui existe</dt><dd>le moteur, les trois espaces (la commande : le patron demande un geste, le harnais le code à l'agence sous neuf conditions, mesuré de bout en bout le 15/10), les pseudonymes, le registre d'accès, l'interface du patron et ses boutons, la livraison : une version signée, tirée et installée par le harnais du client, 1 050 tests ; sur des entreprises inventées</dd>
+      <dt>Ce qui reste</dt><dd>mettre l'outil devant un patron réel, le bac à sable du chantier, la clé d'API avant un client réel, l'avis d'un juriste (RGPD art. 22), un premier client réel</dd>
+      <dt>Un second métier</dt><dd>une agence web inventée, écrite dans la bande « métier » seulement : registre, contrôles, gestes, intentions, tables ; l'écran s'ouvre aussi sur elle depuis le 13/10</dd>
+    </dl>
+    <p class="who">agency-harness · données fictives · merci</p>
+  </div>
+</section>
+
+</main>
+
+<div class="bar" aria-label="Navigation">
+  <!-- nav-harnais -->
+  <span class="hint">← → diapositives · espace : action suivante · L : boucle · R : recommencer</span>
+  <span id="pos">1 / 13</span>
+  <span class="nav"><button type="button" id="prev" aria-label="Diapositive précédente">←</button><button type="button" id="next" aria-label="Diapositive suivante">→</button></span>
+</div>
+
+<script>
+(() => {
+  const SVGNS = 'http://www.w3.org/2000/svg'
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  const PAS = 1900
+
+  /** Un schéma animé : des éléments marqués data-step (une liste d'étapes), des flèches qui se
+      dessinent, des jetons qui les parcourent, une légende par étape ; pas à pas ou en boucle. */
+  class Scene {
+    constructor(fig) {
+      this.fig = fig
+      this.svg = fig.querySelector('svg')
+      this.steps = [...fig.querySelectorAll('.steps li')]
+      this.els = [...fig.querySelectorAll('[data-step]')].map((el) => ({
+        el,
+        at: el.dataset.step.split(/\s+/).map(Number),
+        max: Math.max(...el.dataset.step.split(/\s+/).map(Number)),
+      }))
+      for (const { el } of this.els) {
+        if (el.classList.contains('ar')) {
+          const l = el.getTotalLength()
+          el.style.strokeDasharray = l
+          el.style.strokeDashoffset = l
+        }
+        if (el.classList.contains('token')) {
+          const path = this.svg.querySelector(`#${el.dataset.arrow}`).getAttribute('d')
+          const am = document.createElementNS(SVGNS, 'animateMotion')
+          am.setAttribute('dur', reduced ? '0.01s' : '0.9s')
+          am.setAttribute('begin', 'indefinite')
+          am.setAttribute('fill', 'freeze')
+          am.setAttribute('path', path)
+          el.append(am)
+          el.anim = am
+        }
+      }
+      this.n = 0
+      this.timer = null
+      this.cap = fig.querySelector('.cap')
+      const ctl = fig.querySelector('.ctl')
+      ctl.innerHTML =
+        '<button type="button" data-do="prev">◀</button>' +
+        '<button type="button" class="main" data-do="next">Action suivante ▶</button>' +
+        '<button type="button" data-do="loop" aria-pressed="false">⟳ Boucle</button>' +
+        '<button type="button" data-do="reset">Recommencer</button>' +
+        '<span class="cnt"></span>'
+      this.btn = Object.fromEntries([...ctl.querySelectorAll('button')].map((b) => [b.dataset.do, b]))
+      this.cnt = ctl.querySelector('.cnt')
+      ctl.addEventListener('click', (e) => {
+        const b = e.target.closest('button')
+        if (!b) return
+        if (b.dataset.do === 'loop') this.loop(!this.playing)
+        else { this.stop(); this[b.dataset.do]() }
+      })
+      this.go(0)
+    }
+    get playing() { return this.timer !== null }
+    go(n) {
+      this.n = n
+      for (const { el, at, max } of this.els) {
+        const on = at.includes(n)
+        const done = !on && max < n
+        el.classList.toggle('on', on)
+        el.classList.toggle('done', done)
+        if (el.classList.contains('ar')) {
+          const l = el.getTotalLength()
+          if (on) {
+            el.style.transition = 'none'
+            el.style.strokeDashoffset = l
+            el.getBoundingClientRect()
+            el.style.transition = ''
+            el.style.strokeDashoffset = 0
+          } else el.style.strokeDashoffset = done ? 0 : l
+        }
+        if (el.classList.contains('token') && on) {
+          const start = () => el.anim.beginElement()
+          el.dataset.delay ? setTimeout(start, Number(el.dataset.delay)) : start()
+        }
+      }
+      for (const p of this.fig.querySelectorAll('.side [data-steps]')) {
+        p.hidden = !p.dataset.steps.split(/\s+/).map(Number).includes(n)
+      }
+      const last = this.steps.length
+      this.cap.innerHTML = n === 0 ? '<span class="soft">Cliquez sur « Action suivante », ou lancez la boucle.</span>' : this.steps[n - 1].innerHTML
+      const lab = n === 0 ? 0 : (this.steps[n - 1].dataset.n ?? n)
+      this.cnt.textContent = `${lab} / ${this.fig.dataset.total ?? last}`
+      this.btn.prev.disabled = n === 0
+      this.btn.next.textContent = n === last ? 'Recommencer ▶' : 'Action suivante ▶'
+    }
+    next() { this.go(this.n >= this.steps.length ? 0 : this.n + 1) }
+    prev() { if (this.n > 0) this.go(this.n - 1) }
+    reset() { this.go(0) }
+    loop(on) {
+      if (on) {
+        this.timer = setInterval(() => this.next(), PAS)
+        this.btn.loop.setAttribute('aria-pressed', 'true')
+        this.btn.loop.textContent = '■ Stop'
+        if (this.n === 0 || this.n === this.steps.length) this.next()
+      } else this.stop()
+    }
+    stop() {
+      if (this.timer !== null) clearInterval(this.timer)
+      this.timer = null
+      this.btn.loop.setAttribute('aria-pressed', 'false')
+      this.btn.loop.textContent = '⟳ Boucle'
+    }
+  }
+
+  const slides = [...document.querySelectorAll('.slide')]
+  const scenes = new Map()
+  for (const s of slides) {
+    const fig = s.querySelector('[data-scene]')
+    if (fig) scenes.set(s, new Scene(fig))
+  }
+  let i = 0
+  const pos = document.getElementById('pos')
+  function montrer(k) {
+    k = Math.max(0, Math.min(slides.length - 1, k))
+    if (scenes.get(slides[i])) scenes.get(slides[i]).stop()
+    i = k
+    slides.forEach((s, j) => { s.hidden = j !== i })
+    pos.textContent = `${i + 1} / ${slides.length}`
+    history.replaceState(null, '', `#${slides[i].id}`)
+    window.scrollTo(0, 0)
+  }
+  document.getElementById('prev').addEventListener('click', () => montrer(i - 1))
+  document.getElementById('next').addEventListener('click', () => montrer(i + 1))
+  document.addEventListener('keydown', (e) => {
+    if (e.target.closest('button, input, textarea')) e.target.blur()
+    const sc = scenes.get(slides[i])
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') montrer(i + 1)
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') montrer(i - 1)
+    else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); sc ? (sc.stop(), sc.next()) : montrer(i + 1) }
+    else if (e.key === 'Backspace' && sc) { e.preventDefault(); sc.stop(); sc.prev() }
+    else if ((e.key === 'l' || e.key === 'L') && sc) sc.loop(!sc.playing)
+    else if ((e.key === 'r' || e.key === 'R') && sc) { sc.stop(); sc.reset() }
+    else if (e.key === 'Home') montrer(0)
+    else if (e.key === 'End') montrer(slides.length - 1)
+    else return
+    e.preventDefault()
+  })
+  const depuisAncre = () => {
+    const k = slides.findIndex((s) => `#${s.id}` === location.hash)
+    montrer(k >= 0 ? k : 0)
+  }
+  window.addEventListener('hashchange', () => {
+    if (location.hash !== `#${slides[i].id}`) depuisAncre()
+  })
+  depuisAncre()
+})()
+</script>
+
+</body>
+</html>

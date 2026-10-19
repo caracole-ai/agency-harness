@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>La démo du harnais</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,600;1,400&family=Public+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+<!-- nav-harnais -->
+<nav class="toc" aria-label="Sommaire"><div class="in">
+  <b>La démo</b>
+  <a href="#outils">Les outils</a>
+  <a href="#niveaux">La confiance</a>
+  <a href="#scenario">Le scénario</a>
+  <a href="#verifs">Les vérifications</a>
+  <a href="#ecriture">La validation</a>
+  <a href="#etat">Ce qui existe</a>
+  <a href="#trancher">Décidé</a>
+</div></nav>
+
+<header class="wide">
+  <p class="eyebrow">Smart Tailor · la démo · données fictives</p>
+  <h1>Du rapport au <em>remplacement</em> d'un agent, validé en un geste.</h1>
+  <p class="lede">Le harnais lit, signale, propose ; le patron valide ; l'agent accepte ; la clé écrit. Un jour, il agira seul sur ce que le patron lui aura confié. La démo montre ce chemin sur un cas concret, à l'écran.</p>
+</header>
+
+<section id="outils" class="wide">
+  <div class="wrap">
+    <p class="num">La place du harnais</p>
+    <h2>Une couche autour des outils du client</h2>
+    <p>Le client garde ses outils. Le harnais s'y branche : il lit tout ce qu'il faut pour vérifier, et il n'écrit que là où le patron l'a permis, avec une clé d'accord. Sans cette clé, c'est l'outil du client lui-même qui refuse l'écriture : une erreur ou un message piégé ne peut rien modifier.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 380" role="img" aria-label="Le harnais au centre, relié aux outils du client. Il lit le fichier des agents, la messagerie et Dracar ; il écrit dans le planning, la paie et les SMS seulement avec la clé d'accord du patron.">
+      <defs>
+        <marker id="b1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+        <marker id="b2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-human"/></marker>
+      </defs>
+      <rect x="380" y="140" width="200" height="100" rx="3" class="harness"/>
+      <text x="480" y="180" text-anchor="middle" class="mono blue-t">LE HARNAIS</text>
+      <text x="480" y="204" text-anchor="middle" class="t">les règles du métier</text>
+      <text x="480" y="224" text-anchor="middle" class="s">vérifie, propose, journalise</text>
+
+      <rect x="40" y="40" width="200" height="56" rx="3" class="ink"/>
+      <text x="140" y="66" text-anchor="middle" class="t">Planning</text>
+      <text x="140" y="84" text-anchor="middle" class="s">tableur ou logiciel</text>
+      <rect x="40" y="162" width="200" height="56" rx="3" class="ink"/>
+      <text x="140" y="188" text-anchor="middle" class="t">Fichier des agents</text>
+      <text x="140" y="206" text-anchor="middle" class="s">cartes, formations</text>
+      <rect x="40" y="284" width="200" height="56" rx="3" class="ink"/>
+      <text x="140" y="310" text-anchor="middle" class="t">Paie</text>
+      <text x="140" y="328" text-anchor="middle" class="s">absences, heures</text>
+
+      <rect x="720" y="40" width="200" height="56" rx="3" class="ink"/>
+      <text x="820" y="66" text-anchor="middle" class="t">SMS des agents</text>
+      <text x="820" y="84" text-anchor="middle" class="s">ou WhatsApp</text>
+      <rect x="720" y="162" width="200" height="56" rx="3" class="ink"/>
+      <text x="820" y="188" text-anchor="middle" class="t">Messagerie</text>
+      <text x="820" y="206" text-anchor="middle" class="s">demandes des sites</text>
+      <rect x="720" y="284" width="200" height="56" rx="3" class="ink"/>
+      <text x="820" y="310" text-anchor="middle" class="t">Dracar Ultimate</text>
+      <text x="820" y="328" text-anchor="middle" class="s">déclarations CNAPS</text>
+
+      <line x1="242" y1="190" x2="376" y2="190" class="arrow-blue" marker-end="url(#b1)"/>
+      <text x="309" y="182" text-anchor="middle" class="mono blue-t">LIT</text>
+      <line x1="718" y1="190" x2="584" y2="190" class="arrow-blue" marker-end="url(#b1)"/>
+      <text x="651" y="182" text-anchor="middle" class="mono blue-t">LIT</text>
+      <line x1="718" y1="312" x2="584" y2="226" class="arrow-blue" marker-end="url(#b1)"/>
+      <text x="600" y="302" text-anchor="middle" class="mono blue-t">LIT, N'ÉCRIT JAMAIS</text>
+
+      <line x1="378" y1="156" x2="244" y2="72" class="human-line" marker-start="url(#b2)" marker-end="url(#b2)"/>
+      <line x1="378" y1="226" x2="244" y2="308" class="human-line" marker-start="url(#b2)" marker-end="url(#b2)"/>
+      <line x1="582" y1="156" x2="716" y2="72" class="human-line" marker-start="url(#b2)" marker-end="url(#b2)"/>
+      <rect x="285" y="100" width="46" height="20" rx="3" class="human"/>
+      <text x="308" y="114" text-anchor="middle" class="mono" style="fill:var(--on-human)">CLÉ</text>
+      <rect x="285" y="258" width="46" height="20" rx="3" class="human"/>
+      <text x="308" y="272" text-anchor="middle" class="mono" style="fill:var(--on-human)">CLÉ</text>
+      <rect x="627" y="100" width="46" height="20" rx="3" class="human"/>
+      <text x="650" y="114" text-anchor="middle" class="mono" style="fill:var(--on-human)">CLÉ</text>
+      <text x="480" y="372" text-anchor="middle" class="s">trait bleu : lecture · trait foncé : lecture et écriture, seulement avec la clé d'accord</text>
+    </svg>
+    </div>
+    <figcaption>Ce sont des outils d'exemple : on ne connaîtra les vrais qu'au premier rendez-vous. Dracar Ultimate n'a pas d'interface pour les logiciels, et déclarer à la place du client est exclu de toute façon.</figcaption>
+  </figure>
+</section>
+
+<section id="niveaux" class="wide">
+  <div class="wrap">
+    <p class="num">La confiance se donne par étapes</p>
+    <h2>Trois niveaux, choisis par le patron, décision par décision</h2>
+    <p>Le patron ne confie pas « le planning » au harnais. Il lui confie une décision précise, dans un cadre qu'il écrit, et il peut la reprendre à tout moment.</p>
+  </div>
+  <ol class="levels">
+    <li><span class="p">Niveau 1 · existe</span><span class="n">Il lit et signale</span><span class="d">Le rapport de la semaine : à corriger, à décider, échéances. Il n'écrit rien.</span></li>
+    <li><span class="p">Niveau 2 · existe, à l'écran</span><span class="n">Il propose, vous validez</span><span class="d">Il prépare la décision, vérifiée. Un geste du patron donne la clé ; sans elle, rien ne s'écrit. Vaut aussi pour une proposition venue de l'IA.</span></li>
+    <li><span class="p">Niveau 3 · quand le patron le décide</span><span class="n">Il agit seul, dans votre cadre</span><span class="d">Proposé dès qu'un type de décision a réussi une fois : « fais-le, et préviens-moi ». Révocable à tout moment. Pour un choix entre des personnes, comme un remplacement, seulement après l'avis du juriste.</span></li>
+  </ol>
+  <div class="wrap">
+    <p class="invariant"><strong>À tous les niveaux</strong>, les interdits restent du code. Une délégation ne lève jamais un interdit : même au niveau 3, aucun agent sans carte valide ne sera affecté. Et chaque décision est inscrite au journal, avec qui l'a autorisée.</p>
+  </div>
+</section>
+
+<section id="scenario" class="wide">
+  <div class="wrap">
+    <p class="num">Le scénario de la démo</p>
+    <h2>Samedi, 21 h 40 : Aïcha ne viendra pas demain</h2>
+    <p>Dans l'entreprise inventée, Aïcha Traoré doit tenir l'accueil de la Galerie des Tilleuls dimanche, de 8 h à 20 h. Samedi soir, elle envoie un SMS. Voici ce qui se passe, au niveau 2.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 610" role="img" aria-label="Aïcha envoie un SMS ; le harnais retrouve sa vacation, vérifie les agents et propose Julien au patron ; le patron valide ; le harnais demande l'accord de Julien ; Julien accepte ; le harnais met à jour les outils et confirme à chacun.">
+      <defs>
+        <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+        <marker id="c3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head-human"/></marker>
+      </defs>
+      <rect x="20" y="20" width="140" height="44" rx="3" class="ink"/>
+      <text x="90" y="47" text-anchor="middle" class="t">Aïcha (absente)</text>
+      <rect x="230" y="20" width="140" height="44" rx="3" class="harness"/>
+      <text x="300" y="47" text-anchor="middle" class="t">Le harnais</text>
+      <rect x="450" y="20" width="140" height="44" rx="3" class="human"/>
+      <text x="520" y="47" text-anchor="middle" class="t on-human">Le patron</text>
+      <rect x="650" y="20" width="140" height="44" rx="3" class="ink"/>
+      <text x="720" y="47" text-anchor="middle" class="t">Julien (remplaçant)</text>
+      <rect x="820" y="20" width="120" height="44" rx="3" class="ink"/>
+      <text x="880" y="47" text-anchor="middle" class="t">Les outils</text>
+
+      <line x1="90" y1="66" x2="90" y2="595" class="dash"/>
+      <line x1="300" y1="66" x2="300" y2="595" class="dash"/>
+      <line x1="520" y1="66" x2="520" y2="595" class="dash"/>
+      <line x1="720" y1="66" x2="720" y2="595" class="dash"/>
+      <line x1="880" y1="66" x2="880" y2="595" class="dash"/>
+
+      <line x1="92" y1="104" x2="296" y2="104" class="arrow" marker-end="url(#c1)"/>
+      <text x="194" y="96" text-anchor="middle" class="s" style="fill:currentColor">1 · SMS « malade, pas demain »</text>
+
+      <rect x="310" y="124" width="200" height="40" rx="3" class="note"/>
+      <text x="410" y="141" text-anchor="middle" class="s" style="fill:currentColor">2 · retrouve sa vacation :</text>
+      <text x="410" y="157" text-anchor="middle" class="s" style="fill:currentColor">dim. 8 h–20 h, Galerie</text>
+      <rect x="310" y="176" width="200" height="40" rx="3" class="note"/>
+      <text x="410" y="193" text-anchor="middle" class="s" style="fill:currentColor">3 · vérifie 12 agents :</text>
+      <text x="410" y="209" text-anchor="middle" class="s blue-t">4 possibles, classés</text>
+
+      <line x1="302" y1="250" x2="516" y2="250" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="410" y="242" text-anchor="middle" class="s blue-t">4 · propose Julien, avec les raisons</text>
+
+      <line x1="518" y1="298" x2="304" y2="298" class="human-line" marker-end="url(#c3)"/>
+      <text x="410" y="290" text-anchor="middle" class="mono">5 · VALIDER : LA CLÉ</text>
+
+      <line x1="302" y1="346" x2="716" y2="346" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="610" y="338" text-anchor="middle" class="s blue-t">6 · « Demain 8 h–20 h, Galerie ? OUI / NON »</text>
+
+      <line x1="718" y1="394" x2="304" y2="394" class="arrow" marker-end="url(#c1)"/>
+      <text x="610" y="386" text-anchor="middle" class="s" style="fill:currentColor">7 · OUI (son accord est gardé)</text>
+
+      <line x1="302" y1="442" x2="876" y2="442" class="human-line" marker-end="url(#c3)"/>
+      <text x="610" y="434" text-anchor="middle" class="s" style="fill:currentColor">8 · écrit avec la clé : planning, absence, journal</text>
+
+      <line x1="302" y1="490" x2="716" y2="490" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="610" y="482" text-anchor="middle" class="s blue-t">9 · confirmation et consignes du site</text>
+
+      <line x1="298" y1="538" x2="94" y2="538" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="194" y="530" text-anchor="middle" class="s blue-t">10 · « Bien reçu »</text>
+
+      <text x="300" y="582" text-anchor="middle" class="s">Si Julien dit non : retour au patron avec le suivant. Un refus n'a aucune conséquence pour Julien.</text>
+    </svg>
+    </div>
+    <figcaption>Le patron fait un seul geste (étape 5). L'accord de Julien (étape 7) est obligatoire : le changement arrive moins de 48 h avant le service, et la loi demande alors l'accord exprès de l'agent. Rien ne s'écrit dans les outils avant ces deux accords.</figcaption>
+  </figure>
+  <div class="wrap">
+    <p><strong>Où intervient l'IA ?</strong> Seulement à l'étape 1, pour comprendre un message écrit librement et choisir le geste <code>gerer_absence</code>. Elle reçoit la phrase masquée : avant l'appel, le code remplace chaque nom connu par son identifiant (« Aïcha » devient <code>A-11</code>). C'est le code qui sait qui écrit et qui est Aïcha. Tout le reste est du code : retrouver la vacation, vérifier, classer, reformuler, écrire. Si l'agent répond plutôt par un formulaire ou un bouton, l'IA n'est même pas nécessaire. La page <a href="espaces.html">Parler à l'outil</a> montre ce que l'IA fait quand aucun geste ne couvre la demande.</p>
+  </div>
+</section>
+
+<section id="verifs" class="wide">
+  <div class="wrap">
+    <p class="num">Étape 3 en détail</p>
+    <h2>Les vérifications sur chaque agent</h2>
+    <p>Le harnais passe les 12 autres agents de l'entreprise aux mêmes vérifications que le rapport : carte valide ce jour-là, bonne activité, carte d'entreprise remise, déclaration dans Dracar, repos suffisant, pas déjà en service. Puis il classe ceux qui restent selon les préférences du patron, par exemple « qui connaît le site, puis qui a le moins d'heures cette semaine ».</p>
+    <div class="table">
+      <table>
+        <thead><tr><th></th><th>Agent</th><th>Résultat</th><th>Pourquoi</th></tr></thead>
+        <tbody>
+          <tr><td class="rank">1</td><td><strong>Julien Lefèvre</strong></td><td><span class="chip ok">Proposé</span></td><td>connaît le site ; 16 h cette semaine</td></tr>
+          <tr><td class="rank">2</td><td>Karim Haddad</td><td><span class="chip ok">Possible</span></td><td>connaît le site ; 24 h cette semaine</td></tr>
+          <tr><td class="rank">3</td><td>Mehdi Saïdi</td><td><span class="chip ok">Possible</span></td><td>pas encore venu sur ce site ; 0 h cette semaine</td></tr>
+          <tr><td class="rank">4</td><td>Thomas Girard</td><td><span class="chip ok">Possible</span></td><td>pas encore venu sur ce site ; 0 h cette semaine</td></tr>
+          <tr class="out"><td></td><td>Sophie Marchand</td><td><span class="chip stop">Exclue</span></td><td>aucune carte valide ni récépissé (carte valide jusqu'au 01/10/2026)</td></tr>
+          <tr class="out"><td></td><td>Moussa Diallo</td><td><span class="chip stop">Exclu</span></td><td>carte valide jusqu'au 10/10/2026 ; 0 h de repos après sa nuit du samedi</td></tr>
+          <tr class="out"><td></td><td>Nadia Belkacem</td><td><span class="chip stop">Exclue</span></td><td>carte d'entreprise non remise</td></tr>
+          <tr class="out"><td></td><td>Nicolas Robert</td><td><span class="chip stop">Exclu</span></td><td>non déclaré dans Dracar Ultimate</td></tr>
+          <tr class="out"><td></td><td>Kevin Nguyen, Isabelle Fontaine, Pierre Moreau</td><td><span class="chip warn">Écartés</span></td><td>à renseigner : carte professionnelle, carte d'entreprise, déclaration Dracar</td></tr>
+          <tr class="out"><td></td><td>Laura Petit</td><td><span class="chip warn">Écartée</span></td><td>à renseigner : carte professionnelle</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Le patron voit tout le tableau</strong>, exclus compris, et peut choisir quelqu'un d'autre que le premier. C'est ce qui fait de sa validation une vraie décision humaine, et pas un clic machinal : le droit l'exige.</p>
+    <p class="soft">Ce tableau est celui que calcule le moteur aujourd'hui, avec les mêmes vérifications que le rapport : il n'y a pas de deuxième liste de règles. Il correspond exactement à la liste écrite à la main avant d'écrire le code. Une case vide n'est pas « sans carte » : les agents incendie sont écartés tant que leurs données ne sont pas renseignées.</p>
+  </div>
+</section>
+
+<section id="ecriture" class="wide">
+  <div class="wrap">
+    <p class="num">Après les deux accords</p>
+    <h2>Ce que la validation met à jour</h2>
+    <p>Une fois que le patron a validé et que Julien a dit oui, la décision est inscrite partout où elle doit l'être, sans ressaisie :</p>
+    <ul class="points">
+      <li><span class="k">01</span><span><strong>Le planning</strong> : la vacation de dimanche passe d'Aïcha à Julien.</span></li>
+      <li><span class="k">02</span><span><strong>L'absence d'Aïcha</strong> est notée, pour la paie.</span></li>
+      <li><span class="k">03</span><span><strong>Julien</strong> reçoit la confirmation, l'adresse et les consignes du site.</span></li>
+      <li><span class="k">04</span><span><strong>Aïcha</strong> reçoit un accusé de réception.</span></li>
+      <li><span class="k">05</span><span><strong>Le journal</strong> garde tout : le SMS, les vérifications, qui a validé et à quelle heure, l'accord de Julien. On ne peut ni l'effacer ni le modifier.</span></li>
+    </ul>
+    <p>Dans la démo, ces outils sont des imitations à l'écran : un planning, un téléphone, une fiche de paie. Chez un vrai client, on branchera ses propres outils, une fois qu'on saura lesquels.</p>
+  </div>
+</section>
+
+<section id="etat" class="wide">
+  <div class="wrap">
+    <p class="num">Honnêtement</p>
+    <h2>Ce qui existe, ce qui reste à construire</h2>
+  </div>
+  <div class="status">
+    <div><h3>Existe déjà</h3><ul><li>Les vérifications et le rapport (niveau 1), avec son PDF.</li><li>Le remplacement complet sur l'entreprise inventée : recherche et classement, choix du patron, clé d'accord, accord de l'agent, planning mis à jour. En ligne de commande, en conversation, et à l'écran.</li><li>L'interface web du patron (étape 6) : ce qui attend une décision, les règles, les délégations, le journal, la conversation. Rejouable sans modèle pour la démo.</li><li>La délégation : proposée après un premier succès, appliquée dans son cadre.</li><li>Le journal qu'on ne peut pas modifier.</li></ul></div>
+    <div><h3>Pas encore vu</h3><ul><li>Le scénario complet à l'écran avec le vrai modèle (il a été rejoué en simulé, 64 captures).</li><li>Un message qui arrive vraiment d'un téléphone : la démo part d'une phrase tapée dans la conversation.</li></ul></div>
+    <div><h3>Seulement chez un vrai client</h3><ul><li>Le branchement sur ses vrais outils.</li><li>L'envoi de vrais SMS.</li><li>Le niveau 3, quand il le décidera.</li></ul></div>
+  </div>
+</section>
+
+<section id="trancher" class="wide">
+  <div class="wrap">
+    <p class="num">Décidé le 06/10, et vérifié</p>
+    <h2>Ce qui est tranché, et ce que dit le droit</h2>
+    <ul class="points">
+      <li><span class="k">01</span><span><strong>L'automatisation</strong> : dès qu'un type de décision a réussi une fois, le harnais propose au patron de l'automatiser. S'il accepte, c'est automatique, révocable, et chaque exécution est inscrite au journal. La règle « rien ne sort sans un humain » le dit désormais : un humain valide à chaque fois, ou une fois pour toutes en déléguant.</span></li>
+      <li><span class="k">02</span><span><strong>Le « oui » du remplaçant ne suffit pas</strong> au niveau 3. Le classement écarte aussi d'autres agents, qui n'ont rien accepté. Or le RGPD (art. 22) interdit qu'une décision automatique affecte une personne de façon importante sans exception prévue, et il donne toujours le droit de contester et d'obtenir un humain. Un « oui » à une vacation n'est pas le consentement que ce texte demande. Le niveau 2 tient, si le patron voit tous les candidats et peut changer de choix. Le niveau 3 pour un remplacement passe d'abord par le juriste.</span></li>
+      <li><span class="k">03</span><span><strong>À la mise en service</strong>, quel que soit le niveau : prévenir chaque agent que l'outil existe et expliquer comment il classe (Code du travail L1222-4, RGPD art. 13). À partir de 50 salariés, le CSE est informé et consulté avant.</span></li>
+      <li><span class="k">04</span><span><strong>Au rendez-vous</strong>, quand il viendra : le rapport et le remplacement à l'écran sont la démonstration de ce qui existe. La conversation libre se montre seulement si le dirigeant en parle comme de sa douleur. Décision du 08/10 : le laboratoire d'abord, le terrain quand le produit sera correct.</span></li>
+    </ul>
+    <p class="soft">Les textes cités ont été lus à la source le 06/10/2026. Leur application à ce cas est une lecture, à faire confirmer par un juriste.</p>
+  </div>
+  <footer class="wrap">agency-harness · scénario sur données fictives · aucun montant</footer>
+</section>
+</div>
+</body>
+</html>

@@ -5,6 +5,7 @@
 // page se régénère d'un bloc, jamais retouchée à la main dans le site.
 // Usage : node presentation/carte.mjs README.md ../smart-tailor/public/carte-harnais/index.html
 import { readFileSync, writeFileSync } from 'node:fs'
+import { nav as navHarnais } from './nav.mjs'
 
 const [, , source, sortie] = process.argv
 const md = readFileSync(source, 'utf8')
@@ -99,6 +100,7 @@ footer { padding: 2rem 0 3rem; border-top: 1px solid var(--line); margin-top: 2r
 </style>
 </head>
 <body>
+${navHarnais('/carte-harnais')}
 <header><div class="wrap">
   <p class="eyebrow"><a href="/">Smart Tailor</a> · le harnais</p>
   <h1>La carte du <em>harnais</em></h1>

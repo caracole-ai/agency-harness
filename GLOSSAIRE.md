@@ -1,6 +1,6 @@
 # Glossaire
 
-L'abécédaire du projet, relevé sur le code le 2026-10-18 : une ligne par
+L'abécédaire du projet, relevé sur le code le 2026-10-19 : une ligne par
 mot, par commande, par fichier. Budget : cent entrées ; un mot nouveau
 remplace, il ne s'ajoute pas. Un terme garde sa place si un patron ou un
 ingénieur doit le connaître pour faire tourner le système ; un nom de

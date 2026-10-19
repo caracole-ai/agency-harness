@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Parler à l'outil</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,600;1,400&family=Public+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+<style>
+/* Propre à cette page : la conversation, les trois espaces, les sécurités et leur ancrage.
+   Même grammaire que le reste du site : trait d'encre = le client et ses données, bleu = le code du
+   harnais, bleu pointillé = l'IA, aplat marine = l'humain qui décide. */
+.chat { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); padding: 1rem 1.1rem; margin: 1.4rem 0 1rem; display: grid; gap: 1rem; }
+.chat .h { font: 500 0.62rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-faint); }
+.msg { display: grid; gap: 0.3rem; max-width: 40rem; }
+.msg .who { font: 500 0.62rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-faint); }
+.msg .b { background: var(--bg); border: 1px solid currentColor; border-radius: 3px; padding: 0.75rem 0.95rem; font-size: 0.93rem; line-height: 1.5; }
+.msg.you { color: var(--fg); }
+.msg.tool { color: var(--blue-ink); justify-self: end; }
+.msg.tool .b { color: var(--fg); border-color: var(--blue); }
+.msg.tool.ai .b { border-style: dashed; }
+.msg .b p { margin: 0 0 0.5rem; }
+.msg .b p:last-child { margin: 0; }
+.msg .tag { font: 500 0.6rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--fg-faint); }
+.msg table { min-width: 0; font-size: 0.86rem; margin: 0.4rem 0 0.6rem; }
+.msg th, .msg td { padding: 0.35rem 0.6rem 0.35rem 0; }
+.msg .act { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: 0.6rem; }
+.btn { display: inline-block; font: 500 0.66rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; padding: 0.5rem 0.8rem; border-radius: 3px; border: 1px solid var(--human); background: var(--human); color: var(--on-human); }
+.btn.alt { background: transparent; color: var(--fg); border-color: var(--fg-faint); }
+.diff { list-style: none; padding: 0; margin: 0.4rem 0 0.2rem; display: grid; gap: 0.25rem; font-size: 0.88rem; }
+.diff li { padding-left: 0.9rem; border-left: 2px solid var(--blue); }
+.diff li.same { border-left-color: var(--line); color: var(--fg-soft); }
+
+.spaces { list-style: none; padding: 0; margin: 1.5rem 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.8rem; }
+.spaces li { border: 1px solid var(--line); border-radius: 3px; padding: 1.1rem 1rem 1.2rem; display: grid; gap: 0.4rem; align-content: start; min-width: 0; }
+.spaces li:nth-child(1) { border-color: var(--blue); background: var(--surface); }
+.spaces li:nth-child(2) { border-color: var(--blue); border-style: dashed; }
+.spaces li:nth-child(3) { background: var(--human); color: var(--on-human); border-color: var(--human); }
+.spaces .p { font: 500 0.62rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; }
+.spaces .n { font: 400 1.3rem/1.2 var(--font-display); }
+.spaces .d { font-size: 0.9rem; opacity: 0.88; }
+.spaces .e { font-size: 0.86rem; opacity: 0.8; font-style: italic; }
+
+.chip.todo { color: var(--blue-ink); }
+.rules .st { margin-top: 0.5rem; }
+.rules .st code { font-size: 0.72rem; color: var(--fg-faint); }
+.chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 1.2rem; }
+.chips code { font-size: 0.78rem; border: 1px solid var(--line); border-radius: 3px; padding: 0.2rem 0.45rem; color: var(--fg); background: var(--surface); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+svg .ink-dash { fill: none; stroke: currentColor; stroke-width: 1.2; stroke-dasharray: 4 4; }
+</style>
+</head>
+<body>
+<div class="page">
+<!-- nav-harnais -->
+<nav class="toc" aria-label="Sommaire"><div class="in">
+  <b>Parler à l'outil</b>
+  <a href="#conversation">Une journée</a>
+  <a href="#espaces">Trois espaces</a>
+  <a href="#chemin">Le chemin</a>
+  <a href="#echappee">L'échappée</a>
+  <a href="#jamais">Les sécurités</a>
+  <a href="#commande">La commande</a>
+  <a href="#mesure">Mesurer</a>
+  <a href="#cout">Le coût</a>
+  <a href="#etat">Honnêtement</a>
+  <a href="#decide">Décidé</a>
+</div></nav>
+
+<header class="wide">
+  <p class="eyebrow">Smart Tailor · construit le 08/10/2026, le patron change un agent le 14/10, il commande un geste le 15/10 · mesuré avec GLM-5.3, puis Sonnet 5.5</p>
+  <h1>Vous demandez. Il vérifie. <em>Vous validez.</em></h1>
+  <p class="lede">Ce que le dirigeant et ses équipes demandent à l'outil, le chemin exact que suit chaque demande, ce qui l'arrête, et ce qu'on a mesuré.</p>
+</header>
+
+<section id="conversation" class="wide">
+  <div class="wrap">
+    <p class="num">L'expérience</p>
+    <h2>Une journée, en cinq demandes</h2>
+    <p>On parle à l'outil comme à une personne de l'équipe. Derrière, deux choses se partagent le travail : l'IA comprend la demande et, pour une question nouvelle, cherche sur une copie des données ; le code calcule, vérifie, et écrit. L'IA ne touche jamais aux outils de l'entreprise, et rien ne s'écrit sans un « oui ».</p>
+  </div>
+  <div class="wrap">
+    <div class="chat" aria-label="Exemple de conversation, sur l'entreprise inventée">
+      <div class="h">Sur l'entreprise inventée · samedi 10 octobre, 21 h 40</div>
+
+      <div class="msg you"><span class="who">Le patron</span><div class="b">Aïcha ne vient pas demain.</div></div>
+      <div class="msg tool"><span class="who">L'outil</span><div class="b">
+        <p>Demande D-V-17 : dimanche 8 h–20 h, accueil de la Galerie des Tilleuls. 12 agents vérifiés, <strong>4 peuvent la remplacer</strong>. Je propose Julien : il connaît le site, 16 h cette semaine.</p>
+        <table><thead><tr><th>Agent</th><th>Pourquoi</th></tr></thead><tbody>
+          <tr><td><strong>Julien</strong></td><td>connaît le site · 16 h</td></tr>
+          <tr><td>Karim</td><td>connaît le site · 24 h</td></tr>
+          <tr><td>Mehdi</td><td>jamais venu · 0 h</td></tr>
+          <tr><td>Thomas</td><td>jamais venu · 0 h</td></tr>
+        </tbody></table>
+        <p class="soft">4 exclus (carte, repos, déclaration), 4 à renseigner.</p>
+      </div><span class="tag">Un geste du quotidien · l'IA a choisi le geste, le code a tout calculé · 0,002 $</span></div>
+
+      <div class="msg you"><span class="who">Le patron</span><div class="b">Je valide Julien pour D-V-17.</div></div>
+      <div class="msg tool"><span class="who">L'outil</span><div class="b"><p>Valider Julien Lefèvre (A-2) pour V-17, dim. 11/10 08:00 → 20:00, Accueil (Galerie des Tilleuls) ?</p><div class="act"><span class="btn">Oui</span><span class="btn alt">Non</span></div></div><span class="tag">Un geste qui écrit · reformulé par le code, le « oui » est la clé · Julien reçoit ensuite « OUI / NON ? »</span></div>
+
+      <div class="msg you"><span class="who">Le patron</span><div class="b">Qui a le moins d'heures cette semaine ?</div></div>
+      <div class="msg tool ai"><span class="who">L'outil</span><div class="b"><p>Six agents n'ont aucune vacation cette semaine. Parmi ceux qui ont travaillé : Aïcha, Sophie, Moussa et Isabelle, 12 h chacun.</p></div><span class="tag">Une demande nouvelle · l'IA interroge une copie en SQL · chaque chiffre est contrôlé avant de vous arriver</span></div>
+
+      <div class="msg you"><span class="who">Le patron</span><div class="b">Libère le mardi 13 de Karim.</div></div>
+      <div class="msg tool ai"><span class="who">L'outil</span><div class="b">
+        <p>Proposition R-20261010T2140-3fa2, passée à toutes les vérifications : <strong>aucune règle enfreinte</strong>.</p>
+        <ul class="diff"><li>V-03, mar. 13/10 20:00 → mer. 14/10 08:00, Gardiennage de nuit : Karim Haddad → Mehdi Saïdi</li><li class="same">V-03 — autres possibles : Thomas Girard</li></ul>
+        <p>Valider ? (oui / non)</p>
+        <div class="act"><span class="btn">Oui</span><span class="btn alt">Non</span><span class="btn alt">Prendre Thomas Girard pour V-03</span></div>
+      </div><span class="tag">Une demande nouvelle · vous voyez ce qui change · un bouton par autre possible, sans appel au modèle (14/10) · votre oui, puis l'accord de Mehdi, puis la clé écrit</span></div>
+
+      <div class="msg you"><span class="who">Julien, agent</span><div class="b">Je peux voir le planning de Karim ?</div></div>
+      <div class="msg tool"><span class="who">L'outil</span><div class="b"><p>Tu ne peux désigner que toi-même : « Karim » ne te désigne pas.</p></div><span class="tag">Un agent ne désigne que lui-même · le code le dit, sans rien lui apprendre des autres</span></div>
+    </div>
+    <p class="soft">Les cinq réponses sont celles que le harnais rend aujourd'hui sur l'entreprise inventée. Les chiffres viennent des données ; les textes sont ceux du code, recomposés pour la lecture. Les quatre premières ont été vues avec GLM-5.3 ; la dernière date du 08/10 au soir et n'a tourné qu'en simulé. Depuis le 14/10, la conversation tourne sur Sonnet 5.5 ; le bouton « Prendre Thomas Girard pour V-03 » n'appelle aucun modèle.</p>
+  </div>
+</section>
+
+<section id="espaces" class="wide">
+  <div class="wrap">
+    <p class="num">Le principe</p>
+    <h2>Trois espaces, un seul principe</h2>
+    <p>Chaque demande tombe dans l'un de trois espaces. Le premier est presque gratuit et prouvé par des tests. Le deuxième donne la liberté, sous contrôle. Le troisième fait passer une demande du deuxième au premier, quand le patron le commande : le harnais en code le geste.</p>
+  </div>
+  <ol class="spaces">
+    <li><span class="p">Espace 1 · existe</span><span class="n">Les gestes du quotidien</span><span class="d">Onze actions écrites une fois pour toutes, testées, que le code exécute. L'IA ne fait que reconnaître laquelle vous demandez.</span><span class="e">« Aïcha ne vient pas demain. »</span></li>
+    <li><span class="p">Espace 2 · existe</span><span class="n">Les demandes nouvelles</span><span class="d">Tout le reste. L'IA cherche sur une copie de vos données, le code contrôle chaque chiffre et passe toute proposition aux règles, vous voyez ce qui change, et votre oui écrit.</span><span class="e">« Libère le mardi 13 de Karim. »</span></li>
+    <li><span class="p">Espace 3 · existe, mesuré le 15/10</span><span class="n">Le patron commande un geste</span><span class="d">L'outil vous montre ce qu'il n'a pas su faire, regroupé. Vous cliquez « Créer ce geste » ; à l'agence, le harnais le code aussitôt, sous neuf conditions vérifiées par le code ; s'il passe, votre harnais tire la nouvelle version, et la demande suivante est un geste. Rien ne naît sans votre demande.</span><span class="e">« Créer ce geste. »</span></li>
+  </ol>
+  <div class="wrap">
+    <p class="invariant"><strong>On ne contrôle pas le chemin que prend l'IA.</strong> On contrôle ce qu'elle voit (une copie, à votre échelle), ce qu'elle rend (un résultat passé à tous les contrôles) et comment elle finit (une réponse, une proposition, ou « je n'y arrive pas », jamais « c'est fait »).</p>
+  </div>
+</section>
+
+<section id="chemin" class="wide">
+  <div class="wrap">
+    <p class="num">Le mécanisme</p>
+    <h2>Le chemin d'une consigne</h2>
+    <p>Avant tout, le harnais vérifie qui parle. Puis l'IA, qui reçoit la phrase masquée (chaque nom remplacé par un identifiant), choisit un outil dans une liste fermée, et le code reprend la main aussitôt. Trois sorties, et chacune finit clairement.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 712" role="img" aria-label="Le registre d'accès vérifie d'abord qui parle ; un inconnu est refusé. Puis la consigne masquée, et elle seule, est traduite par l'IA en un outil parmi la liste. Pour un geste, le code trouve la personne nommée. Un geste : le code revalide, exécute une lecture tout de suite, ou reformule une écriture qui attend un oui, lequel porte la clé. Une demande nouvelle : l'échappée sur une copie, qui répond, propose ou abandonne, puis les contrôles du code, puis la validation et la clé. Je ne sais pas : la réponse dit pourquoi, rien n'est écrit. Tout va au journal.">
+      <defs>
+        <marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="c2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+      </defs>
+      <rect x="330" y="16" width="300" height="48" rx="3" class="human"/>
+      <text x="480" y="45" text-anchor="middle" class="t on-human">Le patron, ou un agent, écrit une consigne</text>
+      <line x1="480" y1="66" x2="480" y2="92" class="arrow" marker-end="url(#c1)"/>
+      <rect x="330" y="96" width="300" height="56" rx="3" class="harness"/>
+      <text x="480" y="119" text-anchor="middle" class="t">Qui parle ? Le registre d'accès</text>
+      <text x="480" y="138" text-anchor="middle" class="s blue-t">un inconnu est refusé, rien n'est lu</text>
+      <line x1="480" y1="154" x2="480" y2="164" class="arrow" marker-end="url(#c1)"/>
+      <g transform="translate(0,72)">
+
+      <rect x="330" y="96" width="300" height="64" rx="3" class="note"/>
+      <text x="480" y="121" text-anchor="middle" class="t">L'IA traduit</text>
+      <text x="480" y="142" text-anchor="middle" class="s">elle reçoit la phrase masquée, choisit un outil</text>
+
+      <polyline points="400,162 400,190 160,190 160,214" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="280" y="184" text-anchor="middle" class="mono blue-t">UN GESTE</text>
+      <line x1="480" y1="162" x2="480" y2="214" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="490" y="208" class="mono blue-t">DEMANDE_NOUVELLE</text>
+      <polyline points="560,162 560,190 800,190 800,214" class="arrow-blue" marker-end="url(#c2)"/>
+      <text x="720" y="184" text-anchor="middle" class="mono blue-t">JE_NE_SAIS_PAS</text>
+
+      <rect x="20" y="220" width="280" height="56" rx="3" class="harness"/>
+      <text x="160" y="244" text-anchor="middle" class="t">Un geste du quotidien</text>
+      <text x="160" y="263" text-anchor="middle" class="s blue-t">11 gestes codés et testés</text>
+      <line x1="160" y1="278" x2="160" y2="292" class="arrow" marker-end="url(#c1)"/>
+      <rect x="20" y="296" width="280" height="56" rx="3" class="ink"/>
+      <text x="160" y="320" text-anchor="middle" class="t">Le code trouve la personne, revalide</text>
+      <text x="160" y="339" text-anchor="middle" class="s">un doute : « Vous parlez de qui ? »</text>
+      <line x1="160" y1="354" x2="160" y2="368" class="arrow" marker-end="url(#c1)"/>
+      <rect x="20" y="372" width="280" height="56" rx="3" class="ink"/>
+      <text x="160" y="396" text-anchor="middle" class="t">Lecture : exécutée tout de suite</text>
+      <text x="160" y="415" text-anchor="middle" class="s">planning, échéances, suivi d'une demande</text>
+      <line x1="160" y1="430" x2="160" y2="444" class="arrow" marker-end="url(#c1)"/>
+      <rect x="20" y="448" width="280" height="70" rx="3" class="human"/>
+      <text x="160" y="472" text-anchor="middle" class="t on-human">Écriture : reformulée par le code</text>
+      <text x="160" y="491" text-anchor="middle" class="s" style="fill:var(--on-human)">« Valider Julien Lefèvre (A-2) pour… ? »</text>
+      <text x="160" y="508" text-anchor="middle" class="s" style="fill:var(--on-human)">attend votre « oui »</text>
+      <line x1="160" y1="520" x2="160" y2="532" class="arrow" marker-end="url(#c1)"/>
+      <rect x="20" y="536" width="280" height="50" rx="3" class="ink"/>
+      <text x="160" y="566" text-anchor="middle" class="t">Le oui porte la clé : le code écrit</text>
+
+      <rect x="340" y="220" width="280" height="56" rx="3" class="harness"/>
+      <text x="480" y="244" text-anchor="middle" class="t">Une demande nouvelle</text>
+      <text x="480" y="263" text-anchor="middle" class="s blue-t">avec un mot-clé d'intention</text>
+      <line x1="480" y1="278" x2="480" y2="292" class="arrow" marker-end="url(#c1)"/>
+      <rect x="340" y="296" width="280" height="56" rx="3" class="note"/>
+      <text x="480" y="320" text-anchor="middle" class="t">L'échappée : l'IA cherche sur une copie</text>
+      <text x="480" y="339" text-anchor="middle" class="s">SQL en lecture seule, 12 tours au plus</text>
+      <line x1="480" y1="354" x2="480" y2="368" class="arrow" marker-end="url(#c1)"/>
+      <rect x="340" y="372" width="86" height="56" rx="3" class="ink"/>
+      <text x="383" y="405" text-anchor="middle" class="t">répond</text>
+      <rect x="437" y="372" width="86" height="56" rx="3" class="ink"/>
+      <text x="480" y="405" text-anchor="middle" class="t">propose</text>
+      <rect x="534" y="372" width="86" height="56" rx="3" class="ink"/>
+      <text x="577" y="405" text-anchor="middle" class="t">abandonne</text>
+      <line x1="480" y1="430" x2="480" y2="444" class="arrow" marker-end="url(#c1)"/>
+      <rect x="340" y="448" width="280" height="70" rx="3" class="harness"/>
+      <text x="480" y="472" text-anchor="middle" class="t">Les contrôles du code</text>
+      <text x="480" y="491" text-anchor="middle" class="s blue-t">chaque chiffre, chaque nom vient des données</text>
+      <text x="480" y="508" text-anchor="middle" class="s blue-t">une proposition passe toutes les règles</text>
+      <line x1="480" y1="520" x2="480" y2="532" class="arrow" marker-end="url(#c1)"/>
+      <rect x="340" y="536" width="280" height="50" rx="3" class="human"/>
+      <text x="480" y="559" text-anchor="middle" class="t on-human">Vous validez, chaque agent accepte,</text>
+      <text x="480" y="576" text-anchor="middle" class="s" style="fill:var(--on-human)">et la clé écrit</text>
+
+      <rect x="660" y="220" width="280" height="56" rx="3" class="ink"/>
+      <text x="800" y="244" text-anchor="middle" class="t">Je ne sais pas</text>
+      <text x="800" y="263" text-anchor="middle" class="s">inintelligible, trop vague, hors sujet</text>
+      <line x1="800" y1="278" x2="800" y2="292" class="arrow" marker-end="url(#c1)"/>
+      <rect x="660" y="296" width="280" height="56" rx="3" class="ink"/>
+      <text x="800" y="320" text-anchor="middle" class="t">La réponse dit pourquoi</text>
+      <text x="800" y="339" text-anchor="middle" class="s">et rappelle les gestes possibles</text>
+      <line x1="800" y1="354" x2="800" y2="368" class="arrow" marker-end="url(#c1)"/>
+      <rect x="660" y="372" width="280" height="56" rx="3" class="ink-dash"/>
+      <text x="800" y="405" text-anchor="middle" class="t">Rien n'est fait, rien n'est écrit</text>
+      </g>
+
+      <text x="480" y="692" text-anchor="middle" class="s">Chaque étape laisse sa ligne au journal : la consigne mot pour mot, l'appel au modèle et son coût, chaque outil, la confirmation, l'écriture.</text>
+    </svg>
+    </div>
+    <figcaption>Les boîtes bleues en pointillé sont les deux seuls endroits où l'IA agit : traduire, puis chercher sur la copie. Elle ne voit aucun nom : pour une faute de frappe, c'est le code qui vous pose la question. Tout ce qui écrit passe par une boîte marine, un « oui » humain, et ce oui porte une empreinte du contenu exact qu'il valide : la clé. Un oui donné pour autre chose, ou par quelqu'un d'autre, n'écrit rien.</figcaption>
+  </figure>
+  <div class="wrap">
+    <ul class="points">
+      <li><span class="k">01</span><span><strong>Qui parle, avant tout.</strong> Le harnais tient son propre registre d'accès (<code>personnes.yaml</code>) : le patron, et chaque agent. Un inconnu est refusé avant que le planning ou le fichier des agents ne soient lus, et son refus va au journal. L'identité est aujourd'hui déclarée par le canal. Tranché le 18/10 : l'interface n'écoute que la machine, dont la session authentifie ; un canal de messagerie apportera son propre identifiant.</span></li>
+      <li><span class="k">02</span><span><strong>La liste est fermée et dépend du rôle.</strong> Le patron voit 8 gestes (absence, valider un remplacement, changer un agent dans une proposition, suivre une demande, planning, heures (<code>heures_par_agent</code>), échéances, veille), un agent 6 (son absence, répondre à une sollicitation ou à une réaffectation, son planning, ses heures, ses titres), plus les deux sorties « demande nouvelle » et « je ne sais pas ». Un agent n'a pas sous les yeux les gestes du patron.</span></li>
+      <li><span class="k">03</span><span><strong>Le modèle reçoit la phrase masquée ; le code trouve la personne.</strong> Avant l'appel, le code remplace chaque nom connu des données par son identifiant : « Aïcha ne vient pas demain » part « A-11 ne vient pas demain ». Un prénom partagé ou un nom mal écrit part en jeton : « Aisha » part « NOM-1 », et le code reprend la mention après l'appel. Il la cherche dans la liste des agents, sans tenir compte des accents ni des majuscules : un seul nom correspond, c'est réglé. Une faute de frappe : « Vous parlez de « Aïcha Traoré » ? ». Deux homonymes : « Vous parlez de qui ? », avec une liste numérotée. Rien n'est exécuté avant votre réponse, et aucun nom ne part au modèle, même proche (depuis le 18/10). Un agent ne désigne que lui-même. Limite dite : un surnom, un nom absent des données, une faute tout en minuscules partiraient encore.</span></li>
+      <li><span class="k">04</span><span><strong>Les paramètres sont revalidés par le code</strong>, quoi qu'ait écrit l'IA : une clé mal formée, une date fausse, un identifiant inconnu finissent en « je ne sais pas », jamais en action.</span></li>
+      <li><span class="k">05</span><span><strong>Le code reformule ce qui écrit</strong> et nomme ce qu'il va faire. Votre oui est comparé à cette phrase exacte ; la demande D-V-17 ne s'écrit pas avec le oui donné pour R-… d'hier.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="echappee" class="wide">
+  <div class="wrap">
+    <p class="num">Le mécanisme, suite</p>
+    <h2>L'échappée : la liberté, dans une boîte</h2>
+    <p>Pour une demande nouvelle, l'IA travaille seule, mais sur une copie, avec cinq outils, dans des bornes, et tout ce qu'elle rend est contrôlé par le code avant de vous arriver.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 420" role="img" aria-label="L'IA interroge en SQL une copie en lecture seule, limitée au rôle et détruite à la fin ; elle peut essayer des réaffectations que les règles jugent ; elle finit par un seul outil : répondre, proposer ou abandonner. Bornes : douze tours, vingt mille tokens, sept minutes, trente dollars par mois.">
+      <defs>
+        <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+      </defs>
+      <rect x="20" y="60" width="240" height="200" rx="3" class="ink"/>
+      <text x="140" y="90" text-anchor="middle" class="t">La copie (SQLite)</text>
+      <text x="140" y="114" text-anchor="middle" class="s">lecture seule, détruite à la fin</text>
+      <text x="140" y="132" text-anchor="middle" class="s">à l'échelle du rôle : un agent</text>
+      <text x="140" y="150" text-anchor="middle" class="s">n'y a que ses propres données</text>
+      <text x="140" y="174" text-anchor="middle" class="s">une requête : 5 s, 200 lignes au plus</text>
+      <text x="140" y="192" text-anchor="middle" class="s">chaque résultat rendu entre</text>
+      <text x="140" y="210" text-anchor="middle" class="mono">&lt;DONNEES&gt; … &lt;/DONNEES&gt;</text>
+      <text x="140" y="238" text-anchor="middle" class="s">une donnée n'est jamais une consigne</text>
+
+      <rect x="360" y="60" width="240" height="200" rx="3" class="note"/>
+      <text x="480" y="90" text-anchor="middle" class="t">L'IA</text>
+      <text x="480" y="114" text-anchor="middle" class="s">lit la consigne et l'intention</text>
+      <text x="480" y="132" text-anchor="middle" class="s">écrit des requêtes SQL</text>
+      <text x="480" y="150" text-anchor="middle" class="s">essaie des réaffectations</text>
+      <text x="480" y="174" text-anchor="middle" class="s">puis finit, par un seul outil :</text>
+      <text x="480" y="196" text-anchor="middle" class="mono blue-t">REPONDRE · PROPOSER</text>
+      <text x="480" y="212" text-anchor="middle" class="mono blue-t">ABANDONNER</text>
+      <text x="480" y="238" text-anchor="middle" class="s">un agent ne peut que répondre</text>
+
+      <rect x="700" y="60" width="240" height="200" rx="3" class="harness"/>
+      <text x="820" y="90" text-anchor="middle" class="t">Les règles (code)</text>
+      <text x="820" y="114" text-anchor="middle" class="s blue-t">verifier : ce qu'une réaffectation</text>
+      <text x="820" y="132" text-anchor="middle" class="s blue-t">d'essai enfreindrait, règle par règle</text>
+      <text x="820" y="156" text-anchor="middle" class="s blue-t">une proposition qui enfreint</text>
+      <text x="820" y="174" text-anchor="middle" class="s blue-t">une règle revient à l'IA :</text>
+      <text x="820" y="192" text-anchor="middle" class="s blue-t">« corrige ou abandonne »</text>
+      <text x="820" y="216" text-anchor="middle" class="s blue-t">les mêmes règles que le rapport</text>
+      <text x="820" y="234" text-anchor="middle" class="s blue-t">et que le remplacement</text>
+
+      <line x1="358" y1="120" x2="264" y2="120" class="arrow-blue" marker-end="url(#d2)"/>
+      <text x="310" y="112" text-anchor="middle" class="mono blue-t">REQUETE (SQL)</text>
+      <line x1="262" y1="160" x2="356" y2="160" class="arrow" marker-end="url(#d1)"/>
+      <text x="310" y="152" text-anchor="middle" class="mono">RÉSULTAT</text>
+      <line x1="602" y1="120" x2="696" y2="120" class="arrow-blue" marker-end="url(#d2)"/>
+      <text x="649" y="112" text-anchor="middle" class="mono blue-t">VERIFIER</text>
+      <line x1="698" y1="160" x2="604" y2="160" class="arrow" marker-end="url(#d1)"/>
+      <text x="649" y="152" text-anchor="middle" class="mono">CONSTATS</text>
+
+      <rect x="20" y="300" width="920" height="44" rx="3" class="ink"/>
+      <text x="480" y="327" text-anchor="middle" class="mono">BORNES · 12 TOURS · 20 000 TOKENS · 420 S · 30 $ D'IA PAR MOIS, TOUS USAGES</text>
+      <text x="480" y="376" text-anchor="middle" class="s">Une borne atteinte finit la demande par un abandon motivé, écrit au journal. Jamais par un « c'est fait ».</text>
+      <text x="480" y="400" text-anchor="middle" class="s">Le modèle ne retape aucun nombre : les comptes sont faits par SQL, il écrit un trou, le code le remplit.</text>
+    </svg>
+    </div>
+    <figcaption>L'IA ne voit que la copie, et la copie ne contient que ce que le demandeur a le droit de voir : ce n'est pas un filtre sur la réponse, c'est l'absence de la donnée. Une requête sans fin est tuée au bout de cinq secondes, dans un processus à part. Construit le 11/10 : la copie ne porte plus aucun nom, l'identifiant en tient lieu, et le code restitue les noms dans ce que vous lisez.</figcaption>
+  </figure>
+  <div class="wrap">
+    <h3>Le contrôle de la réponse</h3>
+    <p>Depuis le 18/10, l'IA répond par une phrase à trous : <strong>elle ne retape aucun nombre</strong>. Elle écrit un trou, <code>{T2.3.heures}</code> (la case « heures » de la ligne 3 du tableau T2), et le code le remplit depuis le résultat de sa requête. Un trou qui ne se résout pas, ou un nombre retapé hors de votre consigne et des dates connues : le texte de l'IA est retiré, et vous lisez à la place les tableaux que ses requêtes ont rendus, tels quels. L'outil vous dit qu'il l'a retiré, et le compte. Vous n'avez donc jamais sous les yeux un chiffre que la machine n'a pas calculé.</p>
+    <p class="soft">Le trou prouve d'où vient un nombre, pas que la requête était la bonne : une requête qui filtre autrement donne un nombre juste pour une autre question. Le reste se mesure (section « Mesurer »).</p>
+    <h3>Les noms ne partent plus <span class="chip ok">construit et mesuré le 11/10</span></h3>
+    <p>Une demande nouvelle n'envoie plus aucun nom au fournisseur. La copie est pseudonymisée avant d'être construite, l'identifiant tient lieu de nom (<code>A-7</code>) ; votre consigne est masquée par le code, le même qui trouve déjà la personne pour un geste (un nom douteux : « Vous parlez de qui ? », avant tout appel) ; et les noms sont restitués dans ce que vous lisez. La correspondance ne quitte pas votre fichier des agents. Ce n'est pas une anonymisation, c'est une pseudonymisation au sens du RGPD, et elle se mesure : un nom dans une trace, et l'éval échoue ; zéro le 11/10 sur toutes les traces de l'échappée et de la fabrication. Depuis le 19/10, la traduction aussi reçoit la consigne masquée : les cas où un nom partait à la traduction passent de 25 (sécurité privée) et 3 (agence web) à 0, sans perte de justesse. Plan : <code>archives/PLAN-PSEUDONYMES.md</code>.</p>
+    <h3>La proposition</h3>
+    <p>Une proposition est une liste de réaffectations (une vacation, un autre agent). Avant de vous être montrée, elle passe toutes les règles du métier sur le planning entier ; une règle enfreinte la renvoie à l'IA. Vous la lisez telle que le code la décrit (ce qui change, les autres possibles de chaque vacation, ce qui reste à décider), jamais telle que l'IA la résume. Votre oui ouvre une réaffectation groupée : chaque agent qui reçoit une vacation dit oui à son tour, et la clé écrit tout d'un coup. Si une vacation a changé de main entre-temps, rien ne s'écrit.</p>
+    <h3>Changer un agent <span class="chip ok">construit le 14/10</span></h3>
+    <p>Vous voulez un autre agent pour une vacation : écrivez-le (« plutôt Aïcha pour V-03 »), ou cliquez l'un des boutons de la proposition, un par autre possible (« Prendre Thomas Girard pour V-03 »). Le bouton n'appelle pas le modèle. Une nouvelle proposition s'ouvre, repasse toutes les règles et attend votre oui ; l'ancienne est remplacée et ne se valide plus.</p>
+  </div>
+</section>
+
+<section id="jamais" class="wide">
+  <div class="wrap">
+    <p class="num">Les sécurités obligatoires</p>
+    <h2>Neuf sécurités, et où chacune tient</h2>
+    <p>Elles ne se règlent pas, ni par l'IA, ni par le patron. Toutes existent et sont testées ; chacune dit l'endroit du code qui la porte.</p>
+  </div>
+  <div class="rules">
+    <div><h3>L'IA n'a pas les clés</h3><p>Elle choisit un outil ; le code exécute. Ce qui écrit attend un oui dont l'empreinte est celle du contenu exact.</p><p class="st"><span class="chip ok">Existe</span> <code>conversation.ts · jeton</code></p></div>
+    <div><h3>Les interdits ne se lèvent pas</h3><p>Ni par l'IA, ni par le patron, ni par une délégation. Un agent sans carte valide n'est affecté par aucun chemin : geste, proposition ou remplacement passent les mêmes contrôles.</p><p class="st"><span class="chip ok">Existe</span> <code>controles.ts · regles.yaml</code></p></div>
+    <div><h3>Tout résultat passe les règles</h3><p>Une proposition est jugée sur le planning entier avant d'être montrée, puis rejugée à la validation et à l'écriture. Une vérification qui plante refuse.</p><p class="st"><span class="chip ok">Existe</span> <code>modifications.ts · reaffectation.ts</code></p></div>
+    <div><h3>Une demande nouvelle ne se délègue jamais</h3><p>Seuls les gestes, qui donnent toujours le même résultat, peuvent être délégués. Une proposition de l'échappée exige votre oui et celui de chaque agent concerné.</p><p class="st"><span class="chip ok">Existe</span> <code>conversation.ts</code></p></div>
+    <div><h3>Pas un chiffre, pas un nom hors des données</h3><p>L'IA ne retape aucun nombre : elle écrit un trou, que le code remplit depuis les résultats. Un trou qui ne se résout pas, ou un chiffre, une date ou un nom absents des résultats, retirent son texte, remplacé par les tableaux.</p><p class="st"><span class="chip ok">Existe</span> <code>reponse.ts · trous.ts</code></p></div>
+    <div><h3>Une demande finit toujours clairement</h3><p>Une réponse, une proposition à valider, ou « je n'y arrive pas, voici pourquoi ». Jamais un « c'est fait » de l'IA ; un abandon qui cite un chiffre inconnu est lui aussi remplacé.</p><p class="st"><span class="chip ok">Existe</span> <code>boucle.ts</code></p></div>
+    <div><h3>Chaque demande a un plafond</h3><p>Douze tours, vingt mille tokens, sept minutes ; et trente dollars d'IA par mois, après quoi la conversation s'arrête et les gestes restent possibles par l'écran.</p><p class="st"><span class="chip ok">Existe</span> <code>config.yaml · compteur.ts</code></p></div>
+    <div><h3>Vos données ne sont jamais des consignes</h3><p>Tout ce qui vient des tableurs est rendu entre des balises que la donnée ne peut pas fermer ; un nom ne peut pas sauter de ligne ; un mot-clé est vérifié. Sur un fichier piégé, l'IA a signalé le piège sans le suivre, sur chaque passe.</p><p class="st"><span class="chip ok">Existe</span> <code>traduire.ts · copie.ts</code></p></div>
+    <div><h3>Tout est au journal</h3><p>Chaque consigne, chaque appel au modèle avec ses tokens et son coût, chaque requête, chaque proposition, chaque oui et chaque non. En ajout seul : on ne peut ni l'effacer ni le modifier.</p><p class="st"><span class="chip ok">Existe</span> <code>journal.ts</code></p></div>
+  </div>
+</section>
+
+<section id="commande" class="wide">
+  <div class="wrap">
+    <p class="num">L'espace 3</p>
+    <h2>Vous commandez, le harnais code</h2>
+    <p><strong>Décidé le 15/10 (Lionel)</strong> : « Les gestes sont codés par le harnais lui-même quand la demande explicite est faite par le patron. » Plus aucun modèle ne cherche ce qui revient pour en faire un geste ; plus de geste « appris » enregistré comme une donnée. Un geste n'est que du code, et c'est vous qui dites lequel.</p>
+    <p>L'onglet « Gestes » de votre interface montre les demandes que l'outil n'a pas su faire, regroupées par sorte, avec leur nombre et leurs dernières formulations. Vous cliquez « Créer ce geste » : le code écrit la mission, sans appel au modèle, à partir de vos vraies demandes, chaque nom remplacé par une place. La mission part à l'agence, par une file propre à votre entreprise ; jamais rien ne se code chez vous. Dès votre clic, un chantier la code dans la seule partie « métier » ; le code vérifie neuf conditions ; si toutes sont vertes, le geste est fusionné dans une version signée, et l'onglet le dit. Votre harnais tire lui-même cette version, la vérifie, l'installe à côté et bascule au calme ; si le redémarrage échoue, il revient à la précédente.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 230" role="img" aria-label="Les demandes sans geste, regroupées ; le patron commande ; le code écrit la mission, sans nom ni modèle ; à l'agence, un modèle planifie, un autre code, un troisième relit, et le code vérifie neuf conditions ; toutes vertes, le geste rejoint l'espace 1.">
+      <defs>
+        <marker id="f1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+      </defs>
+      <text x="102" y="30" text-anchor="middle" class="mono">1</text>
+      <rect x="20" y="44" width="164" height="110" rx="3" class="ink"/>
+      <text x="102" y="84" text-anchor="middle" class="t">Sans geste</text>
+      <text x="102" y="106" text-anchor="middle" class="s">les demandes que l'outil</text>
+      <text x="102" y="123" text-anchor="middle" class="s">n'a pas su faire</text>
+
+      <text x="291" y="30" text-anchor="middle" class="mono">2</text>
+      <rect x="209" y="44" width="164" height="110" rx="3" class="human"/>
+      <text x="291" y="84" text-anchor="middle" class="t on-human">Le patron</text>
+      <text x="291" y="106" text-anchor="middle" class="s" style="fill:var(--on-human)">clique</text>
+      <text x="291" y="123" text-anchor="middle" class="s" style="fill:var(--on-human)">« Créer ce geste »</text>
+
+      <text x="480" y="30" text-anchor="middle" class="mono blue-t">3</text>
+      <rect x="398" y="44" width="164" height="110" rx="3" class="harness"/>
+      <text x="480" y="84" text-anchor="middle" class="t">La mission</text>
+      <text x="480" y="106" text-anchor="middle" class="s blue-t">écrite par le code,</text>
+      <text x="480" y="123" text-anchor="middle" class="s blue-t">sans nom, sans modèle</text>
+
+      <text x="669" y="30" text-anchor="middle" class="mono blue-t">4</text>
+      <rect x="587" y="44" width="164" height="110" rx="3" class="note"/>
+      <text x="669" y="84" text-anchor="middle" class="t">Le chantier</text>
+      <text x="669" y="106" text-anchor="middle" class="s">Fable planifie et relit,</text>
+      <text x="669" y="123" text-anchor="middle" class="s">Opus code, à l'agence</text>
+
+      <text x="858" y="30" text-anchor="middle" class="mono blue-t">5</text>
+      <rect x="776" y="44" width="164" height="110" rx="3" class="harness"/>
+      <text x="858" y="84" text-anchor="middle" class="t">Neuf conditions</text>
+      <text x="858" y="106" text-anchor="middle" class="s blue-t">toutes vertes : fusionné,</text>
+      <text x="858" y="123" text-anchor="middle" class="s blue-t">un geste de plus</text>
+
+      <line x1="186" y1="99" x2="206" y2="99" class="arrow" marker-end="url(#f1)"/>
+      <line x1="375" y1="99" x2="395" y2="99" class="arrow" marker-end="url(#f1)"/>
+      <line x1="564" y1="99" x2="584" y2="99" class="arrow" marker-end="url(#f1)"/>
+      <line x1="753" y1="99" x2="773" y2="99" class="arrow" marker-end="url(#f1)"/>
+      <text x="480" y="190" text-anchor="middle" class="s">Les modèles du chantier ne voient ni donnée ni nom : la mission, des places à la place des noms, et la carte du système.</text>
+      <text x="480" y="208" text-anchor="middle" class="s">Un fichier hors de la partie « métier », un test retiré, un test rouge : rien n'entre. À la charge de l'agence, hors du plafond d'IA du client.</text>
+    </svg>
+    </div>
+    <figcaption>Les neuf conditions, vérifiées par le code : le périmètre (la partie « métier » seulement, jamais le moteur ni une règle), aucun test retiré, tous les tests verts, trois cas de traduction au moins et 95 % sur la passe du modèle du quotidien, le rejeu (chaque nombre que l'échappée cite se retrouve dans ce que le geste rend, ajouté le 18/10), aucun bloquant à la relecture, le budget, la taille, une mémoire sans nom. Tout se retire d'une commande. Chaque fusion pose une version signée par la clé de l'agence ; le harnais du client la tire lui-même (<code>pnpm mise-a-jour</code>), et n'installe rien sans cette signature.</figcaption>
+  </figure>
+  <div class="wrap">
+    <h3>Mesuré de bout en bout le 15/10</h3>
+    <p>Trois vraies demandes au modèle du quotidien, « Combien d'heures a fait Karim cette semaine ? » et deux autres, sont parties en échappée. L'onglet les a regroupées ; un clic les a commandées ; le code a écrit la mission sans aucun nom. La nuit, le chantier a codé le geste <code>heures_par_agent</code>, ses tests et 7 cas de traduction ; huit conditions vertes, 73 sur 73 en traduction ; fusionné. La même question passe ensuite par le geste, en un appel, sans échappée. Une première passe avait été refusée par une condition rouge (un test hors de sa portée) : rien n'était entré, le dossier disait pourquoi.</p>
+    <h3>Les dix intentions connues de la sécurité privée</h3>
+    <div class="chips"><code>compter_vacations</code><code>qui_travaille</code><code>agents_disponibles</code><code>agents_sans_carte</code><code>cartes_expirees</code><code>liberer_un_jour</code><code>reorganiser_semaine</code><code>reaffecter_vacation</code><code>simuler_changement_de_site</code><code>simuler_absence</code></div>
+    <p class="soft">Une liste tenue par le métier, que l'IA réutilise quand elle convient : elle regroupe les demandes que vous voyez dans l'onglet « Gestes ». Une intention devenue geste en sort, comme <code>heures_par_agent</code> le 15/10.</p>
+  </div>
+</section>
+
+<section id="mesure" class="wide">
+  <div class="wrap">
+    <p class="num">Comment on sait</p>
+    <h2>Mesurer, lire les erreurs, corriger</h2>
+    <p>Aucune note subjective, aucun juge IA : 91 cas écrits à la main, chacun joué sur une copie fraîche avec le vrai modèle, et vérifié par du code. Ce qui compte n'est pas le score, c'est ce que disent les écarts.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 300" role="img" aria-label="Quatre-vingt-onze cas écrits à la main ; une passe avec le vrai modèle sur une copie fraîche par cas ; des contrôles binaires en code ; un tableau et les traces ; une analyse d'erreurs qui classe chaque écart : défaut du harnais, corrigé pour tout modèle ; étiquette douteuse, tranchée par Lionel ; défaut du point d'accès, noté. Puis on relance.">
+      <defs>
+        <marker id="g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+      </defs>
+      <rect x="20" y="44" width="164" height="100" rx="3" class="ink"/>
+      <text x="102" y="78" text-anchor="middle" class="t">91 cas</text>
+      <text x="102" y="100" text-anchor="middle" class="s">écrits à la main, jamais</text>
+      <text x="102" y="117" text-anchor="middle" class="s">recopiés du modèle</text>
+
+      <rect x="209" y="44" width="164" height="100" rx="3" class="note"/>
+      <text x="291" y="78" text-anchor="middle" class="t">Une passe</text>
+      <text x="291" y="100" text-anchor="middle" class="s">copie fraîche par cas,</text>
+      <text x="291" y="117" text-anchor="middle" class="s">le vrai modèle</text>
+
+      <rect x="398" y="44" width="164" height="100" rx="3" class="harness"/>
+      <text x="480" y="78" text-anchor="middle" class="t">Contrôles en code</text>
+      <text x="480" y="100" text-anchor="middle" class="s blue-t">binaires, aucun juge IA</text>
+      <text x="480" y="117" text-anchor="middle" class="s blue-t">seuils 95 % · 80 %</text>
+
+      <rect x="587" y="44" width="164" height="100" rx="3" class="ink"/>
+      <text x="669" y="78" text-anchor="middle" class="t">Tableau et traces</text>
+      <text x="669" y="100" text-anchor="middle" class="s">chaque appel gardé :</text>
+      <text x="669" y="117" text-anchor="middle" class="s">envoyé, reçu, coût</text>
+
+      <rect x="776" y="44" width="164" height="100" rx="3" class="human"/>
+      <text x="858" y="78" text-anchor="middle" class="t on-human">Analyse d'erreurs</text>
+      <text x="858" y="100" text-anchor="middle" class="s" style="fill:var(--on-human)">catégories observées,</text>
+      <text x="858" y="117" text-anchor="middle" class="s" style="fill:var(--on-human)">lues dans les traces</text>
+
+      <line x1="186" y1="94" x2="206" y2="94" class="arrow" marker-end="url(#g1)"/>
+      <line x1="375" y1="94" x2="395" y2="94" class="arrow" marker-end="url(#g1)"/>
+      <line x1="564" y1="94" x2="584" y2="94" class="arrow" marker-end="url(#g1)"/>
+      <line x1="753" y1="94" x2="773" y2="94" class="arrow" marker-end="url(#g1)"/>
+      <polyline points="858,146 858,178 102,178 102,150" class="arrow" marker-end="url(#g1)"/>
+      <text x="480" y="172" text-anchor="middle" class="mono">RELANCE</text>
+
+      <text x="160" y="212" text-anchor="middle" class="mono blue-t">DÉFAUT DU HARNAIS</text>
+      <text x="160" y="230" text-anchor="middle" class="s">corrigé, pour tout modèle</text>
+      <text x="480" y="212" text-anchor="middle" class="mono">ÉTIQUETTE DOUTEUSE</text>
+      <text x="480" y="230" text-anchor="middle" class="s">Lionel tranche, jamais pour faire passer un cas</text>
+      <text x="800" y="212" text-anchor="middle" class="mono">DÉFAUT DU POINT D'ACCÈS</text>
+      <text x="800" y="230" text-anchor="middle" class="s">noté ; le harnais tient quand même</text>
+      <text x="480" y="276" text-anchor="middle" class="s">Deux passes avec GLM-5.3 le 08/10 : traduction 40 puis 39 sur 51, échappée 6 puis 11 sur 14, pour 0,09 $ et 0,20 $ la passe.</text>
+    </svg>
+    </div>
+    <figcaption>Une étiquette, c'est ce qu'on attend d'un cas. On ne la change jamais pour qu'un cas passe : on la tranche, à part, et on l'écrit. Un écart peut venir du harnais, du modèle, du point d'accès ou de l'étiquette elle-même, et la correction n'est pas la même.</figcaption>
+  </figure>
+  <div class="wrap">
+    <h3>Ce que les deux passes ont appris</h3>
+    <div class="table">
+      <table>
+        <thead><tr><th>Écart observé</th><th>D'où il vient</th><th>Ce qu'on a fait</th></tr></thead>
+        <tbody>
+          <tr><td>L'IA appelait deux ou trois outils dans un même tour ; le harnais n'en traitait qu'un, l'IA redemandait, le temps s'épuisait (3 propositions perdues)</td><td>harnais</td><td>chaque appel reçoit son résultat ; les 3 propositions aboutissent en passe 2</td></tr>
+          <tr><td>Les dates de votre consigne (« du 5 au 11 octobre ») faisaient retirer une réponse juste</td><td>harnais</td><td>la consigne compte parmi les sources</td></tr>
+          <tr><td>L'IA recopiait la date du message, ou les bornes de ses propres requêtes : réponse retirée</td><td>modèle, trop bavard</td><td>consigne « réponds court » ; le repli montre tous les tableaux</td></tr>
+          <tr><td>Un agent qui « valide Karim » était lu comme acceptant sa propre sollicitation</td><td>modèle</td><td>descriptions des gestes précisées ; sans danger : le code exige que l'agent soit le sollicité, et lui fait confirmer</td></tr>
+          <tr><td>Le mot-clé d'intention changeait d'une passe à l'autre pour la même phrase</td><td>étiquette, et conception</td><td>le métier montre ses intentions connues (ci-dessus)</td></tr>
+          <tr><td>« Libère le mercredi de Sophie » lu comme son absence</td><td>étiquette</td><td>les deux lectures acceptées ; la vraie question est pour un patron réel</td></tr>
+          <tr><td>Sur le fichier piégé, l'IA a cité le piège entre guillemets en le signalant</td><td>étiquette, et conception</td><td>reste un écart : on signale une donnée suspecte sans la recopier (un texte qui vise l'humain arriverait sinon avec la voix du harnais)</td></tr>
+          <tr><td>Clés mal écrites (« ouI », « ouѝ »), « None » au lieu de rien</td><td>point d'accès GMI, qui ignore le mode strict</td><td>arrêtées par la revalidation ; la clé « oui » renommée « accepte », à l'essai</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Ce qui a tenu sur 130 cas réels</strong> : aucune écriture, aucune vacation vers un agent en infraction, aucune consigne cachée dans une donnée suivie. <strong>Mesuré depuis</strong> : les corrections ci-dessus et la désignation des personnes (le 09/10 : 97 % en traduction sur les 60 consignes, 41 sur 42 en échappée sur trois passes), puis le 11/10, 53 sur 54 en échappée. <strong>Sur Sonnet 5.5, le 14/10</strong> : 66 sur 66 en traduction sur deux passes, dont les 6 cas neufs du changement d'agent ; échappée de la sécurité 18 sur 18. <strong>Le 15/10</strong>, avec le geste que le harnais a codé sur commande : 73 sur 73 en traduction. <strong>La fuite de la traduction, fermée</strong> : jusqu'au 18/10, pour une faute de frappe, le code montrait trois noms au plus au modèle, qui départageait ; depuis, le code pose la question lui-même. <strong>Le 19/10</strong>, la consigne part masquée dès la traduction, mesuré sur deux passes contre la version d'avant : les cas où un nom partait passent de 25 à 0 (sécurité privée) et de 3 à 0 (agence web) ; traduction 73 sur 73 (sécurité), 91 et 90 sur 96 (agence web) ; échappée 18 sur 18 et 24 sur 24 ; aucun cas perdu.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 250" role="img" aria-label="Le harnais parle le format Anthropic. Depuis le 14/10, il atteint Claude par l'abonnement : Sonnet 5.5 au quotidien, Fable 5.1 et Opus 5.5 au chantier. Du 08 au 14/10, il atteignait GLM-5.3 par GMI Cloud, qui ignore le mode strict et « un outil par tour » ; le harnais le tenait quand même.">
+      <defs>
+        <marker id="h1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="h2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+      </defs>
+      <rect x="20" y="40" width="260" height="130" rx="3" class="harness"/>
+      <text x="150" y="72" text-anchor="middle" class="t">Le harnais</text>
+      <text x="150" y="96" text-anchor="middle" class="s blue-t">parle le format Anthropic</text>
+      <text x="150" y="114" text-anchor="middle" class="s blue-t">(SDK officiel, outils stricts,</text>
+      <text x="150" y="132" text-anchor="middle" class="s blue-t">un outil par tour)</text>
+
+      <rect x="350" y="40" width="260" height="56" rx="3" class="ink"/>
+      <text x="480" y="64" text-anchor="middle" class="t">L'abonnement Claude</text>
+      <text x="480" y="83" text-anchor="middle" class="s">depuis le 14/10, tant qu'on construit</text>
+      <rect x="350" y="114" width="260" height="56" rx="3" class="ink"/>
+      <text x="480" y="138" text-anchor="middle" class="t">GMI Cloud · jusqu'au 14/10</text>
+      <text x="480" y="157" text-anchor="middle" class="s">ignore « strict » et « un outil par tour »</text>
+
+      <rect x="680" y="40" width="260" height="56" rx="3" class="note"/>
+      <text x="810" y="64" text-anchor="middle" class="t">Sonnet 5.5 · le quotidien</text>
+      <text x="810" y="83" text-anchor="middle" class="s">Fable et Opus, au chantier</text>
+      <rect x="680" y="114" width="260" height="56" rx="3" class="note"/>
+      <text x="810" y="138" text-anchor="middle" class="t">GLM-5.3</text>
+      <text x="810" y="157" text-anchor="middle" class="s">1,40 $ et 4,40 $ par million de tokens</text>
+
+      <line x1="282" y1="68" x2="346" y2="68" class="arrow-blue" marker-end="url(#h2)"/>
+      <line x1="282" y1="142" x2="346" y2="142" class="dash"/>
+      <text x="314" y="134" text-anchor="middle" class="mono">130 CAS</text>
+      <line x1="612" y1="68" x2="676" y2="68" class="arrow" marker-end="url(#h1)"/>
+      <line x1="612" y1="142" x2="676" y2="142" class="dash"/>
+
+      <text x="480" y="210" text-anchor="middle" class="s">Ce que GMI ignorait, le harnais le tenait quand même : les paramètres sont revalidés, chaque appel d'outil reçoit un résultat.</text>
+      <text x="480" y="232" text-anchor="middle" class="s">Une clé mal écrite finit en « je ne sais pas », jamais en action. Un modèle sans les clés ne peut pas faire de dégât, seulement échouer.</text>
+    </svg>
+    </div>
+    <figcaption>Changer de modèle est un réglage, pas du code. Depuis le 18/10, un seul fournisseur, Anthropic : par l'abonnement aujourd'hui, par la clé d'API avant un client réel ; GLM-5.3 est retiré. Le harnais ne compte sur aucune promesse du fournisseur : ce qu'il exige, il le revérifie.</figcaption>
+  </figure>
+</section>
+
+<section id="cout" class="wide">
+  <div class="wrap">
+    <p class="num">Le coût</p>
+    <h2>Ce que ça coûte en IA, mesuré avec GLM-5.3</h2>
+    <p class="soft">Mesuré du 08 au 14/10. Sur l'abonnement, le coût affiché est une estimation en équivalent API ; le coût réel se réglera au déploiement, avec la clé d'API.</p>
+    <div class="table">
+      <table>
+        <thead><tr><th>Une demande</th><th>Appels</th><th>Coût mesuré</th></tr></thead>
+        <tbody>
+          <tr><td>Un geste du quotidien</td><td>1 (traduire)</td><td class="num">≈ 0,002 $</td></tr>
+          <tr><td>Une question nouvelle (réponse)</td><td>1 + 2 à 4</td><td class="num">≈ 0,005 à 0,015 $</td></tr>
+          <tr><td>Une réorganisation (proposition)</td><td>1 + 5 à 10</td><td class="num">≈ 0,03 à 0,05 $</td></tr>
+          <tr><td>Le plafond du mois, dans votre configuration</td><td></td><td class="num">30 $</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="points">
+      <li><span class="k">01</span><span><strong>Chaque appel est journalisé</strong> avec ses tokens et son coût ; le plafond du mois se lit à l'écran, et le compteur arrête la conversation, pas les gestes.</span></li>
+      <li><span class="k">02</span><span><strong>Le coût guide ce qu'on code</strong> : une demande qui revient et qui coûte est la première candidate pour devenir un geste, presque gratuit ; c'est le patron qui le commande, d'un clic.</span></li>
+      <li><span class="k">03</span><span><strong>GLM était lent</strong> : jusqu'à 45 secondes par appel, une proposition pouvait prendre deux à trois minutes, pour un prix cinq fois plus bas que Claude. Sonnet 5.5 le remplace depuis le 14/10, par l'abonnement, tant qu'on construit.</span></li>
+      <li><span class="k">04</span><span><strong>Le chantier coûte à l'agence, pas au client</strong> : il tourne à l'agence, sur ses modèles, hors du plafond du client.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="etat" class="wide">
+  <div class="wrap">
+    <p class="num">Honnêtement</p>
+    <h2>Ce qui existe, ce qui est prouvé, ce qui ne l'est pas</h2>
+  </div>
+  <div class="status">
+    <div><h3>Existe</h3><ul><li>Les trois espaces, de bout en bout : traduction, onze gestes, échappée sur copie, proposition, réaffectation groupée avec l'accord de chaque agent, et la commande d'un geste par le patron.</li><li>Le patron change un agent dans une proposition, en mots ou d'un bouton, sans appel au modèle pour le bouton (14/10).</li><li>Un second métier, l'agence web inventée, avec son écran (12 et 13/10).</li><li>L'interface web du patron, et la conversation en ligne de commande, pour le patron et pour un agent.</li><li>Les neuf sécurités, chacune avec ses tests.</li><li>Le registre d'accès, lu avant tout, et la désignation des personnes par le code : le modèle reçoit la phrase masquée, et une faute de frappe devient une question du code (18/10).</li><li>Les pseudonymes : aucun nom de salarié ne part dans une demande nouvelle, l'identifiant en tient lieu, le code rend les noms (construit le 11/10) ; dès la traduction depuis le 19/10.</li><li>Les évals : 91 cas pour la sécurité privée, contrôles en code, traces, analyse d'erreurs.</li><li>La commande : le patron demande un geste, le code écrit la mission, à l'agence un modèle le code dans la partie « métier », la fusion n'a lieu que si neuf conditions sont vertes ; une mémoire garde tout, tout se retire d'une commande (15/10, le rejeu ajouté le 18/10).</li><li>La mise à jour d'un harnais livré : chaque fusion pose une version signée ; le harnais du client la tire, vérifie la signature, l'installe à côté, bascule au calme et revient en arrière si le redémarrage échoue (16/10, rejouée en laboratoire).</li></ul></div>
+    <div><h3>Prouvé</h3><ul><li>1 050 tests automatiques au 19/10, et quatre relectures indépendantes : douze défauts le 08/10, neuf le 11/10, tous corrigés ; six sur les pseudonymes le 11/10, trois corrigés, trois notés comme risques ; sur l'écriture le 11/10, aucun bloquant, les deux importants corrigés, deux mineurs notés.</li><li>Deux passes réelles avec GLM-5.3 : 76 % en traduction, 79 % en échappée ; aucune écriture, aucune infraction, aucun piège suivi.</li><li>Sur Sonnet 5.5, le 14/10 : 66 sur 66 en traduction sur deux passes, échappée de la sécurité 18 sur 18.</li><li>La commande de bout en bout, le 15/10 : trois vraies demandes, un clic, un geste codé la nuit et fusionné sous huit conditions, puis la même question en un appel.</li><li>La consigne masquée dès la traduction, le 19/10, sur deux passes : aucun nom parti (25 et 3 cas avant), traduction 73 sur 73 (sécurité), 91 et 90 sur 96 (agence web), échappée 18 sur 18 et 24 sur 24, aucun cas perdu.</li><li>Une démo complète rejouée à l'écran en simulé (64 captures, clair et sombre, ordinateur et téléphone).</li></ul></div>
+    <div><h3>Pas encore</h3><ul><li>La commande n'a été mesurée que sur un geste qui lit (<code>heures_par_agent</code>) ; un geste qui écrit, commandé de même, reste à éprouver. Un geste qui écrit, codé à la main, a fait tout le chemin avec le vrai modèle : un appel, votre oui, celui de l'agent, la clé.</li><li>Le masque ne connaît que les noms des données : un surnom, un nom absent des données, une faute tout en minuscules partiraient encore au modèle, et la mesure ne les verrait pas.</li><li>L'identité qui arrive par un canal est déclarée, pas authentifiée.</li><li>Les cas sont écrits par Claude depuis les données inventées : aucun patron n'a relu les phrases. Ceux de l'agence web ont été revus le 19/10 : la réponse attendue ne demande que ce que la question demande.</li><li>L'interface a tourné avec le vrai modèle, devant Lionel (19/10) ; jamais devant un vrai patron.</li><li>Sonnet 5.5 par l'abonnement sert à construire ; la clé d'API, au coût réel, avant un client réel.</li><li>La mesure réelle de la livraison, avec la clé de l'agence et un bac à sable pour le chantier ; l'avis du juriste sur les décisions qui choisissent entre des personnes.</li></ul></div>
+  </div>
+</section>
+
+<section id="decide" class="wide">
+  <div class="wrap">
+    <p class="num">Par Lionel</p>
+    <h2>Ce qui est décidé, et ce qui reste</h2>
+    <ul class="points">
+      <li><span class="k">07/10</span><span><strong>Les trois espaces</strong>, construits sur l'entreprise inventée ; les rôles patron et agent ; aucune enveloppe d'IA du commerce, une boucle maison sur le SDK officiel.</span></li>
+      <li><span class="k">08/10</span><span><strong>Le vocabulaire des intentions</strong> appartient au métier et se montre à l'IA ; <strong>une donnée suspecte se signale sans se recopier</strong> ; « libère le mercredi de Sophie » admet les deux lectures.</span></li>
+      <li><span class="k">08/10</span><span><strong>GLM-5.3 est la référence</strong> jusqu'à nouvel ordre, et <strong>le laboratoire passe avant le terrain</strong> : un produit correct, fonctionnel et efficient sur des données fictives cohérentes, avant de démarcher.</span></li>
+      <li><span class="k">08/10</span><span><strong>L'identité avant le dossier</strong> : un registre d'accès du harnais décide qui parle avant que rien ne soit lu. <strong>Le modèle ne reçoit que la phrase</strong> : le code trouve la personne quand c'est sûr, le modèle départage trois noms au plus, l'humain tranche un doute ; jamais une correspondance approximative qui déciderait seule.</span></li>
+      <li><span class="k">10/10</span><span><strong>Les pseudonymes</strong> : le fournisseur ne reçoit plus aucun nom, même dans l'échappée. <strong>Le chantier</strong> : un modèle code dans la bande métier, un autre le relit, <strong>et la fusion est automatique si tout est vert</strong> (Claude recommandait une fusion humaine) ; une mémoire garde l'histoire de la nuit. <strong>Fable 5.1 planifie, Opus 5.5 code, GLM reste au quotidien.</strong> Le grand plan : <code>PLAN-GENERAL.md</code>.</span></li>
+      <li><span class="k">14/10</span><span><strong>Sonnet 5.5 par l'abonnement remplace GLM-5.3</strong> au quotidien, tant qu'on construit. <strong>La méthode s'allège</strong> : lire les traces avant de corriger, mesurer une fois, à la fin ; la cérémonie seulement pour la sécurité, la vie privée et la fusion. <strong>Le patron change un agent</strong> dans une proposition, en mots ou d'un bouton.</span></li>
+      <li><span class="k">15/10</span><span><strong>Seul le patron commande un geste, et le harnais le code</strong> : « on arrête avec la détection de récurrence, c'est trop instable ; c'est le patron qui donne les directives ». La ronde de nuit et les gestes appris sont retirés ; un geste n'est que du code, écrit par le chantier sous huit conditions. <strong>Le soir même, le chantier au clic</strong> : il se lance au clic du patron, à l'agence, jamais chez le client ; la mission part masquée par une file propre à chaque client ; chaque fusion pose une version signée, que le harnais du client tire lui-même, vérifie, installe à côté, et sur laquelle il bascule au calme, avec retour arrière.</span></li>
+      <li><span class="k">18/10</span><span><strong>Anthropic seul</strong> : GLM-5.3 est retiré ; Sonnet 5.5 au quotidien, Fable 5.1 et Opus 5.5 au chantier. <strong>Le modèle ne départage plus aucun nom</strong> : une faute de frappe ou un homonyme, et le code pose la question, avant tout appel. <strong>La phrase à trous</strong> : dans l'échappée, le modèle ne retape aucun nombre. <strong>Le rejeu</strong>, neuvième condition de fusion. Lionel délègue à Claude les décisions qui se défont en un commit.</span></li>
+      <li><span class="k">19/10</span><span><strong>La consigne part masquée dès la traduction</strong> : un nom sûr devient son identifiant, un prénom partagé ou un nom mal écrit un jeton (<code>NOM-1</code>) que le code reprend après l'appel. Mesuré : aucun nom parti, sans perte de justesse.</span></li>
+      <li><span class="k">reste</span><span><strong>Dire ce qu'est une bonne réponse</strong>, ou mettre un vrai patron devant l'outil ; <strong>relire les phrases</strong> comme un patron les dirait ; <strong>trois choix avant un client réel</strong> : le bac à sable du chantier, ce que la signature couvre, le nom du client dans ce que tous les clients lisent ; <strong>la clé de l'agence</strong>, puis la mesure réelle de la livraison ; <strong>la clé d'API</strong> avant un client réel ; <strong>un geste qui écrit</strong>, commandé de même ; <strong>le juriste</strong> (article 22 du RGPD, pour les décisions qui choisissent entre des personnes) ; <strong>l'authentification</strong> d'un canal ; ce qu'on ouvre aux équipes, rôle par rôle, à recueillir chez un vrai client.</span></li>
+    </ul>
+  </div>
+  <footer class="wrap">agency-harness · construit le 08/10/2026 · données fictives · aucun montant</footer>
+</section>
+</div>
+</body>
+</html>

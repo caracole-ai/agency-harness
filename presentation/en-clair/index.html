@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le harnais en clair</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,600;1,400&family=Public+Sans:wght@400;500;600&family=Martian+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page">
+<!-- nav-harnais -->
+<nav class="toc" aria-label="Sommaire"><div class="in">
+  <b>Le projet</b>
+  <a href="#idee">L'idée</a>
+  <a href="#etages">Les étages</a>
+  <a href="#carte">La carte</a>
+  <a href="#regle">Une règle</a>
+  <a href="#demo">Le rapport</a>
+  <a href="#pilotage">Rigide et réglable</a>
+  <a href="#avancement">Où on en est</a>
+  <a href="#suite">La suite</a>
+  <a href="#decisions">Décisions</a>
+  <a href="#mots">Mots et fichiers</a>
+</div></nav>
+
+<header class="wide">
+  <p class="eyebrow">Smart Tailor · état du 19/10/2026</p>
+  <h1>Un outil qui connaît les <em>règles d'un métier</em>, et qui laisse toujours décider un humain.</h1>
+  <p class="lede">Ce qu'on construit, pourquoi c'est construit ainsi, où on en est, et la suite. Deux métiers : une PME de sécurité privée, et une agence web inventée qui prouve que le moteur ne connaît aucun métier. Le moteur, la conversation et l'écran existent ; on les éprouve au laboratoire avant le terrain.</p>
+</header>
+
+<section id="idee" class="wide">
+  <div class="wrap">
+    <p class="num">L'idée</p>
+    <h2>Le harnais lit, signale, propose, et n'écrit qu'après un oui</h2>
+    <p>Une PME a déjà ses outils : un planning, un fichier d'agents, des tableurs. Le harnais se place à côté. Il lit ces données, les compare aux règles du métier (la loi, la convention collective, les habitudes de l'entreprise), dit ce qui ne va pas, et propose. C'est l'humain qui décide ; son oui est la seule chose qui écrive.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 340" role="img" aria-label="Le harnais lit les données du client, signale et propose au gérant ; le gérant décide ; le harnais n'écrit dans le planning qu'avec la clé que donne son oui.">
+      <defs>
+        <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="a1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+        <marker id="a1h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-human"/></marker>
+      </defs>
+      <text x="145" y="36" text-anchor="middle" class="mono">LE MONDE DU CLIENT</text>
+      <text x="480" y="36" text-anchor="middle" class="mono blue-t">LE HARNAIS</text>
+      <text x="815" y="36" text-anchor="middle" class="mono">L'HUMAIN</text>
+
+      <rect x="20" y="52" width="250" height="210" rx="3" class="ink"/>
+      <rect x="40" y="76" width="210" height="40" rx="3" class="ink"/>
+      <text x="145" y="101" text-anchor="middle" class="t">Planning</text>
+      <rect x="40" y="132" width="210" height="40" rx="3" class="ink"/>
+      <text x="145" y="157" text-anchor="middle" class="t">Fichier des agents</text>
+      <rect x="40" y="188" width="210" height="40" rx="3" class="ink"/>
+      <text x="145" y="213" text-anchor="middle" class="t">Postes et sites</text>
+      <text x="145" y="250" text-anchor="middle" class="s">ses outils, inchangés</text>
+
+      <rect x="355" y="52" width="250" height="210" rx="3" class="harness"/>
+      <rect x="375" y="70" width="210" height="34" rx="3" class="harness-row"/>
+      <text x="480" y="92" text-anchor="middle" class="s" style="fill:currentColor">Carte professionnelle valide ?</text>
+      <rect x="375" y="112" width="210" height="34" rx="3" class="harness-row"/>
+      <text x="480" y="134" text-anchor="middle" class="s" style="fill:currentColor">Repos suffisant ?</text>
+      <rect x="375" y="154" width="210" height="34" rx="3" class="harness-row"/>
+      <text x="480" y="176" text-anchor="middle" class="s" style="fill:currentColor">Bon niveau incendie ?</text>
+      <rect x="375" y="196" width="210" height="34" rx="3" class="harness-row"/>
+      <text x="480" y="218" text-anchor="middle" class="s" style="fill:currentColor">Qui peut remplacer ?</text>
+      <text x="480" y="250" text-anchor="middle" class="s blue-t">les règles du métier, en code</text>
+
+      <rect x="690" y="52" width="250" height="210" rx="3" class="human"/>
+      <text x="815" y="130" text-anchor="middle" class="t on-human">Le gérant</text>
+      <text x="815" y="152" text-anchor="middle" class="s on-human" style="fill:var(--on-human)">lit, demande,</text>
+      <text x="815" y="170" text-anchor="middle" class="s on-human" style="fill:var(--on-human)">décide : son oui est la clé</text>
+
+      <line x1="272" y1="157" x2="351" y2="157" class="arrow-blue" marker-end="url(#a1b)"/>
+      <text x="312" y="147" text-anchor="middle" class="mono blue-t">LIT</text>
+      <line x1="607" y1="157" x2="686" y2="157" class="arrow-blue" marker-end="url(#a1b)"/>
+      <text x="647" y="147" text-anchor="middle" class="mono blue-t">PROPOSE</text>
+
+      <polyline points="815,264 815,300 480,300 480,266" class="human-line" marker-end="url(#a1h)"/>
+      <text x="647" y="292" text-anchor="middle" class="mono">OUI = LA CLÉ</text>
+      <polyline points="353,230 300,230 300,300 145,300 145,268" class="human-line" marker-end="url(#a1h)"/>
+      <text x="200" y="324" text-anchor="middle" class="mono">ÉCRIT, AVEC LA CLÉ SEULEMENT</text>
+    </svg>
+    </div>
+    <figcaption>Le trait foncé est le seul chemin qui revienne vers le planning, et il part de l'humain : le harnais n'écrit qu'avec la clé que donne un oui précis. Même règle pour tous les métiers : rien ne sort sans un humain.</figcaption>
+  </figure>
+  <div class="wrap">
+    <p><strong>Et l'IA ?</strong> Elle ne décide rien et n'a pas les clés. Elle fait deux choses : traduire ce qu'on lui écrit en un geste de la liste, et, pour une demande que la liste ne couvre pas, chercher sur une copie des données. Elle ne lit aucun nom connu : avant l'appel, le code remplace chaque nom par son identifiant (« Aïcha ne vient pas demain » part « A-11 ne vient pas demain »). Dans les deux cas, le code reprend la main : il revalide, il remplit lui-même chaque chiffre, il passe toute proposition aux règles. Elle ne dira jamais « refusé » ni « c'est fait ». Chaque appel coûte au client et s'inscrit au journal : on ne l'utilise que là où le code ne sait pas faire. <a href="espaces.html">Le détail, schémas à l'appui →</a></p>
+  </div>
+</section>
+
+<section id="etages" class="wide">
+  <div class="wrap">
+    <p class="num">Ce qu'on capitalise</p>
+    <h2>Trois étages : on écrit une fois, on réutilise ensuite</h2>
+    <p>Le vrai capital de l'agence, ce sont les règles et les tests qui les prouvent. Les instructions données à une IA se réécrivent à chaque nouveau modèle, alors qu'un test reste vrai pendant des années. Pour ne pas tout refaire à chaque client, le savoir est rangé sur trois étages, du plus général au plus particulier.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 380" role="img" aria-label="Trois étages : la méthode, commune à tous les métiers ; le métier, une fiche par secteur ; le client, ses données, qui restent chez nous.">
+      <rect x="20" y="20" width="920" height="90" rx="3" class="ink"/>
+      <text x="40" y="48" class="mono blue-t">MÉTHODE</text>
+      <text x="40" y="72" class="t">Commune à tous les métiers</text>
+      <text x="40" y="94" class="s">sert à tous les clients</text>
+      <text x="300" y="58" class="s" style="fill:currentColor">7 règles communes (rien ne sort sans un humain, ne pas deviner, citer sa source…)</text>
+      <text x="300" y="80" class="s" style="fill:currentColor">Le temps : délais, jours fériés, dates de validité · 5 sortes de travail (veiller, planifier…)</text>
+      <text x="300" y="100" class="s blue-t">traduite en code : le moteur, y compris la conversation et l'échappée</text>
+
+      <rect x="20" y="130" width="920" height="120" rx="3" class="ink"/>
+      <text x="40" y="158" class="mono blue-t">MÉTIER</text>
+      <text x="40" y="182" class="t">Une fiche par secteur</text>
+      <text x="40" y="204" class="s">sert à tous les clients</text>
+      <text x="40" y="221" class="s">de ce secteur</text>
+      <rect x="250" y="148" width="156" height="84" rx="3" class="harness"/>
+      <text x="328" y="178" text-anchor="middle" class="t">Sécurité privée</text>
+      <text x="328" y="198" text-anchor="middle" class="s blue-t">règles relues, codées,</text>
+      <text x="328" y="215" text-anchor="middle" class="s blue-t">gestes et intentions</text>
+      <rect x="423" y="148" width="156" height="84" rx="3" class="ink"/>
+      <text x="501" y="178" text-anchor="middle" class="t">Transport</text>
+      <text x="501" y="198" text-anchor="middle" class="s">fiche écrite,</text>
+      <text x="501" y="215" text-anchor="middle" class="s">à confirmer</text>
+      <rect x="596" y="148" width="156" height="84" rx="3" class="ink"/>
+      <text x="674" y="178" text-anchor="middle" class="t">Bureaux d'études</text>
+      <text x="674" y="198" text-anchor="middle" class="s">fiche écrite,</text>
+      <text x="674" y="215" text-anchor="middle" class="s">à confirmer</text>
+      <rect x="769" y="148" width="156" height="84" rx="3" class="ink"/>
+      <text x="847" y="178" text-anchor="middle" class="t">Avocats</text>
+      <text x="847" y="198" text-anchor="middle" class="s">prescripteurs,</text>
+      <text x="847" y="215" text-anchor="middle" class="s">pas une cible</text>
+
+      <rect x="20" y="270" width="920" height="90" rx="3" class="human"/>
+      <text x="40" y="298" class="mono" style="fill:var(--on-human)">CLIENT</text>
+      <text x="40" y="322" class="t on-human">Ses données, ses habitudes, ses seuils</text>
+      <text x="40" y="344" class="s" style="fill:var(--on-human)">sert à ce client seul</text>
+      <text x="520" y="322" class="s" style="fill:var(--on-human)">reste sur notre machine, jamais publié,</text>
+      <text x="520" y="342" class="s" style="fill:var(--on-human)">jamais utilisé pour entraîner une IA</text>
+    </svg>
+    </div>
+    <figcaption>Plus on descend, moins c'est réutilisable. Un fait remonte d'un client vers son métier seulement s'il vaut pour tout le secteur, et il remonte sans nom ni chiffre. Un nouveau métier reprend la méthode : il ne reste à écrire que ce qui lui est propre.</figcaption>
+  </figure>
+</section>
+
+<section id="carte" class="wide">
+  <div class="wrap">
+    <p class="num">Ce qu'on fabrique</p>
+    <h2>La carte du système, tel qu'il existe</h2>
+    <p>Les trois étages, vus depuis le code. Le moteur ne connaît aucune règle de la sécurité privée : le métier les lui fournit, avec ses gestes et ses tables. Le client ne fournit que des données et des réglages. Le modèle n'est appelé que par le moteur.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 560" role="img" aria-label="Quatre bandes. En haut, ce qu'on manipule : la ligne de commande et l'interface web du patron. Puis le moteur, commun à tous les métiers : le temps, les règles et verdicts, le journal, la clé, le modèle, l'accès et la conversation, l'échappée, la commande, les évals ; à sa droite, les modèles : Sonnet 5.5 au quotidien depuis le 14/10, Fable 5.1 et Opus 5.5 pour le chantier, appelés par le moteur seul. Puis le métier sécurité privée : registre de 21 interdits et 34 tests, contrôles, remplacement et réaffectation, 11 gestes, 10 intentions, la copie. En bas, le client fictif : config et registre d'accès, trois CSV, journal, missions commandées.">
+      <defs>
+        <marker id="k1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="k2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+      </defs>
+      <rect x="20" y="20" width="920" height="80" rx="3" class="ink"/>
+      <text x="40" y="52" class="mono">CE QU'ON MANIPULE</text>
+      <text x="40" y="72" class="s">ni logique, ni règle à eux</text>
+      <rect x="250" y="32" width="300" height="56" rx="3" class="ink"/>
+      <text x="400" y="54" text-anchor="middle" class="t">Ligne de commande</text>
+      <text x="400" y="73" text-anchor="middle" class="s">veiller · parler · interface · chantier · agence</text>
+      <rect x="580" y="32" width="340" height="56" rx="3" class="human"/>
+      <text x="750" y="54" text-anchor="middle" class="t on-human">L'interface web du patron</text>
+      <text x="750" y="73" text-anchor="middle" class="s" style="fill:var(--on-human)">à valider, règles, délégations, gestes, journal</text>
+
+      <line x1="480" y1="102" x2="480" y2="118" class="arrow" marker-end="url(#k1)"/>
+      <text x="492" y="114" class="mono">APPELLENT</text>
+
+      <rect x="20" y="120" width="720" height="150" rx="3" class="harness"/>
+      <text x="40" y="150" class="mono blue-t">LE MOTEUR</text>
+      <text x="40" y="170" class="s blue-t">commun à tous les métiers</text>
+      <text x="40" y="188" class="s blue-t">609 tests</text>
+      <rect x="250" y="132" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="325" y="155" text-anchor="middle" class="s" style="fill:currentColor">le temps</text>
+      <rect x="412" y="132" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="487" y="155" text-anchor="middle" class="s" style="fill:currentColor">règles et verdicts</text>
+      <rect x="574" y="132" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="649" y="155" text-anchor="middle" class="s" style="fill:currentColor">le journal</text>
+      <rect x="250" y="176" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="325" y="199" text-anchor="middle" class="s" style="fill:currentColor">la clé (jeton)</text>
+      <rect x="412" y="176" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="487" y="199" text-anchor="middle" class="s" style="fill:currentColor">le modèle</text>
+      <rect x="574" y="176" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="649" y="199" text-anchor="middle" class="s" style="fill:currentColor">accès, conversation</text>
+      <rect x="250" y="220" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="325" y="243" text-anchor="middle" class="s" style="fill:currentColor">l'échappée</text>
+      <rect x="412" y="220" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="487" y="243" text-anchor="middle" class="s" style="fill:currentColor">la commande</text>
+      <rect x="574" y="220" width="150" height="36" rx="3" class="harness-row"/>
+      <text x="649" y="243" text-anchor="middle" class="s" style="fill:currentColor">les évals</text>
+
+      <rect x="770" y="132" width="170" height="126" rx="3" class="note"/>
+      <text x="855" y="162" text-anchor="middle" class="t">Les modèles</text>
+      <text x="855" y="184" text-anchor="middle" class="s">Sonnet 5.5, le quotidien</text>
+      <text x="855" y="202" text-anchor="middle" class="s">Fable et Opus, le chantier</text>
+      <text x="855" y="220" text-anchor="middle" class="s">appelés par le moteur,</text>
+      <text x="855" y="238" text-anchor="middle" class="s">jamais par un écran</text>
+      <line x1="742" y1="194" x2="766" y2="194" class="arrow-blue" marker-end="url(#k2)"/>
+
+      <line x1="480" y1="306" x2="480" y2="272" class="arrow-blue" marker-end="url(#k2)"/>
+      <text x="492" y="294" class="mono blue-t">LE MÉTIER FOURNIT RÈGLES, GESTES, TABLES</text>
+
+      <rect x="20" y="308" width="920" height="110" rx="3" class="harness"/>
+      <text x="40" y="338" class="mono blue-t">LE MÉTIER</text>
+      <text x="40" y="358" class="s blue-t">sécurité privée</text>
+      <text x="40" y="376" class="s blue-t">137 tests</text>
+      <rect x="250" y="320" width="220" height="36" rx="3" class="harness-row"/>
+      <text x="360" y="343" text-anchor="middle" class="s" style="fill:currentColor">registre : 21 interdits, 34 tests</text>
+      <rect x="480" y="320" width="220" height="36" rx="3" class="harness-row"/>
+      <text x="590" y="343" text-anchor="middle" class="s" style="fill:currentColor">contrôles I-01 … I-20</text>
+      <rect x="710" y="320" width="220" height="36" rx="3" class="harness-row"/>
+      <text x="820" y="343" text-anchor="middle" class="s" style="fill:currentColor">remplacement, réaffectation</text>
+      <rect x="250" y="368" width="220" height="36" rx="3" class="harness-row"/>
+      <text x="360" y="391" text-anchor="middle" class="s" style="fill:currentColor">11 gestes du quotidien</text>
+      <rect x="480" y="368" width="220" height="36" rx="3" class="harness-row"/>
+      <text x="590" y="391" text-anchor="middle" class="s" style="fill:currentColor">10 intentions connues</text>
+      <rect x="710" y="368" width="220" height="36" rx="3" class="harness-row"/>
+      <text x="820" y="391" text-anchor="middle" class="s" style="fill:currentColor">la copie : les tables SQL</text>
+
+      <line x1="480" y1="420" x2="480" y2="436" class="arrow" marker-start="url(#k1)" marker-end="url(#k1)"/>
+      <text x="492" y="432" class="mono">LIT LES CSV · ÉCRIT AVEC LA CLÉ · JOURNALISE</text>
+
+      <rect x="20" y="438" width="920" height="90" rx="3" class="ink"/>
+      <text x="40" y="468" class="mono">LE CLIENT</text>
+      <text x="40" y="488" class="s">l'entreprise inventée</text>
+      <text x="40" y="506" class="s">jamais dans le dépôt, pour un vrai</text>
+      <rect x="250" y="450" width="160" height="56" rx="3" class="ink"/>
+      <text x="330" y="472" text-anchor="middle" class="t">config · personnes</text>
+      <text x="330" y="491" text-anchor="middle" class="s">réglages, qui a accès</text>
+      <rect x="423" y="450" width="160" height="56" rx="3" class="ink"/>
+      <text x="503" y="472" text-anchor="middle" class="t">trois CSV</text>
+      <text x="503" y="491" text-anchor="middle" class="s">agents, postes, planning</text>
+      <rect x="596" y="450" width="160" height="56" rx="3" class="ink"/>
+      <text x="676" y="472" text-anchor="middle" class="t">journal.sqlite</text>
+      <text x="676" y="491" text-anchor="middle" class="s">en ajout seul</text>
+      <rect x="769" y="450" width="160" height="56" rx="3" class="ink"/>
+      <text x="849" y="472" text-anchor="middle" class="t">missions/</text>
+      <text x="849" y="491" text-anchor="middle" class="s">les gestes commandés</text>
+
+      <text x="480" y="550" text-anchor="middle" class="s">Les 91 cas des évals vivent à côté, dans le dépôt : ils jouent le moteur et le métier sur une copie fraîche du client inventé.</text>
+    </svg>
+    </div>
+    <figcaption>Un deuxième métier, une agence web inventée, a été écrit ainsi en octobre 2026 : la troisième bande seulement, son registre, ses contrôles, ses gestes, ses intentions, ses tables ; le moteur n'a gagné que des parties communes à tous les métiers. L'écran s'ouvre aussi sur ce second métier depuis le 13/10.</figcaption>
+  </figure>
+</section>
+
+<section id="regle" class="wide">
+  <div class="wrap">
+    <p class="num">Le mécanisme</p>
+    <h2>Une règle, de la loi jusqu'au rapport</h2>
+    <p>Exemple : « aucun agent n'est affecté sans carte professionnelle valide ». Voici le chemin que suit cette règle avant d'apparaître dans un rapport, dans un remplacement ou dans une proposition de l'IA : c'est la même vérification partout.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 190" role="img" aria-label="Une règle part du texte officiel, est relue mot à mot, écrite dans le registre, codée avec un test, puis apparaît dans le rapport avec sa source.">
+      <defs>
+        <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+      </defs>
+      <text x="102" y="30" text-anchor="middle" class="mono">1</text>
+      <rect x="20" y="44" width="164" height="96" rx="3" class="ink"/>
+      <text x="102" y="84" text-anchor="middle" class="t">Texte officiel</text>
+      <text x="102" y="106" text-anchor="middle" class="s">code, décret,</text>
+      <text x="102" y="123" text-anchor="middle" class="s">convention</text>
+
+      <text x="291" y="30" text-anchor="middle" class="mono">2</text>
+      <rect x="209" y="44" width="164" height="96" rx="3" class="ink"/>
+      <text x="291" y="84" text-anchor="middle" class="t">Relu mot à mot</text>
+      <text x="291" y="106" text-anchor="middle" class="s">sur Légifrance,</text>
+      <text x="291" y="123" text-anchor="middle" class="s">avec la date</text>
+
+      <text x="480" y="30" text-anchor="middle" class="mono blue-t">3</text>
+      <rect x="398" y="44" width="164" height="96" rx="3" class="harness"/>
+      <text x="480" y="84" text-anchor="middle" class="t">Règle écrite</text>
+      <text x="480" y="106" text-anchor="middle" class="s blue-t">« I-01 : carte</text>
+      <text x="480" y="123" text-anchor="middle" class="s blue-t">professionnelle »</text>
+
+      <text x="669" y="30" text-anchor="middle" class="mono blue-t">4</text>
+      <rect x="587" y="44" width="164" height="96" rx="3" class="harness"/>
+      <text x="669" y="84" text-anchor="middle" class="t">Vérification codée</text>
+      <text x="669" y="106" text-anchor="middle" class="s blue-t">et un test</text>
+      <text x="669" y="123" text-anchor="middle" class="s blue-t">qui la prouve</text>
+
+      <text x="858" y="30" text-anchor="middle" class="mono">5</text>
+      <rect x="776" y="44" width="164" height="96" rx="3" class="human"/>
+      <text x="858" y="84" text-anchor="middle" class="t on-human">Ligne du rapport</text>
+      <text x="858" y="106" text-anchor="middle" class="s" style="fill:var(--on-human)">avec le texte</text>
+      <text x="858" y="123" text-anchor="middle" class="s" style="fill:var(--on-human)">qui la fonde</text>
+
+      <line x1="186" y1="92" x2="206" y2="92" class="arrow" marker-end="url(#a3)"/>
+      <line x1="375" y1="92" x2="395" y2="92" class="arrow" marker-end="url(#a3)"/>
+      <line x1="564" y1="92" x2="584" y2="92" class="arrow" marker-end="url(#a3)"/>
+      <line x1="753" y1="92" x2="773" y2="92" class="arrow" marker-end="url(#a3)"/>
+      <text x="480" y="176" text-anchor="middle" class="s">Le texte change ? On relit (étape 2), on corrige la règle (3), et les tests disent si tout tient encore.</text>
+    </svg>
+    </div>
+    <figcaption>Les règles ne sont écrites qu'à un seul endroit : un fichier du dépôt (le registre). La fiche du métier, la vérification et ses tests en découlent, si bien qu'une règle appliquée est toujours une règle qu'on a lue.</figcaption>
+  </figure>
+  <div class="wrap">
+    <h3>Ce que le harnais peut répondre, et quand</h3>
+    <p class="soft">Une règle ne peut pas dire plus que ce qu'on sait d'elle. Une règle qu'on n'a pas encore relue ne bloque jamais : elle alerte seulement.</p>
+    <div class="table">
+      <table>
+        <thead><tr><th>Ce qu'on sait de la règle</th><th>Le plus fort qu'elle puisse dire</th></tr></thead>
+        <tbody>
+          <tr><td>Texte relu mot à mot, ou règle constatée chez le client</td><td><span class="chip stop">À corriger</span></td></tr>
+          <tr><td>Texte pas encore relu, ou cas que le texte ne tranche pas</td><td><span class="chip warn">À décider</span> par l'exploitation</td></tr>
+          <tr><td>Simple hypothèse</td><td><span class="chip q">Aucune vérification</span> une question à poser au client</td></tr>
+          <tr><td>Rien d'anormal</td><td><span class="chip ok">Conforme</span> parfois avec une note</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p><strong>Quand deux textes se contredisent</strong> (repos de 11 h dans la loi, 12 h dans un accord de branche), c'est la loi qui décide, et l'autre texte apparaît en note. Le client pourra choisir sa règle : c'est une des questions du premier rendez-vous.</p>
+  </div>
+</section>
+
+<section id="demo" class="wide">
+  <div class="wrap">
+    <p class="num">La première brique</p>
+    <h2>Veiller : le rapport de la semaine</h2>
+    <p>On lui donne le planning et le fichier des agents d'une entreprise ; il rend un rapport en cinq parties. Testé sur une entreprise de sécurité inventée (13 agents, 3 sites, 19 vacations) où 19 erreurs ont été posées exprès : il les trouve toutes, et rien d'autre.</p>
+    <div class="report" aria-label="Extrait du rapport de démonstration">
+      <div class="h">Extrait · rapport de démonstration, données fictives</div>
+      <div class="part stop">À corriger (8)</div>
+      <div class="line"><strong>Sophie Marchand</strong> · Accueil, Galerie des Tilleuls · sam. 10/10<br><span class="why">Aucune carte valide ni récépissé à la date de la vacation (carte valide jusqu'au 01/10/2026).</span></div>
+      <div class="line"><strong>Nicolas Robert</strong> · Accueil · ven. 16/10<br><span class="why">Agent non déclaré dans Dracar Ultimate (R631-15).</span></div>
+      <div class="part warn">À décider par l'exploitation (3)</div>
+      <div class="line"><strong>Moussa Diallo</strong> · Gardiennage de nuit · sam. 10/10<br><span class="why">La carte professionnelle cesse d'être valide pendant la vacation : à décider par l'exploitation.</span></div>
+    </div>
+    <p><a href="demo.html">La démo, du rapport au remplacement d'un agent →</a></p>
+    <p>Pourquoi commencer par là ? Veiller ne fait que lire et alerter, et ne repose que sur des textes relus. Ses vérifications sont ensuite les mêmes qui jugent un remplacement et toute proposition de l'IA : une seule liste de règles, trois usages.</p>
+  </div>
+</section>
+
+<section id="pilotage" class="wide">
+  <div class="wrap">
+    <p class="num">Le patron aux commandes</p>
+    <h2>Rigide là où une erreur coûte, réglable partout ailleurs</h2>
+    <p>Le patron pilote le harnais par une interface web et en lui écrivant comme à un assistant. Pour que ce soit souple sans devenir dangereux, on sépare trois choses, chacune rangée à un seul endroit.</p>
+  </div>
+  <figure>
+    <div class="scroll">
+    <svg viewBox="0 0 960 360" role="img" aria-label="Le rapport, l'interface web et la conversation passent tous par le moteur. Le moteur applique les interdits sans pouvoir les changer, lit et modifie les réglages du patron dans leurs limites, et ajoute chaque décision au journal.">
+      <defs>
+        <marker id="p1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head"/></marker>
+        <marker id="p2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" class="head-blue"/></marker>
+      </defs>
+      <text x="120" y="30" text-anchor="middle" class="mono">CE QUE VOIT LE PATRON</text>
+      <text x="480" y="30" text-anchor="middle" class="mono blue-t">LE MOTEUR</text>
+      <text x="820" y="30" text-anchor="middle" class="mono">UNE SEULE SOURCE PAR CHOSE</text>
+
+      <rect x="20" y="50" width="200" height="70" rx="3" class="human"/>
+      <text x="120" y="80" text-anchor="middle" class="t on-human">Le rapport</text>
+      <text x="120" y="100" text-anchor="middle" class="s" style="fill:var(--on-human)">la semaine, les échéances</text>
+      <rect x="20" y="145" width="200" height="70" rx="3" class="human"/>
+      <text x="120" y="175" text-anchor="middle" class="t on-human">L'interface web</text>
+      <text x="120" y="195" text-anchor="middle" class="s" style="fill:var(--on-human)">valider, régler, révoquer</text>
+      <rect x="20" y="240" width="200" height="70" rx="3" class="human"/>
+      <text x="120" y="270" text-anchor="middle" class="t on-human">La conversation</text>
+      <text x="120" y="290" text-anchor="middle" class="s" style="fill:var(--on-human)">« Aïcha ne vient pas demain »</text>
+
+      <rect x="380" y="120" width="200" height="120" rx="3" class="harness"/>
+      <text x="480" y="168" text-anchor="middle" class="t">vérifie, propose,</text>
+      <text x="480" y="188" text-anchor="middle" class="t">exécute avec la clé</text>
+      <text x="480" y="212" text-anchor="middle" class="s blue-t">toute la logique est ici</text>
+
+      <rect x="720" y="50" width="220" height="70" rx="3" class="ink"/>
+      <text x="830" y="80" text-anchor="middle" class="t">Les interdits</text>
+      <text x="830" y="100" text-anchor="middle" class="s">personne ne les règle chez le client</text>
+      <rect x="720" y="145" width="220" height="70" rx="3" class="harness"/>
+      <text x="830" y="175" text-anchor="middle" class="t">Les réglages du patron</text>
+      <text x="830" y="195" text-anchor="middle" class="s blue-t">repos, alertes, préférences, plafond d'IA</text>
+      <rect x="720" y="240" width="220" height="70" rx="3" class="ink"/>
+      <text x="830" y="270" text-anchor="middle" class="t">Le journal</text>
+      <text x="830" y="290" text-anchor="middle" class="s">tout ce qui a été décidé, par qui</text>
+
+      <line x1="222" y1="85" x2="376" y2="150" class="arrow" marker-start="url(#p1)" marker-end="url(#p1)"/>
+      <line x1="222" y1="180" x2="376" y2="180" class="arrow" marker-start="url(#p1)" marker-end="url(#p1)"/>
+      <line x1="222" y1="275" x2="376" y2="210" class="arrow" marker-start="url(#p1)" marker-end="url(#p1)"/>
+      <text x="299" y="172" text-anchor="middle" class="mono">DEMANDES</text>
+
+      <line x1="716" y1="85" x2="584" y2="150" class="arrow-blue" marker-end="url(#p2)"/>
+      <text x="636" y="98" text-anchor="middle" class="mono blue-t">APPLIQUE</text>
+      <line x1="584" y1="180" x2="716" y2="180" class="arrow-blue" marker-start="url(#p2)" marker-end="url(#p2)"/>
+      <text x="650" y="172" text-anchor="middle" class="mono blue-t">LIT, MODIFIE</text>
+      <line x1="584" y1="210" x2="716" y2="275" class="arrow-blue" marker-end="url(#p2)"/>
+      <text x="628" y="264" text-anchor="middle" class="mono blue-t">AJOUTE</text>
+
+      <text x="480" y="345" text-anchor="middle" class="s">Les trois écrans n'ont aucune logique à eux : ils montrent et transmettent. Changer d'écran ne change aucune règle.</text>
+    </svg>
+    </div>
+    <figcaption>Le patron règle ce qui lui appartient : la règle de repos qu'il applique (parmi celles prévues), quand être prévenu, comment classer ses agents, ce qu'il délègue, combien d'IA par mois. Il ne peut ni créer ni lever un interdit : ça, c'est le travail du fabricant, après relecture des textes.</figcaption>
+  </figure>
+  <div class="wrap">
+    <p><strong>L'interface existe</strong> et montre cinq choses : ce qui attend une décision, les règles en vigueur, les délégations accordées, ce que l'outil ne sait pas encore faire (vous y commandez un geste, 15/10), le journal ; et la conversation, à droite. Sur l'entreprise inventée, elle sert de démo, rejouable sans modèle. Depuis le 19/10, une demande en cours porte ses décisions (« Valider X », « Prendre Y à la place »), cliquées sans modèle, le oui toujours exigé. Le journal se lit par jour, en phrases, avec des badges, une recherche et des tags.</p>
+    <p><strong>Le patron change un agent d'un clic</strong> (14/10). Une proposition de réaffectation montre chaque autre possible comme un bouton, « Prendre Aïcha Traoré pour V-03 » ; il peut aussi l'écrire avec ses mots. Une nouvelle proposition s'ouvre, repasse toutes les règles et attend son oui. Le bouton n'appelle pas le modèle.</p>
+    <p><a href="espaces.html">Parler à l'outil : le chemin d'une consigne, l'échappée, les sécurités, ce qu'on a mesuré →</a></p>
+  </div>
+</section>
+
+<section id="avancement" class="wide">
+  <div class="wrap">
+    <p class="num">Où on en est</p>
+    <h2>Sept étapes faites sur huit, et les trois espaces</h2>
+    <p>Le plan de construction compte huit étapes. L'étape 6 a été menée comme un chantier à part, en huit lots, le 08/10 : la conversation, l'échappée, la réaffectation groupée, les évals, l'interface. Le soir même, l'identité avant le dossier : un registre d'accès décide qui parle avant que rien ne soit lu, et le modèle ne reçoit plus que la phrase, sans aucun nom. Tout est fusionné dans la branche principale. Le 11/10, les pseudonymes : pour une demande nouvelle, l'IA ne reçoit plus aucun nom de salarié, l'identifiant en tient lieu, et le code rend les noms dans ce que vous lisez ; zéro nom dans les traces de l'échappée, mesuré. Le 11/10 au soir, le chantier est construit : un modèle code un geste dans la bande métier ; la nuit fusionne si tout est vert ; une mémoire garde tout ; tout se retire d'une commande. Les 12 et 13/10, le second métier : une agence web inventée, écrite dans la bande métier seulement, avec son écran. Le 14/10, trois décisions : Sonnet 5.5 remplace GLM-5.3 au quotidien, par l'abonnement, tant qu'on construit ; la méthode s'allège (lire les traces avant de corriger, mesurer une fois, à la fin) ; le patron peut changer un agent dans une proposition, en mots ou d'un bouton. Le 15/10, une décision de fond : seul le patron commande un geste, et le harnais le code. Il voit ce que l'outil n'a pas su faire, clique « Créer ce geste », et la nuit un chantier code le geste sous huit conditions vérifiées en code. Plus aucune détection automatique de ce qui revient, plus de geste « appris » : un geste n'est que du code. Mesuré le jour même de bout en bout, sur une vraie demande des heures d'un agent. Le soir même, la nuit disparaît : le chantier se lance au clic du patron, à l'agence, jamais chez le client. Chaque fusion pose une version signée ; le harnais du client la tire lui-même, la vérifie, l'installe à côté et bascule au calme, avec retour arrière. Construit et audité le 16/10. Le 18/10, quatre décisions : Anthropic seul (GLM-5.3 et son fournisseur retirés) ; le modèle ne départage plus deux noms proches, le code pose la question au patron ; dans l'échappée, le modèle ne retape aucun nombre, il écrit un trou que le code remplit ; une neuvième condition de fusion, le rejeu. Le 19/10, la phrase du patron part masquée dès la traduction : chaque nom connu devient son identifiant avant le premier appel. Le même jour, l'écran est repris avec Lionel : une demande porte ses décisions, sa carte est hiérarchisée, le journal se lit en phrases.</p>
+  </div>
+  <ol class="phases">
+    <li class="done"><span class="p"><span>Étape 0</span><span>fait</span></span><span class="n">Les fondations</span><span class="d">Le projet, les outils, la vérification automatique.</span></li>
+    <li class="done"><span class="p"><span>Étape 1</span><span>fait</span></span><span class="n">Les règles dans un fichier</span><span class="d">21 interdits, 34 tests, une seule source.</span></li>
+    <li class="done"><span class="p"><span>Étape 2</span><span>fait</span></span><span class="n">Le calendrier</span><span class="d">Délais, jours fériés, changement d'heure, nuits à cheval sur deux jours.</span></li>
+    <li class="done"><span class="p"><span>Étape 3</span><span>fait</span></span><span class="n">Les premières vérifications</span><span class="d">Carte, activités, carte d'entreprise, niveau incendie, repos, déclaration.</span></li>
+    <li class="done"><span class="p"><span>Étape 4</span><span>fait</span></span><span class="n">Veiller</span><span class="d">Le rapport, le journal, le PDF de démonstration.</span></li>
+    <li class="done"><span class="p"><span>Étape 5</span><span>fait</span></span><span class="n">Le remplacement, validé par le patron</span><span class="d">Trouver et classer les remplaçants, la clé d'accord, puis la délégation après un premier succès.</span></li>
+    <li class="done"><span class="p"><span>Étape 6</span><span>fait le 08/10</span></span><span class="n">Parler à l'outil, et l'écran</span><span class="d">Les trois espaces, les neuf sécurités, les évals, l'interface web. Mesuré avec GLM-5.3, puis Sonnet 5.5.</span></li>
+    <li><span class="p"><span>Étape 7</span><span>avant toute livraison</span></span><span class="n">Surveiller les textes</span><span class="d">Relecture mensuelle des lois ; seul toi es prévenu, jamais le client.</span></li>
+  </ol>
+  <div class="wrap">
+    <p class="soft">1 050 tests automatiques passent : moteur 609, sécurité privée 137, agence web 260, interface 44. Avec GLM-5.3 : 76 % en traduction et 79 % en échappée le 08/10, sans aucune écriture ni infraction ; 97 % et 41 sur 42 après corrections, le 09/10. Avec Sonnet 5.5, le 14/10 : 66 sur 66 en traduction sur deux passes, échappée de la sécurité 18 sur 18 ; le 15/10, 73 sur 73 avec le geste codé sur commande. Le 19/10, phrase masquée : traduction de la sécurité 73 sur 73, de l'agence web 91 et 90 sur 96 ; échappée de la sécurité 18 sur 18, de l'agence web 24 sur 24. Les noms partis à la traduction passent de 25 cas (sécurité) et 3 cas (agence) à 0, sans perte de justesse. Limites dites : un surnom, un nom absent des données, une faute tout en minuscules partiraient encore.</p>
+  </div>
+</section>
+
+<section id="suite" class="wide">
+  <div class="wrap">
+    <p class="num">La suite</p>
+    <h2>Le laboratoire d'abord, le terrain ensuite</h2>
+    <p>Décision du 08/10 : on veut un produit correct, fonctionnel et efficient avant de démarcher, et comprendre soi-même la proposition et ses enjeux. On avance donc sur l'entreprise inventée, en veillant à ce que ses données restent pertinentes et cohérentes. Depuis le 18/10, Anthropic seul : Sonnet 5.5 au quotidien, par l'abonnement, tant qu'on construit ; Fable 5.1 et Opus 5.5 au chantier des gestes commandés.</p>
+    <ul class="points">
+      <li><span class="k">01</span><span><strong>Le lot 5 : la mesure réelle</strong>. La chaîne entière au laboratoire, avec les vrais modèles : une mission commandée depuis l'écran, le chantier, les neuf conditions, la version signée, la bascule chez le client. Avant, Lionel crée la clé de l'agence, hors du dépôt.</span></li>
+      <li><span class="k">02</span><span><strong>Le bac à sable du chantier</strong> (décision de Lionel, avant un client réel). Le code qu'écrit le modèle peut lire la clé, <code>~/.ssh</code> et le trousseau, et glisser ce qu'il lit dans ce que tous les clients tirent. Chemin simple recommandé : un utilisateur macOS dédié au chantier, sans accès à tout cela.</span></li>
+      <li><span class="k">03</span><span><strong>Ce que la signature couvre</strong> (décision de Lionel). La fusion automatique signe tout ce que porte le dépôt en ligne, même un commit poussé depuis un compte volé. Chemin simple recommandé : refuser de signer si un commit touche autre chose que la mémoire.</span></li>
+      <li><span class="k">04</span><span><strong>Le nom court du client</strong> (décision de Lionel). Il figure dans la mémoire et dans chaque version, que tous les clients lisent. Chemin simple recommandé : y nommer le métier ; le client reste au registre local de l'agence.</span></li>
+      <li><span class="k">05</span><span><strong>Trente minutes par semaine</strong> : dire ce qu'est une bonne réponse, ou mieux, mettre un vrai patron devant l'outil. Les étiquettes en suspens sont tranchées depuis le 19/10 : reste le vrai patron.</span></li>
+      <li><span class="k">06</span><span><strong>Puis le terrain</strong> : l'entretien chez un dirigeant, dont les phrases remplacent les nôtres, et son vrai tableur remplace le format provisoire. Le juriste, en parallèle.</span></li>
+      <li><span class="k">07</span><span><strong>La clé d'API avant un client réel</strong> : l'abonnement sert à construire ; un harnais livré appellera le modèle avec une clé, au coût réel. La date est à Lionel.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section id="decisions" class="wide">
+  <div class="wrap">
+    <p class="num">À garder en tête</p>
+    <h2>Les décisions qui tiennent le projet</h2>
+  </div>
+  <div class="rules">
+    <div><h3>Rien ne sort sans un humain</h3><p>Le harnais prépare. Envoyer, affecter, publier : un humain valide, à chaque fois, ou une fois pour toutes en déléguant une décision précise qui a déjà réussi. Révocable à tout moment.</p></div>
+    <div><h3>Qui parle, avant tout</h3><p>Un registre d'accès du harnais dit qui est le patron et qui sont les agents ; un inconnu est refusé avant que rien ne soit lu. Le modèle reçoit la phrase masquée : c'est le code qui trouve la personne, et l'humain qui tranche un doute.</p></div>
+    <div><h3>Aucun nom connu ne part au modèle</h3><p>Avant le premier appel, le code remplace chaque nom connu des données par son identifiant. Un prénom partagé ou un nom mal écrit part en jeton (« Aisha » part « NOM-1 ») ; le code le reprend après l'appel pour trouver la personne ou poser la question. Le modèle ne départage jamais deux noms proches : c'est le patron qui répond (18/10). Pour une demande nouvelle, l'IA lit une copie où l'identifiant tient lieu de nom ; le code restitue les noms au retour, et une trace qui porte un nom fait échouer l'éval. Copie masquée le 11/10, phrase masquée le 19/10. Un surnom, un nom absent des données, une faute tout en minuscules partiraient encore.</p></div>
+    <div><h3>Le patron commande, l'agence code, le client tire la version</h3><p>Un geste nouveau ne naît que d'un clic du patron sur « Créer ce geste ». Le code écrit la mission, sans nom ; elle part à l'agence, jamais un chantier chez le client. Le chantier se lance aussitôt : un modèle code le geste dans la bande métier, un autre le relit. Si les neuf conditions sont vertes (périmètre, tests, traduction, relecture, rejeu…), la branche est fusionnée sans attendre personne, et une version signée est posée. Le harnais du client la tire lui-même, la vérifie, bascule au calme, et revient en arrière si besoin. Tout va dans une mémoire, et tout se retire d'une commande. Décidé le 15/10 ; le rejeu ajouté le 18/10.</p></div>
+    <div><h3>Le code décide, l'IA traduit</h3><p>L'IA choisit un geste ou cherche sur une copie ; elle n'a aucun accès aux outils et ne dit jamais « refusé » ni « c'est fait ».</p></div>
+    <div><h3>Pas un chiffre hors des données</h3><p>Dans l'échappée, l'IA ne retape aucun nombre : elle écrit un trou (<code>{T2.3.heures}</code>) que le code remplit depuis les données (18/10). Chaque réponse est relue par le code ; un trou qui ne se résout pas, ou un chiffre ou un nom que les données ne portent pas, la fait remplacer par les tableaux. Le demandeur le lit, et c'est compté.</p></div>
+    <div><h3>Ne pas deviner</h3><p>Une donnée manque ? Le rapport le dit et ne suppose rien. Une consigne trop vague ? « Je ne sais pas », jamais une action devinée.</p></div>
+    <div><h3>La loi décide, les autres textes sont notés</h3><p>Le client pourra choisir sa règle, s'il en applique une plus stricte.</p></div>
+    <div><h3>Le client ne voit pas la fabrication</h3><p>Pas de doutes juridiques ni de jargon dans son rapport. Les textes, c'est toi qui les surveilles, chaque mois.</p></div>
+    <div><h3>Ses données restent les siennes</h3><p>Jamais dans le dépôt, jamais pour entraîner une IA, jamais avant un contrat. Une donnée n'est jamais une consigne.</p></div>
+    <div><h3>Le patron règle, les interdits ne se règlent pas</h3><p>Rigide là où une erreur coûte, réglable ailleurs, et chaque réglage rangé à un seul endroit.</p></div>
+    <div><h3>Le coût d'IA est une contrainte de premier rang</h3><p>Chaque appel est compté ; un plafond par demande et par mois ; un geste du quotidien coûte un seul appel.</p></div>
+    <div><h3>Une étiquette ne se change pas pour qu'un cas passe</h3><p>Elle se tranche à part, par Lionel, et s'écrit. Les évals mesurent le harnais, pas l'inverse.</p></div>
+    <div><h3>Sonnet au quotidien, Fable et Opus au chantier, le labo d'abord</h3><p>Un produit correct sur des données fictives cohérentes, avant de démarcher. Sonnet 5.5 au quotidien depuis le 14/10 (GLM-5.3 jusque-là), par l'abonnement tant qu'on construit ; au chantier, Fable 5.1 planifie et relit, Opus 5.5 code (décidé le 10/10). Anthropic seul depuis le 18/10.</p></div>
+    <div><h3>Simple, sans rogner la qualité</h3><p>Rien n'est construit « pour plus tard ». On lit les traces avant de corriger, on mesure une fois, à la fin (14/10). Mais les tests, les sources et la vérification ne se négocient pas.</p></div>
+    <div><h3>Le patron donne les directives</h3><p>Aucun modèle ne devine ce qui mérite un geste : la détection de ce qui revient était trop instable. Le patron voit ce que l'outil n'a pas su faire, et décide (15/10).</p></div>
+  </div>
+</section>
+
+<section id="mots" class="wide">
+  <div class="wrap">
+    <p class="num">Pour s'y retrouver</p>
+    <h2>Les mots et les fichiers</h2>
+    <dl>
+      <dt>Harnais</dt><dd>L'ensemble des règles et du code qui encadrent un outil : ce qu'il sait, ce qu'il peut faire, ce qu'il ne doit jamais faire, quand il rend la main.</dd>
+      <dt>Interdit</dt><dd>Une règle qu'on ne franchit jamais. Exemple : affecter un agent sans carte valide. Chacun a un code (I-01…) et au moins un test.</dd>
+      <dt>Vacation</dt><dd>Un service d'un agent sur un poste, avec un début et une fin.</dd>
+      <dt>Geste</dt><dd>Une action de la liste fermée (<code>gerer_absence</code>, <code>valider_remplacement</code>, <code>changer_remplacant</code>, <code>voir_planning</code>…), codée et testée, que l'IA reconnaît et que le code exécute.</dd>
+      <dt>Demande nouvelle, échappée</dt><dd>Une demande qu'aucun geste ne couvre ; l'IA y travaille sur une copie des données, sous contrôle, jusqu'à une réponse, une proposition ou un abandon.</dd>
+      <dt>Intention</dt><dd>Le mot-clé qui nomme la sorte d'une demande nouvelle (<code>liberer_un_jour</code>). Le métier en tient la liste ; l'onglet « Gestes » regroupe par intention les demandes que l'outil n'a pas su faire.</dd>
+      <dt>Registre d'accès</dt><dd>La liste, tenue par le harnais, de qui peut lui parler et avec quel rôle (<code>personnes.yaml</code>). Lue avant tout ; l'identité y est déclarée, pas encore authentifiée.</dd>
+      <dt>Clé</dt><dd>L'empreinte du contenu exact qu'un oui valide. Sans elle, rien ne s'écrit ; un oui pour autre chose n'écrit rien.</dd>
+      <dt>Commande</dt><dd>Le clic du patron sur « Créer ce geste », pour une demande que l'outil n'a pas su faire : le code écrit la mission depuis ses vraies demandes, sans nom, et le chantier, à l'agence, code le geste. La seule façon dont un geste nouveau naît (15/10).</dd>
+      <dt>Pseudonyme</dt><dd>L'identifiant d'un salarié (<code>A-7</code>), qui tient lieu de nom dans tout ce que l'IA lit, la phrase du patron comprise depuis le 19/10 ; la correspondance reste dans le fichier des agents, chez le client. Un prénom partagé ou un nom mal écrit part en jeton (<code>NOM-1</code>), que le code reprend après l'appel. Construit le 11/10.</dd>
+      <dt>Chantier, mémoire</dt><dd>Le chantier : au clic du patron, à l'agence, Fable 5.1 planifie, Opus 5.5 code le geste commandé dans la bande métier, Fable relit ; la fusion est automatique si neuf conditions, vérifiées en code, sont vertes. La mémoire : l'histoire de tout ce que les chantiers ont fait, que le chantier suivant relit et que Lionel relit après coup.</dd>
+      <dt>Version, mise à jour</dt><dd>Chaque fusion pose une version signée par la clé de l'agence. Le harnais du client la tire lui-même (<code>pnpm mise-a-jour</code>), vérifie la signature, l'installe à côté, bascule au calme, et revient en arrière si le redémarrage échoue.</dd>
+      <dt>Éval, trace</dt><dd>Un cas écrit à la main avec ce qu'on en attend ; une passe le joue avec le vrai modèle et garde tout ce qui a été échangé.</dd>
+      <dt>Fiche métier</dt><dd>Tout ce qu'on sait d'un secteur : sa chaîne de travail, ses règles, ses tests, ses questions d'entretien.</dd>
+      <dt>Veiller</dt><dd>Surveiller le planning et les échéances, et alerter assez tôt pour agir.</dd>
+    </dl>
+    <h3>Les fichiers à ouvrir</h3>
+    <dl>
+      <dt><code>HANDOFF.md</code></dt><dd>Où on en est, en deux pages. À lire en premier.</dd>
+      <dt><code>REFLEXIONS.md</code></dt><dd>Toutes les décisions, avec leur date et leur raison.</dd>
+      <dt><code>GLOSSAIRE.md</code></dt><dd>Les mots du projet, et la table des commandes, la seule.</dd>
+      <dt><code>PLAN.md</code>, <code>archives/PLAN-ESPACES.md</code></dt><dd>Les huit étapes, puis les huit lots des trois espaces.</dd>
+      <dt><code>PLAN-GENERAL.md</code>, <code>PLAN-LIVRAISON.md</code></dt><dd>Les deux plans vivants. Le grand plan du 10/10 : chaque choix technique tranché d'avance. La livraison du 15/10 : le chantier au clic, la version signée, la mise à jour tirée par le client ; reste son lot 5. Les plans exécutés sont dans <code>archives/</code> : <code>PLAN-PSEUDONYMES.md</code>, <code>PLAN-RONDE.md</code> (la ronde retirée le 15/10), <code>PLAN-METIER-2.md</code> (le second métier), <code>PLAN-CHOIX.md</code> (le patron change un agent).</dd>
+      <dt><code>evals/</code></dt><dd>Les résultats de chaque passe et l'analyse d'erreurs ; les cas vivent avec leur métier (<code>metiers/securite-privee/evals/</code> : 91 cas).</dd>
+      <dt><code>exemples/client-fictif/</code></dt><dd>L'entreprise inventée : config, tableurs, rapport de démonstration.</dd>
+      <dt><code>metiers/securite-privee/prospection.md</code></dt><dd>L'appel, le rendez-vous et le déroulé de la démo (sécurité privée).</dd>
+    </dl>
+  </div>
+  <footer class="wrap">agency-harness · données de démonstration fictives · aucun montant</footer>
+</section>
+</div>
+</body>
+</html>
