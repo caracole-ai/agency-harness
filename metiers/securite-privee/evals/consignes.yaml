@@ -94,10 +94,12 @@ cas:
     role: patron
     consigne: "Montre-moi le planning de Karim."
     attendu: { sorte: action, action: voir_planning, params: { agent: A-1 } }
+  # P-PLA-2 : deux portes justes (Lionel, sur l'avis de Claude, 2026-10-19) :
+  # le planning de tous pour demain, ou la demande nouvelle `qui_travaille`.
   - id: P-PLA-2
     role: patron
     consigne: "c'est qui qui bosse demain ?"
-    attendu: { sorte: action, action: voir_planning, params: { agent: null, du: "2026-10-11", au: "2026-10-11" } }
+    attendu: { sorte: [action, nouvelle], action: voir_planning, params: { agent: null, du: "2026-10-11", au: "2026-10-11" }, intention: [qui_travaille] }
   - id: P-PLA-3
     role: patron
     consigne: "Le planning de tout le monde du 12 au 18 octobre, s'il te plaît."

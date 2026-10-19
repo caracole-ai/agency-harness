@@ -114,12 +114,8 @@ chemin simple, dans les trois cas.
 ## Pour Lionel : 30 minutes par semaine
 
 Dire ce qu'est une bonne réponse (E1), ou mieux, mettre un vrai patron devant
-l'outil. Les étiquettes de l'agence web sont tranchées le 2026-10-19
-(E-04, E-08, E-12, E-18, E-20 : la réponse attendue ne demande plus que ce
-que la question demande ; REFLEXIONS, « Décidé »). Reste à relire celles de
-la sécurité privée : `metiers/securite-privee/evals/consignes.yaml` (les cas
-`heures_par_agent`, P-PLA-2, R-2, AP-4) et E-01, E-02 de
-`metiers/securite-privee/evals/echappees.yaml`.
+l'outil. Toutes les étiquettes en suspens sont tranchées le 2026-10-19
+(REFLEXIONS, « Décidé », les lignes du 19) : reste le vrai patron.
 
 ## Ouvert
 
@@ -153,9 +149,7 @@ fuite 0 avec le vrai modèle) :
 - Les sites : le diaporama et le glossaire de smarttailor.fr redéployés.
 
 **Reste à Lionel, sans être une décision** : créer la clé de l'agence ; la
-date de la bascule vers la clé d'API ; les étiquettes (`heures_par_agent` :
-ses 7 cas et N-1/N-2 réétiquetés ; E-01/E-02 de `echappees.yaml` ; AP-4 ;
-le repli qui montre les cellules piégées ; R-2) ; deux écritures dans
+date de la bascule vers la clé d'API ; deux écritures dans
 `exemples/client-fictif/` : `personnes.yaml` (`agent:` → `personne:`, 13
 lignes, puis retirer `agent` de `IdentiteSchema` et ses deux tests) et
 `attendu-remplacement.yaml` (le départage de `gerer_absence` par numéro
