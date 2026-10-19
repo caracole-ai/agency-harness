@@ -99,10 +99,10 @@ describe('les outils envoyés au modèle', () => {
     expect(json).toContain('les modifications proposées')
     expect(json).not.toMatch(/réaffectation|patron/)
   })
-  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse, et la grammaire des trous', () => {
+  it('redisent, au moment de répondre, la question posée et rien de plus, non verbeuse, chaque grandeur demandée, et la grammaire des trous', () => {
     const json = JSON.stringify(outilsEchappee(outils()))
     expect(json).toContain(
-      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; une phrase à trous : Tu ne recopies jamais un nombre, une date ni un identifiant',
+      'à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte), mais chaque grandeur que la question demande, dans son unité : un pourcentage ne remplace pas un montant demandé ; une phrase à trous : Tu ne recopies jamais un nombre, une date ni un identifiant',
     )
     expect(json).toContain(
       '{T2.3.heures} pour la cellule de la colonne heures à la ligne 3 du résultat T2, {T2.n} pour son nombre de lignes',
@@ -169,6 +169,31 @@ describe('une question', () => {
       { outil: 'repondre', entree: { phrase: 'Julien : 16 h.' } },
     ])
     expect(vrai.issue).toMatchObject({ controle: CONTROLE_RETIRE })
+  })
+  it('un identifiant recopié tel qu’un tableau ou le système le donne passe ; inventé, non ; un nombre, jamais', async () => {
+    const o = outils()
+    o.requete = () => ({
+      colonnes: ['projet', 'jours'],
+      lignes: [['PRJ-03', 12]],
+      tronque: false,
+    })
+    const avec = (phrase: string) =>
+      lancer([REQUETE, { outil: 'repondre', entree: { phrase } }], {
+        outils: o,
+        bornes: BORNES,
+        usage: undefined,
+      })
+    // PRJ-03 vient du tableau : recopié, il ne s'invente pas.
+    expect((await avec('PRJ-03 : {T1.1.jours} jours.')).issue).toMatchObject({
+      controle: 'ok',
+      texte: 'PRJ-03 : 12 jours.',
+    })
+    // PRJ-07 n'est nulle part dans ce que le modèle a reçu.
+    expect((await avec('PRJ-07 : {T1.1.jours} jours.')).issue).toMatchObject({
+      controle: CONTROLE_RETIRE,
+    })
+    // 12 est dans le tableau, mais un nombre passe toujours par un trou.
+    expect((await avec('PRJ-03 : 12 jours.')).issue).toMatchObject({ controle: CONTROLE_RETIRE })
   })
   it('un trou qui ne se résout pas : le résumé est retiré, et le motif le dit', async () => {
     const { issue } = await lancer([

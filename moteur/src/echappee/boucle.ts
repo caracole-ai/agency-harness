@@ -14,7 +14,7 @@ import type { Constat } from '../regles/verdict'
 import type { Temporal } from '../temps/temporal'
 import { verifierReponse } from './reponse'
 import { type ResultatRequete, rendreResultat, rendreResultatNumerote } from './requete'
-import { remplirPhrase, sansTrous } from './trous'
+import { remplirPhrase, sansIdentifiantsRecus, sansTrous } from './trous'
 
 // La boucle de l'échappée (espace 2) : le modèle travaille sur une copie des
 // données avec cinq outils, un seul par tour, dans des bornes de tours, de
@@ -156,7 +156,7 @@ const Repondre = z.strictObject({
   phrase: z
     .string()
     .describe(
-      `la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte) ; une phrase à trous : ${GRAMMAIRE_TROUS}`,
+      `la réponse au demandeur, à la question posée et rien de plus, non verbeuse (un total sans son détail, une liste sans son compte), mais chaque grandeur que la question demande, dans son unité : un pourcentage ne remplace pas un montant demandé ; une phrase à trous : ${GRAMMAIRE_TROUS}`,
     ),
 })
 const Abandonner = z.strictObject({
@@ -411,9 +411,11 @@ export async function boucle<Modif>(
             tours: appels,
             usage,
           })
-          // Hors des trous, le modèle ne cite que ce qu'il a reçu avant toute requête.
+          // Hors des trous, le modèle ne cite que ce qu'il a reçu avant toute requête,
+          // et les identifiants qu'il a reçus tels quels : un tableau, la consigne, une
+          // notion du système. Les nombres passent toujours par un trou.
           const brut = verifierReponse(
-            sansTrous(phrase),
+            sansIdentifiantsRecus(sansTrous(phrase), [systeme, ...sources].join('\n')),
             sourcesInitiales,
             nomsConnus,
             datesConnues,

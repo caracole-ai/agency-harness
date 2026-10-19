@@ -248,12 +248,8 @@ const CALCULS: Record<string, () => Attendu> = {
     const enCours = [...ctx.projets.values()].filter(
       (p) => p.etat === 'en_cours' && factureVendu(ctx, p.id).vendus > 0,
     )
-    return {
-      contient: [
-        ...enCours.map((p) => p.id),
-        ...enCours.filter((p) => p.type === 'forfait').map((p) => nombre(marge(p.id).marge)),
-      ],
-    }
+    // La marge en pourcentage suffit (Lionel, 2026-10-19) : les euros ne sont plus exigés.
+    return { contient: enCours.map((p) => p.id) }
   },
   'E-22': () => ({ exclut: autres('M-04') }),
   'E-27': () => {
