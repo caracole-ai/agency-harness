@@ -355,6 +355,28 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
             ],
             ouvert: true,
           },
+          {
+            titre: 'Ce qui sera lu et modifié, à chaque fois',
+            lignes: [
+              {
+                titre: 'Planning · planning.csv',
+                detail: expect.stringMatching(
+                  /^modifié après le oui du remplaçant : l'agent de la vacation remplacée, aucune autre ligne/,
+                ),
+              },
+              {
+                titre: 'Messages aux agents',
+                detail: expect.stringMatching(/^envoyé sans attendre votre oui/),
+              },
+              { titre: 'Journal · journal.sqlite', detail: expect.stringMatching(/^écrit : /) },
+              {
+                titre: 'Dossiers des agents · agents.csv',
+                detail: expect.stringMatching(/^lu seulement/),
+              },
+              { titre: 'Postes · postes.csv', detail: expect.stringMatching(/^lu seulement/) },
+            ],
+            ouvert: true,
+          },
         ],
       },
     ])
