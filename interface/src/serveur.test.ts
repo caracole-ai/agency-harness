@@ -94,7 +94,13 @@ interface Etat {
       texte: string
       geste?: { action: string; params: Record<string, unknown> }
     }[]
-    demandes: { id: string; statut: string; texte?: string; choix?: Choix[] }[]
+    demandes: {
+      id: string
+      statut: string
+      texte?: string
+      choix?: Choix[]
+      replis?: { titre: string; lignes: string[] }[]
+    }[]
   }
   regles: { id: string; nom: string; interdit: string; statut: string }[]
   ia: { coutMois: number; plafond: number; appels: number }
@@ -330,6 +336,12 @@ describe('les pages', () => {
     expect(await page.text()).toContain('pas authentifiée')
     expect((await a.request('/static/app.js')).status).toBe(200)
     expect((await a.request('/static/style.css')).status).toBe(200)
+  })
+  it('la page et ses fichiers se revalident à chaque chargement', async () => {
+    const a = app()
+    for (const chemin of ['/', '/static/app.js', '/static/style.css']) {
+      expect((await a.request(chemin)).headers.get('cache-control')).toBe('no-cache')
+    }
   })
 })
 
@@ -897,12 +909,28 @@ describe('la décision du patron sur une demande, cliquée : sur la carte et sou
         params: { demande: 'D-V-17', agent: 'A-2' },
       },
       {
-        libelle: 'Prendre Karim Haddad à la place',
+        libelle: 'Prendre Karim Haddad à la place (connaît le site, 24 h cette semaine)',
         action: 'valider_remplacement',
         params: { demande: 'D-V-17', agent: 'A-1' },
       },
     ])
     expect(avant.aValider.demandes[0]?.choix).toEqual(offerts)
+  })
+  it('le texte dit le proposé et ses raisons ; exclus et écartés vont au détail replié, le même des deux côtés', () => {
+    const texte = premiere.reponse.texte
+    expect(texte).toContain('Je propose Julien Lefèvre (connaît le site, 16 h cette semaine).')
+    expect(texte).not.toContain('Autres possibles')
+    expect(texte).not.toContain('Exclus')
+    const replis = premiere.reponse.sorte === 'resultat' ? premiere.reponse.replis : undefined
+    expect(replis?.map((r) => r.titre)).toEqual([
+      '4 exclus : un interdit s’y oppose',
+      '4 écartés : une donnée manque, rien n’est supposé',
+    ])
+    expect(replis?.[0]?.lignes[0]).toMatch(/^Sophie Marchand : carte professionnelle valide/)
+    expect(avant.aValider.demandes[0]?.replis).toEqual(replis)
+    expect(avant.aValider.demandes[0]?.texte).toContain(
+      'Je propose Julien Lefèvre (connaît le site, 16 h cette semaine).',
+    )
   })
   it('le clic demande le oui, sans modèle ; la confirmation dit le geste qu’elle attend', () => {
     expect(clic.conversation).toBe(premiere.conversation)

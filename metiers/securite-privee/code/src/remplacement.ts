@@ -7,6 +7,7 @@ import {
   chargerRegistre,
   classer,
   conditionsManquantes,
+  dateFr,
   type Evaluation,
   empreinte,
   evaluerCandidats,
@@ -18,6 +19,7 @@ import {
   Journal,
   type Ligne,
   type Registre,
+  type Repli,
   Temporal,
   VALIDEE,
 } from '@harnais/moteur'
@@ -415,7 +417,7 @@ export function signalerAbsence(
   if (vacations.length !== 1) {
     throw new Error(
       vacations.length === 0
-        ? `${nom} n'a aucune vacation qui commence le ${jour.toString()}`
+        ? `${nom} n'a aucune vacation qui commence le ${dateFr(jour)}`
         : `${nom} a plusieurs vacations ce jour-là : à préciser par l'exploitation`,
     )
   }
@@ -603,12 +605,44 @@ export function suivre(
  * raisons, le message envoyé, le planning mis à jour. Sans les commandes à
  * taper, que chaque interface ajoute à sa façon (PLAN-ESPACES.md § 5.2).
  */
+/** La phrase du remplaçant proposé : son nom, et ce qui fonde son rang. */
+export const phraseProposition = (p: Proposition): string => {
+  const premier = p.possibles[0]
+  return premier
+    ? `Je propose ${premier.nom} (${premier.raisons.join(', ')}).`
+    : 'Aucun remplaçant possible.'
+}
+
+/**
+ * Le détail d'une proposition, montré replié : qui un interdit exclut, qui
+ * une donnée manquante écarte, et pourquoi. Les autres possibles n'y sont
+ * pas : chacun est une décision à cliquer, avec ses raisons.
+ */
+export function replisProposition(p: Proposition): Repli[] {
+  const section = (compte: (n: number) => string, candidats: Candidat[]): Repli[] =>
+    candidats.length === 0
+      ? []
+      : [
+          {
+            titre: compte(candidats.length),
+            lignes: candidats.map((c) => `${c.nom} : ${c.raisons.join(' ; ')}`),
+          },
+        ]
+  return [
+    ...section((n) => `${n} ${n > 1 ? 'exclus' : 'exclu'} : un interdit s’y oppose`, p.exclus),
+    ...section(
+      (n) => `${n} ${n > 1 ? 'écartés' : 'écarté'} : une donnée manque, rien n’est supposé`,
+      p.ecartes,
+    ),
+  ]
+}
+
 export function decrireEtape(s: Session, etape: Etape | null, demande: string): string {
   if (!etape) return `${demande} : rien de nouveau.`
   switch (etape.statut) {
+    // Le détail (exclus, écartés) et les autres possibles vont à part : `replisProposition`, les décisions du geste.
     case STATUT.proposee: {
       const p = etape.proposition
-      const [premier, ...autres] = p.possibles
       return [
         ...(etape.horsCadre.length > 0
           ? [
@@ -618,30 +652,7 @@ export function decrireEtape(s: Session, etape: Etape | null, demande: string): 
           : []),
         `Absence : ${decrire(s.ctx, p.vacation)}`,
         '',
-        premier
-          ? `Je propose ${premier.nom} (${premier.raisons.join(', ')}).`
-          : 'Aucun remplaçant possible.',
-        ...(autres.length > 0
-          ? [
-              '',
-              'Autres possibles :',
-              ...autres.map((c) => `  - ${c.nom} : ${c.raisons.join(', ')}`),
-            ]
-          : []),
-        ...(p.exclus.length > 0
-          ? [
-              '',
-              'Exclus (un interdit s’y oppose) :',
-              ...p.exclus.map((c) => `  - ${c.nom} : ${c.raisons.join(' ; ')}`),
-            ]
-          : []),
-        ...(p.ecartes.length > 0
-          ? [
-              '',
-              'Écartés (une donnée manque, rien n’est supposé) :',
-              ...p.ecartes.map((c) => `  - ${c.nom} : ${c.raisons.join(' ; ')}`),
-            ]
-          : []),
+        phraseProposition(p),
       ].join('\n')
     }
     case STATUT.demandee:

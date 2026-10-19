@@ -36,10 +36,10 @@
         <span class="info__valeur" id="ia">—</span>
         <span class="jauge" aria-hidden="true"><span id="ia-jauge"></span></span>
       </div>
-      <div class="info" title="Les questions libres sur vos données : l'outil relit chaque chiffre de la réponse ; quand un chiffre n'en vient pas, il retire le résumé et montre les tableaux.">
-        <span class="etiquette" id="echappees-fenetre">Questions libres</span>
-        <span class="info__valeur" id="echappees">—</span>
-      </div>
+      <button class="info info--alerte" type="button" id="alerte-echappees" hidden title="Les questions libres sur vos données : l'outil relit chaque chiffre de la réponse ; quand un chiffre n'en vient pas, il retire le résumé et montre les tableaux.">
+        <span class="etiquette">Questions libres</span>
+        <span class="info__valeur" id="alerte-echappees-texte">—</span>
+      </button>
       <div class="info info--modele" id="info-modele" hidden>
         <span class="etiquette">Modèle</span>
         <span class="info__valeur" id="modele">—</span>
@@ -97,6 +97,7 @@
             <p class="chapo">Tout ce que l'outil a vu, proposé et écrit, dans l'ordre. Rien ne s'y efface. La plus récente d'abord.</p>
             <button class="bouton bouton--outil bouton--petit" type="button" id="rafraichir-journal">Rafraîchir</button>
           </div>
+          <p class="bilan" id="bilan-echappees"></p>
           <div id="journal"><p class="chargement">Chargement…</p></div>
         </div>
       </div>

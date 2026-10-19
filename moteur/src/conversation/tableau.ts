@@ -11,6 +11,14 @@ export interface DemandeTableau {
   depuis: string
   /** Les décisions offertes sur la demande, à son étape (exemple : valider le remplaçant proposé, ou en prendre un autre) ; chacune un geste, cliqué sans modèle. Absent ou vide : rien à décider. */
   choix?: Choix[]
+  /** Le détail qui ne sert pas à décider d'un coup d'œil (exemple : les agents exclus et pourquoi), montré replié sous le texte. */
+  replis?: Repli[]
+}
+
+/** Une section du détail, montrée repliée : son titre (avec son compte), et ses lignes. */
+export interface Repli {
+  titre: string
+  lignes: string[]
 }
 
 /** Un autre choix offert sur une proposition en attente : un geste du métier, appelé directement (un bouton), sans modèle (PLAN-CHOIX.md, lot 3). */

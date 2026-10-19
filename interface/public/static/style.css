@@ -288,6 +288,25 @@ textarea {
 .info--modele .info__valeur {
   color: var(--accent-ink);
 }
+/* Une question libre retirée ou abandonnée : en tête de page, un lien vers le journal. */
+.info--alerte {
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.info--alerte .info__valeur {
+  color: var(--accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.bilan {
+  color: var(--fg-soft);
+  font-size: 0.875rem;
+  margin: 0 0 1rem;
+}
 
 /* ---------- le plan : les onglets, la conversation ---------- */
 .plan {
@@ -485,6 +504,31 @@ textarea {
   color: var(--fg-soft);
   font-size: 0.875rem;
   margin: 0.6rem 0 0;
+}
+/* Le détail d'une demande ou d'un résultat : replié, une ligne par section. */
+.replis {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.25rem;
+}
+.repli summary {
+  cursor: pointer;
+  color: var(--fg-soft);
+  font-size: 0.875rem;
+  width: fit-content;
+}
+.repli summary:hover {
+  color: var(--fg);
+}
+.repli ul {
+  margin: 0.35rem 0 0.4rem;
+  padding-left: 1.1rem;
+  color: var(--fg-soft);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.repli li + li {
+  margin-top: 0.2rem;
 }
 .vide {
   border: 1px dashed var(--line-strong);
@@ -898,18 +942,13 @@ textarea {
     transition: none;
   }
 }
-/* Les exemples tiennent sur une ligne, qui défile : le fil garde la place. */
+/* Les exemples passent à la ligne : chacun se lit en entier. */
 .suggestions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   padding: 0.6rem 1rem;
-  overflow-x: auto;
-  scrollbar-width: none;
   border-top: 1px solid var(--card-line);
-  mask-image: linear-gradient(to right, #000 calc(100% - 2rem), transparent);
-}
-.suggestions::-webkit-scrollbar {
-  display: none;
 }
 .suggestion {
   flex: none;
@@ -932,9 +971,11 @@ textarea {
   border-color: var(--accent);
   color: var(--fg);
 }
-/* Un autre choix d'une proposition peut tenir sur deux lignes. */
+/* Un autre choix d'une proposition peut tenir sur deux lignes, sans dépasser sa bulle. */
 .actions .choix .suggestion {
   white-space: normal;
+  flex: 0 1 auto;
+  max-width: 100%;
 }
 .saisie {
   display: flex;

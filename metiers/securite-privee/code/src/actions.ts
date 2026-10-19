@@ -5,6 +5,7 @@ import {
   dureeHeures,
   type Identite,
   passerVeille,
+  type Repli,
   Temporal,
   veilleDuClient,
 } from '@harnais/moteur'
@@ -29,6 +30,8 @@ import {
   dejaSollicites,
   evaluer,
   METIER,
+  phraseProposition,
+  replisProposition,
   repondre,
   type Session,
   STATUT,
@@ -97,25 +100,47 @@ function premierPossible(s: Session, demande: string): string {
 }
 
 /**
- * Les décisions du patron sur une demande proposée, à cliquer sans modèle :
- * valider le remplaçant proposé, ou prendre un autre possible ; chacune
- * `valider_remplacement` avec son agent, dont le « oui » reste à donner. Les
- * mêmes sur la demande dans « à valider » et sous le résultat du geste.
+ * Ce que le patron a à décider sur une demande proposée, calculé sur le
+ * planning d'aujourd'hui : la phrase du proposé ; les décisions, à cliquer
+ * sans modèle (valider le proposé, ou prendre un autre possible, ses raisons
+ * dites ; chacune `valider_remplacement` avec son agent, dont le « oui »
+ * reste à donner) ; le détail replié (exclus, écartés). Les mêmes sur la
+ * demande dans « à valider » et sous le résultat d'un geste. Rien à une
+ * demande qui n'est pas proposée.
  */
-export function choixRemplacement(s: Session, demande: string): Choix[] {
-  if (statut(s, demande) !== STATUT.proposee) return []
-  const v = vacationDe(s, demande)
-  const [propose, ...autres] = evaluer(s, demande, v, dejaSollicites(s, demande)).possibles
-  if (!propose) return []
+export function aDecider(
+  s: Session,
+  demande: string,
+): { phrase?: string; choix: Choix[]; replis: Repli[] } {
+  if (statut(s, demande) !== STATUT.proposee) return { choix: [], replis: [] }
+  const p = evaluer(s, demande, vacationDe(s, demande), dejaSollicites(s, demande))
+  const [propose, ...autres] = p.possibles
   const choix = (libelle: string, agent: string): Choix => ({
     libelle,
     action: validerRemplacement.id,
     params: { demande, agent },
   })
-  return [
-    choix(`Valider ${propose.nom}`, propose.agent),
-    ...autres.map((c) => choix(`Prendre ${c.nom} à la place`, c.agent)),
-  ]
+  return {
+    phrase: phraseProposition(p),
+    choix: propose
+      ? [
+          choix(`Valider ${propose.nom}`, propose.agent),
+          ...autres.map((c) =>
+            choix(`Prendre ${c.nom} à la place (${c.raisons.join(', ')})`, c.agent),
+          ),
+        ]
+      : [],
+    replis: replisProposition(p),
+  }
+}
+
+/** Les décisions et le détail d'une demande, pour le résultat d'un geste du patron : rien quand il n'y a rien à décider. */
+function decisionDe(s: Session, demande: string): { choix?: Choix[]; replis?: Repli[] } {
+  const { choix, replis } = aDecider(s, demande)
+  return {
+    ...(choix.length > 0 ? { choix } : {}),
+    ...(replis.length > 0 ? { replis } : {}),
+  }
 }
 
 /** Les alertes de la veille du jour, chacune décrite pour le client. */
@@ -185,7 +210,7 @@ const gererAbsence: Action<Session, z.infer<typeof GererAbsence>> = {
           ? `Demande ${r.demande}\n${decrireEtape(s, r, r.demande)}`
           : `Ton absence du ${dateFr(Temporal.PlainDate.from(p.jour))} est enregistrée (demande ${r.demande}). Le patron s'occupe de ton remplacement.`,
       donnees: { demande: r.demande, statut: r.statut },
-      ...(identite.role === 'patron' ? { choix: choixRemplacement(s, r.demande) } : {}),
+      ...(identite.role === 'patron' ? decisionDe(s, r.demande) : {}),
     }
   },
 }
@@ -431,10 +456,13 @@ const suivreDemande: Action<Session, z.infer<typeof SuivreDemande>> = {
       }
     }
     const e = suivre(s, p.demande, maintenant)
+    // Rien de nouveau sur une demande proposée : son statut, et la phrase du proposé.
+    const phrase = aDecider(s, p.demande).phrase
     return {
       texte: e
         ? decrireEtape(s, e, p.demande)
-        : `${p.demande} : ${statut(s, p.demande) ?? 'demande inconnue'}`,
+        : `${p.demande} : ${statut(s, p.demande) ?? 'demande inconnue'}${phrase !== undefined ? `\n${phrase}` : ''}`,
+      ...decisionDe(s, p.demande),
     }
   },
 }
