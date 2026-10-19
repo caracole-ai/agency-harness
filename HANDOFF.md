@@ -91,7 +91,8 @@ domaine). Démo agence : `--maintenant 2026-10-12T10:00`, port 3778.
 La délégation proposée se lit comme une demande (`Tableau.enAttente` :
 `EnAttente` porte `titre`, `depuis`, `replis`) : ce que l'outil ferait
 seul, le remplacement réussi d'où elle vient, ses conditions et ce qui ne
-change pas. Une demande écrite nomme toujours l'absent (`absentDe`, lu à la
+change pas, puis ce qui sera lu et modifié, source par source (les
+fichiers de la config). Une demande écrite nomme toujours l'absent (`absentDe`, lu à la
 réception : le planning porte ensuite le remplaçant). Pour la voir sur la
 démo : valider D-V-17, puis répondre oui en tant que Julien Lefèvre.
 Démo :
