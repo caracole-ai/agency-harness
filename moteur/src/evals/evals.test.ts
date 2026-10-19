@@ -389,15 +389,9 @@ describe('la fuite (PLAN-PSEUDONYMES.md § 7)', () => {
     expect(textes).not.toContain('Alicia, je pense')
     expect(fuiteDe(textes, PERSONNES)).toEqual(['Aïcha Traoré'])
   })
-  it('la consigne telle qu’écrite est permise à la traduction ; un autre nom du fichier, non', () => {
-    const textes = [
-      '<consigne>Aicha ne vient pas</consigne>',
-      'P-1 — Aïcha Traoré\nP-2 — Alicia Martin',
-    ]
-    expect(fuiteDe(textes, PERSONNES, 'Aicha ne vient pas')).toEqual([
-      'Aïcha Traoré',
-      'Alicia Martin',
-    ])
+  it('la consigne compte comme le reste : un nom tapé est une fuite', () => {
+    const textes = ['<consigne>Aicha ne vient pas</consigne>', 'P-2 — Alicia Martin']
+    expect(fuiteDe(textes, PERSONNES)).toEqual(['Aicha', 'Alicia Martin'])
     expect(fuiteDe(['Combien pour P-1 ?'], PERSONNES)).toEqual([])
   })
   it('le bilan compte les cas en fuite, le seuil est 0 ; le tableau a sa colonne', () => {

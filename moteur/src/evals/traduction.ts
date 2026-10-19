@@ -83,9 +83,7 @@ export function configDuDossier<S>(m: MetierConversation<S>, dossier: string): C
 /**
  * Lance un cas sur sa copie (l'identité du cas passe d'abord la porte ; le
  * cas ouvre lui-même la session, après la traduction), garde sa trace, rend
- * son résultat, sa fuite et l'identifiant du modèle qui a joué. `permis` :
- * ce qui, envoyé, n'est pas une fuite (la consigne telle qu'écrite, pour la
- * traduction).
+ * son résultat, sa fuite et l'identifiant du modèle qui a joué.
  */
 export async function jouerCas<S>(
   m: MetierConversation<S>,
@@ -96,7 +94,7 @@ export async function jouerCas<S>(
     dossier: string,
     modele: Modele,
     identite: IdentiteVerifiee,
-  ) => Promise<{ ecarts: string[]; issue: unknown; permis?: string }>,
+  ) => Promise<{ ecarts: string[]; issue: unknown }>,
 ): Promise<{ resultat: ResultatCas; trace: TraceCas; idModele: string }> {
   const dossier = copieClient(source, cas.piege)
   const accueil = recevoir(m.roles, chargerPersonnes(dossier, m.roles), {
@@ -116,11 +114,10 @@ export async function jouerCas<S>(
   const modele = modeleTrace(modeleDe(config))
   let ecarts: string[]
   let issue: unknown
-  let permis: string | undefined
   let fuite: string[]
   try {
     try {
-      ;({ ecarts, issue, permis } = await jouer(dossier, modele, accueil.identite))
+      ;({ ecarts, issue } = await jouer(dossier, modele, accueil.identite))
     } catch (erreur) {
       ecarts = [`exception : ${(erreur as Error).message}`]
       issue = undefined
@@ -129,7 +126,7 @@ export async function jouerCas<S>(
     // une fuite qu'on ne peut pas mesurer compte comme une fuite.
     try {
       const personnes = await avecSession(m, dossier, accueil.identite, (s) => m.noms(s))
-      fuite = fuiteDe(textesEnvoyes(modele), personnes, permis)
+      fuite = fuiteDe(textesEnvoyes(modele), personnes)
     } catch (erreur) {
       fuite = [`non mesurée : ${(erreur as Error).message}`]
     }
@@ -225,8 +222,7 @@ export async function jouerTraduction<S>(
                 ? { ...demande, params: r.params }
                 : { sorte: 'precision', candidats: r.candidats.map((x) => x.id) }
             })
-      // La traduction reçoit la phrase telle qu'écrite : les noms qu'elle porte ne sont pas une fuite.
-      return { ecarts: ecartsTraduction(c.attendu, issue), issue, permis: c.consigne }
+      return { ecarts: ecartsTraduction(c.attendu, issue), issue }
     })
     resultats.push(joue.resultat)
     surCas?.(joue.resultat, joue.trace, joue.idModele)
