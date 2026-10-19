@@ -492,6 +492,7 @@ function zoneReplis(replis, demande) {
               'li',
               {},
               el('span', { classe: 'repli__nom', texte: l.titre }),
+              ' ',
               l.detail ? el('span', { classe: 'repli__detail', texte: l.detail }) : null,
             ),
           ),
@@ -523,7 +524,9 @@ function zoneChoix(choix) {
           'div',
           { classe: 'decision__qui' },
           el('span', { classe: 'etiquette', texte: 'Proposition de l’outil' }),
+          ' ',
           el('span', { classe: 'decision__nom', texte: principal.titre }),
+          ' ',
           principal.detail
             ? el('span', { classe: 'decision__detail', texte: principal.detail })
             : null,
@@ -551,6 +554,7 @@ function zoneChoix(choix) {
                       onclick: () => decider(c, cle),
                     },
                     el('span', { classe: 'autre__nom', texte: c.titre ?? c.libelle }),
+                    ' ',
                     c.detail ? el('span', { classe: 'autre__detail', texte: c.detail }) : null,
                     el('span', {
                       classe: 'autre__action',

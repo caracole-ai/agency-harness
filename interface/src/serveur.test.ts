@@ -1,5 +1,6 @@
 // Les routes de l'interface du patron, par `app.request` (sans réseau), sur
 // une copie du client fictif, avec le modèle simulé (PLAN-ESPACES.md § 10.3).
+import { createHash } from 'node:crypto'
 import {
   cpSync,
   existsSync,
@@ -337,6 +338,18 @@ describe('les pages', () => {
     expect(await page.text()).toContain('pas authentifiée')
     expect((await a.request('/static/app.js')).status).toBe(200)
     expect((await a.request('/static/style.css')).status).toBe(200)
+  })
+  it('la page référence chaque fichier avec l’empreinte de son contenu ; l’adresse versionnée le sert', async () => {
+    const a = app()
+    const page = await (await a.request('/')).text()
+    for (const fichier of ['style.css', 'app.js']) {
+      const v = createHash('sha256')
+        .update(readFileSync(new URL(`../public/static/${fichier}`, import.meta.url)))
+        .digest('hex')
+        .slice(0, 12)
+      expect(page).toContain(`"/static/${fichier}?v=${v}"`)
+      expect((await a.request(`/static/${fichier}?v=${v}`)).status).toBe(200)
+    }
   })
   it('la page et ses fichiers se revalident à chaque chargement', async () => {
     const a = app()
@@ -930,12 +943,16 @@ describe('la décision du patron sur une demande, cliquée : sur la carte et sou
     )
     const replis = premiere.reponse.sorte === 'resultat' ? premiere.reponse.replis : undefined
     expect(replis?.map((r) => r.titre)).toEqual([
-      '4 exclus par une règle',
-      '4 écartés : une donnée manque',
+      "4 ne peuvent pas : une règle l'interdit",
+      '4 à vérifier : leur dossier est incomplet',
     ])
     expect(replis?.[0]?.lignes[0]).toEqual({
       titre: 'Sophie Marchand',
-      detail: 'carte professionnelle valide',
+      detail: 'ne remplit pas : carte professionnelle valide',
+    })
+    expect(replis?.[1]?.lignes.at(-1)).toEqual({
+      titre: 'Laura Petit',
+      detail: 'à renseigner : carte professionnelle',
     })
     expect(avant.aValider.demandes[0]?.replis).toEqual(replis)
     expect(avant.aValider.demandes[0]).toMatchObject({
