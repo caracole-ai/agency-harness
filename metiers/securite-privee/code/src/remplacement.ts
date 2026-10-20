@@ -277,10 +277,11 @@ export function evaluer(s: Session, demande: string, v: Vacation, exclure: strin
     }
   }
   const cs = criteres(s, v)
+  // À égalité, le numéro d'agent le plus bas : le départage déclaré au modèle (`DEPARTAGE`, conversation.ts).
   const possibles = classer(
     evaluations.filter((e) => e.issue === 'possible').map((e) => e.candidat),
     cs.map((c) => c.rang),
-    nom,
+    (agent) => agent,
   ).map((agent) => ({
     agent,
     nom: nom(agent),
