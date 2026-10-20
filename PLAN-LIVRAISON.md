@@ -136,7 +136,7 @@ n'installe que ce que la signature de l'agence couvre.
 | L1 | **Le chantier se lance au clic, à l'agence, une mission à la fois.** `pnpm agence` est une boucle (`agence.yaml: agence.intervalle_secondes`, 60 par défaut ; `--une-fois` pour un cron ou un test) sous un verrou (`.claude/agence.lock`, pid ; un verrou dont le pid est mort est levé). Elle lit la file de chaque client (`agence.yaml: clients: [{ slug, missions: <url> }]`), prend la mission `à faire` la plus ancienne (date, puis slug, puis id), écrit le statut `en cours`, fait le chantier, écrit le statut final. **Borne** : `agence.chantiers_max_par_jour` (3), comptés dans `memoire/INDEX.md` (les lignes `fusion` et `refus` du jour) ; au-delà, la mission attend le lendemain et son statut le dit. | Un geste commandé est rare et le patron attend ; la nuit n'avait de sens que pour la ronde, retirée. La borne protège le quota de l'abonnement, pas une fenêtre horaire. Un verrou plutôt qu'un démon : `pnpm agence --une-fois` au cron de l'agence suffit en production. |
 | L2 | **Plus de clone réservé. Les arbres de travail partent de `origin/main` ; la fusion se fait dans un arbre détaché ; `main` local n'est jamais touché.** `arbre.ts` : le dépôt de base est la racine (`RACINE`, le dépôt de l'agence, qui peut être l'arbre d'un humain) ; `verifierBase` exige seulement un dépôt git avec un distant `origin` ; `git fetch origin main` puis `git worktree add .claude/worktrees/chantier-<id> -b chantier/<id> origin/main`. `fusion.ts` : `git worktree add .claude/worktrees/fusion-<id> --detach origin/main` (après un `fetch` frais), `git merge --no-ff chantier/<id>`, la mémoire commise à part, les étiquettes, `git push origin HEAD:refs/heads/main refs/tags/chantier/<id> refs/tags/v…` ; un push refusé (quelqu'un a poussé entre-temps) : **une** reprise depuis un nouveau `origin/main`, sinon `echec` (la branche reste). L'arbre de fusion est retiré dans tous les cas. Le retrait (G2) suit le même chemin (arbre détaché, `revert -m 1`, version). `verifierDepot`, `remettreAOrigine`, `restaurer` (reset/clean/merge --abort) disparaissent : il n'y a plus rien à restaurer, un arbre jetable se jette. | Git refuse de mettre à jour une branche extraite dans un autre arbre, et personne ne doit retrouver son arbre modifié : c'était la raison de G3. Un arbre détaché règle les deux sans clone : rien n'est extrait sur `main`, et le push cible `refs/heads/main` du distant directement. |
 | L3 | **Le chantier ne connaît aucun dossier client.** `faireChantier` prend la mission (elle porte `metier`), le métier chargé par son nom (`moduleDuMetier(nom)` dans `cli/metier.ts`, à côté de `moduleDe(dossier)`), et un **dossier de sortie** où il écrit `<id>.chantier.md` et `<id>.statut.yaml`. Les lignes `chantier` du journal du client (aujourd'hui écrites par le chantier, `chantier.ts` l. 223) sont écrites **par le client** quand il lit le statut (L7). Le contrôle « aucun nom ne part » sur la mission se fait **chez le client, à la commande** (`missionCommandee` le fait déjà sur chaque consigne ; on y ajoute `interdits(missionPourModele(mission, domaine), personnes)` sur le texte entier, avant d'écrire la mission) ; à l'agence, la mémoire se contrôle contre les noms du client fictif du métier (`evals_clients`), seuls noms connus là-bas. `decider` garde ses deux refus (retirée, geste déjà codé) avec le catalogue du métier (ses gestes) et la file (les missions ouvertes). | L'agence n'a ni journal ni registre du client (G11) ; elle ne doit pas en avoir. Le contrôle des noms réels ne peut se faire que là où les noms sont : avant le départ. Perte acceptée : la mémoire écrite à l'agence n'est plus relue contre les noms réels ; elle ne contient que ce que le modèle a lu (une mission déjà masquée, des données fictives) et écrit. |
-| L4 | **Une version = une étiquette git signée (SSH), posée en code après une fusion ou un retrait** : `v<AAAA-MM-JJ>-<n>` (n = nombre d'étiquettes du jour + 1), sur le commit de fusion ; message = le manifeste en clair (chantier, client (slug), geste ajouté ou retiré, sha de fusion). Signature : `git -c gpg.format=ssh -c user.signingkey=<fichier> tag -s`, la clé privée désignée par **`AGENCE_CLE_SIGNATURE`** (un chemin, hors du dépôt, `assertEnv` au préflight de `pnpm agence` et de `pnpm version`). Vérification chez le client : `git -c gpg.ssh.allowedSignersFile=<dossier client>/signataires verify-tag <tag>` (le fichier `signataires` : `agence <clé publique>`, livré avec le dossier). `pnpm version` (manuel, à l'agence) étiquette `origin/main` tel quel : pour livrer un changement du moteur sans chantier. Un refus de chantier ne fait pas de version (rien n'a changé dans le code) : sa mémoire est poussée sur `main` par l'arbre détaché, comme aujourd'hui. | Même garantie que G8 (seule l'agence peut publier ; le commit couvre tout l'arbre ; `git verify-tag` se relit à la main) sans une ligne de cryptographie à nous : ni manifeste JSON ni empreinte d'arbre à recalculer. Prérequis vérifié au préflight : `ssh-keygen -Y` (OpenSSH ≥ 8.2 ; macOS 12+, Debian 11+). |
+| L4 | **Une version = une étiquette git signée (SSH), posée en code après une fusion ou un retrait** : `v<AAAA-MM-JJ>-<n>` (n = nombre d'étiquettes du jour + 1), sur le commit de fusion ; message = le manifeste en clair (chantier, métier (jamais le client, depuis le 2026-10-20), geste ajouté ou retiré, sha de fusion). Signature : `git -c gpg.format=ssh -c user.signingkey=<fichier> tag -s`, la clé privée désignée par **`AGENCE_CLE_SIGNATURE`** (un chemin, hors du dépôt, `assertEnv` au préflight de `pnpm agence` et de `pnpm version`). Vérification chez le client : `git -c gpg.ssh.allowedSignersFile=<dossier client>/signataires verify-tag <tag>` (le fichier `signataires` : `agence <clé publique>`, livré avec le dossier). `pnpm version` (manuel, à l'agence) étiquette `origin/main` tel quel : pour livrer un changement du moteur sans chantier. Un refus de chantier ne fait pas de version (rien n'a changé dans le code) : sa mémoire est poussée sur `main` par l'arbre détaché, comme aujourd'hui. | Même garantie que G8 (seule l'agence peut publier ; le commit couvre tout l'arbre ; `git verify-tag` se relit à la main) sans une ligne de cryptographie à nous : ni manifeste JSON ni empreinte d'arbre à recalculer. Prérequis vérifié au préflight : `ssh-keygen -Y` (OpenSSH ≥ 8.2 ; macOS 12+, Debian 11+). |
 | L5 | **Deux dépôts distants chez le client, décrits dans `<dossier client>/livraison.yaml`** (un fichier à part, comme `personnes.yaml` : les schémas stricts des métiers ne bougent pas) : `depot` (le dépôt du produit, = `origin` de l'agence, **lecture seule** : une clé de déploiement par client), `missions` (`missions-<slug>`, **lecture et écriture**, ne contient que des missions masquées, des statuts, des dossiers de chantier et `etat.yaml`), `installation` (un chemin absolu, hors du dossier client : `depot/`, `versions/<tag>/`, `courant`, `precedent`), `intervalle_minutes` (15). **Sans `livraison.yaml`, le harnais n'est pas livré** : tout reste local comme aujourd'hui (la mission s'écrit chez le client, `pnpm chantier --mission` la prend à la main, pas de minuterie) : c'est le mode du laboratoire et de la démo. Les clés SSH sont dans la config SSH de la machine (`~/.ssh/config`), jamais dans le dépôt ni dans la config : le README le dit. | Git est le seul transport qu'on a déjà (l'agence héberge déjà le dépôt) : pas de serveur, pas d'API, pas de TLS à tenir. Une clé par client et par sens : un client ne lit que le produit et n'écrit que dans sa file. |
 | L6 | **L'aller : la mission, et rien d'autre.** `commanderMission` écrit la mission chez le client (comme aujourd'hui), la ligne `geste commandé`, puis **pousse** le fichier dans `missions` (`<date>/<id>.yaml`, `pull --rebase` avant `push`). Un push qui échoue (réseau) ne fait pas échouer le clic : la mission est marquée `à pousser` localement et le prochain `rattraper` la pousse (idempotent : même contenu, même chemin). Ce qui part est exactement ce que `Mission` contient aujourd'hui : intention, consignes-types masquées, comptes, date, métier ; jamais `par`, jamais un résumé, jamais une donnée. | C'est l'entorse à G11 que Lionel accepte : une mission masquée voyage. Elle est déjà construite sans nom (`missionCommandee`) et relue avant de partir (L3). |
 | L7 | **Le retour : un statut par mission, lu par le client.** L'agence écrit dans `missions` : `<date>/<id>.statut.yaml` (`statut`: `en cours` \| `fusionné` \| `refusé` \| `écartée` \| `échoué` \| `en attente` (borne du jour) ; `issue` ; `version` quand fusionné ou retiré ; `cout_usd` ; `le`) et `<date>/<id>.chantier.md` (le dossier d'aujourd'hui, `rendreDossier`). Le client (`rattraper`) les tire, copie le dossier dans `<dossier client>/chantiers/<id>.md`, et écrit **une** ligne `chantier` au journal par statut nouveau (type `TYPE_CHANTIER`, objet `<id>`, issue = le statut ; `donnees.version`), jamais deux fois la même (le journal est relu). `demandesAvecEtat` ne change pas ; la carte dit : « commandé, en attente de l'agence » → « chantier en cours » → « fusionné (v…), mise à jour en préparation » → « disponible ». Le client pousse `etat.yaml` (`version_courante`, `le`) dans `missions` à chaque changement : l'agence sait qui est à jour sans canal. | Un seul mécanisme pour l'aller et le retour des statuts (la file), un autre pour le code (les versions) : chacun ne porte qu'une sorte de chose. Le patron voit où en est sa commande sans que personne ne lui parle. |
@@ -191,7 +191,11 @@ qui n'avance plus seule (le client juge sur le sien à la commande) ; un
 métier sans `evals_clients` n'a aucun nom à contrôler à l'agence (sa
 condition 4 refuse de toute façon) ; le slug du client entre dans
 `memoire/INDEX.md` d'`origin/main`, que tous les clients tireront au lot 4
-(à trancher par Lionel avant un second client réel).
+(à trancher par Lionel avant un second client réel). **Fait le
+2026-10-20** (tranché par Lionel, le chemin simple) : l'index nomme le
+métier, jamais le client ; le client d'un chantier n'est qu'au registre de
+l'agence (`.claude/missions/chantiers.log`), où une ligne de fusion le garde
+pour le retrait.
 
 - `moteur/src/chantier/arbre.ts` : `verifierBase(c, racine)` (un dépôt git,
   un distant `origin`, `worktree prune`) ; `ouvrirArbre` depuis
@@ -218,7 +222,8 @@ condition 4 refuse de toute façon) ; le slug du client entre dans
 - `moteur/src/cli/chantier.ts` : `pnpm chantier --mission <fichier>
   --sortie <dossier> [--sans-modele] [--refaire]` (le fichier peut être chez
   un client : le mode non livré) ; `retirer` sans `--client` (la mémoire du
-  retrait ne cite que le slug que porte la mission).
+  retrait ne cite que le slug que porte la mission ; depuis le 2026-10-20,
+  le métier, et le client se lit au registre de l'agence).
 - `moteur/src/agence/config.ts`, `agence.yaml` : `depot_nuit` retiré ;
   `chantier.missions_max_par_nuit` → `agence: { chantiers_max_par_jour: 3,
   intervalle_secondes: 60, clients: [] }`.
@@ -244,9 +249,10 @@ condition 4 refuse de toute façon) ; le slug du client entre dans
 commande s'appelle **`pnpm versionner`** (`pnpm version` est une commande de
 pnpm, qui masquerait le script) ; `versionner` vit dans `fusion.ts`, le seul
 module qui pousse ; le manifeste est en lignes `clé: valeur` (`sorte`,
-`chantier`, `client`, `geste`, `commit`) ; `pnpm chantier` exige aussi la
+`chantier`, `metier` depuis le 2026-10-20 (avant : `client`), `geste`,
+`commit`) ; `pnpm chantier` exige aussi la
 clé (une fusion sans version ne partirait chez personne) ; la version d'un
-retrait nomme le client que garde la mémoire de la fusion ; une fusion déjà
+retrait nomme le métier de la mission ; une fusion déjà
 sur `origin/main` rend la version déjà posée ; `preflightSignature` refuse
 une clé rangée dans le dépôt.
 
@@ -285,14 +291,25 @@ le client (lot 3), mais il peut l'écrire dans le code de la bande ou dans
 « Ce que j'ai appris » (la mémoire), que tous les clients tirent avec la
 version, et fausser les mesures (`pnpm check`, `pnpm evals`) : le bac à
 sable doit couvrir la lecture des secrets et l'écriture hors de l'arbre.
-**Ouvert, nouveau** : la fusion automatique signe tout ce que porte
-`origin/main` ; un compte de l'hébergeur volé y pousse, le chantier suivant
-le signe et tous les clients l'installent. Règle simple proposée : avant de
-signer, la fusion et le retrait refusent si un commit de `<dernière
-v*>..origin/main` touche autre chose que `memoire/` (un changement du moteur
-passe alors par `pnpm versionner`, le geste humain). Le manifeste de chaque
-version porte `client: <slug>` : tous les clients lisent les slugs de tous,
-un second canal du point ouvert du slug (lot 1). Non mesurable ici :
+**Fait le 2026-10-20** (tranché par Lionel, le chemin simple) : la fusion
+automatique signait tout ce que porte `origin/main` (un compte de
+l'hébergeur volé y pousse, le chantier suivant le signe, tous les clients
+l'installent). Avant de signer, la fusion et le retrait refusent si un
+commit de `<dernière v*>..origin/main` touche autre chose que `memoire/`
+(`baseHorsVersion`, `fusion.ts`) : la fusion finit `échoué` (statut et
+dossier disent le commit et le chemin), le retrait lève ; rien n'est signé
+ni poussé. Un changement du moteur passe par `pnpm versionner`, le geste
+humain, qui ne subit pas la règle. Chaque commit se lit contre son premier
+parent, fusions comprises, sans détection des renommages (un déplacement
+vers `memoire/` dit aussi le chemin qu'il quitte). La dernière version doit
+être signée par la clé de l'agence (sa publique tirée de la privée par
+`ssh-keygen -y`, vérifiée par `verifierEtiquette`) : une étiquette plus
+récente poussée par un autre ne sert pas de base, elle bloque, et le dit.
+Sans aucune version (le premier déploiement), refus aussi : la première se
+pose à la main, `origin/main` tel quel (le plus sûr ; la chaîne du
+laboratoire le faisait déjà). Le manifeste de chaque version portait
+`client: <slug>` : il porte `metier: <métier>` (fait le 2026-10-20, avec le
+point du slug du lot 1). Non mesurable ici :
 `gpg.minTrustLevel=fully` (git 2.50 refuse déjà une autre clé sans lui).
 
 - `moteur/src/livraison/version.ts` : `prochaineEtiquette(c, racine,
