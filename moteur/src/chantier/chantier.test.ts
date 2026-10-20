@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -863,6 +871,45 @@ describe('avant de signer, origin/main n’a apporté que de la mémoire depuis 
     })
     expect(git(depots.origine, 'tag', '--list')).toBe('')
     expect(git(depots.origine, 'log', '--merges', '--oneline', 'main')).toBe('')
+  })
+
+  it('origin/main ramené derrière la dernière version (un push forcé) : la plage est vide, échoué quand même', () => {
+    const depots = creerDepots()
+    const commit = brancheX(depots.racine)
+    const avant = git(depots.origine, 'rev-parse', 'main')
+    pousserAutre(depots.origine, { 'memoire/INDEX.md': '# index\n- une ligne\n' })
+    versionner({
+      commande: commandeSync,
+      racine: depots.racine,
+      version: { cle: CLE_ESSAI.privee, jour: '2026-10-11' },
+    })
+    git(depots.origine, 'update-ref', 'refs/heads/main', avant)
+    const r = conclureX(depots.racine, commit)
+    expect(r).toEqual({
+      sorte: 'echec',
+      raison:
+        "origin/main ne descend pas de la dernière version, v2026-10-11-1 (ramenée en arrière ?) ; rien n'est signé",
+    })
+    expect(git(depots.origine, 'tag', '--list')).toBe(`${PREMIERE_VERSION}\nv2026-10-11-1`)
+  })
+
+  it('un lien symbolique poussé sous memoire/ : refusé avant toute écriture, rien n’est écrit hors de l’arbre ni signé', () => {
+    const depots = creerDepots()
+    const commit = brancheX(depots.racine)
+    const dehors = join(mkdtempSync(join(tmpdir(), 'dehors-')), 'cible.md')
+    writeFileSync(dehors, 'à moi\n')
+    const d = cloneDuDistant(depots.origine)
+    rmSync(join(d, 'memoire', 'INDEX.md'), { force: true })
+    symlinkSync(dehors, join(d, 'memoire', 'INDEX.md'))
+    git(d, 'add', '-A')
+    spawnSync('git', [...qui, 'commit', '-q', '-m', 'lien'], { cwd: d })
+    git(d, 'push', '-q', 'origin', 'main')
+    expect(() => conclureX(depots.racine, commit)).toThrow(
+      /porte sous memoire\/ autre chose qu'un fichier \(memoire\/INDEX\.md, mode 120000\)/,
+    )
+    expect(readFileSync(dehors, 'utf8')).toBe('à moi\n')
+    expect(git(depots.origine, 'tag', '--list')).toBe(PREMIERE_VERSION)
+    expect(arbresRestants(depots.racine)).toEqual([])
   })
 
   it('une version plus récente qui n’est pas signée par l’agence (un compte volé pousse aussi des étiquettes) : échoué, elle ne sert pas de base', () => {

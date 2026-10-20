@@ -21,7 +21,7 @@ client) ; chaque fusion et chaque retrait posent une **version signée**
 harnais du client la **tire** (`pnpm mise-a-jour`, lancé par l'interface
 dans un processus à part), vérifie signature et lignée, l'installe à côté,
 rejoue `pnpm check`, bascule au calme (`pnpm harnais`, le lanceur), revient
-en arrière si le redémarrage échoue. `pnpm check` vert : moteur 624,
+en arrière si le redémarrage échoue. `pnpm check` vert : moteur 626,
 interface 45, sécurité 138, agence web 261.
 
 **Audité avant la fusion le 2026-10-16** : trois relectures en parallèle,
@@ -159,6 +159,13 @@ avec la bascule vers la clé d'API et le lot 5 :
   Le texte libre d'une mission (`titre`, `pourquoi`) et le motif d'un
   retrait partent aussi dans le commit et la mémoire, contrôlés contre les
   noms fictifs seulement.
+- **Relu le 2026-10-20, risques acceptés** (les deux contournements trouvés,
+  `origin/main` ramené en arrière et un lien sous `memoire/`, sont corrigés
+  et testés) : une étiquette `v*` poussée par un intrus bloque toute fusion
+  jusqu'à ce qu'un humain la supprime (fermé par défaut, mais le message ne
+  dit pas laquelle ôter, et `versionner` numéroterait après elle) ; une
+  exception après le push d'une fusion (`fermerArbre`, le dossier) saute
+  `noterFusion`, et le retrait de ce chantier ne retrouvera pas son client.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 

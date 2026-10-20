@@ -169,6 +169,10 @@ function baseHorsVersion(c: Commande, arbre: string, cle: string): string | unde
   if (signature) {
     return `la dernière version, ${derniere}, n'est pas celle de l'agence (${signature}) ; rien n'est signé`
   }
+  // `origin/main` ramené en arrière (un push forcé) : la plage serait vide, la version n'en serait pas moins hors lignée.
+  if (c(arbre, 'git', ['merge-base', '--is-ancestor', `${derniere}^{commit}`, 'HEAD']).code !== 0) {
+    return `${REF_DISTANTE} ne descend pas de la dernière version, ${derniere} (ramenée en arrière ?) ; rien n'est signé`
+  }
   // Chaque commit contre son premier parent, une fusion comprise ; sans renommage (un déplacement
   // vers `memoire/` dit aussi le chemin qu'il quitte).
   const journal = git(c, arbre, [
@@ -192,6 +196,27 @@ function baseHorsVersion(c: Commande, arbre: string, cle: string): string | unde
   if (hors.size === 0) return undefined
   const exemples = [...hors].slice(0, 3).map(([k, chemin]) => `${k} : ${chemin}`)
   return `${REF_DISTANTE} porte depuis ${derniere} ${hors.size} commit(s) hors de ${DOSSIER_MEMOIRE}/ (${exemples.join(' ; ')}) ; rien n'est signé : un changement du moteur se livre par pnpm versionner`
+}
+
+/** Les modes git d'un fichier régulier ; un lien (120000) ou un sous-module (160000) n'en est pas. */
+const MODES_FICHIER = new Set(['100644', '100755'])
+
+/**
+ * La mémoire de `origin/main` n'est faite que de fichiers : un lien symbolique
+ * poussé sous `memoire/` passerait la règle de la signature (son chemin y est)
+ * et ferait lire ou écrire la mémoire hors de l'arbre. Contrôlé avant tout
+ * travail dans l'arbre ; lève.
+ */
+function memoireReguliere(c: Commande, arbre: string): void {
+  const entrees = git(c, arbre, ['ls-tree', '-r', '-z', 'HEAD', '--', DOSSIER_MEMOIRE])
+  for (const entree of entrees.split('\0')) {
+    const [mode] = entree.split(' ')
+    if (entree.length > 0 && mode && !MODES_FICHIER.has(mode)) {
+      throw new Error(
+        `${REF_DISTANTE} porte sous ${DOSSIER_MEMOIRE}/ autre chose qu'un fichier (${entree.split('\t')[1] ?? ''}, mode ${mode}) ; rien n'est fait`,
+      )
+    }
+  }
 }
 
 /** Les étiquettes locales posées par une tentative qui ne part pas : la reprise les reposera. */
@@ -245,6 +270,7 @@ function avecReprise<T>(
     const arbre = ouvrirArbreDetache(c, racine, nom)
     let r: Tentative<T>
     try {
+      memoireReguliere(c, arbre)
       r = travail(arbre)
     } catch (erreur) {
       try {
