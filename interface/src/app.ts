@@ -367,8 +367,9 @@ export function creerApp(options: {
   app.post('/api/entree', (c) => c.json(entree(m, chargerPersonnes(dossier, m.roles))))
 
   // Ce que le métier dit à celui qui parle : son nom, son accueil, ses
-  // suggestions (`Tableau.textes`). Tout rôle qui passe la porte le reçoit ;
-  // les demandes et l'attente, elles, ne passent que par /api/etat.
+  // suggestions (`Tableau.textes`), l'icône de ses types du journal. Tout
+  // rôle qui passe la porte le reçoit ; les demandes et l'attente, elles, ne
+  // passent que par /api/etat.
   app.post('/api/tableau', async (c) => {
     const identite = entrer((await lireCorps(c.req.raw)).identite)
     return c.json(
@@ -377,6 +378,7 @@ export function creerApp(options: {
         return {
           nom: tableau?.nom ?? nomDe(m, s, identite),
           textes: tableau?.textes ?? SANS_TEXTES,
+          icones: tableau?.icones ?? {},
         }
       }),
     )

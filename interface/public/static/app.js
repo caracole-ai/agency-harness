@@ -34,11 +34,11 @@ const FINS_CHANTIER = {
 
 /** Comment montrer chaque sorte de réponse. */
 const SORTES = {
-  confirmation: { libelle: 'À confirmer', classe: 'pastille--outil' },
-  proposition: { libelle: 'Proposition', classe: 'pastille--outil' },
-  refus: { libelle: 'Refusé', classe: 'pastille--refus' },
-  je_ne_sais_pas: { libelle: 'Je ne sais pas', classe: 'pastille--doute' },
-  precision: { libelle: 'À préciser', classe: 'pastille--doute' },
+  confirmation: { libelle: 'À confirmer', classe: 'pastille--outil', icone: 'sablier' },
+  proposition: { libelle: 'Proposition', classe: 'pastille--outil', icone: 'etincelle' },
+  refus: { libelle: 'Refusé', classe: 'pastille--refus', icone: 'interdit' },
+  je_ne_sais_pas: { libelle: 'Je ne sais pas', classe: 'pastille--doute', icone: 'question' },
+  precision: { libelle: 'À préciser', classe: 'pastille--doute', icone: 'question' },
 }
 
 /** Les types du journal dont le nom n'est pas déjà des mots (les autres le sont : « geste commandé », « alerte »…). */
@@ -57,30 +57,49 @@ const NOTES_VEILLE = {
   alerte: { escalade: 'à traiter maintenant', alerte: 'à préparer' },
   constat: { refus: 'à corriger', 'à vérifier': 'à décider', ok: 'conforme' },
 }
+/** La teinte d'une note du journal qui appelle un geste (rouge : maintenant ; ambre : à préparer ; vert : rien à faire), une des sortes. */
+const TEINTES_NOTE = {
+  'à traiter maintenant': 'echeance',
+  'à corriger': 'echeance',
+  refusée: 'echeance',
+  'à préparer': 'attente',
+  'à décider': 'attente',
+  'sans geste': 'attente',
+  conforme: 'outil',
+}
 /**
  * La sorte d'une ligne du journal, en couleur, pour lire et filtrer : les types du moteur rangés par
  * sorte ; tout autre type (ceux d'un métier : absence, remplacement, message…) est une action.
  */
 const SORTES_JOURNAL = [
-  { id: 'demande', libelle: 'Demande', types: ['consigne', 'accès refusé'] },
-  { id: 'reponse', libelle: 'Réponse', types: ['confirmation'] },
-  { id: 'attente', libelle: 'En attente', types: ['confirmation_attendue', 'precision_attendue'] },
+  { id: 'demande', libelle: 'Demande', icone: 'bulle', types: ['consigne', 'accès refusé'] },
+  { id: 'reponse', libelle: 'Réponse', icone: 'retour', types: ['confirmation'] },
+  {
+    id: 'attente',
+    libelle: 'En attente',
+    icone: 'sablier',
+    types: ['confirmation_attendue', 'precision_attendue'],
+  },
   {
     id: 'question',
     libelle: 'Question libre',
+    icone: 'question',
     types: ['echappee', 'outil_echappee', 'proposition refusée'],
   },
-  { id: 'echeance', libelle: 'Échéance', types: ['alerte'] },
-  { id: 'veille', libelle: 'Veille', types: ['constat', 'veille'] },
+  { id: 'echeance', libelle: 'Échéance', icone: 'horloge', types: ['alerte'] },
+  { id: 'veille', libelle: 'Veille', icone: 'oeil', types: ['constat', 'veille'] },
   {
     id: 'outil',
     libelle: 'Outil',
+    icone: 'outil',
     types: ['geste commandé', 'chantier', 'mise à jour', 'délégation proposée'],
   },
-  { id: 'ia', libelle: 'IA', types: ['appel_modele'] },
+  { id: 'ia', libelle: 'IA', icone: 'etincelle', types: ['appel_modele'] },
 ]
-const SORTE_ACTION = { id: 'action', libelle: 'Action' }
+const SORTE_ACTION = { id: 'action', libelle: 'Action', icone: 'eclair' }
 const sorteJournal = (l) => SORTES_JOURNAL.find((s) => s.types.includes(l.type)) ?? SORTE_ACTION
+/** L'icône d'une ligne : celle que le métier donne à son type (un message envoyé), sinon celle de sa sorte. */
+const iconeLigne = (l, sorte) => ici.tableau?.icones?.[l.type] ?? sorte.icone
 /** Combien de tags une dimension montre avant « + N autres ». */
 const TAGS_MONTRES = 6
 /** Les dimensions des tags du journal, dans l'ordre où elles s'affichent. */
@@ -137,6 +156,124 @@ const ici = {
 const boutons = new Map()
 
 const $ = (id) => document.getElementById(id)
+
+/**
+ * Les icônes, au trait (24 × 24, dessins repris de Lucide, licence ISC) : chacune une liste de
+ * tracés. Les premières sont celles qu'un métier peut choisir (`ICONES`, moteur/src/conversation/tableau.ts) ;
+ * les autres, celles de l'interface (onglets, sortes du journal, états).
+ */
+const ICONES = {
+  filtre: ['M22 3H2l8 9.46V19l4 2v-8.54L22 3z'],
+  bouclier: ['M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z', 'm9 12 2 2 4-4'],
+  donnees: [
+    'M3 5c0 1.66 4 3 9 3s9-1.34 9-3-4-3-9-3-9 1.34-9 3',
+    'M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5',
+    'M3 12c0 1.66 4 3 9 3s9-1.34 9-3',
+  ],
+  calendrier: [
+    'M8 2v4',
+    'M16 2v4',
+    'M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+    'M3 10h18',
+  ],
+  message: ['M22 2 11 13', 'M22 2 15 22l-4-9-9-4 20-7z'],
+  livre: ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'],
+  personne: ['M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2', 'M12 3a4 4 0 1 0 0 8 4 4 0 1 0 0-8z'],
+  personnes: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
+    'M9 3a4 4 0 1 0 0 8 4 4 0 1 0 0-8z',
+    'M22 21v-2a4 4 0 0 0-3-3.87',
+    'M16 3.13a4 4 0 0 1 0 7.75',
+  ],
+  'personne-absente': [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
+    'M9 3a4 4 0 1 0 0 8 4 4 0 1 0 0-8z',
+    'm17 8 5 5',
+    'm22 8-5 5',
+  ],
+  lieu: ['M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z', 'M12 7a3 3 0 1 0 0 6 3 3 0 1 0 0-6z'],
+  alerte: [
+    'M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z',
+    'M12 9v4',
+    'M12 17h.01',
+  ],
+  horloge: ['M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 'M12 6v6l4 2'],
+  echange: ['m8 3-4 4 4 4', 'M4 7h16', 'm16 21 4-4-4-4', 'M20 17H4'],
+  crayon: ['M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z'],
+  interdit: ['M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 'm4.9 4.9 14.2 14.2'],
+  loupe: ['M11 3a8 8 0 1 0 0 16 8 8 0 1 0 0-16z', 'm21 21-4.3-4.3'],
+  coche: ['M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 'm9 12 2 2 4-4'],
+  // Celles de l'interface.
+  bulle: ['M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'],
+  retour: ['m9 17-5-5 5-5', 'M20 18v-2a4 4 0 0 0-4-4H4'],
+  sablier: [
+    'M5 22h14',
+    'M5 2h14',
+    'M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22',
+    'M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2',
+  ],
+  question: [
+    'M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z',
+    'M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3',
+    'M12 17h.01',
+  ],
+  oeil: ['M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z', 'M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6z'],
+  outil: [
+    'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
+  ],
+  etincelle: ['M12 3 13.9 8.8 20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z', 'M19 3v4', 'M21 5h-4'],
+  eclair: ['M13 2 3 14h9l-1 8 10-12h-9l1-8z'],
+  balance: [
+    'm16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z',
+    'm2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1z',
+    'M7 21h10',
+    'M12 3v18',
+    'M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2',
+  ],
+  cle: ['M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4a6.5 6.5 0 1 0-4-4z', 'M16.5 7.5h.01'],
+  document: [
+    'M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z',
+    'M14 2v4a2 2 0 0 0 2 2h4',
+    'M16 13H8',
+    'M16 17H8',
+  ],
+  telecharger: ['M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4', 'm7 10 5 5 5-5', 'M12 15V3'],
+}
+/** L'icône d'une étiquette, selon ce qu'elle dit (`TONS`, moteur/src/conversation/tableau.ts). */
+const ICONES_TON = { lecture: 'oeil', ecriture: 'crayon', envoi: 'message', alerte: 'alerte' }
+/** L'icône de chaque onglet (`data-vue` de index.html). */
+const ICONES_ONGLET = {
+  valider: 'coche',
+  regles: 'balance',
+  delegations: 'cle',
+  appris: 'outil',
+  journal: 'livre',
+}
+
+const SVG = 'http://www.w3.org/2000/svg'
+/** Une icône, décorative (le texte à côté dit la même chose) ; un nom inconnu ne dessine rien. */
+function icone(nom) {
+  const traits = ICONES[nom]
+  if (!traits) return null
+  const svg = document.createElementNS(SVG, 'svg')
+  svg.setAttribute('class', 'icone')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('aria-hidden', 'true')
+  svg.setAttribute('focusable', 'false')
+  for (const d of traits) {
+    const trace = document.createElementNS(SVG, 'path')
+    trace.setAttribute('d', d)
+    svg.append(trace)
+  }
+  return svg
+}
+
+/** Un intitulé de section, précédé de son icône. */
+const intitule = (texte, nom) => el('h3', { classe: 'intitule' }, icone(nom), texte)
+
+/** Une étiquette en couleur rendue par le métier (« lu », « modifié »…) : son ton donne la teinte et l'icône. */
+const etiquetteTon = (e) =>
+  el('span', { classe: `ton ton--${e.ton}` }, icone(ICONES_TON[e.ton]), e.texte)
 
 /** Un élément, ses attributs, ses enfants (les textes deviennent des nœuds texte). */
 function el(tag, attributs = {}, ...enfants) {
@@ -399,11 +536,11 @@ function rendreValider() {
   // Une section vide ne se montre pas : seul ce qui attend prend la place.
   const zone = []
   if (confirmations.length > 0) {
-    zone.push(el('h3', { texte: 'Confirmations en attente' }))
+    zone.push(intitule('Confirmations en attente', 'sablier'))
     zone.push(el('ul', { classe: 'liste' }, ...confirmations.map(carteConfirmation)))
   }
   if (demandes.length > 0) {
-    zone.push(el('h3', { texte: 'Demandes en cours' }))
+    zone.push(intitule('Demandes en cours', 'bulle'))
     zone.push(el('ul', { classe: 'liste' }, ...demandes.map(carteDemande)))
   }
   $('valider').replaceChildren(...zone)
@@ -425,7 +562,7 @@ function carteConfirmation(c) {
     el(
       'div',
       { classe: 'carte__meta' },
-      el('span', { classe: `pastille ${sorte.classe}`, texte: sorte.libelle }),
+      el('span', { classe: `pastille ${sorte.classe}` }, icone(sorte.icone), sorte.libelle),
       el('span', { texte: `demandé par ${c.nom}` }),
       el('time', { datetime: c.horodatage, texte: instant(c.horodatage) }),
     ),
@@ -505,7 +642,7 @@ function carteDemande(d) {
       'div',
       { classe: 'carte__meta' },
       el('span', { classe: 'pastille pastille--outil', texte: d.statut }),
-      el('span', { texte: `${majuscule(d.sorte)} · ${d.id}` }),
+      el('span', { classe: 'avec-icone' }, icone(d.icone), `${majuscule(d.sorte)} · ${d.id}`),
       el('time', { datetime: d.depuis, texte: instant(d.depuis) }),
     ),
     el('h4', { classe: 'demande__titre', texte: d.titre ?? d.id }),
@@ -561,15 +698,22 @@ function zoneReplis(replis, demande) {
             else ici.replisOuverts.delete(cle)
           },
         },
-        el('summary', { texte: r.titre }),
+        el('summary', {}, icone(r.icone), r.titre),
         el(
           'ul',
           {},
+          // Une ligne : son icône, son nom et ses étiquettes en couleur ; son détail dessous.
           ...r.lignes.map((l) =>
             el(
               'li',
-              {},
-              el('span', { classe: 'repli__nom', texte: l.titre }),
+              { classe: l.icone ? 'repli__ligne--icone' : null },
+              icone(l.icone),
+              el(
+                'span',
+                { classe: 'repli__nom' },
+                l.titre,
+                ...(l.etiquettes ?? []).flatMap((e) => [' ', etiquetteTon(e)]),
+              ),
               ' ',
               l.detail ? el('span', { classe: 'repli__detail', texte: l.detail }) : null,
             ),
@@ -667,11 +811,11 @@ const avecGras = (texte) =>
 
 /** Le statut d'une règle, dit au patron (`STATUTS`, moteur/src/regles/schema.ts ; GLOSSAIRE, « Statut d'un fait »). */
 const STATUTS_REGLE = {
-  texte: { libelle: 'texte officiel', classe: '' },
-  déclaré: { libelle: 'déclarée par vous', classe: '' },
-  constaté: { libelle: 'constatée', classe: '' },
-  confirmé: { libelle: 'confirmée', classe: '' },
-  hypothèse: { libelle: 'à vérifier', classe: 'pastille--doute' },
+  texte: { libelle: 'texte officiel', teinte: 'texte', icone: 'document' },
+  déclaré: { libelle: 'déclarée par vous', teinte: 'declare', icone: 'personne' },
+  constaté: { libelle: 'constatée', teinte: 'constate', icone: 'oeil' },
+  confirmé: { libelle: 'confirmée', teinte: 'confirme', icone: 'coche' },
+  hypothèse: { libelle: 'à vérifier', teinte: 'hypothese', icone: 'question' },
 }
 
 /** Les règles, une ligne chacune : le nom en avant, son statut en mots ; le texte entier se déplie. */
@@ -682,7 +826,7 @@ function rendreRegles() {
       'ul',
       { classe: 'liste liste--serree' },
       ...regles.map((r) => {
-        const statut = STATUTS_REGLE[r.statut] ?? { libelle: r.statut, classe: '' }
+        const statut = STATUTS_REGLE[r.statut] ?? { libelle: r.statut, teinte: 'autre' }
         return el(
           'li',
           { classe: 'regle' },
@@ -691,7 +835,12 @@ function rendreRegles() {
             { classe: 'regle__tete' },
             el('span', { classe: 'regle__nom', texte: majuscule(r.nom) }),
             ' ',
-            el('span', { classe: `pastille ${statut.classe}`, texte: statut.libelle }),
+            el(
+              'span',
+              { classe: `badge badge--statut-${statut.teinte}` },
+              icone(statut.icone),
+              statut.libelle,
+            ),
           ),
           el(
             'details',
@@ -712,7 +861,7 @@ function rendreRegles() {
 /** Les propositions en attente d’une réponse (`Tableau.enAttente`), rendues par le métier : titre, texte, conditions en replis. */
 function rendreDelegations() {
   const { enAttente } = ici.donnees
-  const zone = [el('h3', { texte: 'Proposées par l’outil' })]
+  const zone = [intitule('Proposées par l’outil', 'etincelle')]
   if (enAttente.length === 0) {
     zone.push(
       el(
@@ -738,8 +887,8 @@ function rendreDelegations() {
             el(
               'div',
               { classe: 'carte__meta' },
-              el('span', { classe: 'pastille pastille--outil', texte: 'proposée' }),
-              el('span', { texte: `Délégation · ${p.id}` }),
+              el('span', { classe: 'pastille pastille--outil' }, icone('etincelle'), 'proposée'),
+              el('span', { classe: 'avec-icone' }, icone('cle'), `Délégation · ${p.id}`),
               p.depuis ? el('time', { datetime: p.depuis, texte: instant(p.depuis) }) : null,
             ),
             el('h4', { classe: 'demande__titre', texte: titre }),
@@ -1058,6 +1207,7 @@ function rangeeDeTags(f, entrees) {
             rendreJournal()
           },
         },
+        sorte ? icone(sorte.icone) : null,
         v,
         el('span', { classe: 'tag__compte', texte: String(comptes.get(v)) }),
       )
@@ -1266,14 +1416,28 @@ function entreeJournal({ l, genre, texte, note, sorte }) {
       el(
         'p',
         { classe: 'entree__genre' },
-        el('span', { classe: `badge badge--${sorte.id}` }, ...surligner(sorte.libelle, mots)),
+        el(
+          'span',
+          { classe: `badge badge--${sorte.id}` },
+          icone(iconeLigne(l, sorte)),
+          ...surligner(sorte.libelle, mots),
+        ),
         genre || fois > 1 ? ' ' : null,
         ...surligner(
           fois > 1 ? [genre, `${fois} relevés`].filter(Boolean).join(' · ') : genre,
           mots,
         ),
         note ? ' ' : null,
-        note ? el('span', { classe: 'pastille' }, ...surligner(note, mots)) : null,
+        note
+          ? el(
+              'span',
+              {
+                classe: `pastille${TEINTES_NOTE[note] ? ' pastille--teinte' : ''}`,
+                style: TEINTES_NOTE[note] ? `--teinte: var(--sorte-${TEINTES_NOTE[note]})` : null,
+              },
+              ...surligner(note, mots),
+            )
+          : null,
         l.objet ? ' ' : null,
         l.objet
           ? el(
@@ -1363,7 +1527,7 @@ async function chargerSansGeste() {
           }),
         ]
       : []),
-    el('h3', { texte: 'Demandes sans geste' }),
+    intitule('Demandes sans geste', 'question'),
     sansGeste.length === 0
       ? el(
           'p',
@@ -1387,21 +1551,36 @@ const quiCommande = (par) => (par.personne ? `${par.role} ${par.personne}` : par
  * préparation), disponible ; sinon le statut du chantier.
  */
 function etatCommande(c) {
-  if (c.disponible) return { etat: 'disponible', phrase: 'Vous pouvez le demander à l’outil.' }
+  if (c.disponible)
+    return { etat: 'disponible', icone: 'coche', phrase: 'Vous pouvez le demander à l’outil.' }
   const commande = `Commandé le ${jour(c.le)} par ${quiCommande(c.par)}`
   if (!c.chantier)
-    return { etat: 'commandé', phrase: `${commande} ; l’agence ne l’a pas commencé.` }
+    return {
+      etat: 'commandé',
+      icone: 'horloge',
+      phrase: `${commande} ; l’agence ne l’a pas commencé.`,
+    }
   const { issue, version } = c.chantier
-  if (issue === EN_COURS) return { etat: 'en chantier', phrase: `${commande} ; l’agence le code.` }
+  if (issue === EN_COURS)
+    return { etat: 'en chantier', icone: 'outil', phrase: `${commande} ; l’agence le code.` }
   if (issue === EN_ATTENTE)
-    return { etat: 'commandé', phrase: `${commande} ; le chantier se fera demain.` }
+    return {
+      etat: 'commandé',
+      icone: 'horloge',
+      phrase: `${commande} ; le chantier se fera demain.`,
+    }
   if (issue === FUSIONNE) {
     return {
       etat: 'disponible en téléchargeant la mise à jour',
+      icone: 'telecharger',
       phrase: `${commande} ; il arrive à la prochaine mise à jour${version ? ` (${version})` : ''}.`,
     }
   }
-  return { etat: issue, phrase: `${commande} ; chantier du ${jour(c.chantier.le)}.` }
+  return {
+    etat: issue,
+    icone: 'interdit',
+    phrase: `${commande} ; chantier du ${jour(c.chantier.le)}.`,
+  }
 }
 
 /** Ce qu'une demande sans geste demandait, en mots : son dernier résumé, sinon son mot-clé. */
@@ -1416,10 +1595,12 @@ function carteSansGeste(d) {
     el(
       'div',
       { classe: 'carte__meta' },
-      el('span', {
-        classe: `pastille ${etat ? 'pastille--outil' : 'pastille--doute'}`,
-        texte: etat ? etat.etat : 'à commander',
-      }),
+      el(
+        'span',
+        { classe: `pastille ${etat ? 'pastille--outil' : 'pastille--doute'}` },
+        icone(etat ? etat.icone : 'question'),
+        etat ? etat.etat : 'à commander',
+      ),
       el('span', {
         texte: `Demandé ${d.compte} fois · la dernière le ${jour(d.derniere)}`,
       }),
@@ -1470,10 +1651,15 @@ async function ouvrirGeste(d) {
     sorte,
     titreSansGeste(d),
     el('p', { classe: 'volet__resume', texte: resumeGeste(d, detail) }),
-    sectionVolet('Où il en est', el('ol', { classe: 'etapes' }, ...etapesGeste(d, detail))),
-    detail.mission ? sectionVolet('Ce qu’il fera', ...ceQuIlFera(detail.mission)) : null,
+    sectionVolet(
+      'Où il en est',
+      'horloge',
+      el('ol', { classe: 'etapes' }, ...etapesGeste(d, detail)),
+    ),
+    detail.mission ? sectionVolet('Ce qu’il fera', 'outil', ...ceQuIlFera(detail.mission)) : null,
     sectionVolet(
       'Les demandes reçues',
+      'bulle',
       el('p', {
         classe: 'volet__note',
         texte:
@@ -1491,9 +1677,9 @@ async function ouvrirGeste(d) {
   )
 }
 
-/** Une partie du volet : un intitulé, puis son contenu. */
-const sectionVolet = (titre, ...contenu) =>
-  el('section', { classe: 'volet__section' }, el('h3', { texte: titre }), ...contenu)
+/** Une partie du volet : un intitulé et son icône, puis son contenu. */
+const sectionVolet = (titre, nom, ...contenu) =>
+  el('section', { classe: 'volet__section' }, intitule(titre, nom), ...contenu)
 
 /** Qui, dans une phrase : la personne par son nom, un rôle sans majuscule (« par le patron »). */
 function quiDansPhrase(identite) {
@@ -1658,6 +1844,7 @@ function sectionAgence(d, detail) {
   if (detail.refus) {
     return sectionVolet(
       'Si vous le commandez',
+      'interdit',
       el(
         'p',
         { classe: 'vide' },
@@ -1669,6 +1856,7 @@ function sectionAgence(d, detail) {
   if (!detail.mission) return null
   return sectionVolet(
     d.commande ? 'Ce qui est parti à l’agence' : 'Ce qui partira à l’agence',
+    'message',
     el('p', {
       classe: 'volet__note',
       texte:
@@ -1839,7 +2027,9 @@ function bulleOutil(reponse, conf) {
         'div',
         { classe: 'bulle__qui' },
         el('span', { classe: 'etiquette', texte: 'L’outil' }),
-        sorte ? el('span', { classe: `pastille ${sorte.classe}`, texte: sorte.libelle }) : null,
+        sorte
+          ? el('span', { classe: `pastille ${sorte.classe}` }, icone(sorte.icone), sorte.libelle)
+          : null,
       ),
       corps,
     ),
@@ -2106,6 +2296,7 @@ function ajuster() {
 
 async function demarrer() {
   for (const b of document.querySelectorAll('.onglet')) {
+    b.querySelector('.onglet__marque').replaceChildren(icone(ICONES_ONGLET[b.dataset.vue]) ?? '')
     b.addEventListener('click', () => ouvrirOnglet(b.dataset.vue))
     b.addEventListener('keydown', (e) => {
       const onglets = [...document.querySelectorAll('.onglet')]

@@ -93,6 +93,10 @@ demandes reçues, ce qui part à l'agence (`detailSansGeste`).
 Le journal a ses badges de sorte, une recherche à chaque lettre qui
 surligne ce qu'elle trouve, et des tags cumulables, repliés sous elle (« ou » dans une dimension, « et » entre elles ;
 `SORTES_JOURNAL`, `FACETTES` dans `app.js`).
+Toute l'interface a ses icônes au trait (2026-10-20) : le métier choisit
+celle de ses sections, lignes et types du journal dans `ICONES` (moteur,
+`tableau.ts`), avec des étiquettes en couleur (`TONS` : lu, modifié,
+envoyé) ; un test vérifie que chaque nom a son dessin dans `app.js`.
 L'agence web suit (2026-10-19) : factures en retard (jamais relancées,
 déjà relancées), tickets par projet, heures par projet, disponibilités du
 plus libre au plus chargé, domaines (date à renseigner en tête, expirés, à

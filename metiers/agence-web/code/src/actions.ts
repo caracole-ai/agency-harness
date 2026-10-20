@@ -298,12 +298,20 @@ const facturesEnRetard: Action<Session, z.infer<typeof FacturesEnRetard>> = {
       texte: `${pluriel(retards.length, 'facture')} en retard : ${enEuros(du)} restant dû.`,
       replis: [
         ...(sans.length > 0
-          ? [{ titre: `Jamais relancées (${sans.length})`, lignes: sans.map(ligne), ouvert: true }]
+          ? [
+              {
+                titre: `Jamais relancées (${sans.length})`,
+                icone: 'alerte' as const,
+                lignes: sans.map(ligne),
+                ouvert: true,
+              },
+            ]
           : []),
         ...(relancees.length > 0
           ? [
               {
                 titre: `Déjà relancées (${relancees.length})`,
+                icone: 'horloge' as const,
                 lignes: relancees.map(ligne),
                 ouvert: true,
               },
@@ -512,6 +520,7 @@ const disponibilites: Action<Session, z.infer<typeof Periode>> = {
       replis: [
         {
           titre: `Charge de chacun (${charges.length})`,
+          icone: 'personnes',
           lignes: charges.sort((a, b) => a.estimees - b.estimees).map((c) => c.ligne),
           ouvert: true,
         },
@@ -574,15 +583,22 @@ const domainesExpirant: Action<Session, z.infer<typeof DomainesExpirant>> = {
     const aVenir = datees.filter((d) => !d.passe).map((d) => d.ligne)
     // Une date inconnue en tête : elle n'est pas lointaine, elle est à renseigner.
     const groupes = [
-      { titre: 'Date à renseigner', compte: () => 'date à renseigner', lignes: inconnues },
+      {
+        titre: 'Date à renseigner',
+        compte: () => 'date à renseigner',
+        icone: 'calendrier' as const,
+        lignes: inconnues,
+      },
       {
         titre: 'Déjà expirés',
         compte: (n: number) => (n > 1 ? 'expirés' : 'expiré'),
+        icone: 'alerte' as const,
         lignes: expires,
       },
       {
         titre: `À renouveler dans les ${p.jours} jours`,
         compte: () => 'à renouveler',
+        icone: 'horloge' as const,
         lignes: aVenir,
       },
     ].filter((g) => g.lignes.length > 0)
@@ -593,6 +609,7 @@ const domainesExpirant: Action<Session, z.infer<typeof DomainesExpirant>> = {
           texte: `${total} ${total > 1 ? 'domaines ou certificats' : 'domaine ou certificat'} : ${groupes.map((g) => `${g.lignes.length} ${g.compte(g.lignes.length)}`).join(', ')}.`,
           replis: groupes.map((g) => ({
             titre: `${g.titre} (${g.lignes.length})`,
+            icone: g.icone,
             lignes: g.lignes,
             ouvert: true,
           })),

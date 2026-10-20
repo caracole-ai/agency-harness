@@ -172,14 +172,20 @@ function echeancesGroupees(
   aujourdhui: Temporal.PlainDate,
 ): { texte: string; replis: Repli[] } {
   const groupes = [
-    { titre: 'En retard', compte: 'en retard', lignes: [] as Repli['lignes'] },
+    { titre: 'En retard', compte: 'en retard', icone: 'alerte', lignes: [] as Repli['lignes'] },
     {
       titre: 'Urgent : le temps de préparation manque',
       compte: 'urgentes',
+      icone: 'alerte',
       lignes: [] as Repli['lignes'],
     },
-    { titre: 'À prévoir', compte: 'à prévoir', lignes: [] as Repli['lignes'] },
-    { titre: 'Date à renseigner', compte: 'date à renseigner', lignes: [] as Repli['lignes'] },
+    { titre: 'À prévoir', compte: 'à prévoir', icone: 'horloge', lignes: [] as Repli['lignes'] },
+    {
+      titre: 'Date à renseigner',
+      compte: 'date à renseigner',
+      icone: 'calendrier',
+      lignes: [] as Repli['lignes'],
+    },
   ] as const
   for (const a of alertes) {
     const limite = a.limite ? Temporal.PlainDate.from(a.limite) : undefined
@@ -207,6 +213,7 @@ function echeancesGroupees(
         : `${total} ${total > 1 ? 'échéances' : 'échéance'} : ${pleins.map((g) => `${g.lignes.length} ${g.compte}`).join(', ')}.`,
     replis: pleins.map((g) => ({
       titre: `${g.titre} (${g.lignes.length})`,
+      icone: g.icone,
       lignes: g.lignes,
       ouvert: true,
     })),
@@ -795,12 +802,20 @@ const lancerVeille: Action<Session, z.infer<typeof LancerVeille>> = {
       texte: `Veille du ${dateFr(jour)} : ${parties.length > 0 ? `${parties.join(', ')}.` : DOMAINE.rienASignaler}`,
       replis: [
         ...(corriger.length > 0
-          ? [{ titre: `À corriger (${corriger.length})`, lignes: corriger, ouvert: true }]
+          ? [
+              {
+                titre: `À corriger (${corriger.length})`,
+                icone: 'interdit' as const,
+                lignes: corriger,
+                ouvert: true,
+              },
+            ]
           : []),
         ...(decider.length > 0
           ? [
               {
                 titre: `À décider par l'exploitation (${decider.length})`,
+                icone: 'personne' as const,
                 lignes: decider,
                 ouvert: true,
               },
@@ -811,6 +826,7 @@ const lancerVeille: Action<Session, z.infer<typeof LancerVeille>> = {
           ? [
               {
                 titre: `Pas encore vérifié (${nonCouverts.length})`,
+                icone: 'loupe' as const,
                 lignes: nonCouverts.map((c) => ({
                   titre: nomRegle(c.regle).replace(/^./, (x) => x.toUpperCase()),
                   detail: (c.nonCouvert ?? []).join(' ; '),

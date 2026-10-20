@@ -171,6 +171,48 @@ textarea {
   width: min(100% - var(--gutter) * 2, var(--shell-max));
   margin-inline: auto;
 }
+/* Les icônes : au trait, à la taille du texte qu'elles précèdent, de sa couleur. */
+.icone {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -0.2em;
+}
+/* L'icône d'une section repliable, devant son titre. */
+summary > .icone {
+  margin: 0 0.4rem 0 0.15rem;
+  color: var(--accent-ink);
+}
+/* Un intitulé ou une méta précédés de leur icône. */
+.intitule,
+.avec-icone {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+.avec-icone {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+.intitule .icone {
+  width: 1rem;
+  height: 1rem;
+}
+/* Dans une pastille, un badge, une étiquette : l'icône à la taille des capitales, un peu plus appuyée. */
+.pastille .icone,
+.badge .icone,
+.ton .icone {
+  width: 1.35em;
+  height: 1.35em;
+  margin-right: 0.35em;
+  stroke-width: 2.25;
+  vertical-align: -0.3em;
+}
 .etiquette {
   font-family: var(--font-mono);
   font-size: 0.625rem;
@@ -433,12 +475,12 @@ textarea {
 }
 .onglet__marque {
   flex: none;
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border: 1px solid currentColor;
+  display: inline-flex;
 }
-.onglet[aria-selected="true"] .onglet__marque {
-  background: currentColor;
+.onglet__marque .icone {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: 0;
 }
 .compte {
   margin-left: auto;
@@ -664,6 +706,50 @@ textarea {
   display: block;
   color: var(--fg);
 }
+/* Une ligne avec son icône : l'icône à gauche, le nom et le détail alignés à sa droite. */
+.repli__ligne--icone {
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  column-gap: 0.6rem;
+}
+.repli__ligne--icone > .icone {
+  grid-row: 1 / span 2;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.1rem;
+  color: var(--fg-soft);
+}
+/* Une étiquette rendue par le métier (« lu », « modifié », « envoyé ») : sa teinte dit ce qu'elle est. */
+.ton {
+  --teinte: var(--fg-soft);
+  display: inline-block;
+  margin-left: 0.2rem;
+  padding: 0.25em 0.55em;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: 0.15em;
+  border-radius: 999px;
+  color: var(--teinte);
+  background: color-mix(in srgb, var(--teinte) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--teinte) 38%, transparent);
+}
+.ton--lecture {
+  --teinte: var(--sorte-question);
+}
+.ton--ecriture {
+  --teinte: var(--sorte-attente);
+}
+.ton--envoi {
+  --teinte: var(--sorte-reponse);
+}
+.ton--alerte {
+  --teinte: var(--sorte-echeance);
+}
 .repli__detail {
   display: block;
   font-size: 0.75rem;
@@ -707,6 +793,12 @@ textarea {
 }
 .pastille--doute {
   border-style: dashed;
+}
+/* Une note qui appelle un geste : à la teinte de ce qu'elle demande (`TEINTES_NOTE`). */
+.pastille--teinte {
+  color: var(--teinte);
+  background: color-mix(in srgb, var(--teinte) 13%, transparent);
+  border-color: color-mix(in srgb, var(--teinte) 45%, transparent);
 }
 /* Actif : l'humain a engagé, en aplat marine comme son oui. */
 .pastille--humain {
@@ -1009,13 +1101,11 @@ textarea {
   font-variant-numeric: tabular-nums;
   color: var(--fg-faint);
 }
-/* La pastille de couleur d'un tag de sorte, la même que le badge de ses lignes. */
-.tag[class*="tag--"]::before {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--teinte);
+/* L'icône d'un tag de sorte, à sa teinte : la même que le badge de ses lignes. */
+.tag .icone {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--teinte);
 }
 .journal__compte {
   margin: 0;
@@ -1086,6 +1176,23 @@ textarea {
 .badge--ia,
 .tag--ia {
   --teinte: var(--sorte-ia);
+}
+.badge--statut-texte {
+  --teinte: var(--sorte-demande);
+}
+.badge--statut-declare {
+  --teinte: var(--sorte-reponse);
+}
+.badge--statut-constate {
+  --teinte: var(--sorte-question);
+}
+.badge--statut-confirme {
+  --teinte: var(--sorte-outil);
+}
+/* À vérifier : en pointillé, comme le doute. */
+.badge--statut-hypothese {
+  --teinte: var(--sorte-attente);
+  border-style: dashed;
 }
 .badge--action,
 .tag--action {
