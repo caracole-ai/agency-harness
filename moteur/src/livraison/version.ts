@@ -1,5 +1,6 @@
-import { accessSync, constants, existsSync } from 'node:fs'
-import { isAbsolute, relative, resolve } from 'node:path'
+import { accessSync, constants, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { assertEnv, type Executer, executerSync } from '../agence/config'
 import { type Commande, git } from '../chantier/arbre'
 
@@ -74,8 +75,8 @@ export interface Manifeste {
   chantier?: string
   /** Le geste ajouté ou retiré : l'identifiant de la mission. */
   geste?: string
-  /** Le client qui l'a commandée, en slug. */
-  client?: string
+  /** Le métier de la mission : tous les clients lisent le manifeste, aucun client n'y est nommé. */
+  metier?: string
 }
 
 /** Le message de l'étiquette : une ligne de titre, puis une ligne `clé: valeur` par champ. */
@@ -86,7 +87,7 @@ export function rendreManifeste(tag: string, m: Manifeste): string {
     '',
     `sorte: ${m.sorte}`,
     ...(m.chantier ? [`chantier: ${m.chantier}`] : []),
-    ...(m.client ? [`client: ${m.client}`] : []),
+    ...(m.metier ? [`metier: ${m.metier}`] : []),
     ...(m.geste && verbe ? [`geste: ${m.geste} (${verbe})`] : []),
     `commit: ${m.commit}`,
     '',
@@ -164,6 +165,30 @@ export function verifierEtiquette(
   return r.code === 0
     ? undefined
     : `signature refusée (${(r.erreur || r.sortie).trim().split('\n').at(-1)?.slice(0, 200) ?? '?'})`
+}
+
+/**
+ * L'étiquette est une version signée par cette clé privée (un chemin) : sa
+ * publique tirée par `ssh-keygen -y`, admise seule, le temps de
+ * `verifierEtiquette`. À l'agence, qui n'a que sa clé privée. Rend la raison
+ * du refus, ou undefined ; jamais le chemin de la clé.
+ */
+export function verifierParLaCle(
+  c: Commande,
+  depot: string,
+  tag: string,
+  cle: string,
+): string | undefined {
+  const publique = c(depot, 'ssh-keygen', ['-y', '-P', '', '-f', cle])
+  if (publique.code !== 0) return 'la clé publique de l’agence ne se lit pas (ssh-keygen -y)'
+  const d = mkdtempSync(join(tmpdir(), 'signataires-'))
+  try {
+    const signataires = join(d, FICHIER_SIGNATAIRES)
+    writeFileSync(signataires, `agence ${publique.sortie.trim()}\n`)
+    return verifierEtiquette(c, depot, tag, signataires)
+  } finally {
+    rmSync(d, { recursive: true, force: true })
+  }
 }
 
 /**

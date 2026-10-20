@@ -13,6 +13,7 @@ import { FUSEAU, Temporal } from '../temps/temporal'
 import {
   aPrendre,
   chantiersDuJour,
+  clientDuChantier,
   cloneAgence,
   DOSSIER_FILES,
   ecrireEnFile,
@@ -21,6 +22,7 @@ import {
   type MissionEnFile,
   nomEnFile,
   noterChantier,
+  noterFusion,
   publier,
   sortieAgence,
   statuerEnFile,
@@ -154,7 +156,6 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
       racine: o.racine,
       agence: o.agence,
       mission: x.chemin,
-      client: x.client.slug,
       personnes: await o.personnes(x.mission.metier),
       sortie,
       env: o.env,
@@ -178,6 +179,10 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
   } catch (erreur) {
     fin = { statut: 'échoué', issue: message(erreur), cout_usd: 0, le }
   }
+  // Le client du geste, au seul registre de l'agence : son retrait le lui dira.
+  if (fin.statut === 'fusionné') {
+    noterFusion(o.racine, jour, x.client.slug, cleChantier(x.mission.metier, x.mission.id))
+  }
   ecrireEnFile(o.racine, x, statutPublic(fin))
   pousser(fin.statut)
   tour.prise = { mission: nomEnFile(x), statut: fin.statut, issue: fin.issue }
@@ -187,9 +192,10 @@ export async function tourAgence(o: OptionsAgence): Promise<TourAgence> {
 /**
  * `pnpm chantier retirer <métier>/<id>` (G2, L7) : la fusion défaite sur
  * `main` du distant et sa version signée (`retirerFusion`), la mémoire du
- * retrait (le client, le titre et les intentions que garde la mémoire de la
- * fusion), puis le statut `retiré` dans la file du client qui l'avait
- * commandée. L'identifiant seul suffit quand un seul métier l'a fusionné. Le
+ * retrait (le titre et les intentions que garde la mémoire de la fusion),
+ * puis le statut `retiré` dans la file du client qui l'avait commandée, que
+ * dit le registre de l'agence (`clientDuChantier`), jamais la mémoire.
+ * L'identifiant seul suffit quand un seul métier l'a fusionné. Le
  * motif est nettoyé une fois (contre les noms des clients fictifs, seuls
  * connus ici) : le même part dans le commit du retrait (que tous les clients
  * tirent avec la version), dans la mémoire et dans le statut.
@@ -217,7 +223,6 @@ export function retirerMission(o: {
   const c = o.commande ?? commandeSync
   const motif = nettoyer(o.motif, o.personnes)
   const jour = o.maintenant.toPlainDate().toString()
-  let client: string | undefined
   const r = retirerFusion({
     commande: c,
     racine: o.racine,
@@ -227,12 +232,10 @@ export function retirerMission(o: {
     ecrireRetrait: (arbre, cle) => {
       const fusion = missionFusionnee(arbre, cle)
       if (!fusion) throw new Error(`aucune fusion de ${cle} dans la mémoire d'origin/main`)
-      client = fusion.client
       ecrireRetrait(
         arbre,
         {
           date: jour,
-          client: fusion.client,
           cle,
           titre: fusion.titre,
           intentions: fusion.intentions,
@@ -242,6 +245,7 @@ export function retirerMission(o: {
       )
     },
   })
+  const client = clientDuChantier(o.racine, r.cle)
   const dit =
     client === undefined
       ? { sorte: 'absent' as const }

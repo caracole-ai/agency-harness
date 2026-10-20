@@ -131,7 +131,7 @@ export function construireCatalogue<S>(
 
 export interface MissionLue {
   mission: Mission
-  /** Le client, en slug (le nom de son dossier) : ce que la mémoire du chantier cite de lui (L3). */
+  /** Le client, en slug (le nom de son dossier) ; ni la mémoire ni la version ne le citent (décidé le 2026-10-20). */
   client: string
 }
 

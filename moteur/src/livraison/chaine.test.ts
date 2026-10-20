@@ -96,7 +96,7 @@ const DELAI_CHAINE_MS = 120_000
 describe('la chaîne entière (L12), le binaire simulé', () => {
   it('points 1 à 5 du critère global', { timeout: DELAI_CHAINE_MS }, async () => {
     // ── Le laboratoire ─────────────────────────────────────────────────────
-    const depots = creerDepots()
+    const depots = creerDepots({ sansVersion: true })
     const humain = etatHumain(depots.racine)
     const base = mkdtempSync(join(tmpdir(), 'laboratoire-'))
     const file = join(base, `missions-${SLUG}.git`)

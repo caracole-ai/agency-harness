@@ -17,13 +17,15 @@
 // refait pas sans --refaire. --sans-modele : la décision et ce que le plan
 // recevrait, aucun appel, aucun git.
 // `retirer` (G2) : `git revert -m 1` de la fusion dans un arbre détaché, sa
-// version signée, push, la mémoire (motif, et le client, le titre et les
-// intentions que la mémoire de la fusion garde : la mission n'est jamais
-// refaite), puis le statut `retiré` dans la file du client qui l'avait
-// commandée (`retirerMission`) ; le motif, nettoyé des noms des clients
+// version signée, push, la mémoire (motif, et le titre et les intentions que
+// la mémoire de la fusion garde : la mission n'est jamais refaite), puis le
+// statut `retiré` dans la file du client qui l'avait commandée, que dit le
+// registre de l'agence (`retirerMission`) ; le motif, nettoyé des noms des clients
 // fictifs, est le même dans le commit, la mémoire et le statut. La mission se
 // nomme par sa clé `<métier>/<id>` ; l'identifiant seul suffit quand un seul
-// métier l'a fusionné.
+// métier l'a fusionné. La fusion et le retrait ne signent que si `origin/main`
+// n'a apporté que de la mémoire depuis la dernière version (sinon : `pnpm
+// versionner`, le geste humain, d'abord).
 // Sous acces: claude, l'abonnement par le binaire : ANTHROPIC_API_KEY doit être
 // absente, et le coût est « estimé par le binaire » ; la mesure d'honnêteté
 // appelle le modèle du quotidien (la clé que nomme la config du client).
@@ -35,10 +37,11 @@ import { chargerAgence } from '../agence/config'
 import { nomsFictifs } from '../agence/fictif'
 import { commandeSync } from '../chantier/arbre'
 import { faireChantier } from '../chantier/chantier'
+import { cleChantier } from '../chantier/cle'
 import { lireMission, lireStatut, SUFFIXE_STATUT } from '../chantier/mission'
 import { ConfigBase, chargerConfig, FICHIER_CONFIG } from '../config'
 import { retirerMission } from '../livraison/agence'
-import { slugEnFile, sortieAgence, statuerALaMain } from '../livraison/missions'
+import { noterFusion, slugEnFile, sortieAgence, statuerALaMain } from '../livraison/missions'
 import { preflightSignature } from '../livraison/version'
 import { dollars } from '../modele/modele'
 import { FUSEAU, Temporal } from '../temps/temporal'
@@ -101,7 +104,7 @@ try {
       process.exit(2)
     }
     const chemin = resolve(values.mission)
-    const { mission, client } = lireMission(chemin)
+    const { mission } = lireMission(chemin)
     // Une mission chez un client (non livré) : son métier est celui du client, sinon le chantier
     // ouvrirait la bande d'un autre métier, et le geste partirait chez ses clients (L10).
     const config = join(dirname(chemin), '..', '..', FICHIER_CONFIG)
@@ -128,13 +131,22 @@ try {
       racine: RACINE,
       agence,
       mission: chemin,
-      client,
       personnes: await nomsFictifs(agence.chantier.evals_clients, RACINE, [mission.metier]),
       sortie,
       env: process.env,
       sansModele: values['sans-modele'] === true,
       refaire: values.refaire === true,
     })
+    // Le client du geste, au seul registre de l'agence (la mémoire ne nomme que le métier) : son
+    // retrait le lui dira dans sa file. Une mission non livrée n'a pas de file : rien à noter.
+    if (enFile && r.sorte === 'fait' && r.fusion?.sorte === 'fusionne') {
+      noterFusion(
+        RACINE,
+        Temporal.Now.zonedDateTimeISO(FUSEAU).toPlainDate().toString(),
+        enFile,
+        cleChantier(mission.metier, mission.id),
+      )
+    }
     if (
       enFile &&
       values['sans-modele'] !== true &&

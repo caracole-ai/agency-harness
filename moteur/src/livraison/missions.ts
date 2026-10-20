@@ -60,8 +60,17 @@ import { FICHIER_LIVRAISON, type Livraison, lireLivraison } from './config'
 export const DOSSIER_FILES = join('.claude', 'missions')
 /** Le verrou de `pnpm agence` (L1), à côté des files : le pid de qui tourne. */
 export const FICHIER_VERROU = 'agence.lock'
-/** Les chantiers que l'agence a lancés, une ligne chacun (`jour`, client, clé `<métier>/<id>` de la mission) : la borne du jour se compte ici, jamais sur ce qu'un client écrit (L1). */
+/**
+ * Le registre local de l'agence (jamais poussé) : les chantiers qu'elle a
+ * lancés, une ligne chacun (`jour`, client, clé `<métier>/<id>` de la
+ * mission) : la borne du jour se compte ici, jamais sur ce qu'un client écrit
+ * (L1) ; et ses fusions, la même ligne suivie de `fusion` : le seul lieu qui
+ * dit quel client a commandé un geste (la mémoire et les versions, que tous
+ * les clients tirent, ne nomment que le métier ; décidé le 2026-10-20).
+ */
 const FICHIER_CHANTIERS = 'chantiers.log'
+/** La quatrième colonne d'une ligne de fusion du registre. */
+const LIGNE_FUSION = 'fusion'
 /**
  * À l'agence, à côté des files mais hors de leurs clones (jamais poussé) :
  * ce que le chantier écrit pour lui, son dossier et son statut complets
@@ -495,6 +504,15 @@ export function noterChantier(racine: string, jour: string, slug: string, cle: s
   appendFileSync(join(racine, DOSSIER_FILES, FICHIER_CHANTIERS), `${jour}\t${slug}\t${cle}\n`)
 }
 
+/** Note au registre la fusion d'un chantier : quel client l'a commandé (pour son retrait). */
+export function noterFusion(racine: string, jour: string, slug: string, cle: string): void {
+  mkdirSync(join(racine, DOSSIER_FILES), { recursive: true })
+  appendFileSync(
+    join(racine, DOSSIER_FILES, FICHIER_CHANTIERS),
+    `${jour}\t${slug}\t${cle}\t${LIGNE_FUSION}\n`,
+  )
+}
+
 /** Les chantiers que l'agence a lancés ce jour, en tout et par client : son propre registre, jamais une file. */
 export function chantiersDuJour(
   racine: string,
@@ -505,12 +523,30 @@ export function chantiersDuJour(
   if (!existsSync(chemin)) return { total: 0, parClient }
   let total = 0
   for (const ligne of readFileSync(chemin, 'utf8').split('\n')) {
-    const [j, slug] = ligne.split('\t')
-    if (j !== jour || !slug) continue
+    const [j, slug, , sorte] = ligne.split('\t')
+    // Une ligne de fusion suit celle de son chantier, déjà compté.
+    if (j !== jour || !slug || sorte !== undefined) continue
     total++
     parClient.set(slug, (parClient.get(slug) ?? 0) + 1)
   }
   return { total, parClient }
+}
+
+/**
+ * Le client dont le chantier de cette clé (`<métier>/<id>`) a fusionné, au
+ * registre de l'agence (sa dernière ligne de fusion) ; undefined s'il n'y est
+ * pas. Pas la dernière ligne de chantier : un autre client du même métier a pu
+ * commander le même geste après, écarté. La mémoire et les versions, que tous
+ * les clients tirent, ne le nomment pas (décidé le 2026-10-20).
+ */
+export function clientDuChantier(racine: string, cle: string): string | undefined {
+  const chemin = join(racine, DOSSIER_FILES, FICHIER_CHANTIERS)
+  if (!existsSync(chemin)) return undefined
+  return readFileSync(chemin, 'utf8')
+    .split('\n')
+    .map((ligne) => ligne.split('\t'))
+    .filter(([, slug, k, sorte]) => slug && k === cle && sorte === LIGNE_FUSION)
+    .at(-1)?.[1]
 }
 
 /** La place du statut d'une mission dans la file : nette, dans un vrai dossier de date ; rend ce dossier. */

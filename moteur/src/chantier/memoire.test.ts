@@ -27,7 +27,6 @@ const personnes = [
   { id: 'A-11', nom: 'Octave Brunel', sorte: 'personne' as const },
 ]
 const racine = () => mkdtempSync(join(tmpdir(), 'memoire-'))
-const CLIENT = 'client essai (sécurité)'
 
 describe('interdits et nettoyer', () => {
   it('trouve un nom, un identifiant de personne, de conversation ou d’échappée', () => {
@@ -54,7 +53,6 @@ describe('écrire et relire la mémoire', () => {
       r,
       {
         date: '2026-10-13',
-        client: CLIENT,
         cle: 'essai/simuler_absence',
         titre: 'Simuler une absence',
         sections: [{ titre: 'Mission', texte: 'simuler_absence, intention du catalogue' }],
@@ -77,6 +75,11 @@ describe('écrire et relire la mémoire', () => {
     expect(chantiersCitant(r, ['autre'], 'essai')).toHaveLength(0)
     // Un autre métier ne relit pas les chantiers de celui-ci.
     expect(chantiersCitant(r, ['simuler_absence'], 'autre')).toHaveLength(0)
+    // L'index nomme le métier de la clé, jamais le client : tous les clients le tirent (décidé le 2026-10-20).
+    expect(readFileSync(join(r, DOSSIER_MEMOIRE, 'INDEX.md'), 'utf8')).toMatch(
+      /^- 2026-10-13 · essai · refus · essai\/simuler_absence · /m,
+    )
+    expect(lireIndex(r)).toMatchObject([{ metier: 'essai', cle: 'essai/simuler_absence' }])
   })
 
   it('une clé se résout : entière telle quelle ; un identifiant seul par les fusions de l’index, jamais deviné entre deux métiers', () => {
@@ -84,7 +87,14 @@ describe('écrire et relire la mémoire', () => {
     const fusion = (cle: string) =>
       ajouterIndex(
         r,
-        { date: '2026-10-13', client: CLIENT, sorte: 'fusion', cle, titre: 't', issue: 'fusionné' },
+        {
+          date: '2026-10-13',
+          metier: 'essai',
+          sorte: 'fusion',
+          cle,
+          titre: 't',
+          issue: 'fusionné',
+        },
         personnes,
       )
     expect(resoudreCle(r, 'essai/simuler_absence')).toBe('essai/simuler_absence')
@@ -102,7 +112,7 @@ describe('écrire et relire la mémoire', () => {
         r,
         {
           date: '2026-10-12',
-          client: CLIENT,
+          metier: 'essai',
           sorte: 'retrait',
           cle: 'essai/m',
           titre: 'Rosalie',
@@ -121,7 +131,7 @@ describe('écrire et relire la mémoire', () => {
       r,
       {
         date: '2026-10-14',
-        client: CLIENT,
+        metier: 'essai',
         sorte: 'retrait',
         cle: 'essai/heures_cumulees',
         titre: 'retirée',
@@ -134,14 +144,13 @@ describe('écrire et relire la mémoire', () => {
     ])
   })
 
-  it('une fusion se relit pour son retrait : client, titre, intentions de son entrée ; sans fusion, rien', () => {
+  it('une fusion se relit pour son retrait : titre, intentions de son entrée ; sans fusion, rien', () => {
     const r = racine()
     const entree = (sorte: 'fusion' | 'refus', date: string, intentions: string) =>
       ecrireChantier(
         r,
         {
           date,
-          client: 'client-essai',
           cle: 'essai/simuler_absence',
           titre: 'Simuler une absence',
           sections: [
@@ -162,7 +171,6 @@ describe('écrire et relire la mémoire', () => {
     entree('fusion', '2026-10-13', '`simuler_absence`, `absence_longue`')
     expect(missionFusionnee(r, 'essai/simuler_absence')).toEqual({
       date: '2026-10-13',
-      client: 'client-essai',
       titre: 'Simuler une absence',
       intentions: ['simuler_absence', 'absence_longue'],
     })
@@ -177,7 +185,6 @@ describe('écrire et relire la mémoire', () => {
       r,
       {
         date: '2026-10-14',
-        client: CLIENT,
         cle: 'essai/etat_des_cartes',
         titre: 'Les cartes ; en un geste',
         intentions: ['agents_sans_carte', 'cartes_expirees'],
@@ -199,7 +206,6 @@ describe('écrire et relire la mémoire', () => {
         r,
         {
           date: '2026-10-14',
-          client: CLIENT,
           cle: 'essai/x',
           titre: 't',
           intentions: [],
