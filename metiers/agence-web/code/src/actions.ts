@@ -1,6 +1,7 @@
 import {
   type Action,
   aCapacite,
+  ajouter,
   dateFr,
   type Identite,
   LEQUEL,
@@ -764,8 +765,13 @@ function brouillon(
   return { facture: f, echeance, niveau, texte }
 }
 
-/** Le premier jour où une facture est échue, et où sa relance peut se garder : le lendemain de son échéance (le retard de `factures_en_retard`). */
-const echueLe = (echeance: string) => jour(echeance).add({ days: 1 })
+/**
+ * Le premier jour où la relance d'une facture peut se garder : son échéance
+ * plus le délai du premier rappel de la maison (`veiller.delais.relance_facture`),
+ * la date que la veille annonce (`echeances.ts`).
+ */
+const relancableLe = (s: Session, echeance: string) =>
+  ajouter(jour(echeance), s.config.veiller.delais.relance_facture)
 
 const brouillonRelance: Action<Session, z.infer<typeof BrouillonRelance>> = {
   id: 'brouillon_relance',
@@ -779,14 +785,14 @@ const brouillonRelance: Action<Session, z.infer<typeof BrouillonRelance>> = {
   // connaît, refuse avant elle.
   reformuler: (s, _identite, p) => {
     const b = brouillon(s, p.facture)
-    return `${b.texte}\nUne relance ne se garde qu'une fois la facture échue, à partir du ${dateFr(echueLe(b.echeance))}.\nGarder ce brouillon au journal ?`
+    return `${b.texte}\nUne relance ne se garde qu'à partir du ${dateFr(relancableLe(s, b.echeance))}, premier rappel après l'échéance.\nGarder ce brouillon au journal ?`
   },
   executer: (s, identite, p, maintenant) => {
     const b = brouillon(s, p.facture)
-    const echue = echueLe(b.echeance)
-    if (Temporal.PlainDate.compare(maintenant.toPlainDate(), echue) < 0) {
+    const le = relancableLe(s, b.echeance)
+    if (Temporal.PlainDate.compare(maintenant.toPlainDate(), le) < 0) {
       throw new Error(
-        `${b.facture.id} n'est pas échue : son échéance est le ${date(b.echeance)}. Rien n'est gardé ; une relance se garde à partir du ${dateFr(echue)}.`,
+        `${b.facture.id} : son échéance est le ${date(b.echeance)} ; rien n'est gardé, une relance se garde à partir du ${dateFr(le)}.`,
       )
     }
     s.journal.ecrire(
