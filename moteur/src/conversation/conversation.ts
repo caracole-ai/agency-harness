@@ -266,7 +266,7 @@ export async function avecSession<S, T>(
 const memeIdentite = (a: Identite, b: Identite) =>
   a.role === b.role && (a.personne ?? null) === (b.personne ?? null)
 
-/** Une identité relue au journal, sous l'une ou l'autre graphie (PLAN-METIER-2.md, M2), comparée à celle-ci. */
+/** Une identité relue au journal, comparée à celle-ci. */
 const memeIdentiteLue = (lue: unknown, b: Identite) => {
   const r = IdentiteSchema.safeParse(lue)
   return r.success && memeIdentite(r.data, b)

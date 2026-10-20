@@ -268,7 +268,7 @@ describe('qui parle : la porte, avant le dossier (REFLEXIONS.md, décidé le 202
     const s = session()
     writeFileSync(
       join(s.dossier, FICHIER_PERSONNES),
-      'personnes:\n  - { role: agent, agent: A-99 }\n',
+      'personnes:\n  - { role: agent, personne: A-99 }\n',
     )
     const fantome = verifiee({ role: 'agent', personne: 'A-99' }, s.dossier)
     const { r } = await tour(s, fantome, outil('mes_titres', {}))

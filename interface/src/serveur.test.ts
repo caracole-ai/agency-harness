@@ -487,7 +487,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
     const chemin = join(dossier, FICHIER_PERSONNES)
     writeFileSync(
       chemin,
-      readFileSync(chemin, 'utf8').replace('  - { role: agent, agent: A-2 }\n', ''),
+      readFileSync(chemin, 'utf8').replace('  - { role: agent, personne: A-2 }\n', ''),
     )
     const r = await poster(a, '/api/consigne', {
       identite: { role: 'agent', personne: 'A-2' },
@@ -499,7 +499,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
     const inconnu = copie()
     writeFileSync(
       join(inconnu, FICHIER_PERSONNES),
-      'personnes:\n  - { role: agent, agent: A-99 }\n',
+      'personnes:\n  - { role: agent, personne: A-99 }\n',
     )
     expect(() => app([], inconnu)).toThrow(/registre d'accès : .*A-99/)
     const absent = copie()

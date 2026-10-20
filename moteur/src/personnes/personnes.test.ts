@@ -76,7 +76,7 @@ describe('chargerPersonnes', () => {
     expect(
       chargerPersonnes(
         dossier(
-          'personnes:\n  - role: patron\n  - { role: agent, agent: A-1 }\n  - { role: agent, personne: A-2 }\n',
+          'personnes:\n  - role: patron\n  - { role: agent, personne: A-1 }\n  - { role: agent, personne: A-2 }\n',
         ),
         ROLES,
       ),
@@ -91,7 +91,9 @@ describe('chargerPersonnes', () => {
     expect(() => chargerPersonnes(dossier('personnes: []\n'), ROLES)).toThrow(/invalide/)
     expect(() =>
       chargerPersonnes(
-        dossier('personnes:\n  - { role: agent, agent: A-1 }\n  - { role: agent, agent: A-1 }\n'),
+        dossier(
+          'personnes:\n  - { role: agent, personne: A-1 }\n  - { role: agent, personne: A-1 }\n',
+        ),
         ROLES,
       ),
     ).toThrow(/agent A-1 en double/)

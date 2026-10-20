@@ -14,7 +14,7 @@ import {
 } from './roles'
 
 // Les rôles déclarés par le métier, leurs capacités, le registre d'accès et
-// les deux graphies de l'identifiant (PLAN-METIER-2.md § 3.1 et § 4).
+// l'identité lue (PLAN-METIER-2.md § 3.1 et § 4).
 
 /** Les rôles de la sécurité privée, tels qu'elle les déclare (le moteur ne dépend pas d'elle). */
 const SECURITE: RoleDeclare[] = [
@@ -86,26 +86,16 @@ describe('roleDe, quiParle', () => {
   })
 })
 
-describe('IdentiteSchema : les deux graphies', () => {
-  it('l’ancienne graphie `agent` se lit et devient `personne`', () => {
-    expect(IdentiteSchema.parse({ role: 'agent', agent: 'A-2' })).toEqual({
-      role: 'agent',
-      personne: 'A-2',
-    })
+describe('IdentiteSchema', () => {
+  it('`{ role, personne? }` se lit tel quel', () => {
     expect(IdentiteSchema.parse({ role: 'agent', personne: 'A-2' })).toEqual({
-      role: 'agent',
-      personne: 'A-2',
-    })
-    expect(IdentiteSchema.parse({ role: 'agent', personne: 'A-2', agent: 'A-2' })).toEqual({
       role: 'agent',
       personne: 'A-2',
     })
     expect(IdentiteSchema.parse({ role: 'patron' })).toEqual({ role: 'patron' })
   })
-  it('deux identifiants différents, une clé de trop, un rôle vide : refusés', () => {
-    expect(IdentiteSchema.safeParse({ role: 'agent', personne: 'A-2', agent: 'A-3' }).success).toBe(
-      false,
-    )
+  it('l’ancienne graphie `agent` (2026-10-20), une clé de trop, un rôle vide : refusés', () => {
+    expect(IdentiteSchema.safeParse({ role: 'agent', agent: 'A-2' }).success).toBe(false)
     expect(IdentiteSchema.safeParse({ role: 'agent', personne: 'A-2', nom: 'x' }).success).toBe(
       false,
     )
@@ -114,11 +104,10 @@ describe('IdentiteSchema : les deux graphies', () => {
 })
 
 describe('schemaRegistre', () => {
-  it('le registre du client fictif, tel quel (graphie `agent`), passe et se relit sous `personne`', () => {
+  it('le registre du client fictif, tel quel, passe', () => {
     const { personnes } = schemaRegistre(SECURITE).parse(parse(readFileSync(exemple, 'utf8')))
     expect(personnes[0]).toEqual({ role: 'patron' })
     expect(personnes).toContainEqual({ role: 'agent', personne: 'A-2' })
-    expect(personnes.every((p) => !('agent' in p))).toBe(true)
   })
   it('un registre à cinq rôles identifiés passe', () => {
     const registre = {
@@ -147,12 +136,12 @@ describe('schemaRegistre', () => {
         .error?.issues.map((i) => i.message)
     expect(motifs([{ role: 'roi' }])).toEqual(['rôle inconnu : roi'])
     expect(motifs([{ role: 'agent' }])).toEqual(["l'agent sans identifiant"])
-    expect(motifs([{ role: 'patron', agent: 'A-1' }])).toEqual([
+    expect(motifs([{ role: 'patron', personne: 'A-1' }])).toEqual([
       "le patron parle en son nom : pas d'identifiant",
     ])
     expect(
       motifs([
-        { role: 'agent', agent: 'A-1' },
+        { role: 'agent', personne: 'A-1' },
         { role: 'agent', personne: 'A-1' },
       ]),
     ).toEqual(['agent A-1 en double'])
