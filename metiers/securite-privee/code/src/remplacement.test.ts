@@ -8,6 +8,7 @@ import { parse } from 'yaml'
 import {
   aParis,
   ecrire,
+  enHeures,
   ouvrir,
   remplacantDe,
   repondre,
@@ -61,6 +62,17 @@ describe('une absence un jour sans vacation', () => {
     expect(() =>
       signalerAbsence(session(), attendu.absence.agent, jour.add({ days: 9 }), t0),
     ).toThrow(/n'a aucune vacation qui commence le \d{2}\/\d{2}\/\d{4}$/)
+  })
+})
+
+describe('enHeures', () => {
+  it('dit les heures au dixième, la moitié vers le haut, sans zéro inutile', () => {
+    expect(enHeures(0)).toBe('0 h')
+    expect(enHeures(36)).toBe('36 h')
+    expect(enHeures(7.5)).toBe('7.5 h')
+    expect(enHeures(7.25)).toBe('7.3 h')
+    expect(enHeures(10.04)).toBe('10 h')
+    expect(enHeures(20 / 3)).toBe('6.7 h')
   })
 })
 

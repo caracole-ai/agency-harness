@@ -30,6 +30,7 @@ import {
   type Candidat,
   decrireEtape,
   dejaSollicites,
+  enHeures,
   evaluer,
   METIER,
   phraseProposition,
@@ -640,8 +641,6 @@ function enMots(p: { du: string | null; au: string | null }): string {
   if (p.au) return `jusqu'au ${jour(p.au)}`
   return 'sur tout le planning'
 }
-
-const enHeures = (h: number) => `${Math.round(h * 10) / 10} h`
 
 const HeuresParAgent = z.strictObject({
   agent: z

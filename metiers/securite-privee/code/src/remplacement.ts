@@ -202,6 +202,9 @@ function connaitSite(s: Session, v: Vacation, agent: string): boolean {
     )
 }
 
+/** Des heures dites au dixième (« 7.5 h ») : la raison d'un candidat, le geste `heures_par_agent`. */
+export const enHeures = (h: number) => `${Math.round(h * 10) / 10} h`
+
 /** Les critères du patron, dans son ordre, et ce qu'ils disent de chaque agent. */
 function criteres(s: Session, v: Vacation) {
   const debut = intervalleDe(v).debut
@@ -229,7 +232,7 @@ function criteres(s: Session, v: Vacation) {
     },
     moins_d_heures_semaine: {
       rang: heures,
-      raison: (a) => `${Math.round(heures(a) * 10) / 10} h cette semaine`,
+      raison: (a) => `${enHeures(heures(a))} cette semaine`,
     },
   }
   return (s.config.remplacement?.preferences ?? []).map((p) => catalogue[p])
