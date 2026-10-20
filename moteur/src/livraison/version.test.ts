@@ -14,6 +14,7 @@ import {
   signerEtiquette,
   VARIABLE_CLE_SIGNATURE,
   verifierEtiquette,
+  verifierParLaCle,
 } from './version'
 
 // PLAN-LIVRAISON.md L4, L8 et la mesure du lot 2 : une étiquette signée par
@@ -199,7 +200,7 @@ describe('la signature (L4, mesure du lot 2)', () => {
       commit,
       chantier: 'securite-privee/remise_des_cles',
       geste: 'remise_des_cles',
-      client: 'client-fictif',
+      metier: 'securite-privee',
     })
     signerEtiquette(commandeSync, depot, 'v2026-10-15-1', commit, message, agence.privee)
     const objet = git(depot, 'cat-file', 'tag', 'v2026-10-15-1')
@@ -209,15 +210,33 @@ describe('la signature (L4, mesure du lot 2)', () => {
         '',
         'sorte: chantier',
         'chantier: securite-privee/remise_des_cles',
-        'client: client-fictif',
+        'metier: securite-privee',
         'geste: remise_des_cles (ajouté)',
         `commit: ${commit}`,
       ].join('\n'),
     )
+    // Tous les clients lisent le manifeste : il nomme le métier, jamais un client (décidé le 2026-10-20).
+    expect(objet).not.toMatch(/^client:/m)
     expect(objet).toContain('-----BEGIN SSH SIGNATURE-----')
     expect(rendreManifeste('v2026-10-15-2', { sorte: 'manuelle', commit })).toBe(
       `Version v2026-10-15-2\n\nsorte: manuelle\ncommit: ${commit}\n`,
     )
+  })
+})
+
+describe('à l’agence, la signature se vérifie par la seule clé privée (décidé le 2026-10-20)', () => {
+  it('signée par la clé : admise ; d’une autre clé : refusée ; une clé illisible : refusée sans dire son chemin', () => {
+    const { d, depot, agence, autre } = essai()
+    signer(depot, 'v2026-10-15-1', agence.privee)
+    signer(depot, 'v2026-10-15-2', autre.privee)
+    expect(verifierParLaCle(commandeSync, depot, 'v2026-10-15-1', agence.privee)).toBeUndefined()
+    expect(verifierParLaCle(commandeSync, depot, 'v2026-10-15-2', agence.privee)).toMatch(
+      /signature refusée/,
+    )
+    const absente = join(d, 'absente')
+    const raison = verifierParLaCle(commandeSync, depot, 'v2026-10-15-1', absente)
+    expect(raison).toMatch(/ssh-keygen -y/)
+    expect(raison).not.toContain(absente)
   })
 })
 

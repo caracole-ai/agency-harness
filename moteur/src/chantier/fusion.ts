@@ -8,6 +8,7 @@ import {
   prochaineEtiquette,
   rendreManifeste,
   signerEtiquette,
+  verifierParLaCle,
   versions,
 } from '../livraison/version'
 import {
@@ -29,7 +30,6 @@ import {
   DOSSIER_MEMOIRE,
   interdits,
   lireIndex,
-  missionFusionnee,
   missionsRetirees,
   resoudreCle,
 } from './memoire'
@@ -48,7 +48,9 @@ import {
 // Une fusion et un retrait posent chacun une version signée
 // (PLAN-LIVRAISON.md L4), poussée avec eux, tout ou rien ; `versionner`
 // étiquette `origin/main` tel quel. Un refus n'en pose pas : rien n'a changé
-// dans le code.
+// dans le code. Avant de signer, la fusion et le retrait exigent que
+// `origin/main` n'ait apporté que de la mémoire depuis la dernière version
+// (`baseHorsVersion`) : le reste se livre par `versionner`, le geste humain.
 
 /** Les neuf conditions de G1, dans l'ordre du plan ; la neuvième, le rejeu, décidée le 2026-10-18, suit l'honnêteté. */
 export const CONDITIONS = {
@@ -130,12 +132,91 @@ function poserVersion(
   v: OptionsVersion,
   m: Omit<Manifeste, 'commit'>,
 ): string {
-  oterVersionsOrphelines(c, arbre)
-  // Les versions du distant, même hors de `main` (une étiquette refusée chez les clients prend quand même son nom).
-  git(c, arbre, ['fetch', '--quiet', DISTANT, 'refs/tags/v*:refs/tags/v*'])
+  tirerVersions(c, arbre)
   const tag = prochaineEtiquette(c, arbre, v.jour)
   signerEtiquette(c, arbre, tag, commit, rendreManifeste(tag, { ...m, commit }), v.cle)
   return tag
+}
+
+/** Les versions de l'arbre, celles du distant : les orphelines ôtées, les autres tirées. */
+function tirerVersions(c: Commande, arbre: string): void {
+  oterVersionsOrphelines(c, arbre)
+  // Les versions du distant, même hors de `main` (une étiquette refusée chez les clients prend quand même son nom).
+  git(c, arbre, ['fetch', '--quiet', DISTANT, 'refs/tags/v*:refs/tags/v*'])
+}
+
+/** L'en-tête d'un commit dans `git log` : un octet nul (`%x00`, l'argument n'en porte pas), que nul chemin ne porte. */
+const ENTETE_COMMIT = '\0'
+
+/**
+ * Avant de signer une fusion ou un retrait (PLAN-LIVRAISON.md, décidé le
+ * 2026-10-20) : depuis la dernière version, `origin/main` (HEAD de l'arbre)
+ * n'a apporté que de la mémoire. Un commit qui touche autre chose (un compte
+ * de l'hébergeur volé, un changement du moteur poussé sans version) ne part
+ * signé chez aucun client : il se livre par `pnpm versionner`, le geste
+ * humain. La dernière version doit être signée par la clé de l'agence (une
+ * étiquette poussée par un autre ne sert pas de base) ; sans aucune version
+ * (le premier déploiement), la première se pose à la main. Rend la raison du
+ * refus, ou undefined.
+ */
+function baseHorsVersion(c: Commande, arbre: string, cle: string): string | undefined {
+  tirerVersions(c, arbre)
+  const derniere = versions(c, arbre).at(-1)
+  if (!derniere) {
+    return `aucune version sur ${DISTANT} : la première se pose à la main (pnpm versionner) ; rien n'est signé`
+  }
+  const signature = verifierParLaCle(c, arbre, derniere, cle)
+  if (signature) {
+    return `la dernière version, ${derniere}, n'est pas celle de l'agence (${signature}) ; rien n'est signé`
+  }
+  // `origin/main` ramené en arrière (un push forcé) : la plage serait vide, la version n'en serait pas moins hors lignée.
+  if (c(arbre, 'git', ['merge-base', '--is-ancestor', `${derniere}^{commit}`, 'HEAD']).code !== 0) {
+    return `${REF_DISTANTE} ne descend pas de la dernière version, ${derniere} (ramenée en arrière ?) ; rien n'est signé`
+  }
+  // Chaque commit contre son premier parent, une fusion comprise ; sans renommage (un déplacement
+  // vers `memoire/` dit aussi le chemin qu'il quitte).
+  const journal = git(c, arbre, [
+    '-c',
+    'core.quotePath=false',
+    'log',
+    '--no-renames',
+    '--diff-merges=first-parent',
+    '--name-only',
+    '--format=%x00%h',
+    `${derniere}..HEAD`,
+  ])
+  const hors = new Map<string, string>()
+  let commit = ''
+  for (const ligne of journal.split('\n')) {
+    if (ligne.startsWith(ENTETE_COMMIT)) commit = ligne.slice(1)
+    else if (ligne.length > 0 && !ligne.startsWith(`${DOSSIER_MEMOIRE}/`) && !hors.has(commit)) {
+      hors.set(commit, ligne)
+    }
+  }
+  if (hors.size === 0) return undefined
+  const exemples = [...hors].slice(0, 3).map(([k, chemin]) => `${k} : ${chemin}`)
+  return `${REF_DISTANTE} porte depuis ${derniere} ${hors.size} commit(s) hors de ${DOSSIER_MEMOIRE}/ (${exemples.join(' ; ')}) ; rien n'est signé : un changement du moteur se livre par pnpm versionner`
+}
+
+/** Les modes git d'un fichier régulier ; un lien (120000) ou un sous-module (160000) n'en est pas. */
+const MODES_FICHIER = new Set(['100644', '100755'])
+
+/**
+ * La mémoire de `origin/main` n'est faite que de fichiers : un lien symbolique
+ * poussé sous `memoire/` passerait la règle de la signature (son chemin y est)
+ * et ferait lire ou écrire la mémoire hors de l'arbre. Contrôlé avant tout
+ * travail dans l'arbre ; lève.
+ */
+function memoireReguliere(c: Commande, arbre: string): void {
+  const entrees = git(c, arbre, ['ls-tree', '-r', '-z', 'HEAD', '--', DOSSIER_MEMOIRE])
+  for (const entree of entrees.split('\0')) {
+    const [mode] = entree.split(' ')
+    if (entree.length > 0 && mode && !MODES_FICHIER.has(mode)) {
+      throw new Error(
+        `${REF_DISTANTE} porte sous ${DOSSIER_MEMOIRE}/ autre chose qu'un fichier (${entree.split('\t')[1] ?? ''}, mode ${mode}) ; rien n'est fait`,
+      )
+    }
+  }
 }
 
 /** Les étiquettes locales posées par une tentative qui ne part pas : la reprise les reposera. */
@@ -189,6 +270,7 @@ function avecReprise<T>(
     const arbre = ouvrirArbreDetache(c, racine, nom)
     let r: Tentative<T>
     try {
+      memoireReguliere(c, arbre)
       r = travail(arbre)
     } catch (erreur) {
       try {
@@ -235,8 +317,8 @@ export function conclure(o: {
   /** Écrit l'entrée de mémoire dans cet arbre avec cette sorte et cette issue ; rend son chemin, lève si elle porterait un nom. */
   ecrireEntree: (arbre: string, sorte: 'fusion' | 'refus', issue: string) => string
   personnes: Designable[]
-  /** La version que pose une fusion, et le client (slug) que son manifeste nomme. */
-  version: OptionsVersion & { client: string }
+  /** La version que pose une fusion. */
+  version: OptionsVersion
 }): IssueFusion {
   const c = o.commande
   if (!brancheExiste(c, o.racine, o.cle)) {
@@ -332,6 +414,8 @@ export function conclure(o: {
           },
         }
       }
+      const base = baseHorsVersion(c, arbre, o.version.cle)
+      if (base) return { fini: { sorte: 'echec', raison: base } }
       const message = `Chantier ${o.cle} : ${o.titre}\n\nFusion automatique (PLAN-GENERAL.md G1) : neuf conditions vertes.`
       const fusion = c(arbre, 'git', ['merge', '--no-ff', '-m', message, o.commit])
       if (fusion.code !== 0) {
@@ -358,7 +442,7 @@ export function conclure(o: {
           sorte: 'chantier',
           chantier: o.cle,
           geste: lireCle(o.cle).id,
-          client: o.version.client,
+          metier: lireCle(o.cle).metier,
         })
         commettreMemoire(c, arbre, `Mémoire : chantier ${o.cle} fusionné`)
         const refus = pousser(c, arbre, [SUR_MAIN, refEtiquette(o.cle), refTag(version)])
@@ -431,6 +515,8 @@ export function retirerFusion(o: {
       if (c(arbre, 'git', ['merge-base', '--is-ancestor', sha, 'HEAD']).code !== 0) {
         throw new Error(`${cle} : la fusion n'est pas sur ${REF_DISTANTE}`)
       }
+      const base = baseHorsVersion(c, arbre, o.version.cle)
+      if (base) throw new Error(`${cle} : retrait refusé, ${base}`)
       try {
         git(c, arbre, ['revert', '-m', '1', '--no-commit', sha])
         o.ecrireRetrait(arbre, cle)
@@ -445,12 +531,11 @@ export function retirerFusion(o: {
         throw new Error(`${cle} : retrait défait (${(erreur as Error).message.slice(0, 300)})`)
       }
       const revert = git(c, arbre, ['rev-parse', 'HEAD']).trim()
-      const client = missionFusionnee(arbre, cle)?.client
       const version = poserVersion(c, arbre, revert, o.version, {
         sorte: 'retrait',
         chantier: cle,
         geste: lireCle(cle).id,
-        ...(client ? { client } : {}),
+        metier: lireCle(cle).metier,
       })
       const refus = pousser(c, arbre, [SUR_MAIN, refTag(version)])
       if (refus === undefined) return { fini: { revert, version, cle } }

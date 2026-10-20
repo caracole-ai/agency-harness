@@ -70,7 +70,8 @@ export function evaluerCandidats<Contexte>(
 
 /**
  * Trie selon des critères dans l'ordre de préférence (plus petit = mieux),
- * puis par un départage stable (le nom) : même entrée, même ordre.
+ * puis par un départage stable (un identifiant, ses nombres comparés en
+ * nombres : A-9 avant A-10) : même entrée, même ordre.
  */
 export function classer<T>(
   items: T[],
@@ -82,6 +83,6 @@ export function classer<T>(
       const d = critere(a) - critere(b)
       if (d !== 0) return d
     }
-    return departage(a).localeCompare(departage(b), 'fr')
+    return departage(a).localeCompare(departage(b), 'fr', { numeric: true })
   })
 }

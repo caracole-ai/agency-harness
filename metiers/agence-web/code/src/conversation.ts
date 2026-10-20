@@ -9,6 +9,7 @@ import {
   type Designable,
   echappee,
   FICHIER_CONFIG,
+  type Icone,
   type Identite,
   type Intention,
   Journal,
@@ -18,7 +19,7 @@ import {
   roleDe,
 } from '@harnais/moteur'
 import { z } from 'zod'
-import { ACTIONS, enEuros } from './actions'
+import { ACTIONS, enEuros, TYPE_ABSENCE_PROPOSEE, TYPE_BROUILLON } from './actions'
 import { ConfigAgenceWeb } from './config'
 import { lireAgenceWeb } from './connecteurs/csv-exports'
 import { tablesPour } from './copie'
@@ -214,6 +215,12 @@ export const INTENTIONS: Intention[] = [
   },
 ]
 
+/** L'icône de chaque type du journal propre au métier (`Tableau.icones`). */
+const ICONES_JOURNAL: Record<string, Icone> = {
+  [TYPE_ABSENCE_PROPOSEE]: 'personne-absente',
+  [TYPE_BROUILLON]: 'crayon',
+}
+
 /** Des exemples de consignes, à cliquer, tirés de l'entretien § 12 : ils montrent ce que l'outil comprend. */
 const SUGGESTIONS: Record<IdRole, string[]> = {
   dirigeant: [
@@ -345,6 +352,7 @@ export const CONVERSATION: MetierConversation<Session> = {
       demandes: [],
       enAttente: [],
       nom,
+      icones: ICONES_JOURNAL,
       textes: {
         suggestions: SUGGESTIONS[identite.role as IdRole] ?? [],
         accueil:

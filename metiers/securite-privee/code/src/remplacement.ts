@@ -15,6 +15,7 @@ import {
   FICHIER_CONFIG,
   FUSEAU,
   heuresDans,
+  type Icone,
   type Intervalle,
   Journal,
   type Ligne,
@@ -38,7 +39,10 @@ import { ConfigSecurite, decrire, type PREFERENCES, VEILLER, vacationEnBref } fr
 
 /** Le dossier du métier (son registre). */
 export const METIER = fileURLToPath(new URL('../..', import.meta.url))
-const TYPE = 'remplacement'
+export const TYPE_REMPLACEMENT = 'remplacement'
+/** Les lignes qu'un remplacement écrit en plus de ses étapes : l'absence à reporter en paie, chaque message envoyé. */
+export const TYPE_ABSENCE = 'absence'
+export const TYPE_MESSAGE = 'message'
 const PAR_PATRON = 'patron'
 
 export const STATUT = {
@@ -120,7 +124,7 @@ export interface Proposition {
 }
 
 const historique = (s: Session, demande: string) =>
-  s.journal.historique(demande).filter((l) => l.type === TYPE)
+  s.journal.historique(demande).filter((l) => l.type === TYPE_REMPLACEMENT)
 const donnees = <T>(l: Ligne | undefined) => (l?.donnees ? (JSON.parse(l.donnees) as T) : undefined)
 const dernier = (lignes: Ligne[], statut: Statut) => lignes.filter((l) => l.issue === statut).at(-1)
 
@@ -142,7 +146,15 @@ function passer(
     throw new Error(`${demande} : « ${suivant} » impossible depuis « ${actuel ?? 'rien'} »`)
   }
   s.journal.ecrire(
-    [{ type: TYPE, client: s.config.client, objet: demande, issue: suivant, ...detail }],
+    [
+      {
+        type: TYPE_REMPLACEMENT,
+        client: s.config.client,
+        objet: demande,
+        issue: suivant,
+        ...detail,
+      },
+    ],
     maintenant.toInstant().toString(),
   )
 }
@@ -190,6 +202,9 @@ function connaitSite(s: Session, v: Vacation, agent: string): boolean {
     )
 }
 
+/** Des heures dites au dixième (« 7.5 h ») : la raison d'un candidat, le geste `heures_par_agent`. */
+export const enHeures = (h: number) => `${Math.round(h * 10) / 10} h`
+
 /** Les critères du patron, dans son ordre, et ce qu'ils disent de chaque agent. */
 function criteres(s: Session, v: Vacation) {
   const debut = intervalleDe(v).debut
@@ -217,7 +232,7 @@ function criteres(s: Session, v: Vacation) {
     },
     moins_d_heures_semaine: {
       rang: heures,
-      raison: (a) => `${Math.round(heures(a) * 10) / 10} h cette semaine`,
+      raison: (a) => `${enHeures(heures(a))} cette semaine`,
     },
   }
   return (s.config.remplacement?.preferences ?? []).map((p) => catalogue[p])
@@ -265,10 +280,11 @@ export function evaluer(s: Session, demande: string, v: Vacation, exclure: strin
     }
   }
   const cs = criteres(s, v)
+  // À égalité, le numéro d'agent le plus bas : le départage déclaré au modèle (`DEPARTAGE`, conversation.ts).
   const possibles = classer(
     evaluations.filter((e) => e.issue === 'possible').map((e) => e.candidat),
     cs.map((c) => c.rang),
-    nom,
+    (agent) => agent,
   ).map((agent) => ({
     agent,
     nom: nom(agent),
@@ -327,7 +343,7 @@ function proposer(s: Session, demande: string, maintenant: Temporal.ZonedDateTim
     },
   })
   const cadres = (s.config.delegations ?? [])
-    .filter((d) => d.action === TYPE)
+    .filter((d) => d.action === TYPE_REMPLACEMENT)
     .map((d) => ({
       d,
       manquantes: conditionsManquantes(d, (c, valeur) =>
@@ -520,14 +536,14 @@ export function ecrire(
   s.journal.ecrire(
     [
       {
-        type: 'absence',
+        type: TYPE_ABSENCE,
         client: s.config.client,
         objet: v.agent,
         motif: `absence sur ${v.id}, à reporter en paie`,
         donnees: { vacation: v.id, demande },
       },
       ...messages.map((motif) => ({
-        type: 'message',
+        type: TYPE_MESSAGE,
         client: s.config.client,
         objet: demande,
         motif,
@@ -558,7 +574,7 @@ function proposerDelegation(
 ): { delegationProposee?: Record<string, boolean | number> } {
   const validee = donnees<{ par: string }>(dernier(historique(s, demande), STATUT.validee))
   if (validee?.par !== PAR_PATRON) return {}
-  if ((s.config.delegations ?? []).some((d) => d.action === TYPE)) return {}
+  if ((s.config.delegations ?? []).some((d) => d.action === TYPE_REMPLACEMENT)) return {}
   const conditions = {
     ...(connaitSite(s, v, agent) ? { connait_site: true } : {}),
     prevenu_avant_heures: Math.floor(heuresDePrevenance(s, demande, v)),
@@ -570,7 +586,7 @@ function proposerDelegation(
         client: s.config.client,
         objet: demande,
         motif: 'remplacement réussi : le rendre automatique dans ces conditions ?',
-        donnees: { action: TYPE, conditions },
+        donnees: { action: TYPE_REMPLACEMENT, conditions },
       },
     ],
     maintenant.toInstant().toString(),
@@ -634,12 +650,13 @@ export const titreRemplacement = (s: Session, demande: string): string =>
  */
 export function replisProposition(s: Session, p: Proposition): Repli[] {
   const nomRegle = (id: string) => s.registre.interdits.find((i) => i.id === id)?.nom ?? id
-  const section = (titre: string, lignes: Repli['lignes']): Repli[] =>
-    lignes.length === 0 ? [] : [{ titre, lignes }]
+  const section = (titre: string, icone: Icone, lignes: Repli['lignes']): Repli[] =>
+    lignes.length === 0 ? [] : [{ titre, icone, lignes }]
   // Le nom d'une règle dit ce qu'elle exige (« carte professionnelle valide ») : la ligne dit qu'il ne l'a pas.
   return [
     ...section(
       `${p.exclus.length} ${p.exclus.length > 1 ? 'ne peuvent pas' : 'ne peut pas'} : une règle l'interdit`,
+      'interdit',
       p.exclus.map((c) => ({
         titre: c.nom,
         detail: `ne remplit pas : ${c.regles.map(nomRegle).join(', ')}`,
@@ -647,6 +664,7 @@ export function replisProposition(s: Session, p: Proposition): Repli[] {
     ),
     ...section(
       `${p.ecartes.length} à vérifier : ${p.ecartes.length > 1 ? 'leur' : 'son'} dossier est incomplet`,
+      'loupe',
       p.ecartes.map((c) => ({ titre: c.nom, detail: c.raisons.join(' ; ') })),
     ),
   ]

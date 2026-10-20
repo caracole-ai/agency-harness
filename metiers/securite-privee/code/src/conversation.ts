@@ -7,6 +7,7 @@ import {
   type DemandeTableau,
   echappee,
   FICHIER_CONFIG,
+  type Icone,
   type Identite,
   type Intention,
   Journal,
@@ -29,6 +30,7 @@ import {
   reaffectationFinie,
   STATUT_R,
   statutReaffectation,
+  TYPE_REAFFECTATION,
   validerReaffectation,
 } from './reaffectation'
 import {
@@ -40,7 +42,10 @@ import {
   type Session,
   STATUT,
   statut,
+  TYPE_ABSENCE,
   TYPE_DELEGATION_PROPOSEE,
+  TYPE_MESSAGE,
+  TYPE_REMPLACEMENT,
   titreRemplacement,
   vacationDe,
 } from './remplacement'
@@ -189,6 +194,14 @@ const SUGGESTIONS: Record<string, string[]> = {
   agent: ['Mon planning de la semaine', 'Mes titres', 'Je ne pourrai pas venir demain'],
 }
 
+/** L'icône de chaque type du journal propre au métier (`Tableau.icones`) : un message envoyé se voit d'un coup d'œil. */
+const ICONES_JOURNAL: Record<string, Icone> = {
+  [TYPE_MESSAGE]: 'message',
+  [TYPE_ABSENCE]: 'personne-absente',
+  [TYPE_REMPLACEMENT]: 'echange',
+  [TYPE_REAFFECTATION]: 'echange',
+}
+
 /** Les conditions d'une délégation de remplacement, dites en mots (catalogue du métier, veille.ts) ; `{v}` est la valeur. */
 const CONDITIONS: Record<string, string> = {
   connait_site: 'le remplaçant connaît déjà le site',
@@ -205,6 +218,10 @@ const INCHANGE = [
   'Hors de ces conditions, la décision vous revient',
 ]
 
+/** Ce qu'une source subit, en étiquette : lue, ou modifiée. */
+const LU = { texte: 'lu', ton: 'lecture' } as const
+const MODIFIE = { texte: 'modifié', ton: 'ecriture' } as const
+
 /**
  * Ce qu'un remplacement délégué lit et modifie, source par source, quand il
  * s'acte (remplacement.ts : evaluer, solliciter, ecrire ; csv-agence.ts :
@@ -215,23 +232,36 @@ const effetsRemplacement = (s: Session): Repli['lignes'] => {
   return [
     {
       titre: `Planning · ${d.planning}`,
+      icone: 'calendrier',
+      etiquettes: [MODIFIE, LU],
       detail:
         "modifié après le oui du remplaçant : l'agent de la vacation remplacée, aucune autre ligne ; lu : les vacations de chacun (heures, repos, sites déjà tenus)",
     },
     {
       titre: 'Messages aux agents',
+      icone: 'message',
+      etiquettes: [{ texte: 'envoyé', ton: 'envoi' }],
       detail:
         "envoyé sans attendre votre oui : la demande au remplaçant ; après son oui : la confirmation à lui et à l'absent",
     },
     {
       titre: `Journal · ${s.config.journal}`,
+      icone: 'livre',
+      etiquettes: [{ texte: 'écrit', ton: 'ecriture' }],
       detail: "écrit : chaque étape, « validé par délégation », l'absence à reporter en paie",
     },
     {
       titre: `Dossiers des agents · ${d.agents}`,
+      icone: 'personnes',
+      etiquettes: [LU],
       detail: 'lu seulement : cartes, titres et recyclages, pour les règles',
     },
-    { titre: `Postes · ${d.postes}`, detail: 'lu seulement : le site et ce que le poste exige' },
+    {
+      titre: `Postes · ${d.postes}`,
+      icone: 'lieu',
+      etiquettes: [LU],
+      detail: 'lu seulement : le site et ce que le poste exige',
+    },
   ]
 }
 
@@ -272,6 +302,7 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
         {
           id,
           sorte: 'remplacement',
+          icone: 'echange',
           titre: titreRemplacement(s, id),
           statut: st,
           texte:
@@ -290,6 +321,7 @@ function demandesEnCours(s: Session, lignes: Ligne[]): DemandeTableau[] {
       {
         id,
         sorte: 'réaffectation',
+        icone: 'echange',
         statut: st,
         texte: texte(decrireModifications(s, reaffectation(s, id).modifications), id),
         depuis: derniere(id)?.horodatage ?? '',
@@ -452,6 +484,7 @@ export const CONVERSATION: MetierConversation<Session> = {
             replis: [
               {
                 titre: 'Seulement quand',
+                icone: 'filtre',
                 lignes: conditions(d?.conditions).map((c) => ({
                   titre: c.charAt(0).toUpperCase() + c.slice(1),
                 })),
@@ -459,11 +492,13 @@ export const CONVERSATION: MetierConversation<Session> = {
               },
               {
                 titre: 'Ce qui ne change pas',
+                icone: 'bouclier',
                 lignes: INCHANGE.map((c) => ({ titre: c })),
                 ouvert: true,
               },
               {
                 titre: 'Ce qui sera lu et modifié, à chaque fois',
+                icone: 'donnees',
                 lignes: effetsRemplacement(s),
                 ouvert: true,
               },
@@ -471,6 +506,7 @@ export const CONVERSATION: MetierConversation<Session> = {
           }
         }),
       nom,
+      icones: ICONES_JOURNAL,
       textes: {
         suggestions: SUGGESTIONS[identite.role] ?? [],
         accueil:

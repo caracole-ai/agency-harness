@@ -69,8 +69,19 @@ export interface Depots {
   racine: string
 }
 
-/** Un dépôt nu, et un arbre humain qui y pousse `main`. */
-export function creerDepots(): Depots {
+/**
+ * La première version, posée à la main au déploiement (`pnpm versionner`) :
+ * sans elle, ni fusion ni retrait ne signent (décidé le 2026-10-20). Un jour
+ * avant ceux des essais : leurs versions gardent leur rang.
+ */
+export const PREMIERE_VERSION = 'v2026-10-01-1'
+
+/**
+ * Un dépôt nu, et un arbre humain qui y pousse `main` et la première version,
+ * signée par la clé de l'agence ; `sansVersion` : un dépôt d'avant le
+ * déploiement, où `pnpm versionner` pose la première.
+ */
+export function creerDepots(o: { sansVersion?: boolean } = {}): Depots {
   const base = mkdtempSync(join(tmpdir(), 'chantier-'))
   const origine = join(base, 'origine.git')
   const racine = join(base, 'humain')
@@ -99,6 +110,21 @@ export function creerDepots(): Depots {
   git(racine, 'commit', '-q', '-m', 'départ')
   git(racine, 'remote', 'add', 'origin', origine)
   git(racine, 'push', '-q', 'origin', 'main')
+  if (!o.sansVersion) {
+    git(
+      racine,
+      '-c',
+      'gpg.format=ssh',
+      '-c',
+      `user.signingkey=${CLE_ESSAI.privee}`,
+      'tag',
+      '-s',
+      '-m',
+      `Version ${PREMIERE_VERSION}`,
+      PREMIERE_VERSION,
+    )
+    git(racine, 'push', '-q', 'origin', `refs/tags/${PREMIERE_VERSION}`)
+  }
   return { origine, racine }
 }
 

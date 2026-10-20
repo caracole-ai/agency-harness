@@ -1,6 +1,7 @@
 import {
   type Action,
   aCapacite,
+  ajouter,
   dateFr,
   type Identite,
   LEQUEL,
@@ -298,12 +299,20 @@ const facturesEnRetard: Action<Session, z.infer<typeof FacturesEnRetard>> = {
       texte: `${pluriel(retards.length, 'facture')} en retard : ${enEuros(du)} restant dû.`,
       replis: [
         ...(sans.length > 0
-          ? [{ titre: `Jamais relancées (${sans.length})`, lignes: sans.map(ligne), ouvert: true }]
+          ? [
+              {
+                titre: `Jamais relancées (${sans.length})`,
+                icone: 'alerte' as const,
+                lignes: sans.map(ligne),
+                ouvert: true,
+              },
+            ]
           : []),
         ...(relancees.length > 0
           ? [
               {
                 titre: `Déjà relancées (${relancees.length})`,
+                icone: 'horloge' as const,
                 lignes: relancees.map(ligne),
                 ouvert: true,
               },
@@ -512,6 +521,7 @@ const disponibilites: Action<Session, z.infer<typeof Periode>> = {
       replis: [
         {
           titre: `Charge de chacun (${charges.length})`,
+          icone: 'personnes',
           lignes: charges.sort((a, b) => a.estimees - b.estimees).map((c) => c.ligne),
           ouvert: true,
         },
@@ -574,15 +584,22 @@ const domainesExpirant: Action<Session, z.infer<typeof DomainesExpirant>> = {
     const aVenir = datees.filter((d) => !d.passe).map((d) => d.ligne)
     // Une date inconnue en tête : elle n'est pas lointaine, elle est à renseigner.
     const groupes = [
-      { titre: 'Date à renseigner', compte: () => 'date à renseigner', lignes: inconnues },
+      {
+        titre: 'Date à renseigner',
+        compte: () => 'date à renseigner',
+        icone: 'calendrier' as const,
+        lignes: inconnues,
+      },
       {
         titre: 'Déjà expirés',
         compte: (n: number) => (n > 1 ? 'expirés' : 'expiré'),
+        icone: 'alerte' as const,
         lignes: expires,
       },
       {
         titre: `À renouveler dans les ${p.jours} jours`,
         compte: () => 'à renouveler',
+        icone: 'horloge' as const,
         lignes: aVenir,
       },
     ].filter((g) => g.lignes.length > 0)
@@ -593,6 +610,7 @@ const domainesExpirant: Action<Session, z.infer<typeof DomainesExpirant>> = {
           texte: `${total} ${total > 1 ? 'domaines ou certificats' : 'domaine ou certificat'} : ${groupes.map((g) => `${g.lignes.length} ${g.compte(g.lignes.length)}`).join(', ')}.`,
           replis: groupes.map((g) => ({
             titre: `${g.titre} (${g.lignes.length})`,
+            icone: g.icone,
             lignes: g.lignes,
             ouvert: true,
           })),
@@ -747,8 +765,13 @@ function brouillon(
   return { facture: f, echeance, niveau, texte }
 }
 
-/** Le premier jour où une facture est échue, et où sa relance peut se garder : le lendemain de son échéance (le retard de `factures_en_retard`). */
-const echueLe = (echeance: string) => jour(echeance).add({ days: 1 })
+/**
+ * Le premier jour où la relance d'une facture peut se garder : son échéance
+ * plus le délai du premier rappel de la maison (`veiller.delais.relance_facture`),
+ * la date que la veille annonce (`echeances.ts`).
+ */
+const relancableLe = (s: Session, echeance: string) =>
+  ajouter(jour(echeance), s.config.veiller.delais.relance_facture)
 
 const brouillonRelance: Action<Session, z.infer<typeof BrouillonRelance>> = {
   id: 'brouillon_relance',
@@ -762,14 +785,14 @@ const brouillonRelance: Action<Session, z.infer<typeof BrouillonRelance>> = {
   // connaît, refuse avant elle.
   reformuler: (s, _identite, p) => {
     const b = brouillon(s, p.facture)
-    return `${b.texte}\nUne relance ne se garde qu'une fois la facture échue, à partir du ${dateFr(echueLe(b.echeance))}.\nGarder ce brouillon au journal ?`
+    return `${b.texte}\nUne relance ne se garde qu'à partir du ${dateFr(relancableLe(s, b.echeance))}, premier rappel après l'échéance.\nGarder ce brouillon au journal ?`
   },
   executer: (s, identite, p, maintenant) => {
     const b = brouillon(s, p.facture)
-    const echue = echueLe(b.echeance)
-    if (Temporal.PlainDate.compare(maintenant.toPlainDate(), echue) < 0) {
+    const le = relancableLe(s, b.echeance)
+    if (Temporal.PlainDate.compare(maintenant.toPlainDate(), le) < 0) {
       throw new Error(
-        `${b.facture.id} n'est pas échue : son échéance est le ${date(b.echeance)}. Rien n'est gardé ; une relance se garde à partir du ${dateFr(echue)}.`,
+        `${b.facture.id} : son échéance est le ${date(b.echeance)} ; rien n'est gardé, une relance se garde à partir du ${dateFr(le)}.`,
       )
     }
     s.journal.ecrire(

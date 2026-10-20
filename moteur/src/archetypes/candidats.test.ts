@@ -84,6 +84,9 @@ describe('classer', () => {
       classer(gens, [(g) => g.connait, (g) => g.heures], (g) => g.nom).map((g) => g.nom),
     ).toEqual(['Julien', 'Karim', 'Mehdi', 'Thomas'])
   })
+  it('le départage compare les nombres en nombres : A-9 avant A-10', () => {
+    expect(classer(['A-10', 'A-9', 'A-5'], [() => 0], (a) => a)).toEqual(['A-5', 'A-9', 'A-10'])
+  })
 })
 
 describe('la clé d’accord', () => {

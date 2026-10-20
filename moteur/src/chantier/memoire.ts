@@ -21,7 +21,10 @@ import { estCle, lireCle } from './cle'
 // (PLAN-LIVRAISON.md L2) ; le texte libre d'un modèle y passe nettoyé. Rien
 // n'y entre qui porte un nom de salarié, un identifiant de personne, de
 // conversation ou d'échappée : ceux-là restent chez le client. Une écriture
-// qui en porterait un lève, rien n'est écrit.
+// qui en porterait un lève, rien n'est écrit. Aucun client non plus (décidé le
+// 2026-10-20) : tous les clients tirent la mémoire avec la version ; l'index
+// nomme le métier, le client reste au registre local de l'agence
+// (`.claude/missions/chantiers.log`).
 
 export const DOSSIER_MEMOIRE = 'memoire'
 export const FICHIER_INDEX = 'INDEX.md'
@@ -41,7 +44,8 @@ const SEP = ' · '
 export interface EvenementMemoire {
   /** AAAA-MM-JJ */
   date: string
-  client: string
+  /** Le métier de la mission, jamais son client. */
+  metier: string
   sorte: SorteMemoire
   /** La clé de la mission : `<métier>/<id>`. */
   cle: string
@@ -107,7 +111,7 @@ export const coutEcrit = (c: { usd: number; estime: boolean }) =>
   `${c.usd.toFixed(2).replace('.', ',')} $${c.estime ? ' (estimé par le binaire)' : ''}`
 
 function ligneIndex(e: EvenementMemoire): string {
-  return `- ${[e.date, e.client, e.sorte, e.cle, e.titre, e.issue, e.cout ? coutEcrit(e.cout) : '—']
+  return `- ${[e.date, e.metier, e.sorte, e.cle, e.titre, e.issue, e.cout ? coutEcrit(e.cout) : '—']
     .map(colonne)
     .join(SEP)}`
 }
@@ -140,10 +144,10 @@ export function lireIndex(racine: string): EvenementMemoire[] {
     .split('\n')
     .filter((l) => l.startsWith('- ') && l.includes(SEP))
     .flatMap((l) => {
-      const [date, client, sorte, cle, titre, issue] = l.slice(2).split(SEP)
-      if (!date || !client || !cle || !SORTES_MEMOIRE.includes(sorte as SorteMemoire)) return []
+      const [date, metier, sorte, cle, titre, issue] = l.slice(2).split(SEP)
+      if (!date || !metier || !cle || !SORTES_MEMOIRE.includes(sorte as SorteMemoire)) return []
       return [
-        { date, client, sorte: sorte as SorteMemoire, cle, titre: titre ?? '', issue: issue ?? '' },
+        { date, metier, sorte: sorte as SorteMemoire, cle, titre: titre ?? '', issue: issue ?? '' },
       ]
     })
 }
@@ -174,8 +178,7 @@ export function resoudreCle(racine: string, idOuCle: string): string {
 /** Ce qu'un chantier laisse à la mémoire (R10) ; écrit au lot 2. */
 export interface ChantierMemoire {
   date: string
-  client: string
-  /** `<métier>/<id>` */
+  /** `<métier>/<id>` : la ligne d'index en tire le métier. */
   cle: string
   titre: string
   /** Mission, plan, fichiers touchés, tests, constats, raison de la fusion ou du refus : écrits par le code. */
@@ -218,7 +221,7 @@ export function ecrireChantier(
     racine,
     {
       date: c.date,
-      client: c.client,
+      metier: lireCle(c.cle).metier,
       sorte: c.sorte,
       cle: c.cle,
       titre: nettoyer(c.titre, personnes),
@@ -263,8 +266,7 @@ export function ecrireRetrait(
   racine: string,
   r: {
     date: string
-    client: string
-    /** `<métier>/<id>` */
+    /** `<métier>/<id>` : la ligne d'index en tire le métier. */
     cle: string
     titre: string
     intentions: string[]
@@ -276,7 +278,7 @@ export function ecrireRetrait(
     racine,
     {
       date: r.date,
-      client: r.client,
+      metier: lireCle(r.cle).metier,
       sorte: 'retrait',
       cle: r.cle,
       titre: `${nettoyer(r.titre, personnes).replaceAll(';', ',')} ; intentions : ${r.intentions.join(', ')}`,
@@ -304,13 +306,14 @@ const INTENTIONS_MISSION = /^- intentions : (.*)$/m
 
 /**
  * Ce que la mémoire garde d'une mission fusionnée, pour son retrait (G2) :
- * la dernière ligne `fusion` de l'index (date, client, titre) et les
- * intentions de son entrée ; undefined si la mémoire n'en a pas.
+ * la dernière ligne `fusion` de l'index (date, titre) et les intentions de
+ * son entrée ; undefined si la mémoire n'en a pas. Le client n'y est pas : il
+ * se lit au registre de l'agence (`clientDuChantier`).
  */
 export function missionFusionnee(
   racine: string,
   cle: string,
-): { date: string; client: string; titre: string; intentions: string[] } | undefined {
+): { date: string; titre: string; intentions: string[] } | undefined {
   const e = lireIndex(racine)
     .filter((x) => x.sorte === 'fusion' && x.cle === cle)
     .at(-1)
@@ -322,13 +325,12 @@ export function missionFusionnee(
   if (ligne === undefined) return undefined
   return {
     date: e.date,
-    client: e.client,
     titre: e.titre,
     intentions: [...ligne.matchAll(/`([^`]+)`/g)].flatMap((x) => (x[1] ? [x[1]] : [])),
   }
 }
 
-/** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du client, les conventions, les chantiers de ce métier qui citent ses intentions. */
+/** Ce que le plan d'un chantier lit de la mémoire (R10) : l'index sans la colonne du métier, les conventions, les chantiers de ce métier qui citent ses intentions. */
 export function pourChantier(
   racine: string,
   mots: string[],

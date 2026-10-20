@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { stringify } from 'yaml'
 import type { Commande } from '../chantier/arbre'
+import { cleChantier } from '../chantier/cle'
 import {
   agenceEssai,
   binaireSimule,
@@ -26,6 +27,7 @@ import {
   etatHumain,
   gesteVert,
   MISSION_ESSAI,
+  PREMIERE_VERSION,
   refuserPush,
 } from '../chantier/essai.test.fixture'
 import {
@@ -50,6 +52,7 @@ import { prendreVerrou, tourAgence } from './agence'
 import { FICHIER_LIVRAISON, type Livraison, lireLivraison } from './config'
 import {
   chantiersDuJour,
+  clientDuChantier,
   commanderEtLivrer,
   DOSSIER_CHANTIERS,
   DOSSIER_CHANTIERS_AGENCE,
@@ -57,6 +60,7 @@ import {
   ISSUE_PUBLIQUE,
   lireFile,
   noterChantier,
+  noterFusion,
   rattraperStatuts,
   SUFFIXE_A_POUSSER,
   slugEnFile,
@@ -292,8 +296,12 @@ describe('l’agence prend la mission (L1) et le client lit le statut (L7)', () 
       version: 'v2026-10-10-1',
     })
     // L'agence : la fusion sur le distant ; son arbre et son main n'ont pas bougé, ses files ne se voient pas.
-    expect(git(depots.origine, 'tag', '--list', 'v*')).toBe('v2026-10-10-1')
+    expect(git(depots.origine, 'tag', '--list', 'v*')).toBe(`${PREMIERE_VERSION}\nv2026-10-10-1`)
     expect(etatHumain(depots.racine)).toEqual(humain)
+    // Le client du geste, au seul registre de l'agence (la mémoire et la version ne nomment que le
+    // métier, décidé le 2026-10-20) ; sa ligne de fusion n'entame pas la borne.
+    expect(clientDuChantier(depots.racine, cleChantier('essai', INTENTION))).toBe(SLUG)
+    expect(chantiersDuJour(depots.racine, '2026-10-10').total).toBe(1)
     expect(existsSync(join(depots.racine, DOSSIER_FILES, SLUG, '.git'))).toBe(true)
 
     // Le client : une ligne par statut nouveau, jamais deux ; la carte dit la version. Le dossier
@@ -767,6 +775,24 @@ describe('les états à moitié faits et les données bornées (audit de la livr
     expect(
       readFileSync(join(cloneDuDistant(file), '2026-10-10', `${INTENTION}.statut.yaml`), 'utf8'),
     ).not.toMatch(/SECRET-456/)
+  })
+
+  it('le client d’un geste fusionné se lit au registre : celui de la fusion, pas un autre client du même métier écarté après', () => {
+    const { racine } = creerDepots()
+    expect(clientDuChantier(racine, 'essai/x')).toBeUndefined()
+    noterChantier(racine, '2026-10-10', 'premier', 'essai/x')
+    expect(clientDuChantier(racine, 'essai/x')).toBeUndefined()
+    noterFusion(racine, '2026-10-10', 'premier', 'essai/x')
+    noterChantier(racine, '2026-10-10', 'second', 'essai/x')
+    expect(clientDuChantier(racine, 'essai/x')).toBe('premier')
+    expect(clientDuChantier(racine, 'autre/x')).toBeUndefined()
+    expect(chantiersDuJour(racine, '2026-10-10')).toEqual({
+      total: 2,
+      parClient: new Map([
+        ['premier', 1],
+        ['second', 1],
+      ]),
+    })
   })
 
   it('origin injoignable quand l’agence prend une mission : rien n’est écrit, la borne n’est pas entamée, la mission est prise au tour suivant', async () => {

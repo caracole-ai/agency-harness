@@ -57,7 +57,6 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
       racine: depots.racine,
       agence: agenceEssai(binaire),
       mission: clientAvecMission().fichier,
-      client: 'client-essai',
       personnes: PERSONNES_ESSAI,
       sortie,
       env: ENV_ESSAI,
@@ -76,7 +75,6 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
           arbre,
           {
             date: '2026-10-12',
-            client: 'client-essai',
             cle,
             titre: MISSION_ESSAI.titre,
             intentions: MISSION_ESSAI.intentions,
@@ -113,7 +111,6 @@ describe('le dépôt de base (§ 0.3, L2)', () => {
     const options = {
       racine: depots.racine,
       agence: agenceEssai(binaire),
-      client: 'client-essai',
       personnes: PERSONNES_ESSAI,
       sortie: mkdtempSync(join(tmpdir(), 'sortie-')),
       env: ENV_ESSAI,

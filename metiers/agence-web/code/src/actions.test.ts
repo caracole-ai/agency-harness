@@ -429,7 +429,7 @@ describe('brouillon_relance : un brouillon rendu par le code, gardé sur un oui,
     if (r.sorte !== 'confirmation') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
     expect(r.texte).toContain('à échéance du 15/10/2026')
     expect(r.texte).toContain(
-      "Une relance ne se garde qu'une fois la facture échue, à partir du 16/10/2026.\nGarder ce brouillon au journal ? (oui / non)",
+      "Une relance ne se garde qu'à partir du 16/10/2026, premier rappel après l'échéance.\nGarder ce brouillon au journal ? (oui / non)",
     )
     const oui = await confirmer(
       CONVERSATION,
@@ -443,7 +443,7 @@ describe('brouillon_relance : un brouillon rendu par le code, gardé sur un oui,
     expect(oui).toEqual({
       sorte: 'refus',
       texte:
-        "FAC-2026-045 n'est pas échue : son échéance est le 15/10/2026. Rien n'est gardé ; une relance se garde à partir du 16/10/2026.",
+        "FAC-2026-045 : son échéance est le 15/10/2026 ; rien n'est gardé, une relance se garde à partir du 16/10/2026.",
     })
     expect(s.journal.lire().filter((l) => l.type === TYPE_BROUILLON)).toEqual([])
   })
@@ -477,6 +477,43 @@ describe('brouillon_relance : un brouillon rendu par le code, gardé sur un oui,
         .filter((l) => l.type === TYPE_BROUILLON)
         .map((l) => l.objet),
     ).toEqual(['FAC-2026-045'])
+  })
+  it('le premier rappel suit le délai de la maison (`veiller.delais.relance_facture`), comme la veille', async () => {
+    // Le même client, un délai de relance de quinze jours : FAC-2026-045 (échéance le 15/10/2026)
+    // se relance à partir du 30/10/2026, pas du lendemain de son échéance.
+    const s = session((dossier) => {
+      const f = join(dossier, 'config.yaml')
+      const config = readFileSync(f, 'utf8')
+      const quinze = config.replace(
+        'relance_facture: { jours: 1 }',
+        'relance_facture: { jours: 15 }',
+      )
+      if (quinze === config) throw new Error('délai de relance introuvable dans config.yaml')
+      writeFileSync(f, quinze)
+    })
+    const garder = async (le: string) => {
+      const { r, conversation } = await tour(s, DIRIGEANT, 'brouillon_relance', {
+        facture: 'FAC-2026-045',
+      })
+      if (r.sorte !== 'confirmation') throw new Error(`sorte ${r.sorte} : ${r.texte}`)
+      expect(r.texte).toContain('à partir du 30/10/2026')
+      return confirmer(
+        CONVERSATION,
+        s,
+        verifiee(s, DIRIGEANT),
+        conversation,
+        r.empreinte,
+        true,
+        aParis(le),
+      )
+    }
+    expect(await garder('2026-10-29T18:00')).toEqual({
+      sorte: 'refus',
+      texte:
+        "FAC-2026-045 : son échéance est le 15/10/2026 ; rien n'est gardé, une relance se garde à partir du 30/10/2026.",
+    })
+    expect(s.journal.lire().filter((l) => l.type === TYPE_BROUILLON)).toEqual([])
+    expect((await garder('2026-10-30T09:00')).sorte).toBe('resultat')
   })
   it('une facture sans échéance connue : refus dès la reformulation, rien n’attend un « oui »', async () => {
     const s = session((dossier) => {

@@ -21,6 +21,7 @@ import {
   ecrireStatut,
   FICHIER_LIVRAISON,
   FICHIER_PERSONNES,
+  ICONES,
   type Identite,
   Journal,
   type Ligne,
@@ -340,6 +341,7 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
         replis: [
           {
             titre: 'Seulement quand',
+            icone: 'filtre',
             lignes: [
               { titre: 'Le remplaçant connaît déjà le site' },
               { titre: "L'absence est signalée au moins 10 h avant la vacation" },
@@ -348,6 +350,7 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
           },
           {
             titre: 'Ce qui ne change pas',
+            icone: 'bouclier',
             lignes: [
               { titre: 'Les règles écartent toujours qui ne peut pas remplacer' },
               { titre: 'Le remplaçant doit toujours accepter avant que le planning change' },
@@ -357,23 +360,44 @@ describe('ce que le métier rend à la page (PLAN-METIER-2.md § 3.6, M10)', () 
           },
           {
             titre: 'Ce qui sera lu et modifié, à chaque fois',
+            icone: 'donnees',
             lignes: [
               {
                 titre: 'Planning · planning.csv',
+                icone: 'calendrier',
+                // Ce que chaque source subit, en étiquettes : la page les montre en couleur.
+                etiquettes: [
+                  { texte: 'modifié', ton: 'ecriture' },
+                  { texte: 'lu', ton: 'lecture' },
+                ],
                 detail: expect.stringMatching(
                   /^modifié après le oui du remplaçant : l'agent de la vacation remplacée, aucune autre ligne/,
                 ),
               },
               {
                 titre: 'Messages aux agents',
+                icone: 'message',
+                etiquettes: [{ texte: 'envoyé', ton: 'envoi' }],
                 detail: expect.stringMatching(/^envoyé sans attendre votre oui/),
               },
-              { titre: 'Journal · journal.sqlite', detail: expect.stringMatching(/^écrit : /) },
+              {
+                titre: 'Journal · journal.sqlite',
+                icone: 'livre',
+                etiquettes: [{ texte: 'écrit', ton: 'ecriture' }],
+                detail: expect.stringMatching(/^écrit : /),
+              },
               {
                 titre: 'Dossiers des agents · agents.csv',
+                icone: 'personnes',
+                etiquettes: [{ texte: 'lu', ton: 'lecture' }],
                 detail: expect.stringMatching(/^lu seulement/),
               },
-              { titre: 'Postes · postes.csv', detail: expect.stringMatching(/^lu seulement/) },
+              {
+                titre: 'Postes · postes.csv',
+                icone: 'lieu',
+                etiquettes: [{ texte: 'lu', ton: 'lecture' }],
+                detail: expect.stringMatching(/^lu seulement/),
+              },
             ],
             ouvert: true,
           },
@@ -403,6 +427,11 @@ describe('les pages', () => {
       expect(page).toContain(`"/static/${fichier}?v=${v}"`)
       expect((await a.request(`/static/${fichier}?v=${v}`)).status).toBe(200)
     }
+  })
+  it('chaque icône qu’un métier peut choisir a son dessin dans la page', () => {
+    const page = readFileSync(new URL('../public/static/app.js', import.meta.url), 'utf8')
+    const dessins = page.slice(page.indexOf('const ICONES = {'), page.indexOf('const ICONES_TON'))
+    for (const nom of ICONES) expect(dessins).toMatch(new RegExp(`\\n  '?${nom}'?: \\[`))
   })
   it('la page et ses fichiers se revalident à chaque chargement', async () => {
     const a = app()
@@ -458,7 +487,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
     const chemin = join(dossier, FICHIER_PERSONNES)
     writeFileSync(
       chemin,
-      readFileSync(chemin, 'utf8').replace('  - { role: agent, agent: A-2 }\n', ''),
+      readFileSync(chemin, 'utf8').replace('  - { role: agent, personne: A-2 }\n', ''),
     )
     const r = await poster(a, '/api/consigne', {
       identite: { role: 'agent', personne: 'A-2' },
@@ -470,7 +499,7 @@ describe('la porte, avant le dossier (REFLEXIONS.md, décidé le 2026-10-08)', (
     const inconnu = copie()
     writeFileSync(
       join(inconnu, FICHIER_PERSONNES),
-      'personnes:\n  - { role: agent, agent: A-99 }\n',
+      'personnes:\n  - { role: agent, personne: A-99 }\n',
     )
     expect(() => app([], inconnu)).toThrow(/registre d'accès : .*A-99/)
     const absent = copie()

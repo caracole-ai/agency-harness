@@ -134,8 +134,6 @@ export interface OptionsChantier {
   agence: Agence
   /** `<client>/missions/<date>/<id>.yaml` */
   mission: string
-  /** Le client de la mission, en slug : la mémoire ne cite que lui (L3). */
-  client: string
   /** Les noms que rien ne doit citer : ceux du client fictif du métier de la mission (L3). */
   personnes: Designable[]
   /** Où écrire `<id>.chantier.md` et `<id>.statut.yaml` (L7). */
@@ -656,13 +654,12 @@ export async function faireChantier<S>(
       commit: gardee,
       conditions,
       personnes,
-      version: { cle: cleSignature, jour, client: o.client },
+      version: { cle: cleSignature, jour },
       ecrireEntree: (arbreFusion, sorte, issueMemoire) =>
         ecrireChantier(
           arbreFusion,
           {
             date: jour,
-            client: o.client,
             cle,
             titre,
             sorte,

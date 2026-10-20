@@ -11,7 +11,7 @@ import {
 import { reaffecterAgents } from './connecteurs/csv-agence'
 import type { Vacation } from './modele'
 import { constatsNouveaux, type Modification } from './modifications'
-import type { Session } from './remplacement'
+import { type Session, TYPE_MESSAGE } from './remplacement'
 import { intervalleDe } from './semantique'
 import { decrire } from './veille'
 
@@ -346,7 +346,7 @@ export function ecrireReaffectation(
   const motif = `planning mis à jour : ${modifications.map((m) => `${m.vacation} → ${s.ctx.agent(m.agent).nom}`).join(', ')}`
   passer(s, id, STATUT_R.ecrite, maintenant, { motif, donnees: { jeton } })
   s.journal.ecrire(
-    messages.map((motif) => ({ type: 'message', client: s.config.client, objet: id, motif })),
+    messages.map((motif) => ({ type: TYPE_MESSAGE, client: s.config.client, objet: id, motif })),
     maintenant.toInstant().toString(),
   )
   return { statut: STATUT_R.ecrite, motif, messages }

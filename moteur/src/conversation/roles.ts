@@ -4,9 +4,8 @@ import { z } from 'zod'
 // § 3.1, M1, M2, M3) : une liste de `RoleDeclare`, que la porte, le registre
 // d'accès et la conversation lisent à l'exécution. Le moteur ne teste jamais
 // un rôle par son nom : il demande une capacité. L'identifiant de qui parle
-// s'écrit `personne`. Seul `IdentiteSchema` lit encore l'ancienne graphie
-// `agent` : le registre du client fictif (`exemples/client-fictif/personnes.yaml`)
-// la porte toujours ; elle part avec sa réécriture (2026-10-18).
+// s'écrit `personne`, seule graphie lue (l'ancienne, `agent`, est partie le
+// 2026-10-20 avec la réécriture du registre du client fictif).
 
 export const CAPACITES = [
   'voit_tout',
@@ -54,20 +53,11 @@ export const quiParle = (roles: RoleDeclare[], identite: Identite): string => {
   return role.identifie ? `${role.enMots} ${identite.personne ?? '?'}` : role.enMots
 }
 
-/** Lit `{ role, personne?, agent? }` et rend `{ role, personne? }` : `agent` ne survit que pour le registre du client fictif et les lignes de journal écrites avant M2. */
-export const IdentiteSchema: z.ZodType<Identite> = z
-  .strictObject({
-    role: z.string().min(1),
-    personne: z.string().min(1).optional(),
-    agent: z.string().min(1).optional(),
-  })
-  .refine((i) => i.personne === undefined || i.agent === undefined || i.personne === i.agent, {
-    message: 'deux identifiants différents',
-  })
-  .transform(({ role, personne, agent }): Identite => {
-    const id = personne ?? agent
-    return { role, ...(id !== undefined ? { personne: id } : {}) }
-  })
+/** Lit `{ role, personne? }` ; toute autre clé (dont l'ancienne graphie `agent`) est refusée. */
+export const IdentiteSchema: z.ZodType<Identite> = z.strictObject({
+  role: z.string().min(1),
+  personne: z.string().min(1).optional(),
+})
 
 /**
  * L'identifiant d'une identité reçue de l'extérieur (`personne`) : rend
@@ -85,7 +75,7 @@ export function identifiantRecu(
 
 const cle = (i: Identite) => (i.personne === undefined ? i.role : `${i.role} ${i.personne}`)
 
-/** Le schéma zod de `personnes.yaml` pour ces rôles : un rôle non identifié est unique ; un rôle identifié exige `personne` (ancienne graphie `agent` acceptée et renommée). */
+/** Le schéma zod de `personnes.yaml` pour ces rôles : un rôle non identifié est unique ; un rôle identifié exige `personne`. */
 export const schemaRegistre = (roles: RoleDeclare[]): z.ZodType<{ personnes: Identite[] }> =>
   z.strictObject({
     personnes: z

@@ -127,9 +127,13 @@ export async function jouerCas<S>(
     }
     // Tous les noms de la copie, variante comprise ;
     // une fuite qu'on ne peut pas mesurer compte comme une fuite.
+    // Rien d'envoyé (une exception avant tout appel) : rien n'a pu partir.
+    const envoyes = textesEnvoyes(modele)
     try {
-      const personnes = await avecSession(m, dossier, accueil.identite, (s) => m.noms(s))
-      fuite = fuiteDe(textesEnvoyes(modele), personnes)
+      fuite =
+        envoyes.length === 0
+          ? []
+          : fuiteDe(envoyes, await avecSession(m, dossier, accueil.identite, (s) => m.noms(s)))
     } catch (erreur) {
       fuite = [`non mesurée : ${(erreur as Error).message}`]
     }

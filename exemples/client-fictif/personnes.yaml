@@ -6,16 +6,16 @@
 # s'ajouter ici à chaque personne.
 personnes:
   - role: patron
-  - { role: agent, agent: A-1 }
-  - { role: agent, agent: A-2 }
-  - { role: agent, agent: A-3 }
-  - { role: agent, agent: A-4 }
-  - { role: agent, agent: A-5 }
-  - { role: agent, agent: A-6 }
-  - { role: agent, agent: A-7 }
-  - { role: agent, agent: A-8 }
-  - { role: agent, agent: A-9 }
-  - { role: agent, agent: A-10 }
-  - { role: agent, agent: A-11 }
-  - { role: agent, agent: A-12 }
-  - { role: agent, agent: A-13 }
+  - { role: agent, personne: A-1 }
+  - { role: agent, personne: A-2 }
+  - { role: agent, personne: A-3 }
+  - { role: agent, personne: A-4 }
+  - { role: agent, personne: A-5 }
+  - { role: agent, personne: A-6 }
+  - { role: agent, personne: A-7 }
+  - { role: agent, personne: A-8 }
+  - { role: agent, personne: A-9 }
+  - { role: agent, personne: A-10 }
+  - { role: agent, personne: A-11 }
+  - { role: agent, personne: A-12 }
+  - { role: agent, personne: A-13 }

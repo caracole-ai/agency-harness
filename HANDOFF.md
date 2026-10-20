@@ -1,4 +1,4 @@
-# Handoff — 2026-10-18
+# Handoff — 2026-10-20
 
 Pour reprendre dans une session neuve : deux pages, l'état et la suite. Les
 décisions et leur fil sont dans `REFLEXIONS.md`, les plans vivants dans
@@ -9,19 +9,20 @@ la seule.
 
 ## Où on en est
 
-`main` = la fusion de `general/menage` (2026-10-18, le lot « ménage » :
-« Ouvert » ci-dessous) au-dessus de `origin/main` = `general/l4-mise-a-jour`
-(2026-10-16, les lots 0 à 4 de `PLAN-LIVRAISON.md`) ; **`main` n'est pas
-poussée** (six commits de doc et de carte, puis la fusion du ménage : à
-pousser). Le chantier se lance **au clic**,
+`main` = `origin/main` = la fusion de `general/finitions` (2026-10-20 :
+« Fait le 2026-10-20 » ci-dessous), au-dessus des lots 0 à 4 de
+`PLAN-LIVRAISON.md` (2026-10-16), du ménage (18) et des fusions du 19.
+**On reste en prototypage, sur l'abonnement Max** (Lionel, 2026-10-20) : la
+bascule vers la clé d'API, la mesure réelle du lot 5 et le bac à sable
+attendent la fin du prototypage. Le chantier se lance **au clic**,
 **à l'agence** (`pnpm agence`, une file git de missions masquées par
 client) ; chaque fusion et chaque retrait posent une **version signée**
 (`v<AAAA-MM-JJ>-<n>`, SSH, `AGENCE_CLE_SIGNATURE` hors du dépôt) ; le
 harnais du client la **tire** (`pnpm mise-a-jour`, lancé par l'interface
 dans un processus à part), vérifie signature et lignée, l'installe à côté,
 rejoue `pnpm check`, bascule au calme (`pnpm harnais`, le lanceur), revient
-en arrière si le redémarrage échoue. `pnpm check` vert : moteur 588,
-interface 41, sécurité 137, agence web 259.
+en arrière si le redémarrage échoue. `pnpm check` vert : moteur 626,
+interface 45, sécurité 138, agence web 261.
 
 **Audité avant la fusion le 2026-10-16** : trois relectures en parallèle,
 puis une relecture des corrections ; une trentaine de défauts corrigés en
@@ -35,10 +36,9 @@ lieu du commit gardé ; un geste retiré qui revenait (un plancher de
 versions). L'onglet « Gestes » vu à l'écran ; le laboratoire du lot 4 rejoué
 pour de vrai, deux fois, la dernière sur la pointe finale.
 
-**Prochaine session : le lot 5** (la mesure réelle, avec les vrais modèles,
-la clé de l'agence et un bac à sable : voir « Ouvert, avant un client
-réel »). Avant la première fusion réelle, Lionel crée la clé de l'agence
-(`ssh-keygen -t ed25519`, hors du dépôt) et l'exporte. **La phrase à trous
+**Prochaine session : améliorer le produit** sur l'abonnement (le lot 5,
+la mesure réelle, attend la fin du prototypage : « Ouvert, en fin de
+prototypage »). **La phrase à trous
 est faite** (2026-10-18, fusion 59e9374, verdict dans
 `evals/verdict-2026-10-18-phrase-a-trous.md`). L'adaptateur de
 l'abonnement est corrigé (577ac5c : le modèle tentait d'appeler les outils
@@ -93,6 +93,10 @@ demandes reçues, ce qui part à l'agence (`detailSansGeste`).
 Le journal a ses badges de sorte, une recherche à chaque lettre qui
 surligne ce qu'elle trouve, et des tags cumulables, repliés sous elle (« ou » dans une dimension, « et » entre elles ;
 `SORTES_JOURNAL`, `FACETTES` dans `app.js`).
+Toute l'interface a ses icônes au trait (2026-10-20) : le métier choisit
+celle de ses sections, lignes et types du journal dans `ICONES` (moteur,
+`tableau.ts`), avec des étiquettes en couleur (`TONS` : lu, modifié,
+envoyé) ; un test vérifie que chaque nom a son dessin dans `app.js`.
 L'agence web suit (2026-10-19) : factures en retard (jamais relancées,
 déjà relancées), tickets par projet, heures par projet, disponibilités du
 plus libre au plus chargé, domaines (date à renseigner en tête, expirés, à
@@ -131,24 +135,37 @@ planning fictif s'arrête mi-octobre).
   quotidien, Fable et Opus au chantier) : les dollars affichés sont des
   équivalents API, rien n'est facturé ; la contrainte est le quota.
 
-## Ouvert, avant un client réel : les trois décisions qui restent à Lionel
+## Ouvert, en fin de prototypage (avant un client réel)
 
-Le détail est sous les lots 2 et 3 du plan. Tout le reste a été tranché le
-2026-10-18 (`REFLEXIONS.md`, « Décidé »). Recommandation de Claude : le
-chemin simple, dans les trois cas.
+Tranchées le 2026-10-20 (Lionel : « fais tout » ; `REFLEXIONS.md`,
+« Décidé », les lignes du 20), le chemin simple dans les trois cas. Deux
+sont faites (« Fait le 2026-10-20 ») ; reste, **en fin de prototypage**,
+avec la bascule vers la clé d'API et le lot 5 :
 
-- **Le bac à sable, aggravé** : le code du modèle (`pnpm check`, `pnpm
-  evals`) lit la clé, `~/.ssh`, le trousseau, écrit dans le `.git` commun,
-  et peut glisser ce qu'il lit dans le code ou la mémoire que tous les
-  clients tirent. Chemin simple : un utilisateur macOS dédié au chantier,
-  avec son propre clone, sans accès à tout cela ; l'agence ne fait que lire
-  le commit gardé, fusionner et signer.
-- **La fusion automatique signe tout ce que porte `origin/main`** (un compte
-  de l'hébergeur volé y pousse). Chemin simple : refuser de signer si un
-  commit de `<dernière v*>..origin/main` touche autre chose que `memoire/`.
-- **Le slug du client**, dans `memoire/INDEX.md` et le manifeste de chaque
-  version, que tous les clients lisent. Chemin simple : y nommer le métier ;
-  le client reste au registre local de l'agence (`chantiers.log`).
+- **Le bac à sable** : un utilisateur macOS dédié au chantier, avec son
+  propre clone et sa propre connexion `claude`, sans accès à la clé, à
+  `~/.ssh`, au trousseau ni au `.git` de l'agence ; l'agence ne fait que
+  lire le commit gardé, fusionner et signer. Il faut `sudo` : Lionel.
+- **La clé de l'agence**, créée le 2026-10-20 (`~/.config/agence/signature`,
+  sans phrase de passe ; `export AGENCE_CLE_SIGNATURE=…` à mettre dans le
+  profil de Lionel) : **à régénérer au montage du bac à sable**, avant
+  d'entrer dans le premier `signataires` (jusque-là, un chantier de
+  laboratoire tourne sous le même utilisateur et pourrait la lire).
+- **La première version se pose à la main** (`pnpm versionner`) : sans `v*`
+  signée par la clé de l'agence, et après chaque changement du moteur, la
+  fusion et le retrait refusent (c'est la règle de la signature).
+- **Le slug fuit encore par `agence.yaml`** (`agence.clients`, versionné,
+  vide aujourd'hui) : à sortir du dépôt avant d'y inscrire un vrai client.
+  Le texte libre d'une mission (`titre`, `pourquoi`) et le motif d'un
+  retrait partent aussi dans le commit et la mémoire, contrôlés contre les
+  noms fictifs seulement.
+- **Relu le 2026-10-20, risques acceptés** (les deux contournements trouvés,
+  `origin/main` ramené en arrière et un lien sous `memoire/`, sont corrigés
+  et testés) : une étiquette `v*` poussée par un intrus bloque toute fusion
+  jusqu'à ce qu'un humain la supprime (fermé par défaut, mais le message ne
+  dit pas laquelle ôter, et `versionner` numéroterait après elle) ; une
+  exception après le push d'une fusion (`fermerArbre`, le dossier) saute
+  `noterFusion`, et le retrait de ce chantier ne retrouvera pas son client.
 
 ## La méthode (Lionel : « anti-over-engineer et KISS »)
 
@@ -173,62 +190,45 @@ chemin simple, dans les trois cas.
 
 Dire ce qu'est une bonne réponse (E1), ou mieux, mettre un vrai patron devant
 l'outil. Toutes les étiquettes en suspens sont tranchées le 2026-10-19
-(REFLEXIONS, « Décidé », les lignes du 19) : reste le vrai patron.
+(REFLEXIONS, « Décidé », les lignes du 19) : reste le vrai patron. Ses
+questions, côté agence web (REFLEXIONS, 2026-10-20) : le seuil
+`facture_alerte` (1 est inventé) ; son outil de factures relie-t-il une
+facture à un contrat de maintenance (sinon `contrat_tma` se devine par les
+mensualités) ; des délais de relance par niveau (la fiche dit J+15 la
+commerciale, J+30 le dirigeant ; la config n'en porte qu'un). Une étiquette
+à Lionel : le piège de `lots.nom` (EP-16, EP-18) n'atteint jamais le
+modèle ; proposition : le loger dans une colonne que ces cas lisent
+forcément, et compter « non exposé » un cas où le texte piégé n'est sorti
+d'aucun outil.
 
-## Ouvert
+## Fait le 2026-10-20 (`general/finitions`)
 
-**Le lot « ménage », tranché et fait le 2026-10-18** (`REFLEXIONS.md`,
-« Décidé », les quatre lignes du 18 ; branche `general/menage`, quatre
-forks fusionnés sans conflit, `pnpm check` vert, `evals traduire` 73/73
-fuite 0 avec le vrai modèle) :
+- **Les icônes au trait** dans toute l'interface (le métier les choisit dans
+  `ICONES`) ; dans une délégation, seuls les titres de section en portent.
+- **La signature** : la fusion et le retrait refusent de signer si un commit
+  de `<dernière v*>..origin/main` touche autre chose que `memoire/`
+  (premier parent, fusions comprises, sans renommages) ; la dernière `v*`
+  doit être signée par la clé de l'agence (`verifierParLaCle`) ; aucune
+  `v*` : refus. `pnpm versionner` n'y est pas soumis.
+- **Le slug** : `memoire/INDEX.md` et le manifeste nomment le métier ; le
+  retrait retrouve le client dans `chantiers.log` (`noterFusion`).
+- **Le client fictif** : `personnes.yaml` sous `personne`, la graphie `agent`
+  refusée par `IdentiteSchema` ; à égalité, le numéro d'agent le plus bas
+  (`classer`, tri numérique : A-9 avant A-10).
+- **La dette** : la « fuite 1 » de `heures_par_agent` (15/10) était vraie,
+  le niveau 2 (retiré le 18) ; une exception avant tout appel n'est plus une
+  fuite ; l'arrondi des heures a une seule source (`enHeures`) ;
+  `brouillon_relance` lit le délai de relance de la config ; « 17 tests au
+  lieu de 23 » n'était pas un manque (REFLEXIONS, 2026-10-20).
+- Les trois worktrees dépassés et leurs branches supprimés.
 
-- Le dépôt : 45 branches supprimées ; la doc : `archives/`, résultats
-  réduits à 135, README en arbre, glossaire à 99 entrées, un test qui tient
-  la table des commandes et `package.json` ensemble.
-- Un seul fournisseur (GMI, `flux`, `usageBorne`, le point d'accès de la
-  config partent), la graphie `agent` ne se lit plus que dans
-  `IdentiteSchema` (le registre du client fictif l'emploie), `pnpm
-  remplacer` retiré.
-- Le niveau 2 retiré : une mention proche donne « Vous parlez de « X » ?
-  (oui / non) » ou la liste numérotée, en code ; une réponse ambiguë repose
-  la question une fois ; « Répondre en tant que X » ouvre la conversation
-  de la question ; R-2 est une question.
-- L'échappée : `Reponse.resultat.controle`, les mots au demandeur
-  (`MOTS_CONTROLE`), `compteurs.ts` (30 jours) dans `/api/etat` et
-  l'en-tête de l'interface (« Questions libres »).
-- Le chantier : la clé `<métier>/<id>` (`chantier/cle.ts`) pour la branche,
-  l'étiquette, l'arbre et la mémoire (`memoire/chantiers/<métier>/`) ;
-  `retirer <métier>/<id>` ; la neuvième condition **rejeu** (`evals/rejeu.ts`,
-  `pnpm evals rejeu --gestes`) : une échappée vive par cas de traduction du
-  geste, ses nombres doivent être dans la réponse du geste. Le contrôle
-  de l'identifiant d'intention couvrait déjà tous les désignables du métier
-  (`m.noms`) : la sécurité privée ne déclare pas ses sites, c'est le seul
-  trou, côté métier.
-- Les sites : le diaporama et le glossaire de smarttailor.fr redéployés.
+Le ménage du 18 : `REFLEXIONS.md`, « Décidé », les lignes du 18.
 
-**Reste à Lionel, sans être une décision** : créer la clé de l'agence ; la
-date de la bascule vers la clé d'API ; deux écritures dans
-`exemples/client-fictif/` : `personnes.yaml` (`agent:` → `personne:`, 13
-lignes, puis retirer `agent` de `IdentiteSchema` et ses deux tests) et
-`attendu-remplacement.yaml` (le départage de `gerer_absence` par numéro
-donne `[A-2, A-1, A-5, A-9]`, puis `classer` avec
-`localeCompare(…, 'fr', { numeric: true })` dans `remplacement.ts`) ;
-supprimer `~/harnais-nuit`, `~/harnais-nuit-origine.git` et les trois
-worktrees, sales de copies dépassées :
-
-```sh
-git worktree remove --force .claude/worktrees/agent-a2eb82aa7f784e5ca
-git worktree remove --force .claude/worktrees/agent-a6d92e76e85884008
-git worktree remove --force .claude/worktrees/agent-afb90b024f1dbbeaf
-git worktree prune
-git branch -d travail-lot5 travail-lot7 worktree-agent-a2eb82aa7f784e5ca worktree-agent-a6d92e76e85884008 worktree-agent-afb90b024f1dbbeaf
-```
-
-**Reste à faire, sans décision** : « fuite 1 » de la passe `evals traduire`
-de `heures_par_agent`, non lue ; une fuite comptée à tort sur exception ;
-l'arrondi des heures recopié de `remplacement.ts` ; agence :
-`facture_alerte`, `contrat_tma`, `brouillon_relance` (J+1 en dur), 17 tests
-au lieu de 23, le piège `lots.nom`.
+**Reste à Lionel, sans être une décision** : supprimer le clone de la mesure
+du 15 (le garde-fou refuse à Claude) :
+`rm -rf ~/harnais-nuit ~/harnais-nuit-origine.git` ; voir si
+`~/harnais-mesure` sert encore ; republier la présentation (Thomas passe
+avant Mehdi à égalité : `presentation/en-clair/`).
 
 ## Décisions à respecter (le détail : `REFLEXIONS.md`, « Décidé »)
 
